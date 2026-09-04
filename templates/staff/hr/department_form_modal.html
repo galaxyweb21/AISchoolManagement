@@ -1,0 +1,189 @@
+<!-- staff/hr/department_form_modal.html -->
+{% load static %}
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold">
+        {% if mode == 'create' %}
+            <i class="bi bi-plus-circle me-2" style="color: var(--eduai-gold, #946B1C);"></i>New Department
+        {% else %}
+            <i class="bi bi-pencil-square me-2" style="color: var(--eduai-gold, #946B1C);"></i>Edit Department
+        {% endif %}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form method="post" action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url department.id %}{% endif %}"
+      id="departmentForm" class="needs-validation" novalidate>
+    {% csrf_token %}
+
+    <div class="modal-body p-4">
+        <!-- Name -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="departmentName">
+                Department Name <span class="text-danger">*</span>
+            </label>
+            <input type="text" name="name" id="departmentName" class="form-control"
+                   placeholder="e.g., Mathematics Department"
+                   value="{% if mode == 'edit' %}{{ department.name }}{% endif %}"
+                   required>
+            <div class="invalid-feedback">
+                Please enter a department name.
+            </div>
+            <small class="text-muted">This will be used to generate a department code automatically.</small>
+        </div>
+
+        <!-- Head of Department -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="departmentHod">
+                Head of Department
+            </label>
+            <select name="hod" id="departmentHod" class="form-select">
+                <option value="">Select Head of Department</option>
+                {% for staff in staff_members %}
+                    <option value="{{ staff.id }}"
+                            {% if mode == 'edit' and department.hod.id == staff.id %}selected{% endif %}>
+                        {{ staff.user.get_full_name }} ({{ staff.staff_id }})
+                    </option>
+                {% empty %}
+                    <option value="" disabled>No staff members available</option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">The staff member who will lead this department.</small>
+        </div>
+
+        <!-- Description -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="departmentDescription">
+                Description
+            </label>
+            <textarea name="description" id="departmentDescription" class="form-control"
+                      rows="3" placeholder="Brief description of the department...">{% if mode == 'edit' %}{{ department.description }}{% endif %}</textarea>
+            <small class="text-muted">Optional: Provide additional details about this department.</small>
+        </div>
+
+        <!-- Active Status (Edit mode only) -->
+        {% if mode == 'edit' %}
+        <div class="mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_active" id="departmentActive"
+                       {% if department.is_active %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="departmentActive">
+                    Active
+                </label>
+                <small class="d-block text-muted">Inactive departments will not appear in dropdown selections.</small>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Preview Code -->
+        <div class="alert border-0 rounded-3" style="background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));">
+            <small class="d-block">
+                <i class="bi bi-tag me-1" style="color: var(--eduai-gold, #946B1C);"></i>
+                <strong>Department Code:</strong>
+                {% if mode == 'create' %}
+                    <span id="codePreview">Will be auto-generated</span>
+                {% else %}
+                    {{ department.code }}
+                {% endif %}
+            </small>
+        </div>
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" id="departmentSubmitBtn" style="background-color: var(--eduai-gold, #946B1C); border-color: var(--eduai-gold, #946B1C);">
+            <i class="bi {% if mode == 'create' %}bi-plus-circle{% else %}bi-save{% endif %} me-1"></i>
+            {% if mode == 'create' %}Create Department{% else %}Update Department{% endif %}
+        </button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('departmentForm');
+
+    // Bootstrap form validation
+    form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // Handle form submission via AJAX
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const submitBtn = document.getElementById('departmentSubmitBtn');
+        const originalText = submitBtn.innerHTML;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+
+        const formData = new FormData(this);
+
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+
+            if (data.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('departmentModal') ||
+                                                          document.querySelector('.modal'));
+                if (modal) {
+                    modal.hide();
+                }
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to save department.'));
+            }
+        })
+        .catch(error => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            alert('Network error. Please try again.');
+            console.error('Error:', error);
+        });
+    });
+
+    // Live preview of department code
+    const nameInput = document.getElementById('departmentName');
+    const codePreview = document.getElementById('codePreview');
+
+    if (nameInput && codePreview) {
+        nameInput.addEventListener('input', function() {
+            const value = this.value.trim();
+            if (value) {
+                const words = value.split(' ');
+                let code = '';
+                if (words.length >= 2) {
+                    code = words.slice(0, 2).map(w => w.substring(0, 2).toUpperCase()).join('');
+                } else {
+                    code = value.substring(0, 4).toUpperCase();
+                }
+                codePreview.textContent = code + ' (preview)';
+                codePreview.style.color = 'var(--eduai-gold, #946B1C)';
+            } else {
+                codePreview.textContent = 'Will be auto-generated';
+                codePreview.style.color = 'inherit';
+            }
+        });
+    }
+});
+</script>

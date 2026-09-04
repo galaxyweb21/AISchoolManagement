@@ -1,0 +1,76 @@
+<!-- academics/templates/academics/promotion/bulk_apply_modal.html -->
+{% load static %}
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold text-success" style="color: var(--eduai-signal, #2C7A6D) !important;">
+        <i class="bi bi-check-all text-success me-2" style="color: var(--eduai-signal, #2C7A6D) !important;"></i>
+        Apply All Promotions
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body p-4">
+    <div class="alert alert-warning border-0 rounded-4">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Warning:</strong> This will permanently update the grade level and class for all promoted students in this batch.
+    </div>
+
+    <p class="text-muted">You are about to apply promotions for <strong>{{ batch.name }}</strong>.</p>
+
+    <div class="row g-3 mb-3">
+        <div class="col-4">
+            <div class="p-2 rounded-3 text-center" style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D);">
+                <small class="d-block">Promoted</small>
+                <strong class="fs-4">{{ batch.promoted }}</strong>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="bg-warning-subtle text-warning p-2 rounded-3 text-center">
+                <small class="d-block">Conditional</small>
+                <strong class="fs-4">{{ batch.conditional }}</strong>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="bg-secondary-subtle text-secondary p-2 rounded-3 text-center">
+                <small class="d-block">Total</small>
+                <strong class="fs-4">{{ batch.total_students }}</strong>
+            </div>
+        </div>
+    </div>
+
+    {% if promotions %}
+    <div class="mb-3">
+        <h6 class="fw-bold mb-2">Students to be promoted:</h6>
+        <ul class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
+            {% for promotion in promotions|slice:":20" %}
+            <li class="list-group-item bg-transparent px-0 py-2 d-flex justify-content-between align-items-center">
+                <span>{{ promotion.student.user.get_full_name }}</span>
+                <span class="badge
+                    {% if promotion.status == 'PROMOTED' %}style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D);"
+                    {% else %}style="background: rgba(217,119,6,0.1); color: #d97706;"{% endif %}
+                ">
+                    {{ promotion.get_status_display }}
+                </span>
+            </li>
+            {% endfor %}
+            {% if promotions|length > 20 %}
+            <li class="list-group-item bg-transparent px-0 py-2 text-muted text-center">
+                +{{ promotions|length|add:"-20" }} more students
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal-footer border-0 px-4 pb-4">
+    <button type="button" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" data-bs-dismiss="modal">
+        <i class="bi bi-x-circle me-1"></i>Cancel
+    </button>
+    <form method="post" action="{% url 'academics:promotion_bulk_apply' batch.id %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn" style="background: var(--eduai-signal, #2C7A6D); color: #fff; border-color: var(--eduai-signal, #2C7A6D);" onclick="return confirm('Apply all promotions? This action cannot be undone.')">
+            <i class="bi bi-check-all me-1"></i>Apply All Promotions
+        </button>
+    </form>
+</div>

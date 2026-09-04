@@ -1,0 +1,894 @@
+<!-- staff_detail.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}{{ staff.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .info-card {
+        border-radius: 12px;
+        padding: 1.25rem;
+        background: var(--bs-tertiary-bg);
+        height: 100%;
+    }
+    .info-card .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--bs-secondary-color);
+        font-weight: 600;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+    .info-card .value {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .progress-bar-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+</style>
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<!-- Page Description -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle icon"></i>
+        <div>
+            <div class="title">
+                Staff Profile
+                <span class="badge badge-role ms-2">
+                    <i class="bi bi-shield-check me-1"></i>
+                    {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                        Admin View
+                    {% elif request.user.role == 'BURSAR' %}
+                        Bursar View
+                    {% elif request.user.role == 'TEACHER' %}
+                        Teacher View
+                    {% else %}
+                        Staff View
+                    {% endif %}
+                </span>
+            </div>
+            <p class="text">
+                This page shows detailed information about <strong>{{ staff.user.get_full_name }}</strong>.
+                {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                    You can <strong>Edit</strong> staff details, <strong>Deactivate/Activate</strong> their account,
+                    or <strong>Delete</strong> their profile. Login credentials are only visible to administrators.
+                {% else %}
+                    You have read-only access to this profile. Contact an administrator for changes.
+                {% endif %}
+                The <strong>Leave Balances</strong> section shows remaining leave days, and <strong>Recent Leave Requests</strong>
+                shows the staff member's leave history.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid py-4">
+    <!-- Header Card -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-4">
+                    {% if staff.profile_picture %}
+                        <img src="{{ staff.profile_picture.url }}" alt="{{ staff.user.get_full_name }}"
+                             class="rounded-circle border shadow-sm" style="width: 80px; height: 80px; object-fit: cover;">
+                    {% else %}
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white border shadow-sm"
+                             style="width: 80px; height: 80px; font-size: 1.8rem; font-weight: 700; background-color: var(--eduai-gold, #946B1C);">
+                            {{ staff.user.first_name|first|upper }}{{ staff.user.last_name|first|upper }}
+                        </div>
+                    {% endif %}
+
+                    <div>
+                        <h5 class="fw-bold mb-1">{{ staff.user.get_full_name }}</h5>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <span class="badge badge-gold rounded-pill px-3 py-2">
+                                {{ staff.get_staff_position_display }}
+                            </span>
+                            <small class="text-muted">·</small>
+                            <span class="text-muted small">
+                                <i class="bi bi-person-badge me-1"></i>{{ staff.staff_id }}
+                            </span>
+                            {% if staff.department %}
+                            <small class="text-muted">·</small>
+                            <span class="text-muted small">
+                                <i class="bi bi-building me-1"></i>{{ staff.department.name }}
+                            </span>
+                            {% endif %}
+                            {% if not staff.is_active %}
+                            <span class="badge bg-secondary-subtle text-secondary ms-1">Inactive</span>
+                            {% endif %}
+                        </div>
+                        <div class="mt-1">
+                            {% if staff.staff_grade %}
+                            <span class="badge badge-teal rounded-pill px-3 py-1">
+                                <i class="bi bi-layers me-1"></i>{{ staff.staff_grade.name }}
+                            </span>
+                            {% endif %}
+                            <span class="badge bg-light text-muted rounded-pill px-3 py-1 border">
+                                <i class="bi bi-calendar me-1"></i>Joined: {{ staff.date_joined|date:"M d, Y" }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-outline-gold" data-bs-toggle="modal" data-bs-target="#editStaffModal"
+                            data-action="edit" data-url="{% url 'staff:staff_edit' staff.id %}">
+                        <i class="bi bi-pencil me-1"></i>Edit
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteStaffModal">
+                        <i class="bi bi-trash me-1"></i>Delete
+                    </button>
+                    <button type="button" class="btn {% if staff.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                            data-bs-toggle="modal" data-bs-target="#toggleActiveModal">
+                        {% if staff.is_active %}<i class="bi bi-pause-circle me-1"></i>Deactivate{% else %}<i class="bi bi-play-circle me-1"></i>Activate{% endif %}
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="info-card border">
+                <span class="label"><i class="bi bi-envelope me-1"></i>Email</span>
+                <span class="value">{{ staff.user.email|default:"—" }}</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="info-card border">
+                <span class="label"><i class="bi bi-phone me-1"></i>Phone</span>
+                <span class="value">{{ staff.user.phone_number|default:"—" }}</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="info-card border">
+                <span class="label"><i class="bi bi-briefcase me-1"></i>Employment</span>
+                <span class="value">{{ staff.get_employment_type_display|default:"Not set" }}</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="info-card border">
+                <span class="label"><i class="bi bi-calendar-event me-1"></i>Employed Since</span>
+                <span class="value">{{ staff.employment_date|date:"M d, Y"|default:"Not set" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row g-4">
+        <!-- Left Column -->
+        <div class="col-lg-8">
+            <!-- Leave Balances -->
+            {% if leave_balances %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-calendar-check text-gold me-2"></i>Leave Balances
+                        <span class="badge bg-secondary-subtle text-secondary ms-2 small">Remaining days by leave type</span>
+                    </h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        {% for balance in leave_balances %}
+                        <div class="col-md-4 col-6">
+                            <div class="border rounded-3 p-3 text-center">
+                                <small class="text-muted d-block">{{ balance.leave_type.name }}</small>
+                                <span class="fs-4 fw-bold">{{ balance.remaining|floatformat:0 }}</span>
+                                <small class="text-muted d-block">days remaining</small>
+                                <div class="progress" style="height: 4px;">
+                                    <div class="progress-bar progress-bar-gold" style="width: {% if balance.total_entitled > 0 %}{{ balance.used|floatformat:0|add:'0' }}{% else %}0{% endif %}%;"></div>
+                                </div>
+                                <small class="text-muted">Used: {{ balance.used|floatformat:0 }} / {{ balance.total_entitled|floatformat:0 }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Recent Leave Requests -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-clock-history text-gold me-2"></i>Recent Leave Requests
+                        {% if pending_leaves > 0 %}
+                        <span class="badge bg-warning-subtle text-warning ms-2">{{ pending_leaves }} pending</span>
+                        {% endif %}
+                        <span class="badge bg-secondary-subtle text-secondary ms-1 small">Latest 5 requests</span>
+                    </h6>
+                    <a href="{% url 'staff:leave_list' %}?staff={{ staff.id }}" class="btn btn-sm btn-outline-gold">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    {% if leaves %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2 ps-4">Type</th>
+                                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2">Dates</th>
+                                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2 text-center">Days</th>
+                                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2 text-center">Status</th>
+                                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2 text-end pe-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="border-top-0">
+                                {% for leave in leaves %}
+                                <tr>
+                                    <td class="ps-4 py-3">
+                                        <span class="fw-semibold">{{ leave.leave_type.name }}</span>
+                                    </td>
+                                    <td class="py-3">
+                                        {{ leave.start_date|date:"M d" }} - {{ leave.end_date|date:"M d, Y" }}
+                                    </td>
+                                    <td class="py-3 text-center">{{ leave.requested_days|floatformat:0 }}</td>
+                                    <td class="py-3 text-center">
+                                        <span class="badge
+                                            {% if leave.status == 'APPROVED' %}badge-teal
+                                            {% elif leave.status == 'PENDING' %}bg-warning-subtle text-warning
+                                            {% elif leave.status == 'REJECTED' %}bg-danger-subtle text-danger
+                                            {% elif leave.status == 'CANCELLED' %}bg-secondary-subtle text-secondary
+                                            {% else %}bg-info-subtle text-info{% endif %}
+                                        ">
+                                            {{ leave.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td class="py-3 pe-4 text-end">
+                                        <a href="{% url 'staff:leave_detail' leave.id %}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-calendar2-week fs-4 d-block mb-2"></i>
+                        No leave requests found.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Assigned Classes (for Teachers) -->
+            {% if assigned_classes %}
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-book text-gold me-2"></i>Assigned Classes &amp; Subjects
+                        <span class="badge bg-secondary-subtle text-secondary ms-1 small">Teacher's teaching assignments</span>
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2 ps-4">Class</th>
+                                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2">Subject</th>
+                                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2 text-center">Periods/Week</th>
+                                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2 text-center">Primary</th>
+                                </tr>
+                            </thead>
+                            <tbody class="border-top-0">
+                                {% for assignment in assigned_classes %}
+                                <tr>
+                                    <td class="ps-4 py-2">{{ assignment.school_class.name }}</td>
+                                    <td class="py-2">{{ assignment.subject.name }}</td>
+                                    <td class="py-2 text-center">{{ assignment.periods_per_week }}</td>
+                                    <td class="py-2 text-center">
+                                        {% if assignment.is_primary %}
+                                        <span class="badge badge-teal">
+                                            <i class="bi bi-check-circle me-1"></i>Yes
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary-subtle text-secondary">No</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-lg-4">
+            <!-- Staff Grade Details -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-layers text-gold me-2"></i>Grade &amp; Compensation
+                        <span class="badge bg-secondary-subtle text-secondary ms-1 small">Salary and leave entitlements</span>
+                    </h6>
+                </div>
+                <div class="card-body p-4">
+                    {% if staff.staff_grade %}
+                    <div class="mb-3">
+                        <span class="badge badge-gold rounded-pill px-3 py-2 fs-6">
+                            {{ staff.staff_grade.name }}
+                        </span>
+                        <span class="badge bg-light text-muted rounded-pill px-3 py-2 border">
+                            {{ staff.staff_grade.code }}
+                        </span>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="border rounded-3 p-2 text-center">
+                                <small class="text-muted d-block">Base Salary</small>
+                                <span class="fw-bold">₵{{ staff.staff_grade.base_salary|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded-3 p-2 text-center">
+                                <small class="text-muted d-block">Grade Type</small>
+                                <span class="fw-bold">{{ staff.staff_grade.get_grade_type_display }}</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded-3 p-2 text-center">
+                                <small class="text-muted d-block">Annual Leave</small>
+                                <span class="fw-bold">{{ staff.staff_grade.annual_leave_days }} days</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded-3 p-2 text-center">
+                                <small class="text-muted d-block">Sick Leave</small>
+                                <span class="fw-bold">{{ staff.staff_grade.sick_leave_days }} days</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-exclamation-circle fs-4 d-block mb-2"></i>
+                        No grade assigned to this staff member.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Login Credentials - Only visible to SUPER_ADMIN and SCHOOL_ADMIN -->
+            {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-key text-warning me-2"></i>Login Credentials
+                        <span class="badge bg-warning-subtle text-warning ms-1 small">Admin only</span>
+                    </h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Username</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <code class="fw-bold">{{ staff.user.username }}</code>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ staff.user.username }}')">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">Password Status</small>
+                        {% if is_default_password and default_password %}
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <code class="fw-bold text-warning">{{ default_password }}</code>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ default_password }}')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                                <span class="badge bg-warning-subtle text-warning">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Default
+                                </span>
+                            </div>
+                            <p class="text-danger small mt-2 mb-0">
+                                <i class="bi bi-shield-exclamation me-1"></i>
+                                <strong>Security Alert:</strong> This password should be changed immediately after first login.
+                            </p>
+                        {% else %}
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-success">
+                                    <i class="bi bi-check-circle-fill me-1"></i>
+                                    <strong>Password Changed</strong>
+                                </span>
+                                {% if staff.password_changed_at %}
+                                    <span class="text-muted small">
+                                        ({{ staff.password_changed_at|date:"M d, Y H:i" }})
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <p class="text-muted small mt-2 mb-0">
+                                <i class="bi bi-info-circle me-1"></i>
+                                This staff member has changed their default password.
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Latest Payroll -->
+            {% if latest_payroll %}
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-wallet2 text-teal me-2"></i>Latest Payroll
+                        <span class="badge bg-secondary-subtle text-secondary ms-1 small">Most recent payslip</span>
+                    </h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-2">
+                        <span class="text-muted">Period</span>
+                        <div class="fw-semibold">{{ latest_payroll.payroll_period.name }}</div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Gross Pay</span>
+                            <span class="fw-bold">₵{{ latest_payroll.gross_pay|floatformat:2 }}</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Net Pay</span>
+                            <span class="fw-bold text-teal">₵{{ latest_payroll.net_pay|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-muted small">Status</span>
+                        <span class="badge
+                            {% if latest_payroll.status == 'PAID' %}badge-teal
+                            {% elif latest_payroll.status == 'APPROVED' %}bg-info-subtle text-info
+                            {% elif latest_payroll.status == 'CALCULATED' %}bg-warning-subtle text-warning
+                            {% else %}bg-secondary-subtle text-secondary{% endif %}
+                        ">
+                            {{ latest_payroll.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- EDIT STAFF MODAL - MATCHES STAFF LIST MODAL                -->
+<!-- ========================================================== -->
+<div class="modal fade" id="editStaffModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-modal-handler>
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="editStaffModalTitle">
+                    <i class="bi bi-pencil-square text-gold me-2"></i>Edit Staff Member
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="editStaffModalCloseBtn"></button>
+            </div>
+            <div class="modal-body p-0" id="editStaffModalContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading form...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- DELETE STAFF MODAL                                         -->
+<!-- ========================================================== -->
+<div class="modal fade" id="deleteStaffModal" tabindex="-1" aria-hidden="true" data-modal-handler>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold text-danger">
+                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-4">
+                    <div class="rounded-circle bg-danger-subtle d-inline-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                        <i class="bi bi-trash text-danger fs-1"></i>
+                    </div>
+                </div>
+                <p class="text-muted mb-1">
+                    Are you sure you want to delete the staff member <strong>"{{ staff.user.get_full_name }}"</strong>?
+                </p>
+                <p class="text-danger small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    This action cannot be undone. All associated data will be removed.
+                </p>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4 d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancel
+                </button>
+                <form method="post" action="{% url 'staff:staff_delete' staff.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Confirm Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- TOGGLE ACTIVE (DEACTIVATE/ACTIVATE) MODAL                  -->
+<!-- ========================================================== -->
+<div class="modal fade" id="toggleActiveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi {% if staff.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %} {% if staff.is_active %}text-warning{% else %}text-success{% endif %} me-2"></i>
+                    {% if staff.is_active %}Deactivate{% else %}Activate{% endif %} Staff
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-4">
+                    <div class="rounded-circle {% if staff.is_active %}bg-warning-subtle{% else %}bg-success-subtle{% endif %} d-inline-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                        <i class="bi {% if staff.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %} {% if staff.is_active %}text-warning{% else %}text-success{% endif %} fs-1"></i>
+                    </div>
+                </div>
+                <p class="text-muted mb-1">
+                    Are you sure you want to {% if staff.is_active %}deactivate{% else %}activate{% endif %}
+                    <strong>"{{ staff.user.get_full_name }}"</strong>?
+                </p>
+                {% if staff.is_active %}
+                <p class="text-warning small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Deactivated staff will not be able to log in to the system.
+                </p>
+                {% else %}
+                <p class="text-success small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Activated staff will be able to log in to the system.
+                </p>
+                {% endif %}
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4 d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancel
+                </button>
+                <form method="post" action="{% url 'staff:toggle_staff_active' staff.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn {% if staff.is_active %}btn-warning{% else %}btn-success{% endif %}">
+                        <i class="bi {% if staff.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %} me-1"></i>
+                        {% if staff.is_active %}Deactivate{% else %}Activate{% endif %}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Copy Text Helper -->
+<script>
+function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target.closest('button');
+        if (btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check-lg text-success"></i>';
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+            }, 2000);
+        }
+    }).catch(err => {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('Copied to clipboard!');
+    });
+}
+
+// ==========================================================
+// EDIT STAFF MODAL - LOAD FORM VIA AJAX (Matches staff_list)
+// ==========================================================
+document.addEventListener('DOMContentLoaded', function() {
+    const editModal = document.getElementById('editStaffModal');
+    const modalContent = document.getElementById('editStaffModalContent');
+    const modalTitle = document.getElementById('editStaffModalTitle');
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    // Handle edit button click - using data attributes
+    const editBtn = document.querySelector('[data-bs-target="#editStaffModal"]');
+    if (editBtn) {
+        editBtn.addEventListener('click', function(e) {
+            const url = this.getAttribute('data-url');
+            const action = this.getAttribute('data-action') || 'edit';
+
+            if (!url) {
+                console.error('Edit button missing URL');
+                return;
+            }
+
+            // Set title
+            modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Staff Member';
+
+            // Show loading spinner
+            modalContent.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading form...</p>
+                </div>
+            `;
+
+            // Fetch the form
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.text();
+            })
+            .then(html => {
+                modalContent.innerHTML = html;
+                bindFormSubmit();
+            })
+            .catch(err => {
+                console.error('Error loading form:', err);
+                modalContent.innerHTML = `
+                    <div class="p-4 text-center">
+                        <div class="alert alert-danger border-0 rounded-4">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            Error loading form. Please try again.
+                        </div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    function bindFormSubmit() {
+        const form = modalContent.querySelector('form');
+        if (!form) return;
+
+        // Remove any existing event listeners by cloning
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Check validity
+            if (!newForm.checkValidity()) {
+                newForm.classList.add('was-validated');
+                return;
+            }
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            // Disable submit button
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+            submitBtn.disabled = true;
+
+            // Remove existing error messages
+            const existingErrors = this.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    console.error('Failed to parse JSON:', text);
+                    throw new Error('Server returned an invalid response.');
+                }
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    // Close modal and reload
+                    const modalInstance = bootstrap.Modal.getInstance(editModal);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 200);
+                } else {
+                    showError(data.error || 'An error occurred while saving.');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error('Form submission error:', err);
+                showError(err.message || 'An unexpected error occurred. Please try again.');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 shadow-sm rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    // Reset modal on hide
+    editModal.addEventListener('hidden.bs.modal', function() {
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading form...</p>
+            </div>
+        `;
+        modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Staff Member';
+
+        // Clean up backdrops
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    });
+
+    // Handle modal close button
+    const closeBtn = document.getElementById('editStaffModalCloseBtn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            const modalInstance = bootstrap.Modal.getInstance(editModal);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        });
+    }
+
+    // Handle cancel button clicks inside modal (delegated)
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('[data-bs-dismiss="modal"]');
+        if (target && target.closest('#editStaffModal')) {
+            const modalInstance = bootstrap.Modal.getInstance(editModal);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

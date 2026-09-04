@@ -1,0 +1,168 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Finance Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+</style>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1">
+                    <i class="bi bi-wallet2 text-teal me-2"></i>Finance Dashboard
+                </h5>
+                <p class="text-muted mb-0">Welcome back, {{ request.user.get_full_name|default:request.user.username }}</p>
+            </div>
+            <div class="text-end">
+                <span class="badge badge-teal border px-3 py-2">
+                    <i class="bi bi-currency-dollar me-1"></i> Bursar
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Overview -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card card-custom border-0 shadow-sm rounded-4">
+            <div class="p-4">
+                <h6 class="text-muted text-uppercase small fw-bold">Total Billed</h6>
+                <h2 class="fw-bold mb-0">${{ total_billed|floatformat:2 }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom border-0 shadow-sm rounded-4">
+            <div class="p-4">
+                <h6 class="text-muted text-uppercase small fw-bold text-teal">Revenue Collected</h6>
+                <h2 class="fw-bold text-teal mb-0">${{ total_collected|floatformat:2 }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom border-0 shadow-sm rounded-4">
+            <div class="p-4">
+                <h6 class="text-muted text-uppercase small fw-bold text-danger">Outstanding Balance</h6>
+                <h2 class="fw-bold text-danger mb-0">${{ total_receivables|floatformat:2 }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom border-0 shadow-sm rounded-4">
+            <div class="p-4">
+                <h6 class="text-muted text-uppercase small fw-bold">Collection Rate</h6>
+                <h2 class="fw-bold mb-0">
+                    {% if total_billed > 0 %}
+                        {{ total_collected|divisibleby:total_billed|floatformat:1 }}%
+                    {% else %}
+                        0%
+                    {% endif %}
+                </h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4">
+        <h6 class="fw-bold mb-3">Quick Actions</h6>
+        <div class="d-flex gap-3 flex-wrap">
+            <a href="{% url 'finance:invoice_list' %}" class="btn btn-outline-gold">
+                <i class="bi bi-file-earmark-text me-1"></i> Manage Invoices
+            </a>
+            <a href="{% url 'finance:fee_category_list' %}" class="btn btn-outline-success">
+                <i class="bi bi-tags me-1"></i> Fee Categories
+            </a>
+            <a href="{% url 'finance:fee_structure_list' %}" class="btn btn-outline-info">
+                <i class="bi bi-list-ul me-1"></i> Fee Structures
+            </a>
+            <a href="{% url 'finance:waiver_list' %}" class="btn btn-outline-warning">
+                <i class="bi bi-percent me-1"></i> Fee Waivers
+            </a>
+            <a href="{% url 'ai_engine:finance_insights_dashboard' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-cash-coin me-1"></i> AI Insights
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Invoices -->
+<div class="card card-custom border-0 shadow-sm rounded-4">
+    <div class="card-header bg-transparent border-0 p-4">
+        <h6 class="fw-bold mb-0"><i class="bi bi-receipt-cutoff text-gold me-2"></i>Recent Invoices</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Invoice #</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Student</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Amount</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Status</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Due Date</th>
+                </tr>
+            </thead>
+            <tbody class="border-top-0">
+                {% for invoice in recent_invoices %}
+                <tr class="border-bottom">
+                    <td class="py-3 ps-0 fw-semibold">{{ invoice.invoice_number }}</td>
+                    <td class="py-3">{{ invoice.student.user.get_full_name }}</td>
+                    <td class="py-3 fw-bold">${{ invoice.total_amount|floatformat:2 }}</td>
+                    <td class="py-3">
+                        <span class="badge {% if invoice.status == 'PAID' %}badge-teal{% elif invoice.status == 'PARTIAL' %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %} rounded-pill px-3 py-2">
+                            {{ invoice.status }}
+                        </span>
+                    </td>
+                    <td class="py-3">{{ invoice.due_date|date:"M d, Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-5">No recent invoices.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

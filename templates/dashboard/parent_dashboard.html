@@ -1,0 +1,159 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Parent Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+</style>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1">
+                    <i class="bi bi-people text-gold me-2"></i>Parent Dashboard
+                </h5>
+                <p class="text-muted mb-0">Welcome back, {{ request.user.get_full_name|default:request.user.username }}</p>
+            </div>
+            <div>
+                <span class="badge bg-light text-dark border px-3 py-2">{{ total_children }} child{{ total_children|pluralize }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% for child_data in children %}
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-transparent border-0 p-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="fw-bold mb-1">{{ child_data.student.user.get_full_name }}</h5>
+            <small class="text-muted">
+                {{ child_data.student.admission_number }} &middot;
+                {{ child_data.student.grade_level.name }}
+                {% if child_data.student.school_class %}
+                &middot; {{ child_data.student.school_class.name }}
+                {% endif %}
+            </small>
+        </div>
+        <div class="text-end">
+            <span class="badge bg-{% if child_data.attendance_rate >= 80 %}teal-soft text-teal{% elif child_data.attendance_rate >= 60 %}warning-subtle text-warning{% else %}danger-subtle text-danger{% endif %} px-3 py-2">
+                {{ child_data.attendance_rate }}% Attendance
+            </span>
+        </div>
+    </div>
+    <div class="card-body p-4">
+        <div class="row g-4">
+            <!-- Attendance -->
+            <div class="col-md-6">
+                <div class="border rounded-4 p-3 bg-light">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-calendar-check text-gold me-2"></i>Attendance (30 days)</h6>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="progress flex-grow-1" style="height: 10px;">
+                            <div class="progress-bar bg-{% if child_data.attendance_rate >= 80 %}teal-soft text-teal{% elif child_data.attendance_rate >= 60 %}warning-subtle text-warning{% else %}danger-subtle text-danger{% endif %}"
+                                 role="progressbar" style="width: {{ child_data.attendance_rate }}%;"></div>
+                        </div>
+                        <span class="fw-bold">{{ child_data.attendance_rate }}%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Finance -->
+            <div class="col-md-6">
+                <div class="border rounded-4 p-3 bg-light">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-wallet2 text-teal me-2"></i>Outstanding Fees</h6>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-{% if child_data.outstanding_fees > 0 %}danger{% else %}teal{% endif %}">
+                            ${{ child_data.outstanding_fees|floatformat:2 }}
+                        </span>
+                        <span class="text-muted small">{{ child_data.invoices|length }} invoice{{ child_data.invoices|pluralize }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Grades -->
+        {% if child_data.recent_grades %}
+        <div class="mt-4">
+            <h6 class="fw-bold mb-3"><i class="bi bi-journal-check text-gold me-2"></i>Recent Grades</h6>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Assessment</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Score</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0">
+                        {% for grade in child_data.recent_grades %}
+                        <tr class="border-bottom">
+                            <td class="py-2 ps-0">{{ grade.assessment.title|default:grade.assessment.subject }}</td>
+                            <td class="py-2">
+                                <span class="fw-bold">{{ grade.score_achieved }}/{{ grade.assessment.max_score }}</span>
+                            </td>
+                            <td class="py-2 text-muted small">{{ grade.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% empty %}
+<div class="card card-custom border-0 shadow-sm rounded-4 text-center p-5">
+    <i class="bi bi-people fs-2 d-block mb-3 text-secondary"></i>
+    <h5 class="fw-bold mb-1">No Children Linked</h5>
+    <p class="text-muted">No children are linked to your account. Please contact the school office.</p>
+</div>
+{% endfor %}
+
+<style>
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+</style>
+{% endblock %}

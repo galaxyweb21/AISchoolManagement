@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: eduai-school-demo
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz/
+    autoDeployTrigger: commit
+    initialDeployHook: python manage.py seed_demo_school --reset --students 18
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eduai-school-demo-db
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        value: ""
+      - key: CSRF_TRUSTED_ORIGINS
+        value: ""
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_API_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: GROQ_COMMENT_MODEL
+        value: openai/gpt-oss-20b
+      - key: GROQ_TIMEOUT
+        value: "60"
+      - key: CELERY_TASK_ALWAYS_EAGER
+        value: "True"
+      - key: DEFAULT_FROM_EMAIL
+        value: demo@eduai.school
+      - key: SECURE_SSL_REDIRECT
+        value: "True"
+
+databases:
+  - name: eduai-school-demo-db
+    databaseName: eduai_demo
+    user: eduai_demo
+    plan: free
+    region: frankfurt
+    postgresMajorVersion: "18"

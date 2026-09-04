@@ -1,0 +1,149 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Payslip - {{ payslip.payroll_run.staff.user.get_full_name }}</title>
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 12px;
+            margin: 40px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid var(--eduai-signal, #2C7A6D);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 24px;
+            color: var(--eduai-gold, #946B1C);
+            margin: 0;
+        }
+        .header h4 {
+            font-size: 18px;
+            color: #333;
+            margin: 5px 0;
+        }
+        .header .subtitle {
+            color: #666;
+            font-size: 12px;
+        }
+        .staff-info {
+            margin-bottom: 20px;
+        }
+        .staff-info table {
+            width: 100%;
+        }
+        .staff-info td {
+            padding: 4px 10px;
+        }
+        .staff-info td:first-child {
+            font-weight: bold;
+            width: 150px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+        }
+        table tr:last-child td {
+            border-bottom: none;
+        }
+        .total-row {
+            font-weight: bold;
+            border-top: 2px solid #333 !important;
+        }
+        .net-pay {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .net-pay h2 {
+            color: var(--eduai-signal, #2C7A6D);
+            font-size: 28px;
+            margin: 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #999;
+            font-size: 10px;
+        }
+        .text-success { color: var(--eduai-signal, #2C7A6D); }
+        .text-danger { color: #dc3545; }
+        .text-muted { color: #666; }
+        .fw-bold { font-weight: bold; }
+        .text-gold { color: var(--eduai-gold, #946B1C); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ payslip.school.name }}</h1>
+        <h4>PAYSLIP</h4>
+        <div class="subtitle">
+            {{ payslip.payroll_run.payroll_period.name }}
+            &middot; {{ payslip.generated_at|date:"F d, Y" }}
+        </div>
+    </div>
+
+    <div class="staff-info">
+        <table>
+            <tr><td>Staff Name</td><td>{{ payslip.payroll_run.staff.user.get_full_name }}</td></tr>
+            <tr><td>Staff ID</td><td>{{ payslip.payroll_run.staff.staff_id }}</td></tr>
+            <tr><td>Position</td><td>{{ payslip.payroll_run.staff.get_staff_position_display }}</td></tr>
+            <tr><td>Department</td><td>{{ payslip.payroll_run.staff.department|default:"N/A" }}</td></tr>
+            <tr><td>Days Worked</td><td>{{ payslip.payroll_run.days_worked }}</td></tr>
+            <tr><td>Days Absent</td><td>{{ payslip.payroll_run.days_absent }}</td></tr>
+        </table>
+    </div>
+
+    <div class="section-title">Earnings</div>
+    <table>
+        <tr><td>Basic Salary</td><td align="right">₵{{ payslip.payroll_run.basic_salary|floatformat:2 }}</td></tr>
+        {% for name, amount in payslip.earnings.items %}
+        <tr><td>{{ name }}</td><td align="right">₵{{ amount|floatformat:2 }}</td></tr>
+        {% endfor %}
+        <tr class="total-row"><td>Total Earnings</td><td align="right" class="text-success">₵{{ payslip.payroll_run.gross_pay|floatformat:2 }}</td></tr>
+    </table>
+
+    <div class="section-title">Deductions</div>
+    <table>
+        {% for name, amount in payslip.deductions.items %}
+        <tr><td>{{ name }}</td><td align="right">₵{{ amount|floatformat:2 }}</td></tr>
+        {% empty %}
+        <tr><td colspan="2" class="text-muted" style="text-align:center;">No deductions</td></tr>
+        {% endfor %}
+        <tr class="total-row"><td>Total Deductions</td><td align="right" class="text-danger">₵{{ payslip.payroll_run.total_deductions|floatformat:2 }}</td></tr>
+    </table>
+
+    <div class="net-pay">
+        <div class="text-muted">Net Pay</div>
+        <h2>₵{{ payslip.payroll_run.net_pay|floatformat:2 }}</h2>
+        <div class="text-muted" style="font-size:11px;">Amount payable to staff</div>
+    </div>
+
+    <div class="footer">
+        <p>This is a computer-generated payslip. No signature required.</p>
+        <p>Generated by EduAI on {{ payslip.generated_at|date:"F d, Y \a\t H:i" }}</p>
+        <p>© {{ payslip.generated_at|date:"Y" }} {{ payslip.school.name }}. All rights reserved.</p>
+    </div>
+</body>
+</html>

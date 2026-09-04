@@ -1,0 +1,642 @@
+<!-- academics/templates/academics/promotion/batch_detail.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Promotion Batch - {{ batch.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+    .promotion-row.hidden-row { display: none !important; }
+    .promotion-row.visible-row { display: table-row !important; }
+    .filter-badge {
+        display: none;
+        background-color: var(--eduai-gold-soft);
+        color: var(--eduai-gold);
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .filter-badge.show { display: inline-block; }
+    @keyframes pulse-badge {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .filter-active { animation: pulse-badge 1.5s ease-in-out 1; }
+
+    .summary-card {
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--surface-border);
+        transition: transform 0.2s ease;
+    }
+    .summary-card:hover {
+        transform: translateY(-2px);
+    }
+    .summary-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Promotion Batch Details
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% else %}
+                            Staff View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    This page shows details for promotion batch <strong>{{ batch.name }}</strong>.
+                    {% if batch.status == 'COMPLETED' %}
+                        You can <strong>apply all promotions</strong> to update student grade levels.
+                    {% endif %}
+                    Use the <strong>search bar</strong> below to filter students by name or admission number.
+                    The <strong>Status Filter</strong> allows you to view specific promotion statuses.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge px-3 py-2 fw-normal" style="background: var(--eduai-gold-soft, rgba(148,107,28,0.1)); color: var(--eduai-gold, #946B1C);">
+                            <i class="bi bi-arrow-up-circle me-1"></i> PROMOTION BATCH
+                        </span>
+                        <span class="badge
+                            {% if batch.status == 'COMPLETED' %}style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D);"
+                            {% elif batch.status == 'PROCESSING' %}style="background: rgba(59,130,246,0.1); color: #3b82f6;"
+                            {% elif batch.status == 'FAILED' %}style="background: rgba(220,38,38,0.1); color: #dc2626;"
+                            {% else %}style="background: rgba(217,119,6,0.1); color: #d97706;"{% endif %}
+                        ">
+                            {{ batch.get_status_display }}
+                        </span>
+                    </div>
+                    <h5 class="fw-bold mb-1">{{ batch.name }}</h5>
+                    <p class="text-muted mb-0">
+                        {{ batch.academic_year.name }} · {{ batch.academic_term.name }}
+                        <br>
+                        <small>Processed: {{ batch.processed_at|date:"M d, Y H:i"|default:"Not processed yet" }}</small>
+                    </p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    {% if batch.status == 'COMPLETED' and batch.promoted > 0 %}
+                    <button type="button" class="btn" style="background: var(--eduai-signal, #2C7A6D); color: #fff; border-color: var(--eduai-signal, #2C7A6D);" data-bs-toggle="modal" data-bs-target="#bulkApplyModal">
+                        <i class="bi bi-check-all me-1"></i>Apply All Promotions
+                    </button>
+                    {% endif %}
+                    <a href="{% url 'academics:promotion_batch_list' %}" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;">
+                        <i class="bi bi-arrow-left me-1"></i>Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="summary-card">
+                <small class="text-muted text-uppercase fw-semibold d-block">Total Students</small>
+                <span class="summary-number">{{ batch.total_students }}</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="summary-card">
+                <small class="text-muted text-uppercase fw-semibold d-block text-teal">Promoted</small>
+                <span class="summary-number" style="color: var(--eduai-signal, #2C7A6D);">{{ batch.promoted }}</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="summary-card">
+                <small class="text-muted text-uppercase fw-semibold d-block text-warning">Conditional</small>
+                <span class="summary-number text-warning">{{ batch.conditional }}</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="summary-card">
+                <small class="text-muted text-uppercase fw-semibold d-block text-danger">Repeated</small>
+                <span class="summary-number text-danger">{{ batch.repeated }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6 col-lg-4">
+                    <div class="position-relative">
+                        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                        <input type="text" id="promotionSearchInput" class="form-control ps-5"
+                               placeholder="Search by student name or ID..." autocomplete="off">
+                    </div>
+                    <small class="text-muted" id="searchResultCount">Showing all {{ promotions|length }} students</small>
+                </div>
+                <div class="col-md-6 col-lg-8 text-md-end">
+                    <div class="d-flex gap-2 flex-wrap justify-content-md-end">
+                        <select name="status" class="form-select form-select-sm" id="statusFilter" style="width: auto; min-width: 150px;">
+                            <option value="">All Statuses</option>
+                            <option value="PROMOTED" {% if selected_status == 'PROMOTED' %}selected{% endif %}>Promoted</option>
+                            <option value="CONDITIONAL" {% if selected_status == 'CONDITIONAL' %}selected{% endif %}>Conditional</option>
+                            <option value="REPEATED" {% if selected_status == 'REPEATED' %}selected{% endif %}>Repeated</option>
+                            <option value="PENDING" {% if selected_status == 'PENDING' %}selected{% endif %}>Pending</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearSearchBtn" style="display: none;">
+                            <i class="bi bi-x-circle me-1"></i>Clear
+                        </button>
+                        <span class="filter-badge" id="filterBadge">
+                            <i class="bi bi-funnel-fill me-1"></i>Filtered
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Promotions List -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="promotionsTable">
+                    <thead>
+                        <tr>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 ps-4">Student</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">From → To</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Avg %</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Passed/Failed</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Status</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0" id="promotionsTableBody">
+                        {% for promotion in promotions %}
+                        <tr class="border-bottom promotion-row visible-row" data-student="{{ promotion.student.user.get_full_name|lower }}" data-id="{{ promotion.student.admission_number|lower }}" data-status="{{ promotion.status }}">
+                            <td class="ps-4 py-3">
+                                <span class="fw-bold promotion-name">{{ promotion.student.user.get_full_name }}</span>
+                                <br>
+                                <small class="text-muted promotion-id">{{ promotion.student.admission_number }}</small>
+                            </td>
+                            <td class="py-3">
+                                {{ promotion.from_grade_level.name }}
+                                <i class="bi bi-arrow-right text-primary mx-1" style="color: var(--eduai-gold, #946B1C) !important;"></i>
+                                {{ promotion.to_grade_level.name }}
+                            </td>
+                            <td class="py-3 text-center fw-bold promotion-avg">
+                                {{ promotion.overall_average|default:"-" }}%
+                            </td>
+                            <td class="py-3 text-center">
+                                <span class="text-success promotion-passed">{{ promotion.subjects_passed }}</span> /
+                                <span class="text-danger promotion-failed">{{ promotion.subjects_failed }}</span>
+                            </td>
+                            <td class="py-3 text-center">
+                                <span class="badge promotion-status
+                                    {% if promotion.status == 'PROMOTED' %}style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D);"
+                                    {% elif promotion.status == 'CONDITIONAL' %}style="background: rgba(217,119,6,0.1); color: #d97706;"
+                                    {% elif promotion.status == 'REPEATED' %}style="background: rgba(220,38,38,0.1); color: #dc2626;"
+                                    {% elif promotion.status == 'PENDING' %}style="background: rgba(217,119,6,0.1); color: #d97706;"
+                                    {% else %}style="background: var(--app-bg, #F7F4EC); color: var(--text-muted, #6B7570);"{% endif %}
+                                ">
+                                    {{ promotion.get_status_display }}
+                                </span>
+                                {% if promotion.is_automatic %}
+                                <span class="badge" style="background: rgba(59,130,246,0.1); color: #3b82f6;">
+                                    <i class="bi bi-robot me-1"></i>Auto
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 pe-4 text-end">
+                                {% if promotion.status in 'PROMOTED,CONDITIONAL' %}
+                                <a href="{% url 'academics:promotion_apply' promotion.id %}"
+                                   class="btn btn-sm" style="border-color: var(--eduai-signal, #2C7A6D); color: var(--eduai-signal, #2C7A6D); background: transparent; padding: 0.25rem 0.75rem;"
+                                   onclick="return confirm('Apply this promotion?')">
+                                    <i class="bi bi-check2 me-1"></i>Apply
+                                </a>
+                                {% endif %}
+                                <button type="button" class="btn btn-sm" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent; padding: 0.25rem 0.75rem;"
+                                        data-bs-toggle="modal" data-bs-target="#promotionDetailModal"
+                                        data-student="{{ promotion.student.user.get_full_name }}"
+                                        data-from="{{ promotion.from_grade_level.name }}"
+                                        data-to="{{ promotion.to_grade_level.name }}"
+                                        data-status="{{ promotion.status }}"
+                                        data-average="{{ promotion.overall_average }}"
+                                        data-passed="{{ promotion.subjects_passed }}"
+                                        data-failed="{{ promotion.subjects_failed }}"
+                                        data-notes="{{ promotion.notes }}">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr id="emptyStateRow">
+                            <td colspan="6" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                                No promotions found in this batch.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div id="searchEmptyState" class="text-center text-muted py-4" style="display: none;">
+                <i class="bi bi-search d-block mb-2 fs-3"></i>
+                <p>No promotions match your search.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if promotions.has_other_pages %}
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <small class="text-muted">
+            Showing {{ promotions.start_index }} to {{ promotions.end_index }} of {{ promotions.paginator.count }} entries
+        </small>
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                {% if promotions.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ promotions.previous_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}">&laquo;</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+                {% endif %}
+
+                {% for num in promotions.paginator.page_range %}
+                    {% if promotions.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > promotions.number|add:'-3' and num < promotions.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if selected_status %}&status={{ selected_status }}{% endif %}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if promotions.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ promotions.next_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}">&raquo;</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Promotion Detail Modal -->
+<div class="modal fade" id="promotionDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-info-circle text-gold me-2"></i>Promotion Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="promotionDetailContent">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2">
+                            <span class="text-muted">Student</span>
+                            <span class="fw-bold" id="detailStudent">-</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2">
+                            <span class="text-muted">From</span>
+                            <span class="fw-bold" id="detailFrom">-</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2">
+                            <span class="text-muted">To</span>
+                            <span class="fw-bold" id="detailTo">-</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2">
+                            <span class="text-muted">Status</span>
+                            <span class="fw-bold" id="detailStatus">-</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2">
+                            <span class="text-muted">Average</span>
+                            <span class="fw-bold" id="detailAverage">-</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2">
+                            <span class="text-muted">Passed</span>
+                            <span class="fw-bold text-teal" id="detailPassed">-</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2">
+                            <span class="text-muted">Failed</span>
+                            <span class="fw-bold text-danger" id="detailFailed">-</span>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="border-bottom pb-2">
+                            <span class="text-muted d-block">Notes</span>
+                            <span class="fw-bold" id="detailNotes">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Apply Modal -->
+<div class="modal fade" id="bulkApplyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold text-teal">
+                    <i class="bi bi-check-all text-teal me-2"></i>
+                    Apply All Promotions
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-warning border-0 rounded-4">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> This will permanently update the grade level and class for all promoted students in this batch.
+                </div>
+                <p class="text-muted">You are about to apply promotions for <strong>{{ batch.name }}</strong>.</p>
+                <div class="row g-3 mb-3">
+                    <div class="col-4">
+                        <div class="p-2 rounded-3 text-center" style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D);">
+                            <small class="d-block">Promoted</small>
+                            <strong class="fs-4">{{ batch.promoted }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="bg-warning-subtle text-warning p-2 rounded-3 text-center">
+                            <small class="d-block">Conditional</small>
+                            <strong class="fs-4">{{ batch.conditional }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="bg-secondary-subtle text-secondary p-2 rounded-3 text-center">
+                            <small class="d-block">Total</small>
+                            <strong class="fs-4">{{ batch.total_students }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancel
+                </button>
+                <form method="post" action="{% url 'academics:promotion_bulk_apply' batch.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn" style="background: var(--eduai-signal, #2C7A6D); color: #fff; border-color: var(--eduai-signal, #2C7A6D);" onclick="return confirm('Apply all promotions? This action cannot be undone.')">
+                        <i class="bi bi-check-all me-1"></i>Apply All Promotions
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // AUTO-FILTER FUNCTIONALITY
+    // ============================================================
+    const searchInput = document.getElementById('promotionSearchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const searchResultCount = document.getElementById('searchResultCount');
+    const filterBadge = document.getElementById('filterBadge');
+    const statusFilter = document.getElementById('statusFilter');
+    const rows = document.querySelectorAll('#promotionsTableBody .promotion-row');
+    const emptyState = document.getElementById('emptyStateRow');
+    const searchEmptyState = document.getElementById('searchEmptyState');
+
+    function filterPromotions() {
+        const query = searchInput.value.toLowerCase().trim();
+        const status = statusFilter.value;
+        let visibleCount = 0;
+
+        rows.forEach(function(row) {
+            const name = row.querySelector('.promotion-name')?.textContent?.toLowerCase() || '';
+            const id = row.querySelector('.promotion-id')?.textContent?.toLowerCase() || '';
+            const rowStatus = row.dataset.status || '';
+
+            const searchableText = `${name} ${id}`;
+
+            let matchesSearch = query === '' || searchableText.includes(query);
+            let matchesStatus = status === '' || rowStatus === status;
+
+            if (matchesSearch && matchesStatus) {
+                row.classList.remove('hidden-row');
+                row.classList.add('visible-row');
+                visibleCount++;
+            } else {
+                row.classList.add('hidden-row');
+                row.classList.remove('visible-row');
+            }
+        });
+
+        const total = rows.length;
+        const hasFilters = query !== '' || status !== '';
+
+        if (!hasFilters) {
+            searchResultCount.textContent = `Showing all ${total} students`;
+            clearSearchBtn.style.display = 'none';
+            filterBadge.classList.remove('show');
+            if (searchEmptyState) searchEmptyState.style.display = 'none';
+            if (emptyState) emptyState.style.display = '';
+        } else {
+            const statusLabel = status ? ` (${status} only)` : '';
+            searchResultCount.textContent = `Showing ${visibleCount} of ${total} students${visibleCount === 0 ? ' (no matches found)' : ''}${statusLabel}`;
+            clearSearchBtn.style.display = 'inline-block';
+            filterBadge.classList.add('show');
+            filterBadge.classList.add('filter-active');
+            setTimeout(() => filterBadge.classList.remove('filter-active'), 1500);
+
+            if (visibleCount === 0) {
+                if (searchEmptyState) searchEmptyState.style.display = '';
+                if (emptyState) emptyState.style.display = 'none';
+            } else {
+                if (searchEmptyState) searchEmptyState.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'none';
+            }
+        }
+    }
+
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(filterPromotions, 200);
+    });
+
+    statusFilter.addEventListener('change', function() {
+        filterPromotions();
+    });
+
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        statusFilter.value = '';
+        filterPromotions();
+        searchInput.focus();
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            clearSearchBtn.click();
+        }
+    });
+
+    // Keyboard shortcut: Ctrl+F to focus search
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+    });
+
+    // ============================================================
+    // PROMOTION DETAIL MODAL
+    // ============================================================
+    const detailModal = document.getElementById('promotionDetailModal');
+    detailModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+
+        document.getElementById('detailStudent').textContent = button.dataset.student || '-';
+        document.getElementById('detailFrom').textContent = button.dataset.from || '-';
+        document.getElementById('detailTo').textContent = button.dataset.to || '-';
+
+        const status = button.dataset.status || 'UNKNOWN';
+        const statusBadge = {
+            'PROMOTED': '<span class="badge" style="background: var(--eduai-signal, #2C7A6D); color: #fff;">Promoted</span>',
+            'CONDITIONAL': '<span class="badge" style="background: #d97706; color: #fff;">Conditional</span>',
+            'REPEATED': '<span class="badge" style="background: #dc2626; color: #fff;">Repeated</span>',
+            'PENDING': '<span class="badge" style="background: #d97706; color: #fff;">Pending</span>',
+        }[status] || `<span class="badge bg-secondary">${status}</span>`;
+        document.getElementById('detailStatus').innerHTML = statusBadge;
+
+        document.getElementById('detailAverage').textContent = button.dataset.average ? button.dataset.average + '%' : '-';
+        document.getElementById('detailPassed').textContent = button.dataset.passed || '0';
+        document.getElementById('detailFailed').textContent = button.dataset.failed || '0';
+        document.getElementById('detailNotes').textContent = button.dataset.notes || 'No notes';
+    });
+
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% include "partials/pagination.html" with page_obj=promotions %}
+
+{% endblock %}

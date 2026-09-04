@@ -1,0 +1,306 @@
+<!-- staff/staff_form_modal.html - Completely Redesigned -->
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .form-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1.25rem;
+        border-left: 3px solid var(--eduai-gold, #946B1C);
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+    }
+    .form-description i {
+        color: var(--eduai-gold, #946B1C);
+        margin-right: 0.5rem;
+    }
+    .form-description strong {
+        color: var(--bs-body-color);
+    }
+</style>
+
+<form method="post" enctype="multipart/form-data" action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url staff.id %}{% endif %}">
+    {% csrf_token %}
+
+    <div class="modal-body p-4">
+        <!-- Form Description -->
+        <div class="form-description">
+            <i class="bi bi-info-circle"></i>
+            {% if mode == 'create' %}
+                <strong>Adding a new staff member:</strong> Fill in the personal and employment details below.
+                The system will automatically generate a username and temporary password.
+                The staff member will receive an email with their login credentials.
+            {% else %}
+                <strong>Editing {{ staff.user.get_full_name }}:</strong> Update the staff member's personal and employment details.
+                Changes to the <strong>Staff Position</strong> will update the user's system role automatically.
+                Selecting a <strong>Staff Grade</strong> will show the associated salary and leave benefits.
+            {% endif %}
+        </div>
+
+        <!-- ============================================ -->
+        <!-- PERSONAL INFORMATION                         -->
+        <!-- ============================================ -->
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">
+            <i class="bi bi-person-badge text-gold me-2"></i>Personal Information
+        </h6>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">First Name <span class="text-danger">*</span></label>
+                <input type="text" name="first_name" class="form-control form-control-sm"
+                       placeholder="Enter first name"
+                       value="{% if mode == 'edit' %}{{ staff.user.first_name }}{% endif %}" required>
+                <small class="text-muted">Used for display and system identification</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Last Name <span class="text-danger">*</span></label>
+                <input type="text" name="last_name" class="form-control form-control-sm"
+                       placeholder="Enter last name"
+                       value="{% if mode == 'edit' %}{{ staff.user.last_name }}{% endif %}" required>
+                <small class="text-muted">Used for display and system identification</small>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Email <span class="text-danger">*</span></label>
+                <input type="email" name="email" class="form-control form-control-sm"
+                       placeholder="email@example.com"
+                       value="{% if mode == 'edit' %}{{ staff.user.email }}{% endif %}" required>
+                <small class="text-muted">Used for login and notifications</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Phone Number</label>
+                <input type="text" name="phone_number" class="form-control form-control-sm"
+                       placeholder="+233 XX XXX XXXX"
+                       value="{% if mode == 'edit' %}{{ staff.user.phone_number }}{% endif %}">
+                <small class="text-muted">Optional: For emergency contact</small>
+            </div>
+        </div>
+
+        <!-- Profile Picture -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold small">Profile Picture</label>
+            <div class="d-flex align-items-center gap-3">
+                {% if mode == 'edit' and staff.profile_picture %}
+                    <img src="{{ staff.profile_picture.url }}" alt="Current Profile"
+                         class="rounded-circle border shadow-sm" style="width: 50px; height: 50px; object-fit: cover;">
+                {% else %}
+                    <div class="rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center border"
+                         style="width: 50px; height: 50px; color: var(--text-muted);">
+                        <i class="bi bi-person fs-3"></i>
+                    </div>
+                {% endif %}
+                <input type="file" name="profile_picture" class="form-control form-control-sm" accept="image/*">
+            </div>
+            <small class="text-muted">Upload a professional headshot (JPEG/PNG). Max 5MB.</small>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- EMPLOYMENT DETAILS                           -->
+        <!-- ============================================ -->
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">
+            <i class="bi bi-briefcase text-gold me-2"></i>Employment Details
+        </h6>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Staff Position <span class="text-danger">*</span></label>
+                <select name="staff_position" class="form-select form-select-sm" required>
+                    <option value="">Select Position</option>
+                    {% for value, label in staff_positions %}
+                        <option value="{{ value }}" {% if mode == 'edit' and staff.staff_position == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">Determines system role and permissions</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Employment Type</label>
+                <select name="employment_type" class="form-select form-select-sm">
+                    <option value="PERMANENT" {% if mode == 'edit' and staff.employment_type == 'PERMANENT' %}selected{% endif %}>Permanent</option>
+                    <option value="CONTRACT" {% if mode == 'edit' and staff.employment_type == 'CONTRACT' %}selected{% endif %}>Contract</option>
+                    <option value="TEMPORARY" {% if mode == 'edit' and staff.employment_type == 'TEMPORARY' %}selected{% endif %}>Temporary</option>
+                    <option value="PART_TIME" {% if mode == 'edit' and staff.employment_type == 'PART_TIME' %}selected{% endif %}>Part-Time</option>
+                    <option value="INTERN" {% if mode == 'edit' and staff.employment_type == 'INTERN' %}selected{% endif %}>Intern</option>
+                </select>
+                <small class="text-muted">Affects payroll and benefits calculation</small>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Department</label>
+                <select name="department" class="form-select form-select-sm" id="departmentSelect">
+                    <option value="">Select Department</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if mode == 'edit' and staff.department.id == dept.id %}selected{% endif %}>
+                            {{ dept.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">Organizational unit for reporting</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Staff Grade</label>
+                <select name="staff_grade" class="form-select form-select-sm" id="staffGradeSelect">
+                    <option value="">Select Grade</option>
+                    {% for grade in grades %}
+                        <option value="{{ grade.id }}"
+                                data-salary="{{ grade.base_salary }}"
+                                data-leave="{{ grade.annual_leave_days }}"
+                                data-sick="{{ grade.sick_leave_days }}"
+                                data-code="{{ grade.code }}"
+                                data-name="{{ grade.name }}"
+                                {% if mode == 'edit' and staff.staff_grade.id == grade.id %}selected{% endif %}>
+                            {{ grade.name }} ({{ grade.code }})
+                        </option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">Determines salary scale and leave entitlements</small>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold small">Employment Date</label>
+            <input type="date" name="employment_date" class="form-control form-control-sm"
+                   value="{% if mode == 'edit' %}{{ staff.employment_date|date:'Y-m-d' }}{% endif %}">
+            <small class="text-muted">Date the staff member started working</small>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- GRADE BENEFITS PREVIEW                       -->
+        <!-- ============================================ -->
+        <div class="mb-0" id="gradeBenefitsPreview" style="{% if not mode == 'edit' or not staff.staff_grade %}display: none;{% endif %}">
+            <div class="bg-light rounded-3 p-3 border">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-semibold small">
+                        <i class="bi bi-info-circle text-gold me-1"></i>Grade Benefits
+                    </span>
+                    <span class="badge badge-gold" id="gradeCodeDisplay">
+                        {% if mode == 'edit' and staff.staff_grade %}{{ staff.staff_grade.code }}{% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="row g-2">
+                    <div class="col-4">
+                        <div class="text-center">
+                            <small class="text-muted d-block">Salary</small>
+                            <span class="fw-bold" id="previewSalary">
+                                {% if mode == 'edit' and staff.staff_grade %}₵{{ staff.staff_grade.base_salary|floatformat:2 }}{% else %}₵0.00{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-center">
+                            <small class="text-muted d-block">Annual Leave</small>
+                            <span class="fw-bold" id="previewLeave">
+                                {% if mode == 'edit' and staff.staff_grade %}{{ staff.staff_grade.annual_leave_days }}{% else %}0{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-center">
+                            <small class="text-muted d-block">Sick Leave</small>
+                            <span class="fw-bold" id="previewSick">
+                                {% if mode == 'edit' and staff.staff_grade %}{{ staff.staff_grade.sick_leave_days }}{% else %}0{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- FORM ACTIONS                                -->
+    <!-- ============================================ -->
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="staffFormCancelBtn">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn btn-gold">
+            <i class="bi {% if mode == 'create' %}bi-person-plus-fill{% else %}bi-pencil-square{% endif %} me-1"></i>
+            {% if mode == 'create' %}Add Staff{% else %}Save Changes{% endif %}
+        </button>
+    </div>
+</form>
+
+<script>
+// ============================================
+// AUTO-PREVIEW GRADE BENEFITS
+// ============================================
+(function() {
+    const gradeSelect = document.getElementById('staffGradeSelect');
+    const previewSalary = document.getElementById('previewSalary');
+    const previewLeave = document.getElementById('previewLeave');
+    const previewSick = document.getElementById('previewSick');
+    const gradeCodeDisplay = document.getElementById('gradeCodeDisplay');
+    const gradeBenefitsPreview = document.getElementById('gradeBenefitsPreview');
+
+    function updateGradePreview() {
+        const selected = gradeSelect.options[gradeSelect.selectedIndex];
+        if (selected && selected.value) {
+            const salary = selected.getAttribute('data-salary') || '0';
+            const leave = selected.getAttribute('data-leave') || '0';
+            const sick = selected.getAttribute('data-sick') || '0';
+            const code = selected.getAttribute('data-code') || '';
+
+            previewSalary.textContent = '₵' + parseFloat(salary).toFixed(2);
+            previewLeave.textContent = leave;
+            previewSick.textContent = sick;
+            gradeCodeDisplay.textContent = code || '—';
+
+            gradeBenefitsPreview.style.display = 'block';
+        } else {
+            previewSalary.textContent = '₵0.00';
+            previewLeave.textContent = '0';
+            previewSick.textContent = '0';
+            gradeCodeDisplay.textContent = '—';
+            gradeBenefitsPreview.style.display = 'none';
+        }
+    }
+
+    if (gradeSelect) {
+        gradeSelect.addEventListener('change', updateGradePreview);
+        updateGradePreview();
+    }
+
+    // Handle cancel button
+    const cancelBtn = document.getElementById('staffFormCancelBtn');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const modal = document.getElementById('staffModal') || document.getElementById('editStaffModal');
+            if (modal) {
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            }
+        });
+    }
+})();
+</script>

@@ -1,0 +1,710 @@
+<!-- ai_engine/exam_detail.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}{{ exam.title }}{% endblock %}
+
+{% block extra_js %}
+<style media="print">
+    .no-print { display: none !important; }
+    .card-custom { border: none !important; box-shadow: none !important; }
+</style>
+
+<style>
+    /* Fix for dropdown being hidden behind cards */
+    .exam-actions {
+        position: relative;
+        z-index: 1060;
+    }
+    .exam-actions .dropdown-menu {
+        z-index: 1070;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        left: auto;
+    }
+    .exam-actions .btn-group {
+        position: relative;
+        z-index: 1060;
+    }
+    /* Ensure the header card has higher z-index than question cards */
+    .exam-header-card {
+        position: relative;
+        z-index: 1050;
+    }
+    /* Question cards should have lower z-index */
+    .question-card {
+        position: relative;
+        z-index: 1;
+    }
+    /* Fix for any overflow hidden */
+    .exam-header-card .card-body,
+    .exam-header-card .p-4 {
+        overflow: visible !important;
+    }
+    .exam-header-card .card {
+        overflow: visible !important;
+    }
+    .action-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+    }
+    .action-bar .btn-group {
+        position: relative;
+        z-index: 1060;
+    }
+    /* Ensure dropdown is above everything */
+    .action-bar .dropdown-menu {
+        z-index: 1070;
+        min-width: 180px;
+    }
+
+    /* Fix button hover states */
+    .btn-outline-primary-custom {
+        border-color: var(--eduai-gold, #946B1C);
+        color: var(--eduai-gold, #946B1C);
+        background: transparent;
+    }
+    .btn-outline-primary-custom:hover {
+        background: var(--eduai-gold, #946B1C);
+        color: #fff;
+    }
+
+    .btn-primary-custom {
+        background: var(--eduai-gold, #946B1C);
+        border-color: var(--eduai-gold, #946B1C);
+        color: #fff;
+    }
+    .btn-primary-custom:hover {
+        background: #7a5917;
+        border-color: #7a5917;
+        color: #fff;
+    }
+
+    .btn-outline-success-custom {
+        border-color: var(--eduai-signal, #2C7A6D);
+        color: var(--eduai-signal, #2C7A6D);
+        background: transparent;
+    }
+    .btn-outline-success-custom:hover {
+        background: var(--eduai-signal, #2C7A6D);
+        color: #fff;
+    }
+
+    .btn-outline-danger-custom {
+        border-color: #dc2626;
+        color: #dc2626;
+        background: transparent;
+    }
+    .btn-outline-danger-custom:hover {
+        background: #dc2626;
+        color: #fff;
+    }
+
+    .btn-danger-custom {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: #fff;
+    }
+    .btn-danger-custom:hover {
+        background: #b91c1c;
+        border-color: #b91c1c;
+        color: #fff;
+    }
+
+    .btn-outline-warning-custom {
+        border-color: #d97706;
+        color: #d97706;
+        background: transparent;
+    }
+    .btn-outline-warning-custom:hover {
+        background: #d97706;
+        color: #fff;
+    }
+
+    .btn-outline-secondary-custom {
+        border-color: var(--text-muted, #6B7570);
+        color: var(--text-muted, #6B7570);
+        background: transparent;
+    }
+    .btn-outline-secondary-custom:hover {
+        background: var(--text-muted, #6B7570);
+        color: #fff;
+    }
+
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+</style>
+
+<script>
+// ============================================
+// DELETE ALL QUESTIONS MODAL
+// ============================================
+function openDeleteAllModal() {
+    const modal = new bootstrap.Modal(document.getElementById('deleteAllQuestionsModal'));
+    modal.show();
+}
+
+// ============================================
+// DELETE EXAM MODAL
+// ============================================
+function openDeleteExamModal() {
+    // Check if exam is linked to assessment
+    {% if exam.linked_assessment %}
+        // Show a message and prevent deletion
+        alert('This exam is linked to a gradebook assessment. Please unlink it first using the "Unlink from Gradebook" button.');
+        return;
+    {% else %}
+        const modal = new bootstrap.Modal(document.getElementById('deleteExamModal'));
+        modal.show();
+    {% endif %}
+}
+
+// ============================================
+// CSRF Token Helper
+// ============================================
+function getCSRFToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+}
+
+// ============================================
+// UNLINK ASSESSMENT
+// ============================================
+function unlinkAssessment() {
+    if (!confirm('Are you sure you want to unlink this exam from its gradebook assessment?')) {
+        return;
+    }
+
+    const form = document.getElementById('unlinkAssessmentForm');
+    if (form) {
+        form.submit();
+    }
+}
+
+// Initialize modal event listeners when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Delete All Questions Form
+    const deleteAllForm = document.getElementById('deleteAllQuestionsForm');
+    if (deleteAllForm) {
+        deleteAllForm.addEventListener('submit', function(e) {
+            if (!confirm('Are you sure you want to delete all questions? This cannot be undone.')) {
+                e.preventDefault();
+                return false;
+            }
+            const btn = this.querySelector('button[type="submit"]');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+            btn.disabled = true;
+            return true;
+        });
+    }
+
+    // Delete Exam Form
+    const deleteExamForm = document.getElementById('deleteExamForm');
+    if (deleteExamForm) {
+        deleteExamForm.addEventListener('submit', function(e) {
+            if (!confirm('Are you sure you want to delete this exam and all its questions? This cannot be undone.')) {
+                e.preventDefault();
+                return false;
+            }
+            const btn = this.querySelector('button[type="submit"]');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+            btn.disabled = true;
+            return true;
+        });
+    }
+
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Exam Details
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if can_manage %}
+                            Teacher View
+                        {% else %}
+                            Read-Only View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    This page shows the details of <strong>{{ exam.title }}</strong>.
+                    {% if can_manage %}
+                        You can <strong>edit</strong> questions, <strong>regenerate</strong> individual questions,
+                        <strong>export</strong> the exam as PDF or DOC, and <strong>link</strong> it to a gradebook assessment.
+                        Use the <strong>search</strong> below to filter questions by type or content.
+                    {% else %}
+                        You have read-only access to view this exam.
+                    {% endif %}
+                    Questions can be manually added or regenerated.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header Card with higher z-index -->
+    <div class="card card-custom border-0 shadow-sm rounded-4 mb-4 no-print exam-header-card" style="overflow: visible !important; position: relative; z-index: 1050;">
+        <div class="p-4" style="overflow: visible !important;">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <h5 class="fw-bold mb-1">{{ exam.title }}</h5>
+                    <small class="text-muted">
+                        {{ exam.subject }}{% if exam.topic %} &middot; {{ exam.topic }}{% endif %} &middot;
+                        {{ exam.school_class.name|default:"No Class" }}
+                        ({{ exam.grade_level|default:"N/A" }})
+                        {% if stage_display %}&middot; <span class="badge" style="background: #3b82f6; color: #fff;">{{ stage_display }}</span>{% endif %}
+                        &middot; {{ exam.get_difficulty_display }} &middot;
+                        {{ questions|length }} question(s), {{ total_points }} point(s) total
+                    </small>
+                </div>
+
+                <!-- Action Buttons - With higher z-index -->
+                <div class="action-bar exam-actions" style="position: relative; z-index: 1060;">
+                    <!-- Export Dropdown -->
+                    <div class="btn-group" role="group" style="position: relative; z-index: 1060;">
+                        <button type="button" class="btn btn-outline-success-custom dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="position: relative; z-index: 1060;">
+                            <i class="bi bi-download me-1"></i>Export
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" style="z-index: 1070; position: absolute; top: 100%; right: 0; left: auto;">
+                            <li><a class="dropdown-item" href="{% url 'ai_engine:export_exam_pdf' exam.id %}">
+                                <i class="bi bi-file-pdf text-danger me-2"></i>Export as PDF
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'ai_engine:export_exam' exam.id 'doc' %}">
+                                <i class="bi bi-file-word" style="color: var(--eduai-gold, #946B1C); me-2"></i>Export as DOC
+                            </a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Link/Unlink Assessment Buttons -->
+                    {% if exam.linked_assessment %}
+                        <div class="d-flex gap-1 align-items-center">
+                            <span class="badge align-self-center" style="background: var(--eduai-signal, #2C7A6D); color: #fff;">
+                                <i class="bi bi-link me-1"></i>Linked
+                            </span>
+                            <a href="{% url 'assessments:grading_portal' %}?assessment_id={{ exam.linked_assessment.id }}"
+                               class="btn btn-gold">
+                                <i class="bi bi-pencil-square me-1"></i>Record Grades
+                            </a>
+                            <form method="post" action="{% url 'ai_engine:unlink_exam_from_assessment' exam.id %}" id="unlinkAssessmentForm" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="button" class="btn btn-outline-warning-custom" onclick="unlinkAssessment()">
+                                    <i class="bi bi-unlink me-1"></i>Unlink
+                                </button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <form method="post" action="{% url 'ai_engine:link_exam_to_assessment' exam.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-primary-custom">
+                                <i class="bi bi-journal-check me-1"></i>Link
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    {% if can_manage %}
+                    <button type="button" class="btn btn-outline-danger-custom" onclick="openDeleteAllModal()" title="Delete All Questions">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    <button type="button" class="btn btn-danger-custom" onclick="openDeleteExamModal()" title="Delete Exam">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    {% endif %}
+
+                    <button type="button" class="btn btn-outline-secondary-custom" onclick="window.print()" title="Print">
+                        <i class="bi bi-printer"></i>
+                    </button>
+                    <a href="{% url 'ai_engine:exam_dashboard' %}" class="btn btn-outline-secondary-custom" title="Back">
+                        <i class="bi bi-arrow-left"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Question Search / Filter -->
+    <div class="row g-3 mb-3 no-print">
+        <div class="col-md-8 col-lg-6">
+            <div class="position-relative">
+                <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                <input type="text" id="questionSearchInput" class="form-control ps-5"
+                       placeholder="Filter questions by type or content..." autocomplete="off">
+            </div>
+            <small class="text-muted" id="questionResultCount">Showing all {{ questions|length }} questions</small>
+        </div>
+        <div class="col-md-4 col-lg-6 text-md-end">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="clearQuestionSearch" style="display: none;">
+                <i class="bi bi-x-circle me-1"></i>Clear
+            </button>
+            <span class="filter-badge" id="questionFilterBadge" style="display: none; background-color: var(--eduai-gold-soft); color: var(--eduai-gold); padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;">
+                <i class="bi bi-funnel-fill me-1"></i>Filtered
+            </span>
+        </div>
+    </div>
+
+    <!-- Print version -->
+    <div class="d-none d-print-block mb-4">
+        <h4 class="fw-bold">{{ exam.title }}</h4>
+        <p>
+            {{ exam.subject }}{% if exam.topic %} - {{ exam.topic }}{% endif %} |
+            {{ exam.school_class.name|default:"No Class" }} |
+            {{ exam.grade_level|default:"N/A" }}
+            {% if stage_display %} | {{ stage_display }}{% endif %}
+            | {{ total_points }} points
+        </p>
+        <p>Name: _______________________________  Date: _______________</p>
+    </div>
+
+    <!-- Questions -->
+    <div id="questionsContainer">
+        {% for q in questions %}
+        <div class="card card-custom border-0 shadow-sm rounded-4 mb-3 question-card question-item"
+             data-question-type="{{ q.get_question_type_display|lower }}"
+             data-question-text="{{ q.question_text|lower }}">
+            <div class="p-4">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="fw-bold">Q{{ forloop.counter }}. <span class="badge" style="background: #6c757d; color: #fff;">{{ q.get_question_type_display }}</span> <small class="text-muted">({{ q.points }} pt{{ q.points|pluralize }})</small></span>
+                    <div class="no-print d-flex gap-2">
+                        <form method="post" action="{% url 'ai_engine:regenerate_exam_question' exam.id q.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-primary-custom" title="Regenerate this question">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </form>
+                        <form method="post" action="{% url 'ai_engine:delete_exam_question' exam.id q.id %}"
+                              onsubmit="return confirm('Remove this question?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger-custom" title="Delete this question">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <form method="post" action="{% url 'ai_engine:save_exam_question' exam.id q.id %}">
+                    {% csrf_token %}
+                    <textarea name="question_text" class="form-control mb-2 no-print" rows="2">{{ q.question_text }}</textarea>
+                    <p class="d-none d-print-block">{{ q.question_text }}</p>
+
+                    {% if q.question_type == 'MCQ' %}
+                        <div class="no-print mb-2">
+                            {% for opt in q.options %}
+                                <input type="text" name="options" class="form-control mb-1" value="{{ opt }}">
+                            {% endfor %}
+                        </div>
+                        <ul class="d-none d-print-block">
+                            {% for opt in q.options %}<li>{{ opt }}</li>{% endfor %}
+                        </ul>
+                    {% elif q.question_type == 'TRUE_FALSE' %}
+                        <p class="text-muted no-print">True / False</p>
+                        <p class="d-none d-print-block">True / False</p>
+                    {% endif %}
+
+                    <div class="no-print mb-2">
+                        <label class="form-label small text-muted mb-1">
+                            {% if q.question_type == 'ESSAY' %}Marking guide{% else %}Correct answer{% endif %}
+                        </label>
+                        <textarea name="correct_answer" class="form-control mb-2" rows="2">{{ q.correct_answer }}</textarea>
+                        <label class="form-label small text-muted mb-1">Points</label>
+                        <input type="number" name="points" class="form-control mb-2" style="max-width:100px;" value="{{ q.points }}" min="1">
+                        <button type="submit" class="btn btn-outline-secondary-custom">Save</button>
+                        {% if not q.is_ai_generated %}<span class="badge ms-2" style="background: #3b82f6; color: #fff;">Manually added</span>{% endif %}
+                        {% if q.edited_by %}<span class="text-muted small ms-2">edited by {{ q.edited_by.get_full_name }}</span>{% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div class="card card-custom border-0 shadow-sm rounded-4 text-center text-muted p-5">No questions in this exam.</div>
+        {% endfor %}
+    </div>
+
+    <form method="post" action="{% url 'ai_engine:add_exam_question' exam.id %}" class="no-print">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-primary-custom"><i class="bi bi-plus-lg me-1"></i>Add Question Manually</button>
+    </form>
+
+    <!-- Delete All Questions Modal -->
+    <div class="modal fade" id="deleteAllQuestionsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-sm rounded-4">
+                <div class="modal-header border-0 pt-4 px-4 pb-0">
+                    <h5 class="modal-title fw-bold text-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Delete All Questions
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-trash-fill text-danger" style="font-size: 3.5rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Are you sure?</h5>
+                    <p class="text-muted">
+                        You are about to delete all <strong>{{ questions|length }}</strong> question(s) from
+                        <strong>"{{ exam.title }}"</strong>.
+                    </p>
+                    <p class="text-danger small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        This action cannot be undone.
+                    </p>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4">
+                    <button type="button" class="btn btn-secondary-custom" data-bs-dismiss="modal">Cancel</button>
+                    <form method="post" action="{% url 'ai_engine:delete_all_exam_questions' exam.id %}" id="deleteAllQuestionsForm">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger-custom">
+                            <i class="bi bi-trash me-1"></i> Delete All Questions
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Exam Modal -->
+    <div class="modal fade" id="deleteExamModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-sm rounded-4">
+                <div class="modal-header border-0 pt-4 px-4 pb-0">
+                    <h5 class="modal-title fw-bold text-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Exam
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-trash-fill text-danger" style="font-size: 3.5rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Are you sure?</h5>
+                    <p class="text-muted">
+                        You are about to delete the entire exam <strong>"{{ exam.title }}"</strong>.
+                    </p>
+                    <p class="text-muted">
+                        This will also delete all <strong>{{ questions|length }}</strong> question(s) associated with it.
+                    </p>
+                    <p class="text-danger small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        This action cannot be undone.
+                    </p>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4">
+                    <button type="button" class="btn btn-secondary-custom" data-bs-dismiss="modal">Cancel</button>
+                    <form method="post" action="{% url 'ai_engine:delete_exam' exam.id %}" id="deleteExamForm">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger-custom">
+                            <i class="bi bi-trash me-1"></i> Delete Exam
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // QUESTION SEARCH / AUTO-FILTER
+    // ============================================================
+    const searchInput = document.getElementById('questionSearchInput');
+    const clearSearchBtn = document.getElementById('clearQuestionSearch');
+    const searchResultCount = document.getElementById('questionResultCount');
+    const filterBadge = document.getElementById('questionFilterBadge');
+    const questions = document.querySelectorAll('#questionsContainer .question-item');
+    const emptyMessage = document.querySelector('#questionsContainer .text-muted');
+
+    function filterQuestions() {
+        const query = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        questions.forEach(function(item) {
+            const type = item.dataset.questionType || '';
+            const text = item.dataset.questionText || '';
+            const searchableText = `${type} ${text}`;
+
+            if (query === '' || searchableText.includes(query)) {
+                item.style.display = '';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        // Show/hide empty message
+        if (emptyMessage) {
+            if (visibleCount === 0 && query !== '') {
+                emptyMessage.style.display = '';
+                emptyMessage.innerHTML = `<i class="bi bi-search d-block mb-2 fs-3"></i><p>No questions match your search "${query}".</p>`;
+            } else if (visibleCount > 0) {
+                emptyMessage.style.display = 'none';
+            }
+        }
+
+        const total = questions.length;
+        if (query === '') {
+            searchResultCount.textContent = `Showing all ${total} questions`;
+            clearSearchBtn.style.display = 'none';
+            filterBadge.style.display = 'none';
+        } else {
+            searchResultCount.textContent = `Showing ${visibleCount} of ${total} questions`;
+            clearSearchBtn.style.display = 'inline-block';
+            filterBadge.style.display = 'inline-block';
+        }
+    }
+
+    let searchTimeout;
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(filterQuestions, 200);
+        });
+
+        clearSearchBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            filterQuestions();
+            searchInput.focus();
+        });
+
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                clearSearchBtn.click();
+            }
+        });
+    }
+
+    // Keyboard shortcut: Ctrl+F to focus search
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+        }
+    });
+
+    // Secondary button styles for modals
+    const style = document.createElement('style');
+    style.textContent = `
+        .btn-secondary-custom {
+            border-color: var(--text-muted, #6B7570);
+            color: var(--text-muted, #6B7570);
+            background: transparent;
+        }
+        .btn-secondary-custom:hover {
+            background: var(--text-muted, #6B7570);
+            color: #fff;
+        }
+        .filter-badge {
+            display: none;
+            background-color: var(--eduai-gold-soft);
+            color: var(--eduai-gold);
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .filter-badge.show {
+            display: inline-block;
+        }
+        @keyframes pulse-badge {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .filter-active {
+            animation: pulse-badge 1.5s ease-in-out 1;
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
+{% endblock %}

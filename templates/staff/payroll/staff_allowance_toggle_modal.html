@@ -1,0 +1,308 @@
+<!-- staff/templates/staff/payroll/staff_allowance_toggle_modal.html -->
+{% load static %}
+
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .status-badge {
+        font-size: 0.85rem;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+    }
+    .status-badge-active {
+        background: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16));
+        color: var(--eduai-signal, #2C7A6D);
+        border: 1px solid rgba(44, 122, 109, 0.2);
+    }
+    .status-badge-inactive {
+        background: #f8f9fa;
+        color: #6c757d;
+        border: 1px solid #dee2e6;
+    }
+    .status-badge-new-active {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .status-badge-new-inactive {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    .arrow-icon {
+        font-size: 1.5rem;
+        color: var(--eduai-gold, #946B1C);
+        margin: 0 0.5rem;
+    }
+    .toggle-detail-card {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 1rem;
+        border: 1px solid #e9ecef;
+    }
+    .toggle-detail-card .label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #6c757d;
+        font-weight: 600;
+    }
+    .toggle-detail-card .value {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #212529;
+    }
+</style>
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold">
+        <i class="bi bi-arrow-repeat text-gold me-2"></i>
+        {% if staff_allowance.is_active %}
+            Deactivate Staff Allowance
+        {% else %}
+            Activate Staff Allowance
+        {% endif %}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form method="post"
+      action="{% url action_url staff_allowance.id %}"
+      id="staffAllowanceToggleForm">
+    {% csrf_token %}
+
+    <div class="modal-body p-4">
+        <!-- Icon and Title -->
+        <div class="text-center mb-4">
+            <div class="rounded-circle d-inline-flex p-3 mb-3"
+                 style="background: {% if staff_allowance.is_active %}rgba(255, 193, 7, 0.15);{% else %}rgba(44, 122, 109, 0.15);{% endif %}">
+                {% if staff_allowance.is_active %}
+                    <i class="bi bi-toggle-on fs-1" style="color: #ffc107;"></i>
+                {% else %}
+                    <i class="bi bi-toggle-off fs-1 text-teal"></i>
+                {% endif %}
+            </div>
+            <h5 class="fw-bold">
+                {% if staff_allowance.is_active %}
+                    Deactivate Staff Allowance?
+                {% else %}
+                    Activate Staff Allowance?
+                {% endif %}
+            </h5>
+            <p class="text-muted">
+                {% if staff_allowance.is_active %}
+                    This will prevent this allowance from being included in payroll.
+                {% else %}
+                    This will allow this allowance to be included in payroll.
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Allowance Details -->
+        <div class="toggle-detail-card mb-3">
+            <div class="row align-items-center">
+                <div class="col-md-5">
+                    <div class="label">Staff Member</div>
+                    <div class="value">
+                        <i class="bi bi-person me-1"></i>
+                        {% if staff_allowance.staff.user.get_full_name %}
+                            {{ staff_allowance.staff.user.get_full_name }}
+                        {% else %}
+                            {{ staff_allowance.staff.user.username }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="label">Allowance</div>
+                    <div class="value">{{ staff_allowance.allowance.name }}</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="label">Amount</div>
+                    <div class="value text-gold">
+                        {% if staff_allowance.amount is not None %}
+                            {% if staff_allowance.allowance.is_percentage %}
+                                {{ staff_allowance.amount }}% (Custom)
+                            {% else %}
+                                GH₵ {{ staff_allowance.amount|floatformat:2 }} (Custom)
+                            {% endif %}
+                        {% else %}
+                            {% if staff_allowance.allowance.is_percentage %}
+                                {{ staff_allowance.allowance.amount }}% (Default)
+                            {% else %}
+                                GH₵ {{ staff_allowance.allowance.amount|floatformat:2 }} (Default)
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Change Visual -->
+        <div class="text-center py-3">
+            <div class="d-flex align-items-center justify-content-center">
+                <!-- Current Status -->
+                <div>
+                    <span class="status-badge status-badge-{% if staff_allowance.is_active %}active{% else %}inactive{% endif %}">
+                        <i class="bi bi-{% if staff_allowance.is_active %}check-circle{% else %}x-circle{% endif %} me-1"></i>
+                        {% if staff_allowance.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+
+                <!-- Arrow -->
+                <span class="arrow-icon">
+                    <i class="bi bi-arrow-right"></i>
+                </span>
+
+                <!-- New Status -->
+                <div>
+                    <span class="status-badge status-badge-new-{% if staff_allowance.is_active %}inactive{% else %}active{% endif %}">
+                        <i class="bi bi-{% if staff_allowance.is_active %}x-circle{% else %}check-circle{% endif %} me-1"></i>
+                        {% if staff_allowance.is_active %}Inactive{% else %}Active{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Alert -->
+        <div class="alert alert-info border-0 rounded-4 bg-gold-soft">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-info-circle text-gold me-2 mt-1"></i>
+                <div>
+                    <span class="small">
+                        {% if staff_allowance.is_active %}
+                            <strong>Deactivating</strong> will not delete the assignment.
+                            You can reactivate it later from this same screen.
+                            The allowance will be excluded from future payroll calculations.
+                        {% else %}
+                            <strong>Activating</strong> will include this allowance in future payroll calculations.
+                            The staff member will receive this allowance based on the configured amount.
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Warning for Deactivation -->
+        {% if staff_allowance.is_active %}
+        <div class="alert alert-warning border-0 rounded-4">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-exclamation-triangle-fill text-warning me-2 mt-1"></i>
+                <div>
+                    <span class="small">
+                        <strong>Note:</strong> This staff member may still receive this allowance
+                        through grade-level policies if configured.
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn {% if staff_allowance.is_active %}btn-warning{% else %}btn-success{% endif %}"
+                id="staffAllowanceToggleBtn">
+            <i class="bi {% if staff_allowance.is_active %}bi-toggle-off{% else %}bi-toggle-on{% endif %} me-1"></i>
+            {% if staff_allowance.is_active %}
+                Deactivate
+            {% else %}
+                Activate
+            {% endif %}
+        </button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('staffAllowanceToggleForm');
+    const submitBtn = document.getElementById('staffAllowanceToggleBtn');
+
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
+
+            const formData = new FormData(this);
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+
+                if (data.success) {
+                    const modal = form.closest('.modal');
+                    if (modal) {
+                        const modalInstance = bootstrap.Modal.getInstance(modal);
+                        if (modalInstance) {
+                            modalInstance.hide();
+                        }
+                    }
+                    location.reload();
+                } else {
+                    showError(data.error || 'Error toggling status.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                showError('Network error. Please try again.');
+                console.error('Error:', error);
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = form.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            form.insertBefore(errorDiv, form.firstChild);
+        }
+    }
+});
+</script>

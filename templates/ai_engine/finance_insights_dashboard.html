@@ -1,0 +1,960 @@
+<!-- ai_engine/finance_insights_dashboard.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Finance Insights{% endblock %}
+
+{% block content %}
+<style>
+    /* ============================================= */
+    /* FINANCE DASHBOARD - MODERN REDESIGN          */
+    /* ============================================= */
+
+    :root {
+        --finance-gold: var(--eduai-gold, #946B1C);
+        --finance-gold-dark: #7a5a16;
+        --finance-gold-soft: var(--eduai-gold-soft, rgba(148, 107, 28, 0.12));
+        --finance-teal: var(--eduai-signal, #2C7A6D);
+        --finance-teal-dark: #1f5a50;
+        --finance-teal-soft: var(--eduai-signal-soft, rgba(44, 122, 109, 0.12));
+    }
+
+    /* ============================================= */
+    /* ANIMATIONS                                   */
+    /* ============================================= */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    @keyframes fadeInScale {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .animate-fade-up {
+        animation: fadeInUp 0.6s ease forwards;
+    }
+    .animate-fade-scale {
+        animation: fadeInScale 0.5s ease forwards;
+    }
+    .animate-slide-left {
+        animation: slideInLeft 0.5s ease forwards;
+    }
+    .delay-1 { animation-delay: 0.05s; }
+    .delay-2 { animation-delay: 0.1s; }
+    .delay-3 { animation-delay: 0.15s; }
+    .delay-4 { animation-delay: 0.2s; }
+    .delay-5 { animation-delay: 0.25s; }
+    .delay-6 { animation-delay: 0.3s; }
+
+    /* ============================================= */
+    /* PAGE DESCRIPTION                            */
+    /* ============================================= */
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+    /* ============================================= */
+    /* HEADER CARD                                  */
+    /* ============================================= */
+    .finance-header {
+        background: var(--surface-bg);
+        border: 1px solid var(--surface-border);
+        border-radius: 20px;
+        padding: 1.75rem 2rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    .finance-header:hover {
+        border-color: rgba(148, 107, 28, 0.2);
+        box-shadow: 0 4px 25px rgba(0, 0, 0, 0.05);
+    }
+    .finance-header .header-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--finance-gold);
+        color: #fff;
+        font-size: 1.4rem;
+        flex-shrink: 0;
+        box-shadow: 0 4px 15px rgba(148, 107, 28, 0.2);
+        transition: all 0.3s ease;
+    }
+    .finance-header:hover .header-icon {
+        transform: scale(1.05);
+        box-shadow: 0 6px 25px rgba(148, 107, 28, 0.3);
+    }
+    .finance-header .header-title {
+        font-weight: 700;
+        margin-bottom: 0.15rem;
+        color: var(--text-primary);
+    }
+    .finance-header .header-subtitle {
+        color: var(--text-muted);
+        margin-bottom: 0;
+        font-size: 0.9rem;
+    }
+    .finance-header .header-meta {
+        background: var(--app-bg);
+        border: 1px solid var(--surface-border);
+        border-radius: 10px;
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        white-space: nowrap;
+        transition: all 0.3s ease;
+    }
+    .finance-header:hover .header-meta {
+        border-color: rgba(148, 107, 28, 0.15);
+    }
+
+    /* ============================================= */
+    /* STATS CARDS                                  */
+    /* ============================================= */
+    .stat-card-finance {
+        border: 0;
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: var(--surface-bg);
+        border: 1px solid var(--surface-border);
+        position: relative;
+        overflow: hidden;
+        cursor: default;
+    }
+    .stat-card-finance::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--finance-gold);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.4s ease;
+    }
+    .stat-card-finance:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+        border-color: rgba(148, 107, 28, 0.15);
+    }
+    .stat-card-finance:hover::after {
+        transform: scaleX(1);
+    }
+    .stat-card-finance .stat-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+    }
+    .stat-card-finance:hover .stat-icon {
+        transform: scale(1.1);
+    }
+    .stat-card-finance .stat-number {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+        transition: color 0.3s ease;
+    }
+    .stat-card-finance:hover .stat-number {
+        color: var(--finance-gold);
+    }
+    .stat-card-finance .stat-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+    }
+    .stat-card-finance .stat-change {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 0.15rem 0.6rem;
+        border-radius: 20px;
+        transition: all 0.3s ease;
+    }
+    .stat-card-finance:hover .stat-change {
+        transform: scale(1.05);
+    }
+    .stat-card-finance .stat-change.up {
+        background: var(--finance-teal-soft);
+        color: var(--finance-teal);
+    }
+    .stat-card-finance .stat-change.down {
+        background: rgba(220, 38, 38, 0.1);
+        color: #dc2626;
+    }
+    .stat-card-finance .stat-change.neutral {
+        background: var(--app-bg);
+        color: var(--text-muted);
+    }
+
+    .stat-icon.gold {
+        background: var(--finance-gold-soft);
+        color: var(--finance-gold);
+    }
+    .stat-icon.teal {
+        background: var(--finance-teal-soft);
+        color: var(--finance-teal);
+    }
+    .stat-icon.red {
+        background: rgba(220, 38, 38, 0.1);
+        color: #dc2626;
+    }
+    .stat-icon.blue {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+    .stat-icon.warning {
+        background: rgba(217, 119, 6, 0.1);
+        color: #d97706;
+    }
+
+    /* ============================================= */
+    /* SECTION CARDS                                */
+    /* ============================================= */
+    .card-finance {
+        border: 0;
+        border-radius: 18px;
+        background: var(--surface-bg);
+        border: 1px solid var(--surface-border);
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .card-finance:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+    }
+    .card-finance .card-header-custom {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1.25rem 1.5rem 0.75rem;
+        border-bottom: 1px solid var(--surface-border);
+    }
+    .card-finance .card-header-custom .header-icon-sm {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    .card-finance .card-header-custom .header-icon-sm.gold {
+        background: var(--finance-gold-soft);
+        color: var(--finance-gold);
+    }
+    .card-finance .card-header-custom .header-icon-sm.teal {
+        background: var(--finance-teal-soft);
+        color: var(--finance-teal);
+    }
+    .card-finance .card-header-custom .header-icon-sm.blue {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+    .card-finance .card-header-custom h6 {
+        font-weight: 700;
+        margin-bottom: 0;
+        color: var(--text-primary);
+    }
+    .card-finance .card-header-custom .badge-count {
+        margin-left: auto;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        background: var(--app-bg);
+        padding: 0.15rem 0.7rem;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+    .card-finance:hover .card-header-custom .badge-count {
+        background: var(--finance-gold-soft);
+        color: var(--finance-gold);
+    }
+
+    /* ============================================= */
+    /* MODERN TABLE                                 */
+    /* ============================================= */
+    .table-finance {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .table-finance thead th {
+        background: transparent;
+        font-size: 0.6rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--surface-border);
+        padding: 0.75rem 1rem;
+    }
+    .table-finance tbody td {
+        padding: 0.75rem 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--surface-border);
+    }
+    .table-finance tbody tr {
+        transition: all 0.2s ease;
+    }
+    .table-finance tbody tr:hover {
+        background: var(--app-bg);
+    }
+    .table-finance tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    /* ============================================= */
+    /* BUTTONS - Enhanced Hover                     */
+    /* ============================================= */
+    .btn-outline-gold {
+        color: var(--finance-gold) !important;
+        border-color: var(--finance-gold) !important;
+        background: transparent !important;
+        transition: all 0.3s ease !important;
+        position: relative;
+        overflow: hidden;
+    }
+    .btn-outline-gold:hover {
+        background: var(--finance-gold) !important;
+        color: #fff !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 20px rgba(148, 107, 28, 0.2);
+    }
+    .btn-outline-gold:active {
+        transform: translateY(0);
+    }
+
+    .btn-outline-teal {
+        color: var(--finance-teal) !important;
+        border-color: var(--finance-teal) !important;
+        background: transparent !important;
+        transition: all 0.3s ease !important;
+        position: relative;
+        overflow: hidden;
+    }
+    .btn-outline-teal:hover {
+        background: var(--finance-teal) !important;
+        color: #fff !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 20px rgba(44, 122, 109, 0.3);
+    }
+    .btn-outline-teal:active {
+        transform: translateY(0);
+    }
+
+    .btn-ripple {
+        position: relative;
+        overflow: hidden;
+    }
+    .btn-ripple::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s ease, height 0.6s ease;
+    }
+    .btn-ripple:active::after {
+        width: 300px;
+        height: 300px;
+    }
+
+    /* ============================================= */
+    /* BADGE STYLES                                 */
+    /* ============================================= */
+    .badge-risk {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 0.3rem 0.75rem;
+        border-radius: 20px;
+        letter-spacing: 0.02em;
+    }
+    .badge-risk.critical {
+        background: rgba(220, 38, 38, 0.15) !important;
+        color: #dc2626 !important;
+    }
+    .badge-risk.high {
+        background: rgba(217, 119, 6, 0.15) !important;
+        color: #d97706 !important;
+    }
+    .badge-risk.medium {
+        background: rgba(59, 130, 246, 0.15) !important;
+        color: #3b82f6 !important;
+    }
+    .badge-risk.low {
+        background: var(--finance-teal-soft) !important;
+        color: var(--finance-teal) !important;
+    }
+
+    /* ============================================= */
+    /* EMPTY STATE                                  */
+    /* ============================================= */
+    .empty-state-modern {
+        text-align: center;
+        padding: 3rem 1.5rem;
+    }
+    .empty-state-modern .empty-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        background: var(--app-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 1.8rem;
+        color: var(--text-muted);
+        transition: all 0.3s ease;
+    }
+    .empty-state-modern:hover .empty-icon {
+        transform: scale(1.1);
+        background: var(--finance-gold-soft);
+        color: var(--finance-gold);
+    }
+    .empty-state-modern h6 {
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    .empty-state-modern p {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+
+    /* ============================================= */
+    /* RESPONSIVE                                   */
+    /* ============================================= */
+    @media (max-width: 767.98px) {
+        .finance-header {
+            padding: 1.25rem;
+        }
+        .finance-header .header-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.1rem;
+        }
+        .stat-card-finance .stat-number {
+            font-size: 1.5rem;
+        }
+        .stat-card-finance {
+            padding: 1rem;
+        }
+        .card-finance .card-header-custom {
+            padding: 1rem 1.25rem 0.5rem;
+        }
+        .table-finance thead th,
+        .table-finance tbody td {
+            padding: 0.5rem 0.75rem;
+        }
+        .btn-sm {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.6rem;
+        }
+    }
+    @media (max-width: 575.98px) {
+        .finance-header .header-meta {
+            width: 100%;
+            text-align: center;
+        }
+        .finance-header .header-title {
+            font-size: 1.1rem;
+        }
+    }
+
+    /* ============================================= */
+    /* DARK MODE                                    */
+    /* ============================================= */
+    [data-bs-theme="dark"] .finance-header {
+        background: var(--surface-bg);
+        border-color: var(--surface-border);
+    }
+    [data-bs-theme="dark"] .finance-header .header-meta {
+        background: var(--surface-bg);
+        border-color: var(--surface-border);
+    }
+    [data-bs-theme="dark"] .stat-card-finance {
+        background: var(--surface-bg);
+        border-color: var(--surface-border);
+    }
+    [data-bs-theme="dark"] .stat-card-finance:hover {
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    }
+    [data-bs-theme="dark"] .card-finance {
+        background: var(--surface-bg);
+        border-color: var(--surface-border);
+    }
+    [data-bs-theme="dark"] .card-finance:hover {
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    }
+    [data-bs-theme="dark"] .badge-risk.critical {
+        background: rgba(220, 38, 38, 0.25) !important;
+    }
+    [data-bs-theme="dark"] .badge-risk.high {
+        background: rgba(217, 119, 6, 0.25) !important;
+    }
+    [data-bs-theme="dark"] .badge-risk.medium {
+        background: rgba(59, 130, 246, 0.25) !important;
+    }
+    [data-bs-theme="dark"] .badge-risk.low {
+        background: rgba(44, 122, 109, 0.25) !important;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-4" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    AI Finance Insights
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% elif request.user.role == 'BURSAR' %}
+                            Bursar View
+                        {% else %}
+                            Read-Only View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    Flags which unpaid invoices are most likely to stay unpaid, and forecasts how much of what's
+                    outstanding is realistically collectible this term.
+                    Use this dashboard to identify <strong>high-risk</strong> and <strong>critical</strong> invoices
+                    that need immediate attention. The AI analyzes payment history and patterns to predict risk.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="finance-header animate-fade-up mb-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="header-icon">
+                    <i class="bi bi-cash-coin"></i>
+                </div>
+                <div>
+                    <h5 class="header-title">AI Finance Insights</h5>
+                    <p class="header-subtitle">
+                        Flags which unpaid invoices are most likely to stay unpaid, and forecasts how much of what's
+                        outstanding is realistically collectible this term.
+                    </p>
+                    <small class="text-muted">As of {{ snapshot.computed_at|date:"M d, Y" }}</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="header-meta">
+                    <i class="bi bi-clock me-1"></i>
+                    {% now "h:i A" %}
+                </span>
+                <a href="{% url 'ai_engine:export_finance_insights_pdf' %}" class="btn btn-outline-teal btn-ripple">
+                    <i class="bi bi-file-pdf me-1"></i>Export PDF
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 g-md-4 mb-4">
+        <div class="col-6 col-md-3 animate-fade-scale delay-1">
+            <div class="stat-card-finance">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">Total Billed</div>
+                        <div class="stat-number">{{ snapshot.total_billed }}</div>
+                    </div>
+                    <div class="stat-icon gold">
+                        <i class="bi bi-receipt"></i>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <span class="stat-change neutral">All invoices</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 animate-fade-scale delay-2">
+            <div class="stat-card-finance">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">Collected</div>
+                        <div class="stat-number" style="color: var(--finance-teal);">{{ snapshot.total_collected }}</div>
+                    </div>
+                    <div class="stat-icon teal">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <span class="stat-change up"><i class="bi bi-arrow-up me-1"></i>Collected</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 animate-fade-scale delay-3">
+            <div class="stat-card-finance">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">Outstanding</div>
+                        <div class="stat-number" style="color: #d97706;">{{ snapshot.total_outstanding }}</div>
+                    </div>
+                    <div class="stat-icon warning">
+                        <i class="bi bi-hourglass-split"></i>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <span class="stat-change neutral">Pending</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 animate-fade-scale delay-4">
+            <div class="stat-card-finance">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">Projected At-Risk</div>
+                        <div class="stat-number text-danger">{{ snapshot.projected_at_risk }}</div>
+                    </div>
+                    <div class="stat-icon red">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <span class="stat-change down"><i class="bi bi-arrow-down me-1"></i>At risk</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Outstanding by Age -->
+    <div class="card-finance shadow-sm mb-4 animate-fade-up delay-2">
+        <div class="card-header-custom">
+            <div class="header-icon-sm gold">
+                <i class="bi bi-clock-history"></i>
+            </div>
+            <h6>Outstanding by Age</h6>
+            <span class="badge-count">
+                Projected collectible: <strong style="color: var(--finance-teal);">{{ snapshot.projected_collectible }}</strong>
+            </span>
+        </div>
+        <div class="p-0">
+            <div class="table-responsive">
+                <table class="table table-finance mb-0">
+                    <thead>
+                        <tr>
+                            <th class="text-center">Not yet due</th>
+                            <th class="text-center">1-30 days overdue</th>
+                            <th class="text-center">31-60 days overdue</th>
+                            <th class="text-center">61+ days overdue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-center py-3 fw-semibold">{{ snapshot.buckets.not_yet_due }}</td>
+                            <td class="text-center py-3 fw-semibold" style="color: #d97706;">{{ snapshot.buckets.overdue_1_30 }}</td>
+                            <td class="text-center py-3 fw-semibold" style="color: #d97706;">{{ snapshot.buckets.overdue_31_60 }}</td>
+                            <td class="text-center py-3 fw-semibold text-danger">{{ snapshot.buckets.overdue_61_plus }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="p-3">
+            <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                The collection forecast applies a standard assumption (95% / 80% / 55% / 30% by age bucket) since payment-date history isn't tracked yet - treat it as a planning estimate, not a guarantee.
+            </small>
+        </div>
+    </div>
+
+    <!-- Invoices at Risk -->
+    <div class="card-finance shadow-sm animate-fade-up delay-3">
+        <div class="card-header-custom">
+            <div class="header-icon-sm blue">
+                <i class="bi bi-exclamation-triangle"></i>
+            </div>
+            <h6>Invoices at Risk of Non-Payment</h6>
+            <span class="badge-count">
+                <span class="badge-risk high me-1">{{ snapshot.high_risk_count }} High</span>
+                <span class="badge-risk critical">{{ snapshot.critical_risk_count }} Critical</span>
+            </span>
+        </div>
+        <div class="p-0">
+            <div class="table-responsive">
+                <table class="table table-finance mb-0" id="riskTable">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Fee</th>
+                            <th class="text-center">Balance Due</th>
+                            <th class="text-center">Risk</th>
+                            <th class="text-center">Score</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="riskTableBody">
+                        {% for a in assessments %}
+                        <tr class="animate-slide-left delay-{{ forloop.counter|add:1 }} risk-row" data-risk="{{ a.risk_band|lower }}" data-student="{{ a.invoice.student.user.get_full_name|lower }}">
+                            <td>
+                                <span class="fw-semibold risk-student">{{ a.invoice.student.user.get_full_name }}</span>
+                                <br>
+                                <small class="text-muted risk-id">{{ a.invoice.student.admission_number }}</small>
+                            </td>
+                            <td class="risk-fee">{% for li in a.invoice.line_items.all %}{{ li.fee_category.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+                            <td class="text-center fw-semibold risk-balance">{{ a.invoice.balance_due }}</td>
+                            <td class="text-center">
+                                <span class="badge-risk risk-band
+                                    {% if a.risk_band == 'CRITICAL' %}critical
+                                    {% elif a.risk_band == 'HIGH' %}high
+                                    {% elif a.risk_band == 'MEDIUM' %}medium
+                                    {% else %}low{% endif %}
+                                ">
+                                    {{ a.risk_band|title }}
+                                </span>
+                            </td>
+                            <td class="text-center fw-semibold risk-score">{{ a.risk_score|floatformat:0 }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'ai_engine:invoice_risk_detail' a.invoice.id %}" class="btn btn-sm btn-outline-gold btn-ripple">
+                                    <i class="bi bi-eye me-1"></i>View
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6">
+                                <div class="empty-state-modern">
+                                    <div class="empty-icon">
+                                        <i class="bi bi-check-circle"></i>
+                                    </div>
+                                    <h6>All Clear!</h6>
+                                    <p>No outstanding invoices match this filter.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <!-- Auto-filter for risk table -->
+            <div class="p-3 border-top">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-8">
+                        <div class="position-relative">
+                            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 0.75rem;"></i>
+                            <input type="text" id="riskSearchInput" class="form-control form-control-sm ps-5"
+                                   placeholder="Filter by student name or risk level..." autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearRiskSearch" style="display: none;">
+                            <i class="bi bi-x-circle me-1"></i>Clear
+                        </button>
+                        <span class="filter-badge" id="riskFilterBadge" style="display: none; background-color: var(--eduai-gold-soft); color: var(--eduai-gold); padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600;">
+                            <i class="bi bi-funnel-fill me-1"></i>Filtered
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // AUTO-FILTER FOR RISK TABLE
+    // ============================================================
+    const searchInput = document.getElementById('riskSearchInput');
+    const clearSearchBtn = document.getElementById('clearRiskSearch');
+    const filterBadge = document.getElementById('riskFilterBadge');
+    const rows = document.querySelectorAll('#riskTableBody .risk-row');
+    const emptyState = document.querySelector('#riskTableBody .empty-state-modern')?.closest('tr');
+
+    function filterRisk() {
+        const query = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        rows.forEach(function(row) {
+            const student = row.querySelector('.risk-student')?.textContent?.toLowerCase() || '';
+            const id = row.querySelector('.risk-id')?.textContent?.toLowerCase() || '';
+            const fee = row.querySelector('.risk-fee')?.textContent?.toLowerCase() || '';
+            const balance = row.querySelector('.risk-balance')?.textContent?.toLowerCase() || '';
+            const risk = row.querySelector('.risk-band')?.textContent?.toLowerCase() || '';
+            const score = row.querySelector('.risk-score')?.textContent?.toLowerCase() || '';
+
+            const searchableText = `${student} ${id} ${fee} ${balance} ${risk} ${score}`;
+
+            if (query === '' || searchableText.includes(query)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Show/hide empty state if it exists
+        if (emptyState) {
+            if (visibleCount === 0 && query !== '' && rows.length > 0) {
+                emptyState.style.display = '';
+                const emptyMsg = emptyState.querySelector('.empty-state-modern p');
+                if (emptyMsg) {
+                    emptyMsg.textContent = `No invoices match your search "${query}".`;
+                }
+            } else if (visibleCount > 0) {
+                emptyState.style.display = 'none';
+            }
+        }
+
+        if (query === '') {
+            clearSearchBtn.style.display = 'none';
+            filterBadge.style.display = 'none';
+        } else {
+            clearSearchBtn.style.display = 'inline-block';
+            filterBadge.style.display = 'inline-block';
+            filterBadge.classList.add('filter-active');
+            setTimeout(() => filterBadge.classList.remove('filter-active'), 1500);
+        }
+    }
+
+    let searchTimeout;
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(filterRisk, 200);
+        });
+
+        clearSearchBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            filterRisk();
+            searchInput.focus();
+        });
+
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                clearSearchBtn.click();
+            }
+        });
+    }
+
+    // Keyboard shortcut: Ctrl+F to focus search
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+        }
+    });
+
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+
+    // Style for filter badge animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes pulse-badge {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .filter-active {
+            animation: pulse-badge 1.5s ease-in-out 1;
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
+{% endblock %}

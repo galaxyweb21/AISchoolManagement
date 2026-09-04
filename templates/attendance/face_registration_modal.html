@@ -1,0 +1,2013 @@
+<!-- staff/templates/staff/face_registration_modal.html -->
+
+<style>
+    /* ==========================================================
+       FACE REGISTRATION MODAL
+       ========================================================== */
+
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+
+    .border-gold {
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+
+    /* ==========================================================
+       STUDENT INFO
+       ========================================================== */
+
+    .face-student-card {
+        background: linear-gradient(
+            135deg,
+            rgba(148, 107, 28, 0.08),
+            rgba(148, 107, 28, 0.02)
+        );
+        border: 1px solid rgba(148, 107, 28, 0.15);
+    }
+
+    .face-student-avatar {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(148, 107, 28, 0.12);
+        color: var(--eduai-gold, #946B1C);
+    }
+
+    /* ==========================================================
+       RECOGNIZED STUDENTS
+       ========================================================== */
+
+    .recognized-students-card {
+        border: 1px solid rgba(44, 122, 109, 0.15);
+        background: #fff;
+        border-radius: 16px;
+    }
+
+    .recognized-students-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .recognized-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .recognized-title-icon {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        background: rgba(44, 122, 109, 0.10);
+        color: var(--eduai-signal, #2C7A6D);
+    }
+
+    .recognized-count {
+        min-width: 25px;
+        height: 25px;
+        padding: 0 7px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: rgba(44, 122, 109, 0.10);
+        color: var(--eduai-signal, #2C7A6D);
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+    .recognized-student-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        border: 1px solid #eef0f2;
+        border-radius: 12px;
+        background: #fafafa;
+        transition: all 0.2s ease;
+    }
+
+    .recognized-student-item + .recognized-student-item {
+        margin-top: 8px;
+    }
+
+    .recognized-student-item:hover {
+        background: #fff;
+        border-color: rgba(44, 122, 109, 0.20);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    }
+
+    .recognized-student-avatar {
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(44, 122, 109, 0.10);
+        color: var(--eduai-signal, #2C7A6D);
+        font-weight: 700;
+        font-size: 0.8rem;
+    }
+
+    .recognized-student-name {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #1f2937;
+        line-height: 1.25;
+    }
+
+    .recognized-student-class {
+        font-size: 0.72rem;
+        color: #6b7280;
+        margin-top: 2px;
+    }
+
+    .recognized-confidence {
+        margin-left: auto;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .recognized-confidence-value {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--eduai-signal, #2C7A6D);
+    }
+
+    .recognized-confidence-label {
+        display: block;
+        font-size: 0.62rem;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .recognized-empty {
+        padding: 18px 10px;
+        text-align: center;
+        color: #9ca3af;
+    }
+
+    .recognized-empty-icon {
+        width: 42px;
+        height: 42px;
+        margin: 0 auto 8px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f3f4f6;
+        color: #9ca3af;
+    }
+
+    /* ==========================================================
+       CAMERA
+       ========================================================== */
+
+    .face-video-container {
+        position: relative;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        height: 250px;
+        max-height: 250px;
+    }
+
+    #regVideo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    #regPlaceholder {
+        min-height: 250px;
+    }
+
+    /* ==========================================================
+       STATUS
+       ========================================================== */
+
+    .alert-sm {
+        font-size: 0.8rem;
+    }
+
+    /* ==========================================================
+       RESPONSIVE
+       ========================================================== */
+
+    @media (max-width: 767.98px) {
+        .face-video-container {
+            height: 220px;
+            max-height: 220px;
+        }
+
+        #regPlaceholder {
+            min-height: 220px;
+        }
+
+        .recognized-confidence {
+            display: none;
+        }
+    }
+</style>
+
+
+<!-- ==========================================================
+     FACE REGISTRATION MODAL
+     ========================================================== -->
+
+<div class="modal fade"
+     id="faceRegisterModal"
+     tabindex="-1"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered modal-md">
+
+        <div class="modal-content border-0 shadow-sm rounded-4">
+
+            <!-- ==================================================
+                 HEADER
+                 ================================================== -->
+
+            <div class="modal-header border-0 pt-3 px-3 pb-0">
+
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-camera text-gold me-2"></i>
+                    Register Face
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close">
+                </button>
+
+            </div>
+
+
+            <!-- ==================================================
+                 BODY
+                 ================================================== -->
+
+            <div class="modal-body p-3">
+
+                <div class="row g-3">
+
+
+                    <!-- ==================================================
+                         LEFT COLUMN
+                         CAMERA
+                         ================================================== -->
+
+                    <div class="col-md-7">
+
+                        <div class="text-center">
+
+
+                            <!-- ==========================================
+                                 SELECTED STUDENT INFORMATION
+                                 ========================================== -->
+
+                            <div id="regStudentInfo"
+                                 class="face-student-card mb-2 p-2 rounded-3"
+                                 style="display:none;">
+
+                                <div class="d-flex align-items-center gap-2">
+
+                                    <div class="face-student-avatar">
+                                        <i class="bi bi-person-fill"></i>
+                                    </div>
+
+                                    <div class="text-start flex-grow-1">
+
+                                        <div id="regStudentName"
+                                             class="fw-bold small">
+                                            Loading...
+                                        </div>
+
+                                        <div id="regStudentDetails"
+                                             class="text-muted small">
+                                            ID: ...
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ==========================================
+                                 CAMERA
+                                 ========================================== -->
+
+                            <div id="regVideoContainer"
+                                 class="face-video-container">
+
+                                <video id="regVideo"
+                                       autoplay
+                                       muted
+                                       playsinline
+                                       style="display:none;">
+                                </video>
+
+
+                                <!-- Camera Placeholder -->
+
+                                <div id="regPlaceholder"
+                                     class="d-flex flex-column align-items-center justify-content-center h-100">
+
+                                    <i class="bi bi-camera-off fs-1 text-secondary"></i>
+
+                                    <p class="text-muted mt-1 small mb-2">
+                                        Camera not started
+                                    </p>
+
+                                    <button id="regStartCameraBtn"
+                                            type="button"
+                                            class="btn btn-gold btn-sm"
+                                            onclick="startRegistrationCamera()">
+
+                                        <i class="bi bi-play-circle me-1"></i>
+                                        Start Camera
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ==========================================
+                                 CAMERA CONTROLS
+                                 ========================================== -->
+
+                            <div class="mt-2 d-flex gap-1 justify-content-center flex-wrap">
+
+                                <button id="regCaptureBtn"
+                                        type="button"
+                                        class="btn btn-success btn-sm"
+                                        onclick="captureRegistrationFace()"
+                                        style="display:none;">
+
+                                    <i class="bi bi-camera me-1"></i>
+                                    Capture
+
+                                </button>
+
+
+                                <button id="regRetakeBtn"
+                                        type="button"
+                                        class="btn btn-warning btn-sm"
+                                        onclick="retakeRegistrationFace()"
+                                        style="display:none;">
+
+                                    <i class="bi bi-arrow-repeat me-1"></i>
+                                    Retake
+
+                                </button>
+
+
+                                <button id="regStopBtn"
+                                        type="button"
+                                        class="btn btn-secondary btn-sm"
+                                        onclick="stopRegistrationCamera()"
+                                        style="display:none;">
+
+                                    <i class="bi bi-stop-circle me-1"></i>
+                                    Stop
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ==================================================
+                         RIGHT COLUMN
+                         STATUS + RECOGNIZED STUDENTS
+                         ================================================== -->
+
+                    <div class="col-md-5">
+
+                        <div id="registration-status">
+
+
+                            <!-- ==========================================
+                                 REGISTRATION STATUS
+                                 ========================================== -->
+
+                            <h6 class="fw-bold small mb-2">
+                                Registration Status
+                            </h6>
+
+                            <div id="regStatusMessages"
+                                 class="mb-2">
+
+                                <div class="alert alert-info alert-sm mb-0 py-1">
+
+                                    <i class="bi bi-info-circle me-1"></i>
+
+                                    <small>
+                                        Click "Start Camera" to begin.
+                                    </small>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ==========================================
+                                 CAPTURED FACE PREVIEW
+                                 ========================================== -->
+
+                            <div id="regFacePreview"
+                                 style="display:none;">
+
+                                <div class="border rounded-4 p-2 bg-light text-center">
+
+                                    <img id="regCapturedImagePreview"
+                                         src=""
+                                         alt="Captured face preview"
+                                         class="img-fluid rounded-4"
+                                         style="max-height:120px;">
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ==========================================
+                                 RECOGNIZED STUDENTS
+                                 ========================================== -->
+
+                            <div id="recognizedStudentsCard"
+                                 class="recognized-students-card p-2 mt-2"
+                                 style="display:none;">
+
+                                <div class="recognized-students-header mb-2">
+
+                                    <div class="recognized-title">
+
+                                        <span class="recognized-title-icon">
+                                            <i class="bi bi-person-check-fill"></i>
+                                        </span>
+
+                                        <span>
+                                            Recognized Students
+                                        </span>
+
+                                    </div>
+
+                                    <span id="recognizedStudentsCount"
+                                          class="recognized-count">
+                                        0
+                                    </span>
+
+                                </div>
+
+
+                                <div id="recognizedStudentsList">
+                                    <!-- Dynamically populated -->
+                                </div>
+
+                            </div>
+
+
+                            <!-- ==========================================
+                                 CAMERA GUIDANCE
+                                 ========================================== -->
+
+                            <div class="border rounded-4 p-2 bg-light mt-2">
+
+                                <div class="d-flex align-items-center gap-1">
+
+                                    <i class="bi bi-lightbulb text-warning small"></i>
+
+                                    <small class="text-muted">
+                                        Good lighting, face camera directly.
+                                    </small>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ==========================================
+                                 REGISTER BUTTON
+                                 ========================================== -->
+
+                            <button id="regRegisterBtn"
+                                    type="button"
+                                    class="btn btn-gold btn-sm w-100 mt-2"
+                                    onclick="registerStudentFace()"
+                                    style="display:none;">
+
+                                <i class="bi bi-check2-circle me-1"></i>
+                                Register Face
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ==================================================
+                 FOOTER
+                 ================================================== -->
+
+            <div class="modal-footer border-0 px-3 pb-3">
+
+                <button type="button"
+                        class="btn btn-secondary btn-sm"
+                        data-bs-dismiss="modal">
+
+                    <i class="bi bi-x-circle me-1"></i>
+                    Close
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+/* ==============================================================
+   FACE REGISTRATION STATE
+   ============================================================== */
+
+let regStream = null;
+let regCapturedImageData = null;
+let regStudentId = null;
+let regStudentData = null;
+let isRegCameraStarted = false;
+
+
+/* ==============================================================
+   CSRF
+   ============================================================== */
+
+function getCSRFToken() {
+
+    const csrfInput = document.querySelector(
+        '[name=csrfmiddlewaretoken]'
+    );
+
+    return csrfInput ? csrfInput.value : '';
+
+}
+
+
+/* ==============================================================
+   SAFE VALUE HELPER
+   ============================================================== */
+
+function safeText(value, fallback = '') {
+
+    if (
+        value === null ||
+        value === undefined ||
+        String(value).trim() === '' ||
+        String(value).trim().toLowerCase() === 'n/a' ||
+        String(value).trim().toLowerCase() === 'none'
+    ) {
+        return fallback;
+    }
+
+    return String(value).trim();
+
+}
+
+
+/* ==============================================================
+   GET STUDENT NAME
+   Supports multiple backend field names.
+   ============================================================== */
+
+function getRecognizedStudentName(student) {
+
+    if (!student) {
+        return 'Unknown Student';
+    }
+
+    return safeText(
+        student.name ||
+        student.student_name ||
+        student.full_name ||
+        student.student ||
+        (
+            student.first_name || student.last_name
+                ? `${safeText(student.first_name)} ${safeText(student.last_name)}`.trim()
+                : ''
+        ),
+        'Unknown Student'
+    );
+
+}
+
+
+/* ==============================================================
+   GET STUDENT CLASS
+   Supports multiple backend field names.
+   ============================================================== */
+
+function getRecognizedStudentClass(student) {
+
+    if (!student) {
+        return 'Class not available';
+    }
+
+    const classValue =
+        student.class_name ||
+        student.class ||
+        student.classroom ||
+        student.grade ||
+        student.grade_name ||
+        student.form ||
+        student.level;
+
+    return safeText(
+        classValue,
+        'Class not available'
+    );
+
+}
+
+
+/* ==============================================================
+   GET CONFIDENCE
+   ============================================================== */
+
+function getRecognitionConfidence(student) {
+
+    if (!student) {
+        return null;
+    }
+
+    let confidence =
+        student.confidence ??
+        student.similarity ??
+        student.match_confidence ??
+        student.score;
+
+    if (
+        confidence === null ||
+        confidence === undefined ||
+        confidence === ''
+    ) {
+        return null;
+    }
+
+    confidence = Number(confidence);
+
+    if (Number.isNaN(confidence)) {
+        return null;
+    }
+
+    /*
+     * If backend returns 0.96, convert to 96%.
+     * If backend already returns 96, keep it.
+     */
+    if (confidence > 0 && confidence <= 1) {
+        confidence = confidence * 100;
+    }
+
+    confidence = Math.max(
+        0,
+        Math.min(100, confidence)
+    );
+
+    return confidence.toFixed(1) + '%';
+
+}
+
+
+/* ==============================================================
+   GET INITIALS
+   ============================================================== */
+
+function getStudentInitials(name) {
+
+    if (!name) {
+        return '?';
+    }
+
+    const parts = name
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+    if (!parts.length) {
+        return '?';
+    }
+
+    if (parts.length === 1) {
+        return parts[0]
+            .substring(0, 2)
+            .toUpperCase();
+    }
+
+    return (
+        parts[0].charAt(0) +
+        parts[parts.length - 1].charAt(0)
+    ).toUpperCase();
+
+}
+
+
+/* ==============================================================
+   RENDER RECOGNIZED STUDENTS
+   ============================================================== */
+
+function renderRecognizedStudents(students) {
+
+    const card = document.getElementById(
+        'recognizedStudentsCard'
+    );
+
+    const list = document.getElementById(
+        'recognizedStudentsList'
+    );
+
+    const count = document.getElementById(
+        'recognizedStudentsCount'
+    );
+
+    if (!card || !list || !count) {
+        return;
+    }
+
+    /*
+     * Make sure we always work with an array.
+     */
+    if (!Array.isArray(students)) {
+        students = [];
+    }
+
+    /*
+     * Remove empty/null records.
+     */
+    students = students.filter(function(student) {
+        return student && typeof student === 'object';
+    });
+
+    count.textContent = students.length;
+
+    /*
+     * No recognized students.
+     */
+    if (!students.length) {
+
+        card.style.display = 'block';
+
+        list.innerHTML = `
+            <div class="recognized-empty">
+
+                <div class="recognized-empty-icon">
+                    <i class="bi bi-person-x"></i>
+                </div>
+
+                <div class="small fw-semibold">
+                    No students recognized
+                </div>
+
+                <div class="small mt-1">
+                    Position the student's face clearly in front of the camera.
+                </div>
+
+            </div>
+        `;
+
+        return;
+    }
+
+
+    /*
+     * Render recognized students.
+     */
+    list.innerHTML = students.map(function(student) {
+
+        const name = getRecognizedStudentName(student);
+
+        const className = getRecognizedStudentClass(student);
+
+        const confidence = getRecognitionConfidence(student);
+
+        const initials = getStudentInitials(name);
+
+        const confidenceHtml = confidence
+            ? `
+                <div class="recognized-confidence">
+
+                    <span class="recognized-confidence-value">
+                        ${confidence}
+                    </span>
+
+                    <span class="recognized-confidence-label">
+                        Match
+                    </span>
+
+                </div>
+              `
+            : '';
+
+
+        return `
+            <div class="recognized-student-item">
+
+                <div class="recognized-student-avatar">
+                    ${initials}
+                </div>
+
+                <div class="flex-grow-1 min-w-0">
+
+                    <div class="recognized-student-name">
+                        ${escapeHtml(name)}
+                    </div>
+
+                    <div class="recognized-student-class">
+                        <i class="bi bi-mortarboard me-1"></i>
+                        ${escapeHtml(className)}
+                    </div>
+
+                </div>
+
+                ${confidenceHtml}
+
+            </div>
+        `;
+
+    }).join('');
+
+    card.style.display = 'block';
+
+}
+
+
+/* ==============================================================
+   HTML ESCAPE
+   ============================================================== */
+
+function escapeHtml(value) {
+
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+}
+
+
+/* ==============================================================
+   OPEN FACE REGISTRATION
+   ============================================================== */
+
+function openFaceRegistration(studentId) {
+
+    regStudentId = studentId;
+    regCapturedImageData = null;
+    regStudentData = null;
+    isRegCameraStarted = false;
+
+
+    /* ------------------------------------------
+       Reset UI
+       ------------------------------------------ */
+
+    const video = document.getElementById('regVideo');
+
+    const placeholder = document.getElementById(
+        'regPlaceholder'
+    );
+
+    const captureBtn = document.getElementById(
+        'regCaptureBtn'
+    );
+
+    const retakeBtn = document.getElementById(
+        'regRetakeBtn'
+    );
+
+    const stopBtn = document.getElementById(
+        'regStopBtn'
+    );
+
+    const registerBtn = document.getElementById(
+        'regRegisterBtn'
+    );
+
+    const preview = document.getElementById(
+        'regFacePreview'
+    );
+
+    const startBtn = document.getElementById(
+        'regStartCameraBtn'
+    );
+
+    const studentInfo = document.getElementById(
+        'regStudentInfo'
+    );
+
+    const recognizedCard = document.getElementById(
+        'recognizedStudentsCard'
+    );
+
+    if (video) {
+        video.style.display = 'none';
+        video.srcObject = null;
+    }
+
+    if (placeholder) {
+        placeholder.style.display = 'flex';
+    }
+
+    if (captureBtn) {
+        captureBtn.style.display = 'none';
+    }
+
+    if (retakeBtn) {
+        retakeBtn.style.display = 'none';
+    }
+
+    if (stopBtn) {
+        stopBtn.style.display = 'none';
+    }
+
+    if (registerBtn) {
+        registerBtn.style.display = 'none';
+        registerBtn.disabled = false;
+        registerBtn.className =
+            'btn btn-gold btn-sm w-100 mt-2';
+    }
+
+    if (preview) {
+        preview.style.display = 'none';
+    }
+
+    if (startBtn) {
+        startBtn.style.display = 'inline-block';
+    }
+
+    if (studentInfo) {
+        studentInfo.style.display = 'none';
+    }
+
+    if (recognizedCard) {
+        recognizedCard.style.display = 'none';
+    }
+
+
+    /* ------------------------------------------
+       Reset status
+       ------------------------------------------ */
+
+    const statusMessages = document.getElementById(
+        'regStatusMessages'
+    );
+
+    if (statusMessages) {
+
+        statusMessages.innerHTML = `
+            <div class="alert alert-info alert-sm mb-0 py-1">
+
+                <i class="bi bi-info-circle me-1"></i>
+
+                <small>
+                    Click "Start Camera" to begin face registration.
+                </small>
+
+            </div>
+        `;
+
+    }
+
+
+    /* ------------------------------------------
+       Fetch student information
+       ------------------------------------------ */
+
+    fetch(`/students/${studentId}/info/`, {
+
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+
+    })
+
+    .then(function(response) {
+
+        if (!response.ok) {
+            throw new Error(
+                `Unable to load student information (${response.status})`
+            );
+        }
+
+        return response.json();
+
+    })
+
+    .then(function(data) {
+
+        if (!data.success) {
+            throw new Error(
+                data.message ||
+                data.error ||
+                'Unable to load student information.'
+            );
+        }
+
+
+        /* --------------------------------------
+           Save student data
+           -------------------------------------- */
+
+        regStudentData = data.student || {};
+
+
+        /* --------------------------------------
+           Student name
+           -------------------------------------- */
+
+        const studentName =
+            getRecognizedStudentName(
+                regStudentData
+            );
+
+
+        /* --------------------------------------
+           Student class
+           -------------------------------------- */
+
+        const studentClass =
+            getRecognizedStudentClass(
+                regStudentData
+            );
+
+
+        /* --------------------------------------
+           Admission / Student ID
+           -------------------------------------- */
+
+        const admission =
+            safeText(
+                regStudentData.admission ||
+                regStudentData.admission_number ||
+                regStudentData.student_id ||
+                regStudentData.registration_number,
+                'ID not available'
+            );
+
+
+        /* --------------------------------------
+           Display student information
+           -------------------------------------- */
+
+        const info =
+            document.getElementById(
+                'regStudentInfo'
+            );
+
+        const nameElement =
+            document.getElementById(
+                'regStudentName'
+            );
+
+        const detailsElement =
+            document.getElementById(
+                'regStudentDetails'
+            );
+
+
+        if (info) {
+            info.style.display = 'block';
+        }
+
+        if (nameElement) {
+            nameElement.textContent =
+                studentName;
+        }
+
+        if (detailsElement) {
+
+            detailsElement.textContent =
+                `ID: ${admission} · ${studentClass}`;
+
+        }
+
+
+        /* --------------------------------------
+           Recognized students
+
+           The backend may return:
+           data.recognized_students
+
+           or:
+           data.student.recognized_students
+           -------------------------------------- */
+
+        const recognizedStudents =
+            data.recognized_students ||
+            regStudentData.recognized_students ||
+            [];
+
+        renderRecognizedStudents(
+            recognizedStudents
+        );
+
+    })
+
+    .catch(function(error) {
+
+        console.error(
+            'Error fetching student info:',
+            error
+        );
+
+        const info =
+            document.getElementById(
+                'regStudentInfo'
+            );
+
+        if (info) {
+            info.style.display = 'none';
+        }
+
+        const statusMessages =
+            document.getElementById(
+                'regStatusMessages'
+            );
+
+        if (statusMessages) {
+
+            statusMessages.innerHTML = `
+                <div class="alert alert-warning alert-sm mb-0 py-1">
+
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+
+                    <small>
+                        Student information could not be loaded.
+                        You can still try starting the camera.
+                    </small>
+
+                </div>
+            `;
+
+        }
+
+    });
+
+
+    /* ------------------------------------------
+       Show modal
+       ------------------------------------------ */
+
+    const modalElement =
+        document.getElementById(
+            'faceRegisterModal'
+        );
+
+    if (modalElement) {
+
+        const modal =
+            bootstrap.Modal.getOrCreateInstance(
+                modalElement
+            );
+
+        modal.show();
+
+    }
+
+}
+
+
+/* ==============================================================
+   START CAMERA
+   ============================================================== */
+
+function startRegistrationCamera() {
+
+    const video =
+        document.getElementById('regVideo');
+
+    const placeholder =
+        document.getElementById('regPlaceholder');
+
+
+    if (
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia
+    ) {
+
+        document.getElementById(
+            'regStatusMessages'
+        ).innerHTML = `
+
+            <div class="alert alert-danger alert-sm mb-0 py-1">
+
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+
+                <small>
+                    Your browser does not support camera access.
+                </small>
+
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    document.getElementById(
+        'regStatusMessages'
+    ).innerHTML = `
+
+        <div class="alert alert-info alert-sm mb-0 py-1">
+
+            <i class="bi bi-hourglass-split me-1"></i>
+
+            <small>
+                Requesting camera access...
+            </small>
+
+        </div>
+    `;
+
+
+    const constraints = {
+
+        video: {
+            width: {
+                ideal: 640
+            },
+
+            height: {
+                ideal: 480
+            },
+
+            facingMode: 'user'
+        },
+
+        audio: false
+
+    };
+
+
+    navigator.mediaDevices
+        .getUserMedia(constraints)
+
+        .then(function(stream) {
+
+            regStream = stream;
+
+            video.srcObject = stream;
+
+            video.style.display = 'block';
+
+            placeholder.style.display = 'none';
+
+            isRegCameraStarted = true;
+
+
+            video.onloadedmetadata = function() {
+
+                video.play()
+                    .catch(function(error) {
+
+                        console.warn(
+                            'Auto-play prevented:',
+                            error
+                        );
+
+                    });
+
+            };
+
+
+            video.play()
+                .catch(function(error) {
+
+                    console.warn(
+                        'Auto-play prevented:',
+                        error
+                    );
+
+                });
+
+
+            document.getElementById(
+                'regStartCameraBtn'
+            ).style.display = 'none';
+
+
+            document.getElementById(
+                'regCaptureBtn'
+            ).style.display = 'inline-block';
+
+
+            document.getElementById(
+                'regStopBtn'
+            ).style.display = 'inline-block';
+
+
+            document.getElementById(
+                'regStatusMessages'
+            ).innerHTML = `
+
+                <div class="alert alert-success alert-sm mb-0 py-1">
+
+                    <i class="bi bi-check-circle-fill me-1"></i>
+
+                    <small>
+                        Camera ready.
+                        Click "Capture" to take photo.
+                    </small>
+
+                </div>
+            `;
+
+        })
+
+        .catch(function(error) {
+
+            console.error(
+                'Camera error:',
+                error
+            );
+
+
+            let errorMsg =
+                'Unable to access camera.';
+
+
+            if (error.name === 'NotAllowedError') {
+
+                errorMsg =
+                    'Please allow camera permissions in browser settings.';
+
+            } else if (
+                error.name === 'NotFoundError'
+            ) {
+
+                errorMsg =
+                    'No camera found on this device.';
+
+            } else if (
+                error.name === 'NotReadableError'
+            ) {
+
+                errorMsg =
+                    'The camera is already being used by another application.';
+
+            } else {
+
+                errorMsg +=
+                    ` ${error.message || ''}`;
+
+            }
+
+
+            document.getElementById(
+                'regStatusMessages'
+            ).innerHTML = `
+
+                <div class="alert alert-danger alert-sm mb-0 py-1">
+
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+
+                    <small>
+                        ${escapeHtml(errorMsg)}
+                    </small>
+
+                </div>
+            `;
+
+        });
+
+}
+
+
+/* ==============================================================
+   CAPTURE FACE
+   ============================================================== */
+
+function captureRegistrationFace() {
+
+    const video =
+        document.getElementById('regVideo');
+
+
+    if (
+        !video.srcObject ||
+        !isRegCameraStarted
+    ) {
+
+        document.getElementById(
+            'regStatusMessages'
+        ).innerHTML = `
+
+            <div class="alert alert-warning alert-sm mb-0 py-1">
+
+                <i class="bi bi-exclamation-triangle me-1"></i>
+
+                <small>
+                    Please start the camera first.
+                </small>
+
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    const canvas =
+        document.createElement('canvas');
+
+
+    const width =
+        video.videoWidth || 640;
+
+    const height =
+        video.videoHeight || 480;
+
+
+    canvas.width =
+        Math.min(width, 640);
+
+    canvas.height =
+        Math.min(height, 480);
+
+
+    const context =
+        canvas.getContext('2d');
+
+
+    context.drawImage(
+        video,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    regCapturedImageData =
+        canvas.toDataURL('image/jpeg', 0.90);
+
+
+    /* ------------------------------------------
+       Preview
+       ------------------------------------------ */
+
+    document.getElementById(
+        'regFacePreview'
+    ).style.display = 'block';
+
+
+    document.getElementById(
+        'regCapturedImagePreview'
+    ).src = regCapturedImageData;
+
+
+    document.getElementById(
+        'regCaptureBtn'
+    ).style.display = 'none';
+
+
+    document.getElementById(
+        'regRetakeBtn'
+    ).style.display = 'inline-block';
+
+
+    document.getElementById(
+        'regRegisterBtn'
+    ).style.display = 'block';
+
+
+    /* ------------------------------------------
+       Status
+       ------------------------------------------ */
+
+    const studentName =
+        regStudentData
+            ? getRecognizedStudentName(regStudentData)
+            : 'Student';
+
+
+    document.getElementById(
+        'regStatusMessages'
+    ).innerHTML = `
+
+        <div class="alert alert-info alert-sm mb-0 py-1">
+
+            <i class="bi bi-camera-fill me-1"></i>
+
+            <small>
+                Face captured for
+                <strong>
+                    ${escapeHtml(studentName)}
+                </strong>.
+                Click "Register Face" to save.
+            </small>
+
+        </div>
+    `;
+
+}
+
+
+/* ==============================================================
+   RETAKE FACE
+   ============================================================== */
+
+function retakeRegistrationFace() {
+
+    document.getElementById(
+        'regFacePreview'
+    ).style.display = 'none';
+
+
+    document.getElementById(
+        'regRetakeBtn'
+    ).style.display = 'none';
+
+
+    document.getElementById(
+        'regRegisterBtn'
+    ).style.display = 'none';
+
+
+    document.getElementById(
+        'regCaptureBtn'
+    ).style.display = 'inline-block';
+
+
+    regCapturedImageData = null;
+
+
+    document.getElementById(
+        'regStatusMessages'
+    ).innerHTML = `
+
+        <div class="alert alert-warning alert-sm mb-0 py-1">
+
+            <i class="bi bi-arrow-repeat me-1"></i>
+
+            <small>
+                Retaking photo.
+                Click "Capture" to take photo.
+            </small>
+
+        </div>
+    `;
+
+}
+
+
+/* ==============================================================
+   REGISTER STUDENT FACE
+   ============================================================== */
+
+function registerStudentFace() {
+
+    if (
+        !regCapturedImageData ||
+        !regStudentId
+    ) {
+
+        alert(
+            'No face captured or student not selected.'
+        );
+
+        return;
+
+    }
+
+
+    const registerBtn =
+        document.getElementById(
+            'regRegisterBtn'
+        );
+
+
+    registerBtn.innerHTML = `
+
+        <span
+            class="spinner-border spinner-border-sm spinner-gold me-1"
+            role="status">
+        </span>
+
+        Registering...
+
+    `;
+
+
+    registerBtn.disabled = true;
+
+
+    fetch(
+        `/students/${regStudentId}/face/register/`,
+        {
+            method: 'POST',
+
+            headers: {
+
+                'Content-Type':
+                    'application/json',
+
+                'X-CSRFToken':
+                    getCSRFToken(),
+
+                'X-Requested-With':
+                    'XMLHttpRequest',
+
+                'Accept':
+                    'application/json'
+
+            },
+
+            body: JSON.stringify({
+
+                image:
+                    regCapturedImageData
+
+            })
+
+        }
+    )
+
+    .then(function(response) {
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Registration failed (${response.status})`
+            );
+
+        }
+
+        return response.json();
+
+    })
+
+    .then(function(data) {
+
+        if (data.success) {
+
+            const studentName =
+                regStudentData
+                    ? getRecognizedStudentName(
+                        regStudentData
+                    )
+                    : 'Student';
+
+
+            document.getElementById(
+                'regStatusMessages'
+            ).innerHTML = `
+
+                <div class="alert alert-success alert-sm mb-0 py-1">
+
+                    <i class="bi bi-check-circle-fill me-1"></i>
+
+                    <small>
+                        <strong>
+                            ${escapeHtml(studentName)}
+                        </strong>
+                        registered successfully.
+                    </small>
+
+                </div>
+            `;
+
+
+            registerBtn.innerHTML = `
+
+                <i class="bi bi-check2-circle me-1"></i>
+                Registered!
+
+            `;
+
+
+            registerBtn.className =
+                'btn btn-success btn-sm w-100 mt-2';
+
+
+            setTimeout(function() {
+
+                const modalElement =
+                    document.getElementById(
+                        'faceRegisterModal'
+                    );
+
+
+                const modal =
+                    bootstrap.Modal.getInstance(
+                        modalElement
+                    );
+
+
+                if (modal) {
+                    modal.hide();
+                }
+
+
+                location.reload();
+
+            }, 1500);
+
+
+        } else {
+
+            const message =
+                data.message ||
+                data.error ||
+                'Face registration could not be completed.';
+
+
+            document.getElementById(
+                'regStatusMessages'
+            ).innerHTML = `
+
+                <div class="alert alert-danger alert-sm mb-0 py-1">
+
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+
+                    <small>
+                        ${escapeHtml(message)}
+                    </small>
+
+                </div>
+            `;
+
+
+            registerBtn.innerHTML = `
+
+                <i class="bi bi-check2-circle me-1"></i>
+                Try Again
+
+            `;
+
+
+            registerBtn.disabled = false;
+
+        }
+
+    })
+
+    .catch(function(error) {
+
+        console.error(
+            'Face registration error:',
+            error
+        );
+
+
+        document.getElementById(
+            'regStatusMessages'
+        ).innerHTML = `
+
+            <div class="alert alert-danger alert-sm mb-0 py-1">
+
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+
+                <small>
+                    ${escapeHtml(
+                        error.message ||
+                        'An error occurred during registration.'
+                    )}
+                </small>
+
+            </div>
+        `;
+
+
+        registerBtn.innerHTML = `
+
+            <i class="bi bi-check2-circle me-1"></i>
+            Try Again
+
+        `;
+
+
+        registerBtn.disabled = false;
+
+    });
+
+}
+
+
+/* ==============================================================
+   STOP CAMERA
+   ============================================================== */
+
+function stopRegistrationCamera() {
+
+    if (regStream) {
+
+        regStream
+            .getTracks()
+            .forEach(function(track) {
+
+                track.stop();
+
+            });
+
+
+        regStream = null;
+
+    }
+
+
+    const video =
+        document.getElementById(
+            'regVideo'
+        );
+
+
+    if (video) {
+
+        video.srcObject = null;
+
+        video.style.display = 'none';
+
+    }
+
+
+    isRegCameraStarted = false;
+
+
+    const placeholder =
+        document.getElementById(
+            'regPlaceholder'
+        );
+
+
+    if (placeholder) {
+
+        placeholder.style.display =
+            'flex';
+
+    }
+
+
+    const startBtn =
+        document.getElementById(
+            'regStartCameraBtn'
+        );
+
+
+    if (startBtn) {
+
+        startBtn.style.display =
+            'inline-block';
+
+    }
+
+
+    document.getElementById(
+        'regCaptureBtn'
+    ).style.display = 'none';
+
+
+    document.getElementById(
+        'regStopBtn'
+    ).style.display = 'none';
+
+
+    document.getElementById(
+        'regRetakeBtn'
+    ).style.display = 'none';
+
+
+    document.getElementById(
+        'regRegisterBtn'
+    ).style.display = 'none';
+
+
+    document.getElementById(
+        'regFacePreview'
+    ).style.display = 'none';
+
+
+    const status =
+        document.getElementById(
+            'regStatusMessages'
+        );
+
+
+    if (status) {
+
+        status.innerHTML = `
+
+            <div class="alert alert-info alert-sm mb-0 py-1">
+
+                <i class="bi bi-info-circle me-1"></i>
+
+                <small>
+                    Camera stopped.
+                    Click "Start Camera" to begin.
+                </small>
+
+            </div>
+        `;
+
+    }
+
+}
+
+
+/* ==============================================================
+   MODAL CLEANUP
+   ============================================================== */
+
+document.addEventListener(
+    'DOMContentLoaded',
+    function() {
+
+        const modalElement =
+            document.getElementById(
+                'faceRegisterModal'
+            );
+
+
+        if (!modalElement) {
+            return;
+        }
+
+
+        modalElement.addEventListener(
+            'hidden.bs.modal',
+            function() {
+
+                stopRegistrationCamera();
+
+                regCapturedImageData = null;
+                regStudentId = null;
+                regStudentData = null;
+
+            }
+        );
+
+    }
+);
+</script>

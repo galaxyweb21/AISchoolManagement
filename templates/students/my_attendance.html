@@ -1,0 +1,206 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}My Attendance{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Header Card -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="bi bi-calendar-check text-gold me-2"></i>My Attendance</h5>
+                <p class="text-muted mb-0 small">{{ student.user.get_full_name }} &middot; {{ student.grade_level.name }}</p>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-{% if attendance_rate >= 80 %}teal-soft text-teal{% elif attendance_rate >= 60 %}warning-subtle text-warning{% else %}danger-subtle text-danger{% endif %} px-3 py-2">
+                    {{ attendance_rate }}% overall ({{ present }}/{{ total }} days)
+                </span>
+                <a href="{% url 'dashboard:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- How Attendance Works -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle-fill icon"></i>
+            <div>
+                <div class="title">How Attendance Works</div>
+                <p class="text">
+                    This page shows your complete attendance history. Each record displays the
+                    <strong>date</strong>, your attendance <strong>status</strong> (Present, Late, or Absent),
+                    and any <strong>remarks</strong> from the teacher. Use the search box below
+                    to filter your attendance records by date or status. Your overall attendance
+                    percentage is shown at the top.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Table -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h6 class="fw-bold mb-0">
+                    <i class="bi bi-table text-gold me-2"></i>Attendance Records
+                    <span class="badge bg-light text-muted ms-2" id="recordCount">{{ records|length }}</span>
+                </h6>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="text-muted small" id="filterStatus"></span>
+                    <input type="text" id="attendanceSearchInput" class="form-control form-control-sm" placeholder="Search records..." style="max-width: 220px;">
+                </div>
+            </div>
+            {% if records %}
+            <div class="table-responsive">
+                <table class="table align-middle" id="attendanceTable">
+                    <thead>
+                        <tr class="text-muted small text-uppercase">
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                        {% for record in records %}
+                        <tr class="attendance-row" data-id="{{ record.id }}">
+                            <td>{{ record.date|date:"D, M j, Y" }}</td>
+                            <td>
+                                <span class="badge bg-{% if record.status == 'PRESENT' %}teal-soft text-teal{% elif record.status == 'LATE' %}warning-subtle text-warning{% else %}danger-subtle text-danger{% endif %}">
+                                    {{ record.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="small text-muted">{{ record.remarks|default:"—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if records.has_other_pages %}
+            <nav class="mt-3">
+                <ul class="pagination pagination-sm justify-content-center mb-0">
+                    {% if records.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ records.previous_page_number }}">Previous</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Page {{ records.number }} of {{ records.paginator.num_pages }}</span></li>
+                    {% if records.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ records.next_page_number }}">Next</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox fs-1 text-muted"></i>
+                <p class="text-muted mt-2 mb-0">No attendance records yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+</style>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER
+    // ============================================================
+    const attendanceSearchInput = document.getElementById('attendanceSearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const recordCount = document.getElementById('recordCount');
+    const allRows = document.querySelectorAll('.attendance-row');
+
+    if (attendanceSearchInput && allRows.length > 0) {
+        attendanceSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const text = row.textContent.toLowerCase();
+                const isVisible = text.includes(query);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            // Update count
+            if (recordCount) {
+                if (query) {
+                    recordCount.textContent = visibleCount;
+                    if (filterStatus) {
+                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                    }
+                } else {
+                    recordCount.textContent = allRows.length;
+                    if (filterStatus) {
+                        filterStatus.textContent = '';
+                    }
+                }
+            }
+        });
+
+        // Clear filter status on blur if empty
+        attendanceSearchInput.addEventListener('blur', function() {
+            if (!this.value && filterStatus) {
+                filterStatus.textContent = '';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+{% include "partials/pagination.html" with page_obj=records %}
+
+{% endblock %}

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Secrets / environment files
+.env
+.env.*
+!.env.example
+!.env.docker.example
+
+# Django runtime data
+*.log
+db.sqlite3
+*.sqlite3
+media/
+staticfiles/
+backups/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Tests / tooling
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Deployment/local caches
+celerybeat-schedule

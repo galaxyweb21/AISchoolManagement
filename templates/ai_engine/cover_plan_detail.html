@@ -1,0 +1,422 @@
+<!-- ai_engine/cover_plan_detail.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Cover Plan{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-refresh {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        background: transparent;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    .btn-refresh:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(148, 107, 28, 0.3);
+    }
+    .btn-refresh:active {
+        transform: translateY(0px);
+        box-shadow: 0 2px 8px rgba(148, 107, 28, 0.2);
+    }
+    .btn-refresh .bi {
+        transition: transform 0.6s ease;
+    }
+    .btn-refresh:hover .bi {
+        transform: rotate(180deg);
+    }
+    .btn-refresh:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    .spinner-refresh {
+        display: inline-block;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .card-custom {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.06) !important;
+    }
+    .badge-confirmed {
+        background: var(--eduai-signal, #2C7A6D);
+        color: #fff;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .badge-uncovered {
+        background: #dc2626;
+        color: #fff;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .badge-suggested {
+        background: #d97706;
+        color: #fff;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .handover-note {
+        background: var(--bs-tertiary-bg);
+        border-radius: 8px;
+        padding: 0.75rem;
+        border-left: 3px solid var(--eduai-gold, #946B1C);
+    }
+    .candidate-list {
+        background: var(--bs-tertiary-bg);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+    }
+    .candidate-list li {
+        padding: 0.25rem 0;
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    .candidate-list li:last-child {
+        border-bottom: none;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Cover Plan Details
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% else %}
+                            Staff View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    This page shows the AI-generated substitute cover plan for <strong>{{ absence.teacher.user.get_full_name }}</strong>
+                    on <strong>{{ absence.date|date:"l, M d, Y" }}</strong>.
+                    You can <strong>confirm</strong> a substitute for each affected period, <strong>undo</strong> confirmations,
+                    and save <strong>handover notes</strong> for substitutes.
+                    The AI suggests the best available teachers based on qualifications and availability.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 p-4">
+            <div>
+                <h5 class="fw-bold mb-1">
+                    <i class="bi bi-person-badge text-gold me-2"></i>
+                    {{ absence.teacher.user.get_full_name }}
+                </h5>
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <span class="badge bg-light text-dark">
+                        <i class="bi bi-calendar3 me-1"></i>
+                        {{ absence.date|date:"l, M d, Y" }}
+                    </span>
+                    <span class="badge bg-gold-soft text-gold">
+                        <i class="bi bi-tag me-1"></i>
+                        {{ absence.get_reason_display }}
+                    </span>
+                    {% if absence.notes %}
+                    <span class="text-muted small">
+                        <i class="bi bi-chat me-1"></i>
+                        {{ absence.notes }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <form method="post" action="{% url 'ai_engine:regenerate_cover_plan' absence.id %}" class="d-inline" id="refreshPlanForm">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-refresh" id="refreshPlanBtn" title="Refresh the cover plan with updated suggestions">
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        <span>Refresh Plan</span>
+                    </button>
+                </form>
+                <a href="{% url 'ai_engine:absence_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warning Alert -->
+    {% if not has_published_timetable %}
+    <div class="alert alert-warning border-0 shadow-sm rounded-4 mb-4">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-exclamation-triangle-fill text-warning fs-4 me-2 mt-1"></i>
+            <div>
+                <strong>No Published Timetable</strong>
+                <p class="mb-0 small">
+                    No published timetable covers this date, so candidate substitutes can't be recomputed right now.
+                    Any previously suggested/confirmed assignments below are still shown.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Assignments -->
+    {% for row in rows %}
+    {% with a=row.assignment %}
+    <div class="card border-0 shadow-sm rounded-4 mb-3">
+        <div class="p-4">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <span class="fw-bold">
+                        <i class="bi bi-clock text-gold me-1"></i>
+                        {{ a.timetable_entry.timeslot.get_day_display }} P{{ a.timetable_entry.timeslot.period_index }}
+                    </span>
+                    <span class="text-muted"> &middot; </span>
+                    <span class="fw-semibold">{{ a.timetable_entry.subject.name }}</span>
+                    <span class="text-muted"> &middot; </span>
+                    <span>{{ a.timetable_entry.school_class.name }}</span>
+                    <span class="text-muted"> &middot; </span>
+                    <span class="text-muted">{{ a.timetable_entry.room.name }}</span>
+                </div>
+                {% if a.status == 'CONFIRMED' %}
+                    <span class="badge-confirmed">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        Confirmed: {{ a.confirmed_substitute.user.get_full_name }}
+                    </span>
+                {% elif a.status == 'UNCOVERED' %}
+                    <span class="badge-uncovered">
+                        <i class="bi bi-exclamation-circle-fill me-1"></i>
+                        No substitute available
+                    </span>
+                {% else %}
+                    <span class="badge-suggested">
+                        <i class="bi bi-lightbulb-fill me-1"></i>
+                        Suggested: {{ a.suggested_substitute.user.get_full_name|default:"none" }}
+                    </span>
+                {% endif %}
+            </div>
+
+            <!-- Confirmed Actions -->
+            {% if a.status == 'CONFIRMED' %}
+                <form method="post" action="{% url 'ai_engine:unconfirm_substitute' a.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Undo Confirmation
+                    </button>
+                </form>
+            {% else %}
+                <!-- Substitute Selection -->
+                <form method="post" action="{% url 'ai_engine:confirm_substitute' a.id %}" class="mb-3">
+                    {% csrf_token %}
+                    <label class="form-label small fw-semibold text-muted mb-1">
+                        <i class="bi bi-person-check me-1"></i>Choose substitute
+                    </label>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <select name="substitute_id" class="form-select" style="max-width: 320px;">
+                            {% for c in row.candidates %}
+                                <option value="{{ c.teacher.id }}" {% if a.suggested_substitute_id == c.teacher.id %}selected{% endif %}>
+                                    {{ c.teacher.user.get_full_name }}
+                                    {% if c.qualified %}<span class="text-success">(qualified)</span>{% endif %}
+                                    - score {{ c.score }}
+                                </option>
+                            {% empty %}
+                                <option value="">No candidates available</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-success" style="background: var(--eduai-signal, #2C7A6D); border-color: var(--eduai-signal, #2C7A6D);" {% if not row.candidates %}disabled{% endif %}>
+                            <i class="bi bi-check2-circle me-1"></i>Confirm
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Candidate Details -->
+                {% if row.candidates %}
+                <details class="mb-3">
+                    <summary class="text-muted small" style="cursor: pointer;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Why these candidates? ({{ row.candidates|length }})
+                    </summary>
+                    <ul class="candidate-list small text-muted mt-2">
+                        {% for c in row.candidates %}
+                            <li>
+                                <strong>{{ c.teacher.user.get_full_name }}</strong>
+                                <span class="text-muted">: {{ c.reasons|join:"; " }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+                {% endif %}
+            {% endif %}
+
+            <!-- Handover Note -->
+            <form method="post" action="{% url 'ai_engine:save_handover_note' a.id %}">
+                {% csrf_token %}
+                <label class="form-label small fw-semibold text-muted mb-1">
+                    <i class="bi bi-sticky me-1"></i>Handover note for substitute
+                </label>
+                <textarea name="handover_note" class="form-control mb-2" rows="3" placeholder="Enter any important notes for the substitute teacher...">{{ a.handover_note }}</textarea>
+                <div class="d-flex align-items-center gap-3">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-save me-1"></i>Save Note
+                    </button>
+                    {% if a.note_edited_by %}
+                    <span class="text-muted small">
+                        <i class="bi bi-pencil me-1"></i>
+                        edited by {{ a.note_edited_by.get_full_name }}
+                    </span>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endwith %}
+    {% empty %}
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="text-center text-muted p-5">
+            <i class="bi bi-calendar-check fs-1 d-block mb-3 text-secondary"></i>
+            <h6 class="fw-bold">No scheduled periods</h6>
+            <p class="mb-0 small">This teacher had no scheduled periods that day - nothing to cover.</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const refreshForm = document.getElementById('refreshPlanForm');
+    const refreshBtn = document.getElementById('refreshPlanBtn');
+
+    if (refreshForm && refreshBtn) {
+        refreshForm.addEventListener('submit', function(e) {
+            // Show loading state on button
+            const originalText = refreshBtn.innerHTML;
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = `
+                <span class="spinner-refresh">
+                    <i class="bi bi-arrow-clockwise me-1"></i>
+                </span>
+                <span>Refreshing...</span>
+            `;
+            refreshBtn.classList.add('disabled');
+
+            // Allow the form to submit normally
+            // The disabled state will be reset on page reload
+        });
+    }
+
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

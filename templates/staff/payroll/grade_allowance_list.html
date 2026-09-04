@@ -1,0 +1,785 @@
+<!-- staff/payroll/grade_allowance_list.html -->
+{% extends 'base/base.html' %}
+{% load staff_filters %}
+
+{% block page_title %}Grade Allowances{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-outline-danger-sm {
+        color: #dc3545 !important;
+        border-color: #dc3545 !important;
+        padding: 0.2rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    .btn-outline-danger-sm:hover {
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
+        color: #fff !important;
+    }
+    .btn-outline-primary-sm {
+        color: #0d6efd !important;
+        border-color: #0d6efd !important;
+        padding: 0.2rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    .btn-outline-primary-sm:hover {
+        background-color: #0d6efd !important;
+        border-color: #0d6efd !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .grade-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .grade-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.06) !important;
+    }
+    .source-grade {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        background: #e3f2fd;
+        color: #1565c0;
+        border-radius: 12px;
+    }
+    .grade-actions {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <h2 class="fw-bold mb-2">
+                        <i class="bi bi-layers text-gold me-2"></i>
+                        Grade Allowances
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Configure grade-level allowances that apply to all staff in a grade.
+                        Individual staff allowances override these.
+                    </p>
+                    <small class="text-muted">
+                        {{ grades|length }} grade(s) configured
+                        <span class="mx-2">|</span>
+                        {{ grade_allowances|length }} grade allowance(s)
+                    </small>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#gradeAllowanceModal"
+                            data-action="create" data-url="{% url 'staff:grade_allowance_create' %}">
+                        <i class="bi bi-plus-lg me-1"></i>Add Grade Allowance
+                    </button>
+                    <a href="{% url 'staff:allowance_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-wallet2 me-1"></i>Allowances
+                    </a>
+                    <a href="{% url 'staff:staff_grade_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-layers me-1"></i>Manage Grades
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="alert alert-info border-0 rounded-4 bg-gold-soft mb-4">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle-fill text-gold fs-4 me-3 mt-1"></i>
+            <div>
+                <h6 class="fw-bold mb-1">Hybrid Allowance System</h6>
+                <p class="mb-0 small">
+                    <strong>Grade Allowances</strong> apply to all staff in a grade (e.g., Housing Allowance for Senior Teachers).
+                    <strong>Individual Staff Allowances</strong> can override or add to grade allowances.
+                    This gives you the best of both worlds: policy-based consistency and individual flexibility.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grade Cards -->
+    <div class="row g-4">
+        {% for grade in grades %}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 grade-card h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1">{{ grade.name }}</h5>
+                            <span class="badge bg-secondary-subtle text-secondary">
+                                {{ grade.get_grade_type_display }}
+                            </span>
+                            <span class="badge bg-teal-soft text-teal ms-1">
+                                Level {{ grade.level }}
+                            </span>
+                            <span class="badge bg-info-subtle text-info ms-1">
+                                {{ grade.staff_members.count }} staff
+                            </span>
+                        </div>
+                        <div class="grade-actions">
+                            <!-- Add Allowance Button - Pre-selects this grade -->
+                            <button type="button" class="btn btn-sm btn-outline-gold"
+                                    data-bs-toggle="modal" data-bs-target="#gradeAllowanceModal"
+                                    data-action="create" data-url="{% url 'staff:grade_allowance_create' %}"
+                                    data-grade="{{ grade.id }}" data-grade-name="{{ grade.name }}">
+                                <i class="bi bi-plus me-1"></i>Add Allowance
+                            </button>
+                            <!-- Edit Grade Button -->
+                            <a href="{% url 'staff:staff_grade_edit' grade.id %}"
+                               class="btn btn-sm btn-outline-primary-sm"
+                               data-bs-toggle="modal" data-bs-target="#gradeEditModal">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <!-- Delete Grade Button -->
+                            <button type="button" class="btn btn-sm btn-outline-danger-sm"
+                                    data-bs-toggle="modal" data-bs-target="#gradeDeleteModal"
+                                    data-grade-id="{{ grade.id }}"
+                                    data-grade-name="{{ grade.name }}"
+                                    data-staff-count="{{ grade.staff_members.count }}"
+                                    data-delete-url="{% url 'staff:staff_grade_delete' grade.id %}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Allowances for this grade -->
+                    {% with grade_allowance_map|get_item:grade.id as grade_allowances %}
+                        {% if grade_allowances %}
+                            <div class="mt-3">
+                                <h6 class="text-muted small text-uppercase fw-bold mb-2">Allowances</h6>
+                                <div class="list-group list-group-flush">
+                                    {% for ga in grade_allowances %}
+                                    <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center border-bottom">
+                                        <div>
+                                            <span class="fw-semibold">{{ ga.allowance.name }}</span>
+                                            <span class="badge bg-info-subtle text-info ms-2">
+                                                {% if ga.is_percentage %}{{ ga.get_effective_amount }}%{% else %}GH₵ {{ ga.get_effective_amount|floatformat:2 }}{% endif %}
+                                            </span>
+                                            <span class="source-grade ms-2">Grade-Based</span>
+                                            {% if not ga.is_active %}
+                                                <span class="badge bg-danger-subtle text-danger ms-1">Inactive</span>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <!-- FIXED: Edit Grade Allowance - uses gradeAllowanceModal with action=edit -->
+                                            <button type="button" class="btn btn-sm btn-outline-gold px-2"
+                                                    data-bs-toggle="modal" data-bs-target="#gradeAllowanceModal"
+                                                    data-action="edit" data-url="{% url 'staff:grade_allowance_edit' ga.id %}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <!-- Delete Grade Allowance -->
+                                            <button type="button" class="btn btn-sm btn-outline-danger px-2"
+                                                    data-bs-toggle="modal" data-bs-target="#gradeAllowanceModal"
+                                                    data-action="delete" data-url="{% url 'staff:grade_allowance_delete' ga.id %}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                <p class="small mb-0">No allowances assigned to this grade yet.</p>
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+
+                    <!-- Staff count -->
+                    <div class="mt-3 pt-2 border-top">
+                        <small class="text-muted">
+                            <i class="bi bi-people me-1"></i>
+                            {{ grade.staff_members.count }} staff member(s) in this grade
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-people fs-2 d-block mb-3 text-muted"></i>
+                    <h6 class="fw-bold">No grades configured</h6>
+                    <p class="text-muted small">Create staff grades first, then assign allowances to them.</p>
+                    <a href="{% url 'staff:staff_grade_list' %}" class="btn btn-outline-gold">
+                        <i class="bi bi-plus me-1"></i>Create Grade
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-lightning-fill text-warning me-2"></i>Quick Actions</h6>
+                    <div class="d-flex flex-wrap gap-3">
+                        <button type="button" class="btn btn-outline-gold" data-bs-toggle="modal" data-bs-target="#gradeAllowanceModal"
+                                data-action="create" data-url="{% url 'staff:grade_allowance_create' %}">
+                            <i class="bi bi-plus-lg me-1"></i>Add Grade Allowance
+                        </button>
+                        <a href="{% url 'staff:allowance_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-wallet2 me-1"></i>Manage Allowances
+                        </a>
+                        <a href="{% url 'staff:staff_grade_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-layers me-1"></i>Manage Grades
+                        </a>
+                        <a href="{% url 'staff:payroll_dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Back to Payroll
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Grade Allowance Modal -->
+<div class="modal fade" id="gradeAllowanceModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-body p-0">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Grade Edit Modal -->
+<div class="modal fade" id="gradeEditModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-body p-0">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Grade Delete Modal -->
+<div class="modal fade" id="gradeDeleteModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-body p-0">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // GRADE ALLOWANCE MODAL
+    // ============================================================
+    const modal = document.getElementById('gradeAllowanceModal');
+    const modalContent = modal.querySelector('.modal-body');
+
+    modal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const action = button.getAttribute('data-action');
+        const url = button.getAttribute('data-url');
+        const gradeId = button.getAttribute('data-grade');
+        const gradeName = button.getAttribute('data-grade-name');
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading...</p>
+            </div>
+        `;
+
+        // Build URL with query params if grade is pre-selected
+        let fetchUrl = url;
+        if (gradeId && action === 'create') {
+            const separator = url.includes('?') ? '&' : '?';
+            fetchUrl = `${url}${separator}prefill_grade=${gradeId}`;
+        }
+
+        fetch(fetchUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+
+            // If we have a grade pre-selected, set it and disable the dropdown
+            if (gradeId && action === 'create') {
+                const gradeSelect = modalContent.querySelector('#gradeSelect');
+                if (gradeSelect) {
+                    gradeSelect.value = gradeId;
+                    // Disable the dropdown to prevent changing the grade
+                    gradeSelect.disabled = true;
+                    // Add a hidden input to submit the value
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'staff_grade';
+                    hiddenInput.value = gradeId;
+                    const form = modalContent.querySelector('form');
+                    if (form) {
+                        form.appendChild(hiddenInput);
+                    }
+                    // Show a hint that the grade is pre-selected
+                    const hint = document.createElement('div');
+                    hint.className = 'form-hint text-gold mt-1';
+                    hint.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> Grade pre-selected: <strong>${gradeName}</strong>`;
+                    const parent = gradeSelect.closest('.mb-3');
+                    if (parent) {
+                        parent.appendChild(hint);
+                    }
+                }
+            }
+
+            bindFormSubmit();
+            bindDeleteForm();
+        })
+        .catch(err => {
+            modalContent.innerHTML = `
+                <div class="p-4 text-center">
+                    <div class="alert alert-danger border-0 rounded-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error loading form. Please try again.
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+            console.error('Error loading form:', err);
+        });
+    });
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    function bindFormSubmit() {
+        const form = modalContent.querySelector('form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    location.reload();
+                } else {
+                    showError(data.error || 'An error occurred while saving.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            })
+            .catch(err => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                showError('Network error. Please try again.');
+                console.error('Error:', err);
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    function bindDeleteForm() {
+        const form = modalContent.querySelector('form.delete-form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    location.reload();
+                } else {
+                    modalContent.innerHTML = `
+                        <div class="p-4">
+                            <div class="alert alert-danger border-0 rounded-4">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                ${data.error || 'Error deleting.'}
+                            </div>
+                            <div class="text-end">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                modalContent.innerHTML = `
+                    <div class="p-4">
+                        <div class="alert alert-danger border-0 rounded-4">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            Network error. Please try again.
+                        </div>
+                        <div class="text-end">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                `;
+                console.error('Error:', err);
+            });
+        });
+    }
+
+    modal.addEventListener('hidden.bs.modal', function () {
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading...</p>
+            </div>
+        `;
+    });
+
+    // ============================================================
+    // GRADE EDIT MODAL
+    // ============================================================
+    const editModal = document.getElementById('gradeEditModal');
+    const editModalContent = editModal.querySelector('.modal-body');
+
+    editModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const url = button.getAttribute('href');
+
+        editModalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading...</p>
+            </div>
+        `;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            editModalContent.innerHTML = html;
+            bindGradeEditForm();
+        })
+        .catch(err => {
+            editModalContent.innerHTML = `
+                <div class="p-4 text-center">
+                    <div class="alert alert-danger border-0 rounded-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error loading edit form. Please try again.
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+            console.error('Error loading edit form:', err);
+        });
+    });
+
+    function bindGradeEditForm() {
+        const form = editModalContent.querySelector('form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(editModal);
+                    modalInstance.hide();
+                    location.reload();
+                } else {
+                    showEditError(data.error || 'An error occurred while saving.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            })
+            .catch(err => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                showEditError('Network error. Please try again.');
+                console.error('Error:', err);
+            });
+        });
+
+        function showEditError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    editModal.addEventListener('hidden.bs.modal', function () {
+        editModalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading...</p>
+            </div>
+        `;
+    });
+
+    // ============================================================
+    // GRADE DELETE MODAL
+    // ============================================================
+    const deleteModal = document.getElementById('gradeDeleteModal');
+    const deleteModalContent = deleteModal.querySelector('.modal-body');
+
+    deleteModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const gradeId = button.getAttribute('data-grade-id');
+        const gradeName = button.getAttribute('data-grade-name');
+        const staffCount = button.getAttribute('data-staff-count');
+        const deleteUrl = button.getAttribute('data-delete-url');
+
+        deleteModalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading...</p>
+            </div>
+        `;
+
+        fetch(deleteUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            deleteModalContent.innerHTML = html;
+            bindGradeDeleteForm();
+        })
+        .catch(err => {
+            deleteModalContent.innerHTML = `
+                <div class="p-4 text-center">
+                    <div class="alert alert-danger border-0 rounded-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error loading delete confirmation. Please try again.
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+            console.error('Error loading delete form:', err);
+        });
+    });
+
+    function bindGradeDeleteForm() {
+        const form = deleteModalContent.querySelector('form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            if (!submitBtn) return;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(deleteModal);
+                    modalInstance.hide();
+                    location.reload();
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    showDeleteError(data.error || 'Error deleting grade.');
+                }
+            })
+            .catch(err => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                showDeleteError('Network error. Please try again.');
+                console.error('Error:', err);
+            });
+        });
+
+        function showDeleteError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    deleteModal.addEventListener('hidden.bs.modal', function () {
+        deleteModalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading...</p>
+            </div>
+        `;
+    });
+});
+</script>
+{% endblock %}

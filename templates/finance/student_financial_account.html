@@ -1,0 +1,846 @@
+<!-- finance/templates/finance/student_financial_account.html -->
+{% extends 'base/base.html' %}
+
+{% load static %}
+
+{% block page_title %}{{ student.user.get_full_name }} - Financial Account{% endblock %}
+
+{% block content %}
+<style>
+    .stat-card {
+        border-radius: 12px;
+        padding: 1.25rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: var(--bs-tertiary-bg);
+        height: 100%;
+        border: 1px solid var(--bs-border-color);
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+    .stat-card .number {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+    .stat-card .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--bs-secondary-color);
+        font-weight: 600;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+    .balance-badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+    .entry-type-badge {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .amount-debit {
+        color: #dc3545;
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+    }
+    .amount-credit {
+        color: #198754;
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+    }
+    .student-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--eduai-gold, #946B1C), #7a5917);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .entry-row {
+        transition: background-color 0.15s ease;
+    }
+    .entry-row:hover {
+        background-color: var(--bs-tertiary-bg);
+    }
+    .kpi-card {
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+    }
+    .kpi-card .number {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    .kpi-card .label {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--bs-secondary-color);
+        font-weight: 600;
+    }
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+    }
+    .modal-backdrop {
+        opacity: 0.5 !important;
+    }
+    .modal-backdrop.show {
+        opacity: 0.5 !important;
+    }
+    body.modal-open {
+        overflow: auto !important;
+        padding-right: 0 !important;
+    }
+
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .addon-tag {
+        font-size: 0.6rem;
+        padding: 0.1rem 0.4rem;
+        border-radius: 3px;
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.12));
+        color: var(--eduai-gold, #946B1C);
+        display: inline-block;
+        margin-right: 0.2rem;
+    }
+</style>
+
+<!-- How Financial Account Works -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How Financial Account Works</div>
+            <p class="text">
+                This page shows the complete financial history for a student. The KPI cards display
+                <strong>Total Charged</strong>, <strong>Total Payments</strong>, and the
+                <strong>Current Balance</strong>.
+                {% if is_new_student %}
+                <strong>New Student Fee Breakdown</strong> shows the <strong>Base Fee</strong> and
+                <strong>Add-ons</strong> (admission, uniform, etc.) for this new student.
+                {% endif %}
+                The <strong>Transaction History</strong> lists all debits (charges) and credits (payments)
+                with dates, descriptions, and amounts.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid py-4">
+    <!-- ========================================================== -->
+    <!-- HEADER                                                     -->
+    <!-- ========================================================== -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge badge-gold rounded-pill px-3 py-2">
+                            <i class="bi bi-wallet2 me-1"></i> FINANCIAL ACCOUNT
+                        </span>
+                        {% if balance_status == 'OUTSTANDING' %}
+                            <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-2">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i> Outstanding
+                            </span>
+                        {% elif balance_status == 'CREDIT' %}
+                            <span class="badge bg-info-subtle text-info rounded-pill px-3 py-2">
+                                <i class="bi bi-arrow-up-circle me-1"></i> Credit
+                            </span>
+                        {% else %}
+                            <span class="badge badge-teal rounded-pill px-3 py-2">
+                                <i class="bi bi-check-circle-fill me-1"></i> Settled
+                            </span>
+                        {% endif %}
+                        {% if is_new_student %}
+                            <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
+                                <i class="bi bi-star-fill me-1"></i> New Student
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="student-avatar">
+                            {{ student.user.first_name|first|upper }}{{ student.user.last_name|first|upper }}
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-1">{{ student.user.get_full_name|default:student }}</h5>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span class="text-muted small">
+                                    <i class="bi bi-person-badge me-1"></i>{{ student.admission_number|default:"N/A" }}
+                                </span>
+                                {% if student.school_class %}
+                                    <span class="text-muted small">·</span>
+                                    <span class="text-muted small">
+                                        <i class="bi bi-people me-1"></i>{{ student.school_class.name }}
+                                    </span>
+                                {% endif %}
+                                {% if student.grade_level %}
+                                    <span class="text-muted small">·</span>
+                                    <span class="text-muted small">
+                                        <i class="bi bi-layers me-1"></i>{{ student.grade_level.name }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    {% if can_manage %}
+                    <button type="button" class="btn btn-gold btn-sm" id="recordPaymentBtn">
+                        <i class="bi bi-plus-circle me-1"></i> Record Payment
+                    </button>
+                    {% endif %}
+                    <a href="{% url 'students:student_detail' student.id %}" class="btn btn-outline-gold btn-sm">
+                        <i class="bi bi-person me-1"></i> View Profile
+                    </a>
+                    <a href="{% url 'finance:student_fees_list' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i> Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- KPI CARDS - Main Financial Metrics                          -->
+    <!-- ========================================================== -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card">
+                <span class="label"><i class="bi bi-cash-stack me-1"></i>Total Charged</span>
+                <span class="number text-gold">₵{{ total_debits|floatformat:2 }}</span>
+                <small class="text-muted d-block">Lifetime total</small>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card">
+                <span class="label"><i class="bi bi-check-circle me-1"></i>Total Payments</span>
+                <span class="number text-teal">₵{{ total_credits|floatformat:2 }}</span>
+                <small class="text-muted d-block">Lifetime total</small>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card {% if balance > 0 %}border-danger{% elif balance < 0 %}border-info{% else %}border-success{% endif %}">
+                <span class="label"><i class="bi bi-wallet2 me-1"></i>Current Balance</span>
+                <span class="number {% if balance > 0 %}text-danger{% elif balance < 0 %}text-info{% else %}text-teal{% endif %}">
+                    {% if balance > 0 %}
+                        ₵{{ balance|floatformat:2 }}
+                    {% elif balance < 0 %}
+                        (₵{{ balance|floatformat:2|cut:"-" }})
+                    {% else %}
+                        ₵0.00
+                    {% endif %}
+                </span>
+                <small class="text-muted d-block">
+                    {% if balance > 0 %}
+                        <span class="text-danger">Amount due</span>
+                    {% elif balance < 0 %}
+                        <span class="text-info">Credit balance</span>
+                    {% else %}
+                        <span class="text-teal">Fully settled</span>
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card">
+                <span class="label"><i class="bi bi-file-earmark-text me-1"></i>Invoices</span>
+                <span class="number text-gold">{{ invoice_count|default:"0" }}</span>
+                <small class="text-muted d-block">
+                    <span class="text-danger">{{ unpaid_invoices|default:"0" }} unpaid</span>
+                    ·
+                    <span class="text-teal">{{ paid_invoices|default:"0" }} paid</span>
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- NEW STUDENT FEE BREAKDOWN (ONLY FOR NEW STUDENTS)          -->
+    <!-- ========================================================== -->
+    {% if is_new_student and current_term %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-transparent border-0 p-4 pb-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2">
+                    <i class="bi bi-star-fill me-1"></i> NEW STUDENT
+                </span>
+                <h6 class="fw-bold mb-0">
+                    <i class="bi bi-cash-stack text-gold me-2"></i>
+                    Fee Breakdown - {{ current_term.name }}
+                </h6>
+            </div>
+        </div>
+        <div class="card-body p-4 pt-2">
+            <div class="row g-3">
+                <!-- Base Fee -->
+                <div class="col-md-4">
+                    <div class="stat-card bg-light">
+                        <span class="label"><i class="bi bi-calculator me-1"></i>Base Fee</span>
+                        <span class="number text-gold">₵{{ base_fee_amount|floatformat:2 }}</span>
+                        <small class="text-muted d-block">Class fee structure</small>
+                    </div>
+                </div>
+
+                <!-- Add-ons -->
+                <div class="col-md-4">
+                    <div class="stat-card bg-gold-soft">
+                        <span class="label"><i class="bi bi-plus-square me-1"></i>Add-ons</span>
+                        <span class="number text-gold">₵{{ addon_amount|floatformat:2 }}</span>
+                        <small class="text-muted d-block">
+                            {% if addon_items %}
+                                {{ addon_items|length }} item(s)
+                            {% else %}
+                                No add-ons
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Total Fee -->
+                <div class="col-md-4">
+                    <div class="stat-card bg-teal-soft">
+                        <span class="label"><i class="bi bi-check-circle me-1"></i>Total Fee</span>
+                        <span class="number text-teal">₵{{ total_fee_amount|floatformat:2 }}</span>
+                        <small class="text-muted d-block">Base + Add-ons</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add-on Items Details -->
+            {% if addon_items %}
+            <div class="mt-3">
+                <small class="text-muted text-uppercase fw-semibold">
+                    <i class="bi bi-list-ul me-1"></i>Add-on Items
+                </small>
+                <div class="table-responsive mt-2">
+                    <table class="table table-sm table-borderless mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="small text-muted text-uppercase">Description</th>
+                                <th class="small text-muted text-uppercase">Category</th>
+                                <th class="small text-muted text-uppercase text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in addon_items %}
+                            <tr>
+                                <td>
+                                    <span class="fw-medium">{{ item.description }}</span>
+                                    <span class="addon-tag">Add-on</span>
+                                </td>
+                                <td><span class="badge bg-light text-dark">{{ item.category }}</span></td>
+                                <td class="text-end text-gold fw-bold">₵{{ item.amount|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="border-top">
+                                <td colspan="2" class="text-end fw-bold">Total Add-ons</td>
+                                <td class="text-end fw-bold text-gold">₵{{ addon_amount|floatformat:2 }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ========================================================== -->
+    <!-- CURRENT TERM SUMMARY                                      -->
+    <!-- ========================================================== -->
+    {% if current_term %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h6 class="fw-bold mb-1">
+                        <i class="bi bi-calendar3 text-gold me-2"></i>
+                        {{ current_term.name }} Summary
+                    </h6>
+                    <small class="text-muted">{{ current_term.start_date|date:"M d, Y" }} - {{ current_term.end_date|date:"M d, Y" }}</small>
+                </div>
+                <div>
+                    {% if current_term_balance > 0 %}
+                        <span class="badge bg-danger-subtle text-danger px-3 py-2">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Balance: ₵{{ current_term_balance|floatformat:2 }}
+                        </span>
+                    {% elif current_term_balance < 0 %}
+                        <span class="badge bg-info-subtle text-info px-3 py-2">
+                            <i class="bi bi-arrow-up me-1"></i>
+                            Credit: ₵{{ current_term_balance|floatformat:2|cut:"-" }}
+                        </span>
+                    {% else %}
+                        <span class="badge badge-teal px-3 py-2">
+                            <i class="bi bi-check-circle me-1"></i>
+                            Fully Settled
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ========================================================== -->
+    <!-- TRANSACTION HISTORY                                       -->
+    <!-- ========================================================== -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-transparent border-0 p-4 pb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-clock-history text-gold me-2"></i>
+                Transaction History
+            </h6>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">
+                    {{ ledger_entries|length }} entries
+                </span>
+                <span class="text-muted small" id="filterStatus"></span>
+                <input type="text" id="transactionSearchInput" class="form-control form-control-sm" placeholder="Search transactions..." style="max-width: 220px;">
+            </div>
+        </div>
+        <div class="card-body p-0">
+            {% if ledger_entries %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="transactionsTable">
+                    <thead>
+                        <tr>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2 ps-4" style="min-width: 100px;">
+                                <i class="bi bi-calendar me-1"></i>Date
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2" style="min-width: 120px;">
+                                <i class="bi bi-tag me-1"></i>Type
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2" style="min-width: 200px;">
+                                <i class="bi bi-file-text me-1"></i>Description
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2 text-end" style="min-width: 120px;">
+                                <i class="bi bi-cash me-1"></i>Debit
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2 text-end" style="min-width: 120px;">
+                                <i class="bi bi-cash-stack me-1"></i>Credit
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2 text-end pe-4" style="min-width: 100px;">
+                                <i class="bi bi-person me-1"></i>By
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-2 text-end pe-4" style="min-width: 90px;">
+                                <i class="bi bi-receipt me-1"></i>Receipt
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0" id="transactionsTableBody">
+                        {% for entry in ledger_entries %}
+                        <tr class="entry-row border-bottom transaction-row" data-search="{{ entry.description }} {{ entry.reference }}">
+                            <!-- Date -->
+                            <td class="ps-4 py-3">
+                                <span class="fw-semibold">{{ entry.transaction_date|date:"M d, Y" }}</span>
+                                <br>
+                                <small class="text-muted">{{ entry.transaction_date|date:"H:i" }}</small>
+                            </td>
+
+                            <!-- Type -->
+                            <td class="py-3">
+                                <span class="entry-type-badge
+                                    {% if entry.side == 'DEBIT' %}bg-danger-subtle text-danger
+                                    {% else %}bg-teal-soft text-teal{% endif %}
+                                ">
+                                    {{ entry.get_entry_type_display }}
+                                </span>
+                                {% if entry.academic_term %}
+                                    <br>
+                                    <small class="text-muted">{{ entry.academic_term.name }}</small>
+                                {% endif %}
+                            </td>
+
+                            <!-- Description -->
+                            <td class="py-3">
+                                <div class="fw-semibold">{{ entry.description }}</div>
+                                {% if entry.reference %}
+                                    <small class="text-muted">
+                                        <i class="bi bi-link-45deg me-1"></i>{{ entry.reference }}
+                                    </small>
+                                {% endif %}
+                            </td>
+
+                            <!-- Debit -->
+                            <td class="py-3 text-end">
+                                {% if entry.side == 'DEBIT' %}
+                                    <span class="amount-debit">₵{{ entry.amount|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Credit -->
+                            <td class="py-3 text-end">
+                                {% if entry.side == 'CREDIT' %}
+                                    <span class="amount-credit">₵{{ entry.amount|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Created By -->
+                            <td class="py-3 pe-4 text-end">
+                                {% if entry.created_by %}
+                                    <small>{{ entry.created_by.get_full_name|default:entry.created_by.username }}</small>
+                                {% else %}
+                                    <small class="text-muted">System</small>
+                                {% endif %}
+                            </td>
+
+                            <!-- Receipt -->
+                            <td class="py-3 pe-4 text-end">
+                                {% if entry.payment and entry.payment.status == 'CONFIRMED' %}
+                                <a href="{% url 'finance:payment_receipt' entry.payment.id %}" target="_blank"
+                                   class="btn btn-sm btn-outline-secondary" title="View receipt">
+                                    <i class="bi bi-receipt"></i>
+                                </a>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <!-- Footer Totals -->
+                    <tfoot class="bg-light">
+                        <tr>
+                            <td colspan="3" class="ps-4 py-3 fw-bold">Totals</td>
+                            <td class="py-3 text-end fw-bold text-danger">₵{{ total_debits|floatformat:2 }}</td>
+                            <td class="py-3 text-end fw-bold text-teal">₵{{ total_credits|floatformat:2 }}</td>
+                            <td class="py-3 pe-4 text-end"></td>
+                            <td class="py-3 pe-4 text-end"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                <p class="mb-0">No financial transactions found.</p>
+                <small class="text-muted">Transactions will appear here once invoices are generated or payments are made.</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- QUICK ACTIONS                                             -->
+    <!-- ========================================================== -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-lightning-fill text-warning me-2"></i>Quick Actions
+                    </h6>
+                    <div class="d-flex flex-wrap gap-3">
+                        {% if can_manage %}
+                        <button type="button" class="btn btn-gold" id="recordPaymentBtn2">
+                            <i class="bi bi-plus-circle me-1"></i> Record Payment
+                        </button>
+                        <a href="{% url 'finance:invoice_list' %}?student={{ student.id }}" class="btn btn-outline-gold">
+                            <i class="bi bi-file-earmark-text me-1"></i>View Invoices
+                        </a>
+                        {% endif %}
+                        <button type="button" class="btn btn-outline-secondary" onclick="window.print();">
+                            <i class="bi bi-printer me-1"></i>Print Statement
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- PAYMENT MODAL                                               -->
+<!-- ========================================================== -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-body p-0">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading payment form...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- TOAST CONTAINER                                            -->
+<!-- ========================================================== -->
+<div class="toast-container">
+    <div id="liveToast" class="toast align-items-center border-0 shadow-sm rounded-4" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                <span id="toastMessage">Success!</span>
+            </div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- PRINT STYLES                                              -->
+<!-- ========================================================== -->
+<style media="print">
+    .no-print { display: none !important; }
+    .card { border: none !important; box-shadow: none !important; }
+    .card-body { padding: 1rem !important; }
+    .container-fluid { padding: 0 !important; }
+    .stat-card { background: #f8f9fa !important; }
+    .entry-row:hover { background: transparent !important; }
+    tfoot { background: #f8f9fa !important; }
+    .btn, .btn-group { display: none !important; }
+    .badge { border: 1px solid #ddd !important; }
+    .toast-container { display: none !important; }
+    .modal { display: none !important; }
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER
+    // ============================================================
+    const transactionSearchInput = document.getElementById('transactionSearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const allRows = document.querySelectorAll('.transaction-row');
+
+    if (transactionSearchInput && allRows.length > 0) {
+        transactionSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const searchData = row.getAttribute('data-search') || '';
+                const text = row.textContent.toLowerCase();
+                const isVisible = searchData.includes(query) || text.includes(query);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (filterStatus) {
+                if (query) {
+                    filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                } else {
+                    filterStatus.textContent = '';
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // LOAD PAYMENT MODAL
+    // ============================================================
+    function loadPaymentModal(studentId) {
+        const modal = document.getElementById('paymentModal');
+        const modalContent = modal.querySelector('.modal-body');
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading payment form...</p>
+            </div>
+        `;
+
+        let url = '/finance/api/payment-modal/';
+        if (studentId) {
+            url += `?student_id=${studentId}`;
+        }
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+            modalContent.querySelectorAll('script').forEach(function(oldScript) {
+                const newScript = document.createElement('script');
+                newScript.textContent = oldScript.textContent;
+                document.body.appendChild(newScript);
+            });
+        })
+        .catch(err => {
+            console.error('Error loading payment modal:', err);
+            modalContent.innerHTML = `
+                <div class="p-4 text-center">
+                    <div class="alert alert-danger border-0 rounded-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error loading payment form. Please try again.
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        });
+
+        const modalInstance = new bootstrap.Modal(modal);
+        modalInstance.show();
+    }
+
+    // ============================================================
+    // RECORD PAYMENT BUTTON HANDLERS
+    // ============================================================
+    const recordPaymentBtn = document.getElementById('recordPaymentBtn');
+    const recordPaymentBtn2 = document.getElementById('recordPaymentBtn2');
+
+    function handleRecordPaymentClick() {
+        loadPaymentModal('{{ student.id }}');
+    }
+
+    if (recordPaymentBtn) {
+        recordPaymentBtn.addEventListener('click', handleRecordPaymentClick);
+    }
+    if (recordPaymentBtn2) {
+        recordPaymentBtn2.addEventListener('click', handleRecordPaymentClick);
+    }
+
+    // ============================================================
+    // TOAST NOTIFICATION
+    // ============================================================
+    function showToast(message, type) {
+        const toast = document.getElementById('liveToast');
+        const toastBody = document.getElementById('toastBody');
+
+        if (type === 'success') {
+            toastBody.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-success-subtle';
+        } else if (type === 'error') {
+            toastBody.innerHTML = `<i class="bi bi-exclamation-circle-fill text-danger me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-danger-subtle';
+        } else {
+            toastBody.innerHTML = `<i class="bi bi-info-circle-fill text-info me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-info-subtle';
+        }
+
+        const toastInstance = new bootstrap.Toast(toast, {
+            autohide: true,
+            delay: 4000
+        });
+        toastInstance.show();
+    }
+
+    // ============================================================
+    // AUTO-DISMISS MESSAGES
+    // ============================================================
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+
+    // ============================================================
+    // FIX: Ensure body is not locked after modal close
+    // ============================================================
+    const modalElement = document.getElementById('paymentModal');
+    modalElement.addEventListener('hidden.bs.modal', function() {
+        document.body.classList.remove('modal-open');
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(function(backdrop) {
+            backdrop.remove();
+        });
+        document.body.style.paddingRight = '';
+        document.body.style.overflow = '';
+    });
+
+    // ============================================================
+    // Expose functions globally for payment_modal.html
+    // ============================================================
+    window.showToast = showToast;
+    window.loadPaymentModal = loadPaymentModal;
+});
+</script>
+{% endblock %}

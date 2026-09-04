@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+{% include "base/header.html" %}
+<head>
+
+    <style>
+        /* --- Inherit your eduai-theme variables --- */
+        :root {
+            --eduai-gold: #C9962B;
+            --eduai-gold-soft: rgba(201, 148, 43, 0.16);
+            --eduai-signal: #3FA796;
+
+            --app-bg: #F7F4EC;
+            --surface-bg: #FFFFFF;
+            --surface-border: #E7E1D3;
+            --text-primary: #1F2A28;
+            --text-muted: #6B7570;
+        }
+
+        html[data-bs-theme="dark"] {
+            --app-bg: #0E1715;
+            --surface-bg: #142320;
+            --surface-border: #223330;
+            --text-primary: #ECE8DD;
+            --text-muted: #8FA39D;
+        }
+
+        /* --- Global Reset --- */
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--app-bg);
+            color: var(--text-primary);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            transition: background-color .25s ease, color .25s ease;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* --- Enterprise Brand Watermark --- */
+        .brand-watermark {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            z-index: 10;
+        }
+        .brand-watermark .icon {
+            width: 32px; height: 32px;
+            background: linear-gradient(135deg, var(--eduai-gold), #E4B65C);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: #1F1400; font-weight: 800; font-size: 14px;
+        }
+        .brand-watermark .text {
+            font-weight: 700; font-size: 1.1rem; letter-spacing: -0.01em;
+            color: var(--text-primary);
+        }
+
+        /* --- The Login Card --- */
+        .login-card {
+            background-color: var(--surface-bg);
+            border: 1px solid var(--surface-border);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.04);
+            transition: background-color .25s ease, border-color .25s ease;
+            position: relative;
+            z-index: 5;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .login-header .icon {
+            width: 64px; height: 64px;
+            background-color: var(--eduai-gold-soft);
+            color: var(--eduai-gold);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 16px;
+        }
+        .login-header h4 {
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 4px;
+        }
+        .login-header p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        /* --- Form Elements --- */
+        .form-floating-custom {
+            margin-bottom: 20px;
+        }
+        .form-floating-custom label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 6px;
+        }
+        .form-control {
+            background-color: var(--app-bg) !important; /* Slightly distinct from card */
+            border: 1px solid var(--surface-border) !important;
+            border-radius: 12px;
+            color: var(--text-primary) !important;
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-control:focus {
+            border-color: var(--eduai-gold) !important;
+            box-shadow: 0 0 0 4px var(--eduai-gold-soft) !important;
+            background-color: var(--app-bg) !important;
+        }
+        .form-control::placeholder {
+            color: var(--text-muted);
+            opacity: 0.6;
+        }
+
+        .btn-primary-custom {
+            background-color: var(--eduai-gold);
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-weight: 600;
+            font-size: 1rem;
+            color: #1F1400;
+            width: 100%;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(201, 148, 43, 0.2);
+        }
+        .btn-primary-custom:hover {
+            background-color: #B8862A;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(201, 148, 43, 0.25);
+            color: #1F1400;
+        }
+        .btn-primary-custom:active {
+            transform: translateY(0);
+        }
+
+        .forgot-link {
+            text-align: right;
+            margin-top: -12px;
+            margin-bottom: 24px;
+        }
+        .forgot-link a {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .forgot-link a:hover {
+            color: var(--eduai-gold);
+        }
+
+        .footer-text {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* --- Responsive Tweaks --- */
+        @media (max-width: 480px) {
+            .login-card { padding: 24px; border-radius: 16px; margin: 16px; }
+            .brand-watermark { top: 16px; left: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top-left Brand Anchor -->
+    <a href="#" class="brand-watermark">
+        <div class="icon">EA</div>
+        <span class="text">EduAI</span>
+    </a>
+
+    <div class="login-card">
+        <div class="login-header">
+            <div class="icon">
+                <i class="bi bi-shield-lock"></i>
+            </div>
+            <h4>Welcome Back</h4>
+            <p>Sign in to your institution workspace</p>
+        </div>
+
+        <!-- Django Form Errors -->
+        {% if form.errors %}
+            <div class="alert alert-danger py-2 px-3 small border-0 rounded-3" role="alert" style="background-color: rgba(220, 53, 69, 0.1); color: #dc3545;">
+                <i class="bi bi-exclamation-triangle me-2"></i> Invalid username or password.
+            </div>
+        {% endif %}
+
+        <!-- Login Form -->
+        <form method="POST" action="{% url 'accounts:login' %}">
+            {% csrf_token %}
+
+            <div class="form-floating-custom">
+                <label for="id_username"><i class="bi bi-person me-1"></i> Username</label>
+                <input type="text" name="username" id="id_username" class="form-control"
+                       placeholder="Enter your username" required autofocus autocomplete="username">
+            </div>
+
+            <div class="form-floating-custom">
+                <label for="id_password"><i class="bi bi-key me-1"></i> Password</label>
+                <input type="password" name="password" id="id_password" class="form-control"
+                       placeholder="••••••••" required autocomplete="current-password">
+            </div>
+
+            <div class="forgot-link">
+                <a href="#">Forgot Password?</a>
+            </div>
+
+            <button type="submit" class="btn btn-primary-custom d-flex align-items-center justify-content-center gap-2">
+                Sign In <i class="bi bi-arrow-right-short fs-5"></i>
+            </button>
+        </form>
+
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+        <div class="footer-text">
+            Protected by enterprise-grade multi-tenant encryption.
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sync with your dashboard's theme system
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('eduai-theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1381 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block content %}
+
+<style>
+/* ============================================================
+   TEACHER ASSIGNMENT MANAGEMENT
+   ============================================================ */
+
+.teacher-assignment-page {
+    --ta-primary: var(--primary-color, #C9962B);
+    --ta-primary-soft: var(--eduai-gold-soft, rgba(201, 148, 43, .16));
+
+    --ta-success: var(--eduai-signal, #3FA796);
+    --ta-success-soft: var(--eduai-signal-soft, rgba(63, 167, 150, .16));
+
+    --ta-warning: #B8752F;
+    --ta-warning-soft: rgba(184, 117, 47, .12);
+
+    --ta-danger: #dc2626;
+    --ta-danger-soft: rgba(220, 38, 38, .10);
+
+    --ta-muted: var(--text-muted, #6B7570);
+    --ta-border: var(--surface-border, #E7E1D3);
+
+    --ta-card: var(--surface-bg, #ffffff);
+    --ta-bg: var(--app-bg, #f8fafc);
+}
+
+.teacher-assignment-page .btn-primary {
+    background-color: var(--ta-primary);
+    border-color: var(--ta-primary);
+}
+
+.teacher-assignment-page .btn-primary:hover,
+.teacher-assignment-page .btn-primary:focus {
+    background-color: #B8862A;
+    border-color: #B8862A;
+}
+
+.teacher-assignment-page .text-primary {
+    color: var(--ta-primary) !important;
+}
+
+/* ============================================================
+   PAGE HEADER
+   ============================================================ */
+
+.teacher-assignment-page .page-header {
+
+        border-radius: 12px;
+        padding: 1.25rem;
+        background: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        height: 100%;
+    margin-bottom: 1.5rem;
+}
+
+.teacher-assignment-page .page-title {
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.teacher-assignment-page .page-subtitle {
+    color: var(--ta-muted);
+    font-size: .9rem;
+    margin-top: .25rem;
+}
+
+/* ============================================================
+   PAGE DESCRIPTION - MATCHING STUDENT LIST STYLE
+   ============================================================ */
+
+.page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+/* ============================================================
+   ACTION BUTTONS
+   ============================================================ */
+
+.teacher-assignment-page .action-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+    align-items: center;
+}
+
+.teacher-assignment-page .action-toolbar .btn {
+    border-radius: .65rem;
+    font-weight: 600;
+}
+
+/* ============================================================
+   KPI CARDS
+   ============================================================ */
+
+.teacher-assignment-page .stat-card {
+    height: 100%;
+    border: 1px solid var(--ta-border);
+    border-radius: 1rem;
+    background: var(--ta-card);
+    box-shadow: 0 4px 18px rgba(15, 23, 42, .04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.teacher-assignment-page .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(15, 23, 42, .08);
+}
+
+.teacher-assignment-page .stat-card-body {
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+}
+
+.teacher-assignment-page .stat-icon {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: .8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+}
+
+.teacher-assignment-page .stat-icon.primary {
+    background: var(--ta-primary-soft);
+    color: var(--ta-primary);
+}
+
+.teacher-assignment-page .stat-icon.success {
+    background: var(--ta-success-soft);
+    color: var(--ta-success);
+}
+
+.teacher-assignment-page .stat-icon.warning {
+    background: var(--ta-warning-soft);
+    color: var(--ta-warning);
+}
+
+.teacher-assignment-page .stat-icon.danger {
+    background: var(--ta-danger-soft);
+    color: var(--ta-danger);
+}
+
+.teacher-assignment-page .stat-label {
+    font-size: .78rem;
+    color: var(--ta-muted);
+    margin-bottom: .1rem;
+}
+
+.teacher-assignment-page .stat-value {
+    font-size: 1.35rem;
+    line-height: 1.1;
+    font-weight: 750;
+}
+
+/* ============================================================
+   FILTER CARD WITH AUTO-SEARCH
+   ============================================================ */
+
+.teacher-assignment-page .filter-card {
+    border: 1px solid var(--ta-border);
+    border-radius: 1rem;
+    background: var(--ta-card);
+    box-shadow: 0 4px 18px rgba(15, 23, 42, .04);
+}
+
+.teacher-assignment-page .filter-card-body {
+    padding: 1rem 1.25rem;
+}
+
+.teacher-assignment-page .filter-label {
+    display: block;
+    font-size: .78rem;
+    font-weight: 700;
+    color: var(--ta-muted);
+    margin-bottom: .35rem;
+}
+
+.teacher-assignment-page .filter-help {
+    font-size: 0.7rem;
+    color: var(--ta-muted);
+    margin-top: 0.25rem;
+}
+
+/* ============================================================
+   AUTO-FILTER SEARCH
+   ============================================================ */
+
+.teacher-assignment-page .search-wrapper {
+    position: relative;
+}
+
+.teacher-assignment-page .search-wrapper .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ta-muted);
+}
+
+.teacher-assignment-page .search-wrapper .search-input {
+    padding-left: 38px;
+}
+
+.teacher-assignment-page .search-result-count {
+    font-size: 0.8rem;
+    color: var(--ta-muted);
+    margin-top: 0.25rem;
+}
+
+.teacher-assignment-page .search-result-count .highlight {
+    color: var(--ta-primary);
+    font-weight: 600;
+}
+
+/* ============================================================
+   FILTER BADGE
+   ============================================================ */
+
+.teacher-assignment-page .filter-badge-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.teacher-assignment-page .filter-badge {
+    display: none;
+    background-color: var(--ta-primary-soft);
+    color: var(--ta-primary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.teacher-assignment-page .filter-badge.show {
+    display: inline-flex;
+}
+
+.teacher-assignment-page .filter-badge .clear-filter {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.teacher-assignment-page .filter-badge .clear-filter:hover {
+    opacity: 1;
+}
+
+/* ============================================================
+   TABLE CARD
+   ============================================================ */
+
+.teacher-assignment-page .table-card {
+    border: 1px solid var(--ta-border);
+    border-radius: 1rem;
+    background: var(--ta-card);
+    box-shadow: 0 4px 18px rgba(15, 23, 42, .04);
+    overflow: hidden;
+}
+
+.teacher-assignment-page .table-card-header {
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid var(--ta-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.teacher-assignment-page .table-title {
+    font-weight: 700;
+    margin: 0;
+}
+
+.teacher-assignment-page .table-subtitle {
+    color: var(--ta-muted);
+    font-size: .8rem;
+    margin-top: .2rem;
+}
+
+.teacher-assignment-page .table-responsive {
+    min-height: 200px;
+}
+
+.teacher-assignment-page table {
+    margin-bottom: 0;
+}
+
+.teacher-assignment-page thead th {
+    background: var(--ta-bg);
+    color: var(--ta-muted);
+    font-size: .75rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: .025em;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--ta-border);
+    padding: .85rem 1rem;
+}
+
+.teacher-assignment-page tbody td {
+    padding: .9rem 1rem;
+    vertical-align: middle;
+    border-color: var(--ta-border);
+}
+
+.teacher-assignment-page tbody tr {
+    transition: background .15s ease;
+}
+
+.teacher-assignment-page tbody tr:hover {
+    background: var(--ta-primary-soft);
+}
+
+.teacher-assignment-page tbody tr.hidden-row {
+    display: none !important;
+}
+
+/* ============================================================
+   TEACHER CELL
+   ============================================================ */
+
+.teacher-assignment-page .teacher-cell {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    min-width: 190px;
+}
+
+.teacher-assignment-page .teacher-avatar {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    border-radius: 50%;
+    background: var(--ta-primary-soft);
+    color: var(--ta-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 750;
+    font-size: .85rem;
+}
+
+.teacher-assignment-page .teacher-name {
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.teacher-assignment-page .teacher-id {
+    color: var(--ta-muted);
+    font-size: .72rem;
+    margin-top: .15rem;
+}
+
+/* ============================================================
+   BADGES
+   ============================================================ */
+
+.teacher-assignment-page .assignment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    border-radius: 999px;
+    padding: .3rem .6rem;
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.teacher-assignment-page .badge-primary-soft {
+    background: var(--ta-primary-soft);
+    color: var(--ta-primary);
+}
+
+.teacher-assignment-page .badge-success-soft {
+    background: var(--ta-success-soft);
+    color: var(--ta-success);
+}
+
+.teacher-assignment-page .badge-warning-soft {
+    background: var(--ta-warning-soft);
+    color: var(--ta-warning);
+}
+
+.teacher-assignment-page .badge-secondary-soft {
+    background: rgba(100, 116, 139, .10);
+    color: var(--ta-muted);
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+
+.teacher-assignment-page .row-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .35rem;
+    white-space: nowrap;
+}
+
+.teacher-assignment-page .row-actions .btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: .55rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+}
+
+.teacher-assignment-page .row-actions .btn:hover {
+    background: var(--ta-primary-soft);
+}
+
+.teacher-assignment-page .row-actions .btn.text-danger:hover {
+    background: var(--ta-danger-soft);
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+
+.teacher-assignment-page .empty-state {
+    padding: 4rem 1.5rem;
+    text-align: center;
+}
+
+.teacher-assignment-page .empty-icon {
+    width: 68px;
+    height: 68px;
+    margin: 0 auto 1rem;
+    border-radius: 1rem;
+    background: var(--ta-primary-soft);
+    color: var(--ta-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.7rem;
+}
+
+.teacher-assignment-page .empty-title {
+    font-weight: 750;
+    margin-bottom: .35rem;
+}
+
+.teacher-assignment-page .empty-text {
+    color: var(--ta-muted);
+    max-width: 520px;
+    margin: 0 auto 1.25rem;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 767.98px) {
+    .teacher-assignment-page .page-title {
+        font-size: 1.2rem;
+    }
+    .teacher-assignment-page .action-toolbar {
+        width: 100%;
+    }
+    .teacher-assignment-page .action-toolbar .btn {
+        flex: 1 1 auto;
+    }
+    .teacher-assignment-page .table-card-header {
+        align-items: flex-start;
+    }
+    .teacher-assignment-page .row-actions {
+        justify-content: flex-start;
+    }
+    .teacher-assignment-page .page-description {
+        padding: 0.75rem 1rem;
+    }
+}
+
+/* ============================================================
+   DARK MODE
+   ============================================================ */
+[data-bs-theme="dark"] .teacher-assignment-page .table-card,
+[data-bs-theme="dark"] .teacher-assignment-page .filter-card,
+[data-bs-theme="dark"] .teacher-assignment-page .stat-card {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, .15);
+}
+
+/* Search highlight */
+.search-highlight {
+    background-color: rgba(148, 107, 28, 0.25);
+    border-radius: 2px;
+    padding: 0 2px;
+}
+
+/* Class filter auto */
+.class-filter-auto {
+    transition: all 0.2s;
+}
+
+/* Text gold helper */
+.text-gold {
+    color: var(--ta-primary) !important;
+}
+.bg-gold-soft {
+    background-color: var(--ta-primary-soft) !important;
+}
+</style>
+
+<div class="container-fluid py-3 teacher-assignment-page">
+
+    <!-- ========================================================
+         PAGE HEADER
+         ======================================================== -->
+
+    <div class="page-header">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-3 d-flex align-items-center justify-content-center"
+                         style="width:44px; height:44px; background:var(--ta-primary-soft); color:var(--ta-primary);">
+                        <i class="bi bi-person-workspace fs-4"></i>
+                    </div>
+                    <div>
+                        <h1 class="page-title">Teacher Assignments</h1>
+                        <div class="page-subtitle">Manage teacher-to-class subject assignments</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-toolbar">
+
+                <button type="button" class="btn btn-outline-success"
+                        data-bs-toggle="modal" data-bs-target="#teacherAssignmentModal"
+                        data-url="{% url 'staff:teacher_assignment_create' %}">
+                    <i class="bi bi-plus-circle me-1"></i>Single Assignment
+                </button>
+                <button type="button" class="btn btn-primary"
+                        data-bs-toggle="modal" data-bs-target="#teacherAssignmentBulkModal"
+                        data-url="{% url 'staff:teacher_assignment_bulk_create' %}">
+                    <i class="bi bi-collection-plus me-1"></i>Bulk Assignment
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================
+         PAGE DESCRIPTION - MATCHING STUDENT LIST STYLE
+         ======================================================== -->
+
+   <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle-fill icon"></i>
+            <div>
+                <div class="title">
+                    Teacher Assignment Management
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% elif request.user.role == 'HOD' %}
+                            HOD View
+                        {% else %}
+                            Read-Only View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    This page manages teacher-to-class subject assignments.
+                    Use the search and filters below to narrow assignments by teacher name, subject, or class.
+                    Click <strong>"Single Assignment"</strong> to assign a teacher to a specific subject in a class,
+                    or <strong>"Bulk Assignment"</strong> to assign a teacher to multiple subjects at once.
+                    The <strong>Class Teacher</strong> setting allows a teacher to be automatically assigned to all subjects in a class.
+                    <span class="badge bg-gold-soft text-gold ms-1">Admin Only: Edit/Delete</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================
+         KPI CARDS
+         ======================================================== -->
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="stat-card">
+                <div class="stat-card-body">
+                    <div class="stat-icon primary"><i class="bi bi-diagram-3"></i></div>
+                    <div>
+                        <div class="stat-label">Assignments</div>
+                        <div class="stat-value" id="totalAssignments">{{ assignments|length }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-3">
+            <div class="stat-card">
+                <div class="stat-card-body">
+                    <div class="stat-icon success"><i class="bi bi-person-check"></i></div>
+                    <div>
+                        <div class="stat-label">Active Teachers</div>
+                        <div class="stat-value">{{ teachers|length }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-3">
+            <div class="stat-card">
+                <div class="stat-card-body">
+                    <div class="stat-icon warning"><i class="bi bi-building"></i></div>
+                    <div>
+                        <div class="stat-label">Active Classes</div>
+                        <div class="stat-value">{{ classes|length }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-xl-3">
+            <div class="stat-card">
+                <div class="stat-card-body">
+                    <div class="stat-icon danger"><i class="bi bi-book"></i></div>
+                    <div>
+                        <div class="stat-label">Assigned Subjects</div>
+                        <div class="stat-value">{{ assignments|length }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================
+         FILTER CARD WITH AUTO-SEARCH
+         ======================================================== -->
+
+    <div class="filter-card mb-4">
+        <div class="filter-card-body">
+            <div class="row g-3 align-items-end">
+                <!-- Auto-filter search -->
+                <div class="col-12 col-md-6 col-lg-5">
+                    <label for="assignmentSearchInput" class="filter-label">
+                        <i class="bi bi-search me-1"></i>Search Assignments
+                    </label>
+                    <div class="search-wrapper">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" id="assignmentSearchInput" class="form-control search-input"
+                               placeholder="Search by teacher, subject, or class..." autocomplete="off">
+                    </div>
+                    <div class="search-result-count" id="searchResultCount">
+                        Showing <span class="highlight" id="visibleCount">{{ assignments|length }}</span> of <span id="totalCount">{{ assignments|length }}</span> assignments
+                    </div>
+                </div>
+
+                <!-- Class filter - AUTO FILTER on change -->
+                <div class="col-12 col-md-4 col-lg-4">
+                    <label for="assignmentClassFilter" class="filter-label">Filter by Class</label>
+                    <select id="assignmentClassFilter" name="class_id" class="form-select class-filter-auto">
+                        <option value="">All classes</option>
+                        {% for school_class in classes %}
+                            <option value="{{ school_class.id }}"
+                                    {% if selected_class|stringformat:"s" == school_class.id|stringformat:"s" %}selected{% endif %}>
+                                {{ school_class.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="filter-help">
+                        <i class="bi bi-arrow-right"></i> Auto-filters the table instantly
+                    </div>
+                </div>
+
+                <!-- Stats / Clear buttons -->
+                <div class="col-12 col-md-2 col-lg-3">
+                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                        <button type="button" id="clearAllFiltersBtn" class="btn btn-outline-secondary" style="display:none;">
+                            <i class="bi bi-eraser me-1"></i>Clear All
+                        </button>
+                        <span class="text-muted small" id="filterStats"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================
+         ASSIGNMENT TABLE
+         ======================================================== -->
+
+    <div class="table-card">
+
+        <div class="table-card-header">
+            <div>
+                <h5 class="table-title">Teacher Assignment Records</h5>
+                <div class="table-subtitle">Active teacher-to-class and subject assignments</div>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="assignment-badge badge-secondary-soft" id="visibleCountBadge">
+                    <i class="bi bi-list-ul"></i> <span id="badgeCount">{{ assignments|length }}</span> visible
+                </span>
+            </div>
+        </div>
+
+        {% if assignments %}
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Teacher</th>
+                            <th>Class</th>
+                            <th>Subject</th>
+                            <th>Periods / Week</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assignmentTableBody">
+                        {% for assignment in assignments %}
+                            <tr class="assignment-row"
+                                data-teacher="{{ assignment.teacher.user.get_full_name|lower }}"
+                                data-subject="{{ assignment.subject.name|lower }}"
+                                data-class="{{ assignment.school_class.name|lower }}"
+                                data-class-id="{{ assignment.school_class.id }}">
+                                <td>
+                                    <div class="teacher-cell">
+                                        <div class="teacher-avatar">
+                                            {% if assignment.teacher.user.first_name %}
+                                                {{ assignment.teacher.user.first_name|first|upper }}
+                                            {% elif assignment.teacher.user.username %}
+                                                {{ assignment.teacher.user.username|first|upper }}
+                                            {% else %}T{% endif %}
+                                        </div>
+                                        <div>
+                                            <div class="teacher-name">
+                                                {% if assignment.teacher.user.get_full_name %}
+                                                    {{ assignment.teacher.user.get_full_name }}
+                                                {% else %}
+                                                    {{ assignment.teacher.user.username }}
+                                                {% endif %}
+                                            </div>
+                                            {% if assignment.teacher.staff_number %}
+                                                <div class="teacher-id">{{ assignment.teacher.staff_number }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if assignment.school_class %}
+                                        <a href="{% url 'staff:teacher_assignment_class_view' assignment.school_class.id %}"
+                                           class="text-decoration-none fw-semibold">
+                                            {{ assignment.school_class.name }}
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">No class</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if assignment.subject %}
+                                        <span class="fw-semibold">{{ assignment.subject.name }}</span>
+                                    {% else %}
+                                        <span class="text-muted">No subject</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="assignment-badge badge-secondary-soft">
+                                        <i class="bi bi-clock"></i> {{ assignment.periods_per_week|default:"0" }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if assignment.is_primary %}
+                                        <span class="assignment-badge badge-primary-soft">
+                                            <i class="bi bi-star-fill"></i> Primary
+                                        </span>
+                                    {% else %}
+                                        <span class="assignment-badge badge-secondary-soft">
+                                            <i class="bi bi-person"></i> Assigned
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if assignment.is_active %}
+                                        <span class="assignment-badge badge-success-soft">
+                                            <i class="bi bi-check-circle-fill"></i> Active
+                                        </span>
+                                    {% else %}
+                                        <span class="assignment-badge badge-warning-soft">
+                                            <i class="bi bi-pause-circle-fill"></i> Inactive
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="row-actions">
+                                        <button type="button" class="btn" title="Edit assignment"
+                                                data-bs-toggle="modal" data-bs-target="#teacherAssignmentModal"
+                                                data-url="{% url 'staff:teacher_assignment_edit' assignment.id %}">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button type="button" class="btn text-danger" title="Delete assignment"
+                                                data-bs-toggle="modal" data-bs-target="#teacherAssignmentDeleteModal"
+                                                data-url="{% url 'staff:teacher_assignment_delete' assignment.id %}">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <!-- EMPTY STATE -->
+            <div class="empty-state">
+                <div class="empty-icon"><i class="bi bi-person-workspace"></i></div>
+                <h5 class="empty-title">No teacher assignments found</h5>
+                <p class="empty-text">
+                    {% if selected_class %}
+                        There are no active teacher assignments for the selected class.
+                    {% else %}
+                        No active teacher-to-class subject assignments have been created yet.
+                    {% endif %}
+                </p>
+                <div class="d-flex justify-content-center flex-wrap gap-2">
+                    {% if selected_class %}
+                        <a href="{% url 'staff:teacher_assignment_list' %}" class="btn btn-light border">
+                            <i class="bi bi-arrow-left me-1"></i>View All Assignments
+                        </a>
+                    {% endif %}
+                    <button type="button" class="btn btn-primary"
+                            data-bs-toggle="modal" data-bs-target="#teacherAssignmentModal"
+                            data-url="{% url 'staff:teacher_assignment_create' %}">
+                        <i class="bi bi-plus-circle me-1"></i>Create Assignment
+                    </button>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+
+<!-- SINGLE ASSIGNMENT MODAL -->
+<div class="modal fade" id="teacherAssignmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title">Teacher Assignment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="teacherAssignmentModalBody">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="small text-muted mt-2">Loading assignment form...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BULK ASSIGNMENT MODAL -->
+<div class="modal fade" id="teacherAssignmentBulkModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title">Bulk Teacher Assignment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="teacherAssignmentBulkModalBody">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="small text-muted mt-2">Loading bulk assignment form...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal fade" id="teacherAssignmentDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">Delete Teacher Assignment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="teacherAssignmentDeleteModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="small text-muted mt-2">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     PAGE JAVASCRIPT
+     ============================================================ -->
+
+<script>
+(function () {
+    "use strict";
+
+    // ============================================================
+    // DOM REFERENCES
+    // ============================================================
+
+    const searchInput = document.getElementById('assignmentSearchInput');
+    const classFilter = document.getElementById('assignmentClassFilter');
+    const rows = document.querySelectorAll('#assignmentTableBody .assignment-row');
+    const resultCount = document.getElementById('searchResultCount');
+    const visibleCount = document.getElementById('visibleCount');
+    const totalCount = document.getElementById('totalCount');
+    const badgeCount = document.getElementById('badgeCount');
+    const totalAssignments = document.getElementById('totalAssignments');
+
+    const activeFilterBadge = document.getElementById('activeFilterBadge');
+    const classFilterBadge = document.getElementById('classFilterBadge');
+    const searchFilterBadge = document.getElementById('searchFilterBadge');
+    const classFilterText = document.getElementById('classFilterText');
+    const searchFilterText = document.getElementById('searchFilterText');
+    const clearAllFiltersBtn = document.getElementById('clearAllFiltersBtn');
+    const filterStats = document.getElementById('filterStats');
+
+    // ============================================================
+    // CORE FILTER FUNCTION
+    // ============================================================
+
+    function filterAssignments() {
+        const query = searchInput.value.toLowerCase().trim();
+        const selectedClassId = classFilter.value;
+
+        let visible = 0;
+        let hasClassFilter = false;
+        let hasSearchFilter = false;
+
+        rows.forEach(function(row) {
+            const teacher = row.getAttribute('data-teacher') || '';
+            const subject = row.getAttribute('data-subject') || '';
+            const className = row.getAttribute('data-class') || '';
+            const classId = row.getAttribute('data-class-id') || '';
+
+            // Class filter check
+            let classMatch = true;
+            if (selectedClassId !== '') {
+                classMatch = (classId === selectedClassId);
+                if (classMatch) hasClassFilter = true;
+            }
+
+            // Search filter check
+            const searchableText = `${teacher} ${subject} ${className}`;
+            let searchMatch = true;
+            if (query !== '') {
+                searchMatch = searchableText.includes(query);
+                if (searchMatch) hasSearchFilter = true;
+            }
+
+            const show = classMatch && searchMatch;
+
+            if (show) {
+                row.classList.remove('hidden-row');
+                visible++;
+            } else {
+                row.classList.add('hidden-row');
+            }
+        });
+
+        // Update counts
+        const total = rows.length;
+        visibleCount.textContent = visible;
+        totalCount.textContent = total;
+        badgeCount.textContent = visible;
+
+        // Update result message
+        if (total === 0) {
+            resultCount.textContent = 'No assignments available';
+        } else if (query === '' && selectedClassId === '') {
+            resultCount.innerHTML = `Showing <span class="highlight">${visible}</span> of <span>${total}</span> assignments`;
+        } else if (visible === 0) {
+            resultCount.innerHTML = `No matches found for your filters`;
+        } else {
+            resultCount.innerHTML = `Showing <span class="highlight">${visible}</span> of <span>${total}</span> assignments <span class="text-muted">(filtered)</span>`;
+        }
+
+        // Update KPI card
+        if (totalAssignments) {
+            totalAssignments.textContent = visible;
+        }
+
+        // Update filter badges
+        updateFilterBadges(query, selectedClassId, hasClassFilter, hasSearchFilter);
+
+        // Show/hide clear all button
+        if (query !== '' || selectedClassId !== '') {
+            clearAllFiltersBtn.style.display = 'inline-flex';
+            const filterParts = [];
+            if (selectedClassId !== '') {
+                const selectedOption = classFilter.options[classFilter.selectedIndex];
+                filterParts.push(selectedOption ? selectedOption.text : 'Class');
+            }
+            if (query !== '') {
+                filterParts.push(`"${query}"`);
+            }
+            filterStats.textContent = `Filters: ${filterParts.join(', ')}`;
+        } else {
+            clearAllFiltersBtn.style.display = 'none';
+            filterStats.textContent = '';
+        }
+
+        // Show/hide empty state
+        const emptyState = document.querySelector('.empty-state');
+        if (emptyState) {
+            if (visible === 0 && total > 0) {
+                emptyState.style.display = 'block';
+                const emptyText = emptyState.querySelector('.empty-text');
+                const icon = emptyState.querySelector('.empty-icon i');
+                if (emptyText) {
+                    if (query !== '' && selectedClassId !== '') {
+                        emptyText.innerHTML = `No assignments match your search "<strong>${query}</strong>" in the selected class. Try adjusting your filters.`;
+                    } else if (query !== '') {
+                        emptyText.innerHTML = `No assignments match your search "<strong>${query}</strong>". Try adjusting your search terms.`;
+                    } else if (selectedClassId !== '') {
+                        const selectedOption = classFilter.options[classFilter.selectedIndex];
+                        emptyText.innerHTML = `No assignments found for class "<strong>${selectedOption ? selectedOption.text : 'Selected'}</strong>".`;
+                    }
+                }
+                if (icon) {
+                    icon.className = 'bi bi-funnel';
+                }
+            } else if (emptyState.style.display !== 'none' && visible > 0) {
+                emptyState.style.display = 'none';
+                const icon = emptyState.querySelector('.empty-icon i');
+                if (icon) icon.className = 'bi bi-person-workspace';
+            }
+        }
+    }
+
+    // ============================================================
+    // UPDATE FILTER BADGES
+    // ============================================================
+
+    function updateFilterBadges(query, selectedClassId, hasClassFilter, hasSearchFilter) {
+        // Class filter badge
+        if (selectedClassId !== '') {
+            const selectedOption = classFilter.options[classFilter.selectedIndex];
+            classFilterText.textContent = selectedOption ? selectedOption.text : 'Selected';
+            classFilterBadge.classList.add('show');
+        } else {
+            classFilterBadge.classList.remove('show');
+        }
+
+        // Search filter badge
+        if (query !== '') {
+            searchFilterText.textContent = query;
+            searchFilterBadge.classList.add('show');
+        } else {
+            searchFilterBadge.classList.remove('show');
+        }
+
+        // Active filter badge (show if any filter is active)
+        if (query !== '' || selectedClassId !== '') {
+            const parts = [];
+            if (selectedClassId !== '') {
+                const selectedOption = classFilter.options[classFilter.selectedIndex];
+                parts.push(`Class: ${selectedOption ? selectedOption.text : 'Selected'}`);
+            }
+            if (query !== '') {
+                parts.push(`"${query}"`);
+            }
+            document.getElementById('activeFilterText').textContent = parts.join(', ');
+            activeFilterBadge.classList.add('show');
+        } else {
+            activeFilterBadge.classList.remove('show');
+        }
+    }
+
+    // ============================================================
+    // CLEAR FILTERS
+    // ============================================================
+
+    function clearAllFilters() {
+        searchInput.value = '';
+        classFilter.value = '';
+        filterAssignments();
+        searchInput.focus();
+    }
+
+    function clearSearchFilter() {
+        searchInput.value = '';
+        filterAssignments();
+        searchInput.focus();
+    }
+
+    function clearClassFilter() {
+        classFilter.value = '';
+        filterAssignments();
+        searchInput.focus();
+    }
+
+    // ============================================================
+    // EVENT LISTENERS
+    // ============================================================
+
+    // Debounced search input
+    let searchTimeout;
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(filterAssignments, 200);
+        });
+
+        // Keyboard shortcut: Escape to clear search
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                searchInput.value = '';
+                filterAssignments();
+                searchInput.blur();
+            }
+        });
+    }
+
+    // Class filter - AUTO FILTER on change (no Apply button needed)
+    if (classFilter) {
+        classFilter.addEventListener('change', function() {
+            filterAssignments();
+            // Focus back to search for convenience
+            if (searchInput) searchInput.focus();
+        });
+    }
+
+    // Clear filter buttons
+    document.getElementById('clearAllFiltersBtn')?.addEventListener('click', clearAllFilters);
+    document.getElementById('clearSearchFilter')?.addEventListener('click', clearSearchFilter);
+    document.getElementById('clearClassFilter')?.addEventListener('click', clearClassFilter);
+    document.getElementById('clearFilterBadge')?.addEventListener('click', clearAllFilters);
+
+    // ============================================================
+    // CSRF TOKEN
+    // ============================================================
+
+    function getCSRFToken() {
+        const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (input && input.value) return input.value;
+
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith("csrftoken=")) {
+                return decodeURIComponent(cookie.substring("csrftoken=".length));
+            }
+        }
+        return "";
+    }
+
+    // ============================================================
+    // LOAD MODAL CONTENT
+    // ============================================================
+
+    function loadModalContent(url, bodyId) {
+        const body = document.getElementById(bodyId);
+        if (!body || !url) return;
+
+        body.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <div class="small text-muted mt-2">Loading...</div>
+            </div>
+        `;
+
+        fetch(url, {
+            method: "GET",
+            credentials: "same-origin",
+            headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "text/html"
+            }
+        })
+        .then(function(response) {
+            if (!response.ok) throw new Error("Unable to load the requested form.");
+            return response.text();
+        })
+        .then(function(html) {
+            body.innerHTML = html;
+            const scripts = body.querySelectorAll("script");
+            scripts.forEach(function(oldScript) {
+                const newScript = document.createElement("script");
+                Array.from(oldScript.attributes).forEach(function(attribute) {
+                    newScript.setAttribute(attribute.name, attribute.value);
+                });
+                newScript.textContent = oldScript.textContent;
+                oldScript.parentNode.replaceChild(newScript, oldScript);
+            });
+        })
+        .catch(function(error) {
+            console.error("Teacher assignment modal error:", error);
+            body.innerHTML = `
+                <div class="alert alert-danger mb-0">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    ${error.message || "Unable to load the form."}
+                </div>
+            `;
+        });
+    }
+
+    // ============================================================
+    // BOOTSTRAP MODAL AUTO LOAD
+    // ============================================================
+
+    document.addEventListener("show.bs.modal", function(event) {
+        const modal = event.target;
+        const trigger = event.relatedTarget;
+        if (!trigger) return;
+
+        const url = trigger.getAttribute("data-url");
+        if (!url) return;
+
+        if (modal.id === "teacherAssignmentModal") {
+            loadModalContent(url, "teacherAssignmentModalBody");
+        }
+        if (modal.id === "teacherAssignmentBulkModal") {
+            loadModalContent(url, "teacherAssignmentBulkModalBody");
+        }
+        if (modal.id === "teacherAssignmentDeleteModal") {
+            loadModalContent(url, "teacherAssignmentDeleteModalBody");
+        }
+    });
+
+    // ============================================================
+    // RESET MODALS AFTER CLOSE
+    // ============================================================
+
+    document.addEventListener("hidden.bs.modal", function(event) {
+        const modal = event.target;
+
+        if (modal.id === "teacherAssignmentModal") {
+            const body = document.getElementById("teacherAssignmentModalBody");
+            if (body) {
+                body.innerHTML = `
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <div class="small text-muted mt-2">Loading assignment form...</div>
+                    </div>
+                `;
+            }
+        }
+
+        if (modal.id === "teacherAssignmentBulkModal") {
+            const body = document.getElementById("teacherAssignmentBulkModalBody");
+            if (body) {
+                body.innerHTML = `
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <div class="small text-muted mt-2">Loading bulk assignment form...</div>
+                    </div>
+                `;
+            }
+        }
+
+        if (modal.id === "teacherAssignmentDeleteModal") {
+            const body = document.getElementById("teacherAssignmentDeleteModalBody");
+            if (body) {
+                body.innerHTML = `
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <div class="small text-muted mt-2">Loading...</div>
+                    </div>
+                `;
+            }
+        }
+    });
+
+    // ============================================================
+    // SAVED EVENTS - Refresh page on save/delete
+    // ============================================================
+
+    document.addEventListener("teacherAssignmentSaved", function() {
+        const modalElement = document.getElementById("teacherAssignmentModal");
+        if (modalElement && window.bootstrap) {
+            const modal = window.bootstrap.Modal.getInstance(modalElement);
+            if (modal) modal.hide();
+        }
+        setTimeout(function() { window.location.reload(); }, 300);
+    });
+
+    document.addEventListener("teacherAssignmentBulkSaved", function() {
+        const modalElement = document.getElementById("teacherAssignmentBulkModal");
+        if (modalElement && window.bootstrap) {
+            const modal = window.bootstrap.Modal.getInstance(modalElement);
+            if (modal) modal.hide();
+        }
+        setTimeout(function() { window.location.reload(); }, 300);
+    });
+
+    document.addEventListener("teacherAssignmentDeleted", function() {
+        const modalElement = document.getElementById("teacherAssignmentDeleteModal");
+        if (modalElement && window.bootstrap) {
+            const modal = window.bootstrap.Modal.getInstance(modalElement);
+            if (modal) modal.hide();
+        }
+        setTimeout(function() { window.location.reload(); }, 300);
+    });
+
+    // Backward compatibility
+    document.addEventListener("staffAssignmentUpdated", function() {
+        setTimeout(function() { window.location.reload(); }, 300);
+    });
+
+    // ============================================================
+    // KEYBOARD SHORTCUTS
+    // ============================================================
+
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+F to focus search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+        }
+
+        // Escape to close modals
+        if (e.key === 'Escape') {
+            const openModals = document.querySelectorAll('.modal.show');
+            if (openModals.length > 0) {
+                const lastModal = openModals[openModals.length - 1];
+                const modalInstance = bootstrap.Modal.getInstance(lastModal);
+                if (modalInstance) modalInstance.hide();
+            }
+        }
+    });
+
+    // ============================================================
+    // INITIAL FILTER STATE (preserve selected_class from server)
+    // ============================================================
+
+    // Run initial filter to sync UI with any preselected class
+    setTimeout(filterAssignments, 100);
+
+})();
+</script>
+
+{% endblock content %}

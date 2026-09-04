@@ -1,0 +1,54 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Family Assistant{% endblock %}
+
+{% block content %}
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 p-4">
+        <div>
+            <h5 class="fw-bold mb-1"><i class="bi bi-chat-heart text-primary me-2" style="color: var(--primary-color, #946B1C) !important;"></i>{{ student.user.get_full_name }}</h5>
+            <small class="text-muted">{{ student.grade_level }}</small>
+        </div>
+        {% if other_children %}
+        <div>
+            <label class="visually-hidden">Switch child</label>
+            <select class="form-select" onchange="window.location.href=this.value">
+                <option value="{% url 'ai_engine:parent_chat_thread' student.id %}" selected>{{ student.user.get_full_name }}</option>
+                {% for c in other_children %}
+                    <option value="{% url 'ai_engine:parent_chat_thread' c.id %}">{{ c.user.get_full_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-3" style="min-height: 400px;">
+    <div class="p-4">
+        {% for m in thread %}
+            <div class="d-flex mb-3 {% if m.sender == 'PARENT' %}justify-content-end{% endif %}">
+                <div class="p-3 rounded-3 {% if m.sender == 'PARENT' %}text-white{% else %}bg-light{% endif %}" style="max-width: 75%; white-space: pre-wrap; {% if m.sender == 'PARENT' %}background: var(--primary-color, #946B1C) !important;{% endif %}">
+                    {{ m.content }}
+                    <div class="small mt-1 {% if m.sender == 'PARENT' %}text-white-50{% else %}text-muted{% endif %}">
+                        {{ m.created_at|date:"M d, H:i" }}
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <p class="text-muted text-center py-5">
+                Ask anything about {{ student.user.first_name }}'s attendance, grades, or fees to get started.
+            </p>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4">
+    <div class="p-3">
+        <form method="post" class="d-flex gap-2">
+            {% csrf_token %}
+            <input type="text" name="question" class="form-control" placeholder="e.g., How is {{ student.user.first_name }} doing this term?" required autofocus>
+            <button type="submit" class="btn" style="background: var(--primary-color, #946B1C); color: #fff; border-color: var(--primary-color, #946B1C);"><i class="bi bi-send me-1"></i>Ask</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

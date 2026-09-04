@@ -1,0 +1,3660 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block page_title %}{{ student.user.get_full_name }}{% endblock %}
+
+{% block content %}
+
+<style>
+    /* ============================================================
+       STUDENT DETAILS - MODERN UI
+       ============================================================ */
+
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+
+    .bg-gold-soft {
+        background-color: var(
+            --eduai-gold-soft,
+            rgba(148, 107, 28, 0.16)
+        ) !important;
+    }
+
+    .bg-teal-soft {
+        background-color: var(
+            --eduai-signal-soft,
+            rgba(44, 122, 109, 0.16)
+        ) !important;
+    }
+
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        background: transparent !important;
+    }
+
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+
+    .badge-gold {
+        background-color: var(
+            --eduai-gold-soft,
+            rgba(148, 107, 28, 0.16)
+        ) !important;
+
+        color: var(
+            --eduai-gold,
+            #946B1C
+        ) !important;
+    }
+
+    .badge-teal {
+        background-color: var(
+            --eduai-signal-soft,
+            rgba(44, 122, 109, 0.16)
+        ) !important;
+
+        color: var(
+            --eduai-signal,
+            #2C7A6D
+        ) !important;
+    }
+
+    .border-gold {
+        border-color: var(
+            --eduai-gold,
+            #946B1C
+        ) !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+
+    .font-monospace {
+        font-family: "Courier New", monospace;
+        letter-spacing: 0.5px;
+    }
+
+    .copy-btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        min-width: 32px;
+        min-height: 32px;
+    }
+
+    .copy-btn .bi {
+        font-size: 0.85rem;
+    }
+
+    .password-toggle-btn {
+        min-width: 32px;
+        min-height: 32px;
+    }
+
+    .password-toggle-btn .bi {
+        font-size: 0.9rem;
+    }
+
+    #credentialsContainer {
+        animation: fadeInCredentials 0.3s ease-in-out;
+    }
+
+    @keyframes fadeInCredentials {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    #credentialsLoading .spinner-border {
+        width: 1.2rem;
+        height: 1.2rem;
+    }
+
+    #editParentSuccess {
+        background-color: #d4edda !important;
+        border-color: #c3e6cb !important;
+        color: #155724 !important;
+    }
+
+    #editParentError {
+        background-color: #f8d7da !important;
+        border-color: #f5c6cb !important;
+        color: #721c24 !important;
+    }
+
+    #editParentEmailSuccess {
+        background-color: #d4edda !important;
+        border-color: #c3e6cb !important;
+        color: #155724 !important;
+    }
+
+    #editParentEmailError {
+        background-color: #f8d7da !important;
+        border-color: #f5c6cb !important;
+        color: #721c24 !important;
+    }
+
+    .parent-info-card {
+        min-height: 82px;
+    }
+
+    .parent-info-card small {
+        font-size: 0.75rem;
+    }
+
+    .parent-info-card .value {
+        word-break: break-word;
+    }
+
+    .modal-content {
+        border-radius: 1rem !important;
+    }
+
+    .modal-header {
+        border-bottom: 0 !important;
+    }
+
+    .modal-footer {
+        border-top: 0 !important;
+    }
+</style>
+
+
+<!-- ============================================================
+     PAGE DESCRIPTION
+     ============================================================ -->
+
+<div class="page-description mb-4">
+
+    <div class="d-flex align-items-start">
+
+        <i class="bi bi-info-circle-fill icon"></i>
+
+        <div>
+
+            <div class="title">
+                Student Overview
+            </div>
+
+            <p class="text">
+                This page provides a complete view of a student's profile,
+                including their <strong>face registration</strong> status,
+                <strong>attendance</strong> rate,
+                <strong>fee</strong> summary,
+                and recent <strong>grades</strong>.
+                The <strong>Account Credentials</strong> section shows
+                portal credentials for the student and parent/guardian
+                to authorized staff.
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="row g-4">
+
+    <!-- ============================================================
+         STUDENT PROFILE
+         ============================================================ -->
+
+    <div class="col-lg-4">
+
+        <div class="card card-custom border-0 shadow-sm rounded-4">
+
+            <div class="p-4 text-center">
+
+                {% if student.profile_photo %}
+
+                    <img
+                        src="{{ student.profile_photo.url }}"
+                        class="rounded-circle border border-4 border-gold"
+                        style="
+                            width:150px;
+                            height:150px;
+                            object-fit:cover;
+                            margin:0 auto;
+                        "
+                        alt="{{ student.user.get_full_name }}"
+                    >
+
+                {% else %}
+
+                    <div
+                        class="
+                            bg-light
+                            rounded-circle
+                            border
+                            border-4
+                            border-secondary
+                            d-flex
+                            align-items-center
+                            justify-content-center
+                            mx-auto
+                        "
+                        style="
+                            width:150px;
+                            height:150px;
+                        "
+                    >
+
+                        <i class="bi bi-person fs-1 text-secondary"></i>
+
+                    </div>
+
+                {% endif %}
+
+
+                <h5 class="fw-bold mt-3 mb-1">
+                    {{ student.user.get_full_name }}
+                </h5>
+
+                <p class="text-muted small mb-0">
+                    {{ student.admission_number }}
+                </p>
+
+
+                <!-- FACE STATUS -->
+
+                <div class="mt-3">
+
+                    {% if student.face_registered %}
+
+                        <span class="badge badge-teal border-0 px-3 py-2 rounded-pill">
+
+                            <i class="bi bi-check-circle-fill me-1"></i>
+
+                            Face Registered
+
+                        </span>
+
+                        <small class="d-block text-muted mt-1">
+
+                            Registered:
+                            {{ student.face_registered_at|date:"M d, Y H:i" }}
+
+                        </small>
+
+
+                        {% if can_edit %}
+
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-danger mt-2"
+                                onclick="deleteFace('{{ student.id }}')"
+                            >
+
+                                <i class="bi bi-trash me-1"></i>
+
+                                Remove Face
+
+                            </button>
+
+                        {% endif %}
+
+                    {% else %}
+
+                        <span class="
+                            badge
+                            bg-warning-subtle
+                            text-warning
+                            border-0
+                            px-3
+                            py-2
+                            rounded-pill
+                        ">
+
+                            <i class="bi bi-camera me-1"></i>
+
+                            No Face Registered
+
+                        </span>
+
+
+                        {% if can_edit %}
+
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-gold mt-2"
+                                onclick="
+                                    openFaceRegistration(
+                                        '{{ student.id }}',
+                                        '{{ student.user.get_full_name|escapejs }}'
+                                    )
+                                "
+                            >
+
+                                <i class="bi bi-camera me-1"></i>
+
+                                Register Face
+
+                            </button>
+
+                        {% endif %}
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ============================================================
+         MAIN STUDENT DETAILS
+         ============================================================ -->
+
+    <div class="col-lg-8">
+
+
+        <!-- STUDENT HEADER -->
+
+        <div class="
+            card
+            card-custom
+            border-0
+            shadow-sm
+            rounded-4
+            mb-4
+        ">
+
+            <div class="p-4">
+
+                <div class="
+                    d-flex
+                    justify-content-between
+                    align-items-center
+                    flex-wrap
+                    gap-3
+                ">
+
+                    <div>
+
+                        <h5 class="fw-bold mb-1">
+
+                            {{ student.user.get_full_name }}
+
+                            {% if not student.is_active %}
+
+                                <span class="
+                                    badge
+                                    bg-secondary-subtle
+                                    text-secondary
+                                    ms-1
+                                ">
+                                    Inactive
+                                </span>
+
+                            {% endif %}
+
+
+                            {% if latest_risk %}
+
+                                {% if latest_risk.risk_band == 'CRITICAL' %}
+
+                                    <span class="
+                                        badge
+                                        bg-danger-subtle
+                                        text-danger
+                                        ms-1
+                                    ">
+                                        Risk: Critical
+                                    </span>
+
+                                {% elif latest_risk.risk_band == 'HIGH' %}
+
+                                    <span class="
+                                        badge
+                                        bg-warning-subtle
+                                        text-warning
+                                        ms-1
+                                    ">
+                                        Risk: High
+                                    </span>
+
+                                {% endif %}
+
+                            {% endif %}
+
+                        </h5>
+
+
+                        <small class="text-muted">
+
+                            {{ student.admission_number }}
+
+                            &middot;
+
+                            <strong>Grade:</strong>
+                            {{ student.grade_level }}
+
+                            &middot;
+
+                            <strong>Class:</strong>
+                            {{ student.school_class.name|default:"Not Assigned" }}
+
+                            &middot;
+
+                            Parent:
+                            {{ student.parent.get_full_name|default:"not linked" }}
+
+                        </small>
+
+                    </div>
+
+
+                    {% if can_edit or can_manage %}
+
+                        <div class="d-flex gap-2">
+
+                            {% if can_edit %}
+
+                                <a
+                                    href="{% url 'students:edit_student' student.id %}"
+                                    class="btn btn-outline-gold"
+                                >
+                                    Edit
+                                </a>
+
+                            {% endif %}
+
+
+                            {% if can_manage %}
+
+                                <form
+                                    method="post"
+                                    action="{% url 'students:toggle_student_active' student.id %}"
+                                    class="d-inline"
+                                >
+
+                                    {% csrf_token %}
+
+                                    <button
+                                        type="submit"
+                                        class="btn btn-outline-secondary"
+                                    >
+
+                                        {% if student.is_active %}
+                                            Mark Inactive
+                                        {% else %}
+                                            Mark Active
+                                        {% endif %}
+
+                                    </button>
+
+                                </form>
+
+                            {% endif %}
+
+                        </div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================================
+             ACCOUNT CREDENTIALS
+             ======================================================== -->
+
+        {% if can_edit %}
+
+        <div class="
+            card
+            card-custom
+            border-0
+            shadow-sm
+            rounded-4
+            mb-4
+        ">
+
+            <div class="
+                card-header
+                bg-transparent
+                border-0
+                p-4
+                pb-2
+                d-flex
+                justify-content-between
+                align-items-center
+            ">
+
+                <h6 class="fw-bold mb-0">
+
+                    <i class="bi bi-shield-lock text-gold me-2"></i>
+
+                    Account Credentials
+
+                </h6>
+
+
+                <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    id="toggleCredentials"
+                >
+
+                    <i class="bi bi-eye me-1"></i>
+
+                    Show Credentials
+
+                </button>
+
+            </div>
+
+
+            <div
+                class="card-body p-4"
+                id="credentialsContainer"
+                style="display:none;"
+            >
+
+                <!-- LOADING -->
+
+                <div
+                    id="credentialsLoading"
+                    class="text-center py-3"
+                >
+
+                    <div
+                        class="spinner-border spinner-gold spinner-border-sm"
+                        role="status"
+                    >
+
+                        <span class="visually-hidden">
+                            Loading...
+                        </span>
+
+                    </div>
+
+                    <span class="ms-2 text-muted small">
+                        Loading credentials...
+                    </span>
+
+                </div>
+
+
+                <!-- CONTENT -->
+
+                <div
+                    id="credentialsContent"
+                    style="display:none;"
+                >
+
+
+                    <!-- ==================================================
+                         STUDENT CREDENTIALS
+                         ================================================== -->
+
+                    <h6 class="fw-bold mb-3 text-gold">
+
+                        <i class="bi bi-person me-1"></i>
+
+                        Student Credentials
+
+                    </h6>
+
+
+                    <div class="row g-3 mb-4">
+
+
+                        <div class="col-md-6">
+
+                            <div class="
+                                bg-light
+                                rounded-3
+                                p-3
+                                parent-info-card
+                            ">
+
+                                <small class="text-muted d-block">
+                                    Username
+                                </small>
+
+                                <div class="
+                                    d-flex
+                                    align-items-center
+                                    gap-2
+                                ">
+
+                                    <span
+                                        class="fw-bold font-monospace value"
+                                        id="studentUsername"
+                                    >
+                                        ---
+                                    </span>
+
+                                    <button
+                                        type="button"
+                                        class="
+                                            btn
+                                            btn-sm
+                                            btn-outline-secondary
+                                            copy-btn
+                                        "
+                                        data-copy=""
+                                        id="copyStudentUsername"
+                                        title="Copy Username"
+                                    >
+
+                                        <i class="bi bi-clipboard"></i>
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-md-6">
+
+                            <div class="
+                                bg-light
+                                rounded-3
+                                p-3
+                                parent-info-card
+                            ">
+
+                                <small class="text-muted d-block">
+                                    Password
+                                </small>
+
+                                <div class="
+                                    d-flex
+                                    align-items-center
+                                    gap-2
+                                ">
+
+                                    <span
+                                        class="fw-bold font-monospace"
+                                        id="studentPasswordDisplay"
+                                    >
+                                        ••••••••••
+                                    </span>
+
+                                    <button
+                                        type="button"
+                                        class="
+                                            btn
+                                            btn-sm
+                                            btn-outline-secondary
+                                            password-toggle-btn
+                                        "
+                                        data-target="studentPasswordDisplay"
+                                        title="Reveal Password"
+                                    >
+
+                                        <i class="bi bi-eye"></i>
+
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="
+                                            btn
+                                            btn-sm
+                                            btn-outline-secondary
+                                            copy-btn
+                                            d-none
+                                        "
+                                        id="copyStudentPassword"
+                                        data-copy=""
+                                        title="Copy Password"
+                                    >
+
+                                        <i class="bi bi-clipboard"></i>
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-md-6">
+
+                            <div class="
+                                bg-light
+                                rounded-3
+                                p-3
+                                parent-info-card
+                            ">
+
+                                <small class="text-muted d-block">
+                                    Email
+                                </small>
+
+                                <span
+                                    class="fw-bold value"
+                                    id="studentEmail"
+                                >
+                                    ---
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-md-6">
+
+                            <div class="
+                                bg-light
+                                rounded-3
+                                p-3
+                                parent-info-card
+                            ">
+
+                                <small class="text-muted d-block">
+                                    Admission Number
+                                </small>
+
+                                <span class="fw-bold">
+                                    {{ student.admission_number }}
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ==================================================
+                         PARENT CREDENTIALS
+                         ================================================== -->
+
+                    {% if student.parent %}
+
+                    <hr>
+
+
+                    <div class="
+                        d-flex
+                        justify-content-between
+                        align-items-center
+                        mb-3
+                    ">
+
+                        <h6 class="fw-bold mb-0 text-teal">
+
+                            <i class="bi bi-people me-1"></i>
+
+                            Parent/Guardian Credentials
+
+                        </h6>
+
+
+                        <div class="d-flex gap-2">
+
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-gold"
+                                id="editParentBtn"
+                            >
+
+                                <i class="bi bi-pencil-square me-1"></i>
+
+                                Edit Parent
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="row g-3">
+
+
+                        <!-- FULL NAME -->
+
+                        <div class="col-md-6">
+
+                            <div class="
+                                bg-light
+                                rounded-3
+                                p-3
+                                parent-info-card
+                            ">
+
+                                <small class="text-muted d-block">
+                                    Full Name
+                                </small>
+
+                                <span
+                                    class="fw-bold value"
+                                    id="parentFullName"
+                                >
+                                    ---
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- USERNAME -->
+
+                        <div class="col-md-6">
+
+                            <div class="
+                                bg-light
+                                rounded-3
+                                p-3
+                                parent-info-card
+                            ">
+
+                                <small class="text-muted d-block">
+                                    Username
+                                </small>
+
+                                <div class="
+                                    d-flex
+                                    align-items-center
+                                    gap-2
+                                ">
+
+                                    <span
+                                        class="
+                                            fw-bold
+                                            font-monospace
+                                            value
+                                        "
+                                        id="parentUsername"
+                                    >
+                                        ---
+                                    </span>
+
+                                    <button
+                                        type="button"
+                                        class="
+                                            btn
+                                            btn-sm
+                                            btn-outline-secondary
+                                            copy-btn
+                                        "
+                                        data-copy=""
+                                        id="copyParentUsername"
+                                        title="Copy Username"
+                                    >
+
+                                        <i class="bi bi-clipboard"></i>
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- PASSWORD -->
+
+                        <div class="col-md-6">
+
+                            <div class="
+                                bg-light
+                                rounded-3
+                                p-3
+                                parent-info-card
+                            ">
+
+                                <small class="text-muted d-block">
+                                    Password
+                                </small>
+
+                                <div class="
+                                    d-flex
+                                    align-items-center
+                                    gap-2
+                                ">
+
+                                    <span
+                                        class="fw-bold font-monospace"
+                                        id="parentPasswordDisplay"
+                                    >
+                                        ••••••••••
+                                    </span>
+
+                                    <button
+                                        type="button"
+                                        class="
+                                            btn
+                                            btn-sm
+                                            btn-outline-secondary
+                                            password-toggle-btn
+                                        "
+                                        data-target="parentPasswordDisplay"
+                                        title="Reveal Password"
+                                    >
+
+                                        <i class="bi bi-eye"></i>
+
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="
+                                            btn
+                                            btn-sm
+                                            btn-outline-secondary
+                                            copy-btn
+                                            d-none
+                                        "
+                                        id="copyParentPassword"
+                                        data-copy=""
+                                        title="Copy Password"
+                                    >
+
+                                        <i class="bi bi-clipboard"></i>
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- EMAIL - With Edit Button -->
+
+                        <div class="col-md-6">
+
+                            <div class="
+                                bg-light
+                                rounded-3
+                                p-3
+                                parent-info-card
+                            ">
+
+                                <small class="text-muted d-block">
+                                    Email
+                                </small>
+
+                                <div class="
+                                    d-flex
+                                    align-items-center
+                                    gap-2
+                                ">
+
+                                    <span
+                                        class="fw-bold value"
+                                        id="parentEmail"
+                                    >
+                                        ---
+                                    </span>
+
+                                    <button
+                                        type="button"
+                                        class="
+                                            btn
+                                            btn-sm
+                                            btn-outline-gold
+                                            copy-btn
+                                        "
+                                        id="editParentEmailBtn"
+                                        title="Edit Email"
+                                    >
+
+                                        <i class="bi bi-pencil"></i>
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- PHONE -->
+
+                        <div class="col-md-6">
+
+                            <div class="
+                                bg-light
+                                rounded-3
+                                p-3
+                                parent-info-card
+                            ">
+
+                                <small class="text-muted d-block">
+                                    Phone
+                                </small>
+
+                                <span
+                                    class="fw-bold value"
+                                    id="parentPhone"
+                                >
+                                    ---
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    {% else %}
+
+                    <hr>
+
+                    <div class="
+                        alert
+                        alert-warning
+                        border-0
+                        rounded-3
+                    ">
+
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+
+                        <small>
+                            No parent/guardian is linked to this student account.
+                        </small>
+
+                    </div>
+
+                    {% endif %}
+
+
+                    <div class="
+                        alert
+                        alert-info
+                        border-0
+                        rounded-3
+                        bg-gold-soft
+                        mt-4
+                    ">
+
+                        <i class="bi bi-info-circle me-2 text-gold"></i>
+
+                        <small>
+
+                            <strong>Note:</strong>
+
+                            These credentials are for portal access.
+                            Share them securely with the student or parent.
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        {% endif %}
+
+
+        <!-- ========================================================
+             STATISTICS
+             ======================================================== -->
+
+        <div class="row g-4 mb-4">
+
+
+            <div class="col-md-4">
+
+                <div class="
+                    card
+                    card-custom
+                    border-0
+                    shadow-sm
+                    rounded-4
+                ">
+
+                    <div class="p-4">
+
+                        <h6 class="
+                            text-muted
+                            text-uppercase
+                            small
+                            fw-bold
+                        ">
+                            Attendance (30 days)
+                        </h6>
+
+                        <h4 class="fw-bold mb-0">
+
+                            {% if attendance_rate is not None %}
+                                {{ attendance_rate }}%
+                            {% else %}
+                                No data
+                            {% endif %}
+
+                        </h4>
+
+                        {% if total_days %}
+
+                            <small class="text-muted">
+
+                                {{ present_days }}/{{ total_days }}
+                                days present
+
+                            </small>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <div class="
+                    card
+                    card-custom
+                    border-0
+                    shadow-sm
+                    rounded-4
+                ">
+
+                    <div class="p-4">
+
+                        <h6 class="
+                            text-muted
+                            text-uppercase
+                            small
+                            fw-bold
+                            text-danger
+                        ">
+                            Outstanding Fees
+                        </h6>
+
+                        <h4 class="fw-bold text-danger mb-0">
+                            GH¢ {{ outstanding|floatformat:2 }}
+                        </h4>
+
+                        <small class="text-muted">
+
+                            {{ invoices|length }}
+                            unpaid invoice{{ invoices|length|pluralize }}
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <div class="
+                    card
+                    card-custom
+                    border-0
+                    shadow-sm
+                    rounded-4
+                ">
+
+                    <div class="p-4">
+
+                        <h6 class="
+                            text-muted
+                            text-uppercase
+                            small
+                            fw-bold
+                        ">
+                            Date of Birth
+                        </h6>
+
+                        <h4 class="fw-bold mb-0">
+
+                            {{ student.date_of_birth|date:"M d, Y" }}
+
+                        </h4>
+
+                        <small class="text-muted">
+
+                            Age:
+                            <strong>{{ student.age }}</strong>
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================================
+             RECENT GRADES
+             ======================================================== -->
+
+        <div class="
+            card
+            card-custom
+            border-0
+            shadow-sm
+            rounded-4
+        ">
+
+            <div class="p-4">
+
+                <div class="
+                    d-flex
+                    justify-content-between
+                    align-items-center
+                    flex-wrap
+                    gap-2
+                    mb-3
+                ">
+
+                    <h6 class="fw-bold mb-0">
+
+                        <i class="bi bi-journal-check text-gold me-2"></i>
+
+                        Recent Grades
+
+                        <span class="
+                            badge
+                            bg-light
+                            text-muted
+                            ms-2
+                        ">
+                            {{ recent_grades|length }}
+                        </span>
+
+                    </h6>
+
+                </div>
+
+
+                <div class="table-responsive">
+
+                    <table class="table align-middle mb-0">
+
+                        <thead>
+
+                            <tr>
+
+                                <th class="
+                                    bg-transparent
+                                    text-uppercase
+                                    fw-bold
+                                    text-muted
+                                    small
+                                    border-bottom
+                                    pb-3
+                                ">
+                                    Subject
+                                </th>
+
+                                <th class="
+                                    bg-transparent
+                                    text-uppercase
+                                    fw-bold
+                                    text-muted
+                                    small
+                                    border-bottom
+                                    pb-3
+                                ">
+                                    Assessment
+                                </th>
+
+                                <th class="
+                                    bg-transparent
+                                    text-uppercase
+                                    fw-bold
+                                    text-muted
+                                    small
+                                    border-bottom
+                                    pb-3
+                                ">
+                                    Score
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for g in recent_grades %}
+
+                            <tr>
+
+                                <td>
+                                    {{ g.assessment.subject }}
+                                </td>
+
+                                <td>
+                                    {{ g.assessment.title }}
+                                </td>
+
+                                <td>
+                                    {{ g.score_achieved }}/{{ g.assessment.max_score }}
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td
+                                    colspan="3"
+                                    class="
+                                        text-center
+                                        text-muted
+                                        py-4
+                                    "
+                                >
+                                    No grades recorded yet.
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ================================================================
+     EDIT PARENT MODAL
+     ================================================================ -->
+
+<!-- ================================================================
+     EDIT PARENT MODAL
+     ================================================================ -->
+
+{% if student.parent and can_edit %}
+
+<div
+    class="modal fade"
+    id="editParentModal"
+    tabindex="-1"
+    aria-labelledby="editParentModalLabel"
+    aria-hidden="true"
+>
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+
+            <!-- HEADER -->
+
+            <div class="modal-header px-4 pt-4">
+
+                <div>
+
+                    <h5
+                        class="modal-title fw-bold"
+                        id="editParentModalLabel"
+                    >
+
+                        <i class="bi bi-pencil-square text-gold me-2"></i>
+
+                        Edit Parent/Guardian
+
+                    </h5>
+
+                    <small class="text-muted">
+                        Update the parent portal account information.
+                        <span class="text-danger">*</span> Required fields
+                        <br>
+                        <span class="text-gold">
+                            <i class="bi bi-envelope me-1"></i>
+                            To update email, use the <strong>pencil icon</strong> next to the email field below.
+                        </span>
+                    </small>
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                ></button>
+
+            </div>
+
+
+            <!-- ========================================================
+                 FORM - Normal POST with CSRF
+                 ======================================================== -->
+
+            <form
+                method="post"
+                id="editParentForm"
+                action="{% url 'students:api_edit_parent' student.parent.id %}"
+            >
+
+                {% csrf_token %}
+
+
+                <div class="modal-body px-4">
+
+
+                    <!-- LOADING -->
+
+                    <div
+                        id="editParentLoading"
+                        class="text-center py-4"
+                    >
+
+                        <div
+                            class="
+                                spinner-border
+                                spinner-gold
+                            "
+                            role="status"
+                        >
+
+                            <span class="visually-hidden">
+                                Loading...
+                            </span>
+
+                        </div>
+
+                        <p class="text-muted mt-2 mb-0">
+                            Loading parent information...
+                        </p>
+
+                    </div>
+
+
+                    <!-- FORM CONTENT -->
+
+                    <div
+                        id="editParentContent"
+                        style="display:none;"
+                    >
+
+
+                        <!-- FIRST NAME -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="editParentFirstName"
+                                class="form-label fw-semibold"
+                            >
+
+                                First Name
+
+                                <span class="text-danger">
+                                    *
+                                </span>
+
+                            </label>
+
+                            <input
+                                type="text"
+                                name="first_name"
+                                id="editParentFirstName"
+                                class="form-control"
+                                autocomplete="given-name"
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- LAST NAME -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="editParentLastName"
+                                class="form-label fw-semibold"
+                            >
+
+                                Last Name
+
+                                <span class="text-danger">
+                                    *
+                                </span>
+
+                            </label>
+
+                            <input
+                                type="text"
+                                name="last_name"
+                                id="editParentLastName"
+                                class="form-control"
+                                autocomplete="family-name"
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- PHONE -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="editParentPhone"
+                                class="form-label fw-semibold"
+                            >
+                                Phone Number
+                            </label>
+
+                            <input
+                                type="text"
+                                name="phone_number"
+                                id="editParentPhone"
+                                class="form-control"
+                                autocomplete="tel"
+                                placeholder="+233 XX XXX XXXX"
+                            >
+
+                        </div>
+
+
+                        <!-- PASSWORD -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="editParentPassword"
+                                class="form-label fw-semibold"
+                            >
+                                New Password
+                            </label>
+
+                            <input
+                                type="password"
+                                name="new_password"
+                                id="editParentPassword"
+                                class="form-control"
+                                autocomplete="new-password"
+                                placeholder="Leave blank to keep current password"
+                            >
+
+                            <small class="text-muted">
+
+                                Leave blank if you do not want
+                                to change the password.
+
+                            </small>
+
+                        </div>
+
+
+                        <!-- ERROR -->
+
+                        <div
+                            id="editParentError"
+                            class="
+                                alert
+                                alert-danger
+                                border-0
+                                rounded-3
+                            "
+                            style="display:none;"
+                        >
+
+                            <i class="
+                                bi
+                                bi-exclamation-triangle-fill
+                                me-2
+                            "></i>
+
+                            <span id="editParentErrorMessage"></span>
+
+                        </div>
+
+
+                        <!-- SUCCESS -->
+
+                        <div
+                            id="editParentSuccess"
+                            class="
+                                alert
+                                alert-success
+                                border-0
+                                rounded-3
+                            "
+                            style="display:none;"
+                        >
+
+                            <i class="
+                                bi
+                                bi-check-circle-fill
+                                me-2
+                            "></i>
+
+                            <span id="editParentSuccessMessage"></span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- FOOTER -->
+
+                <div class="
+                    modal-footer
+                    px-4
+                    pb-4
+                ">
+
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="btn btn-gold"
+                        id="saveParentBtn"
+                    >
+
+                        <i class="bi bi-check2-circle me-1"></i>
+
+                        Save Changes
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+
+<!-- ================================================================
+     EDIT PARENT EMAIL MODAL - NEW
+     ================================================================ -->
+
+{% if student.parent and can_edit %}
+
+<div
+    class="modal fade"
+    id="editParentEmailModal"
+    tabindex="-1"
+    aria-labelledby="editParentEmailModalLabel"
+    aria-hidden="true"
+>
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+
+            <!-- HEADER -->
+
+            <div class="modal-header px-4 pt-4">
+
+                <div>
+
+                    <h5
+                        class="modal-title fw-bold"
+                        id="editParentEmailModalLabel"
+                    >
+
+                        <i class="bi bi-envelope text-gold me-2"></i>
+
+                        Update Parent Email
+
+                    </h5>
+
+                    <small class="text-muted">
+                        Update the parent/guardian's email address for portal access.
+                    </small>
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                ></button>
+
+            </div>
+
+
+            <!-- FORM -->
+
+            <form
+                method="post"
+                id="editParentEmailForm"
+                action="{% url 'students:api_edit_parent_email' student.parent.id %}"
+            >
+
+                {% csrf_token %}
+
+
+                <div class="modal-body px-4">
+
+
+                    <!-- EMAIL -->
+
+                    <div class="mb-3">
+
+                        <label
+                            for="editParentEmailInput"
+                            class="form-label fw-semibold"
+                        >
+
+                            Email Address
+
+                            <span class="text-danger">
+                                *
+                            </span>
+
+                        </label>
+
+                        <input
+                            type="email"
+                            name="email"
+                            id="editParentEmailInput"
+                            class="form-control"
+                            autocomplete="email"
+                            placeholder="parent@example.com"
+                            required
+                        >
+
+                        <small class="text-muted">
+                            This email will be used for parent portal login and notifications.
+                        </small>
+
+                    </div>
+
+
+                    <!-- ERROR -->
+
+                    <div
+                        id="editParentEmailError"
+                        class="
+                            alert
+                            alert-danger
+                            border-0
+                            rounded-3
+                        "
+                        style="display:none;"
+                    >
+
+                        <i class="
+                            bi
+                            bi-exclamation-triangle-fill
+                            me-2
+                        "></i>
+
+                        <span id="editParentEmailErrorMessage"></span>
+
+                    </div>
+
+
+                    <!-- SUCCESS -->
+
+                    <div
+                        id="editParentEmailSuccess"
+                        class="
+                            alert
+                            alert-success
+                            border-0
+                            rounded-3
+                        "
+                        style="display:none;"
+                    >
+
+                        <i class="
+                            bi
+                            bi-check-circle-fill
+                            me-2
+                        "></i>
+
+                        <span id="editParentEmailSuccessMessage"></span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- FOOTER -->
+
+                <div class="
+                    modal-footer
+                    px-4
+                    pb-4
+                ">
+
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="btn btn-gold"
+                        id="saveParentEmailBtn"
+                    >
+
+                        <i class="bi bi-check2-circle me-1"></i>
+
+                        Update Email
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+
+<!-- ================================================================
+     FACE CAPTURE MODAL
+     ================================================================ -->
+
+{% include 'students/face_capture_modal.html' %}
+
+
+<!-- ================================================================
+     JAVASCRIPT
+     ================================================================ -->
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    /* ============================================================
+       GLOBAL DATA
+       ============================================================ */
+
+    const studentId = '{{ student.id }}';
+
+
+    /* ============================================================
+       DELETE FACE
+       ============================================================ */
+
+    window.deleteFace = function (id) {
+
+        if (!confirm(
+            "Are you sure you want to remove this student's face registration?"
+        )) {
+            return;
+        }
+
+
+        fetch(
+            `/students/${id}/face/delete/`,
+            {
+                method: 'POST',
+
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
+
+        .then(function (response) {
+            return response.json();
+        })
+
+        .then(function (data) {
+
+            if (data.success) {
+                window.location.reload();
+            }
+            else {
+                alert(
+                    data.message ||
+                    data.error ||
+                    'Unable to remove face registration.'
+                );
+            }
+
+        })
+
+        .catch(function (error) {
+
+            console.error(
+                'Face deletion error:',
+                error
+            );
+
+            alert(
+                'An error occurred while removing the face registration.'
+            );
+
+        });
+
+    };
+
+
+    /* ============================================================
+       CREDENTIALS
+       ============================================================ */
+
+    let credentialsData = {
+        student: {},
+        parent: {}
+    };
+
+
+    const toggleCredentials =
+        document.getElementById(
+            'toggleCredentials'
+        );
+
+    const credentialsContainer =
+        document.getElementById(
+            'credentialsContainer'
+        );
+
+    const credentialsLoading =
+        document.getElementById(
+            'credentialsLoading'
+        );
+
+    const credentialsContent =
+        document.getElementById(
+            'credentialsContent'
+        );
+
+
+    let credentialsVisible = false;
+
+
+    if (toggleCredentials) {
+
+        toggleCredentials.addEventListener(
+            'click',
+            function () {
+
+                credentialsVisible =
+                    !credentialsVisible;
+
+
+                if (credentialsVisible) {
+
+                    credentialsContainer.style.display =
+                        'block';
+
+                    toggleCredentials.innerHTML =
+                        '<i class="bi bi-eye-slash me-1"></i>' +
+                        ' Hide Credentials';
+
+                    toggleCredentials.classList.remove(
+                        'btn-outline-secondary'
+                    );
+
+                    toggleCredentials.classList.add(
+                        'btn-outline-gold'
+                    );
+
+
+                    loadCredentials();
+
+                }
+                else {
+
+                    credentialsContainer.style.display =
+                        'none';
+
+                    toggleCredentials.innerHTML =
+                        '<i class="bi bi-eye me-1"></i>' +
+                        ' Show Credentials';
+
+                    toggleCredentials.classList.remove(
+                        'btn-outline-gold'
+                    );
+
+                    toggleCredentials.classList.add(
+                        'btn-outline-secondary'
+                    );
+
+
+                    resetAllPasswords();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    /* ============================================================
+       LOAD CREDENTIALS
+       ============================================================ */
+
+    function loadCredentials() {
+
+        if (!credentialsLoading ||
+            !credentialsContent) {
+            return;
+        }
+
+
+        credentialsLoading.style.display =
+            'block';
+
+        credentialsContent.style.display =
+            'none';
+
+
+        fetch(
+            `/students/api/student-credentials/${studentId}/`,
+            {
+                method: 'GET',
+
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            }
+        )
+
+        .then(function (response) {
+
+            if (!response.ok) {
+
+                throw new Error(
+                    'Unable to load credentials.'
+                );
+
+            }
+
+            return response.json();
+
+        })
+
+        .then(function (data) {
+
+            credentialsLoading.style.display =
+                'none';
+
+
+            if (!data.success) {
+
+                credentialsContent.innerHTML = `
+                    <div class="alert alert-danger border-0 rounded-3">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        ${data.error || 'Failed to load credentials.'}
+                    </div>
+                `;
+
+                credentialsContent.style.display =
+                    'block';
+
+                return;
+            }
+
+
+            credentialsData.student =
+                data.student || {};
+
+            credentialsData.parent =
+                data.parent || {};
+
+
+            /* STUDENT */
+
+            const studentUsername =
+                document.getElementById(
+                    'studentUsername'
+                );
+
+            const studentEmail =
+                document.getElementById(
+                    'studentEmail'
+                );
+
+            const studentPassword =
+                document.getElementById(
+                    'studentPasswordDisplay'
+                );
+
+            const copyStudentUsername =
+                document.getElementById(
+                    'copyStudentUsername'
+                );
+
+
+            if (studentUsername) {
+
+                studentUsername.textContent =
+                    data.student.username || 'N/A';
+
+            }
+
+
+            if (studentEmail) {
+
+                studentEmail.textContent =
+                    data.student.email ||
+                    'Not provided';
+
+            }
+
+
+            if (copyStudentUsername) {
+
+                copyStudentUsername.dataset.copy =
+                    data.student.username || '';
+
+            }
+
+
+            if (studentPassword) {
+
+                studentPassword.dataset.password =
+                    data.student.password || '';
+
+            }
+
+
+            /* PARENT */
+
+            if (data.parent) {
+
+                const parentFullName =
+                    document.getElementById(
+                        'parentFullName'
+                    );
+
+                const parentUsername =
+                    document.getElementById(
+                        'parentUsername'
+                    );
+
+                const parentEmail =
+                    document.getElementById(
+                        'parentEmail'
+                    );
+
+                const parentPhone =
+                    document.getElementById(
+                        'parentPhone'
+                    );
+
+                const parentPassword =
+                    document.getElementById(
+                        'parentPasswordDisplay'
+                    );
+
+                const copyParentUsername =
+                    document.getElementById(
+                        'copyParentUsername'
+                    );
+
+
+                if (parentFullName) {
+
+                    parentFullName.textContent =
+                        data.parent.full_name ||
+                        (
+                            (data.parent.first_name || '') +
+                            ' ' +
+                            (data.parent.last_name || '')
+                        ).trim() ||
+                        'N/A';
+
+                }
+
+
+                if (parentUsername) {
+
+                    parentUsername.textContent =
+                        data.parent.username ||
+                        'N/A';
+
+                }
+
+
+                if (parentEmail) {
+
+                    parentEmail.textContent =
+                        data.parent.email ||
+                        'Not provided';
+
+                }
+
+
+                if (parentPhone) {
+
+                    parentPhone.textContent =
+                        data.parent.phone_number ||
+                        data.parent.phone ||
+                        'Not provided';
+
+                }
+
+
+                if (copyParentUsername) {
+
+                    copyParentUsername.dataset.copy =
+                        data.parent.username || '';
+
+                }
+
+
+                if (parentPassword) {
+
+                    parentPassword.dataset.password =
+                        data.parent.password || '';
+
+                }
+
+            }
+
+
+            credentialsContent.style.display =
+                'block';
+
+
+            resetAllPasswords();
+
+        })
+
+        .catch(function (error) {
+
+            console.error(
+                'Credential loading error:',
+                error
+            );
+
+
+            credentialsLoading.style.display =
+                'none';
+
+
+            credentialsContent.innerHTML = `
+                <div class="alert alert-danger border-0 rounded-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    ${error.message || 'Error loading credentials.'}
+                </div>
+            `;
+
+
+            credentialsContent.style.display =
+                'block';
+
+        });
+
+    }
+
+
+    /* ============================================================
+       PASSWORD RESET
+       ============================================================ */
+
+    function resetAllPasswords() {
+
+        const displays =
+            document.querySelectorAll(
+                '.password-toggle-btn'
+            );
+
+
+        displays.forEach(function (button) {
+
+            const target =
+                button.dataset.target;
+
+            const element =
+                document.getElementById(target);
+
+
+            if (element) {
+
+                element.textContent =
+                    '••••••••••';
+
+            }
+
+
+            button.dataset.revealed =
+                'false';
+
+            button.innerHTML =
+                '<i class="bi bi-eye"></i>';
+
+            button.title =
+                'Reveal Password';
+
+
+            const copyButton =
+                button.parentElement.querySelector(
+                    '.copy-btn'
+                );
+
+
+            if (copyButton) {
+
+                copyButton.classList.add(
+                    'd-none'
+                );
+
+            }
+
+        });
+
+    }
+
+
+    /* ============================================================
+       PASSWORD TOGGLE
+       ============================================================ */
+
+    document
+        .querySelectorAll('.password-toggle-btn')
+        .forEach(function (button) {
+
+            button.addEventListener(
+                'click',
+                function (event) {
+
+                    event.preventDefault();
+
+                    const targetId =
+                        this.dataset.target;
+
+                    const display =
+                        document.getElementById(
+                            targetId
+                        );
+
+
+                    if (!display) {
+                        return;
+                    }
+
+
+                    const password =
+                        display.dataset.password || '';
+
+                    const revealed =
+                        this.dataset.revealed === 'true';
+
+
+                    const copyButton =
+                        this.parentElement.querySelector(
+                            '.copy-btn'
+                        );
+
+
+                    if (!revealed) {
+
+                        if (password) {
+
+                            display.textContent =
+                                password;
+
+
+                            if (copyButton) {
+
+                                copyButton.dataset.copy =
+                                    password;
+
+                                copyButton.classList.remove(
+                                    'd-none'
+                                );
+
+                            }
+
+                        }
+                        else {
+
+                            display.textContent =
+                                'No password stored';
+
+                        }
+
+
+                        this.innerHTML =
+                            '<i class="bi bi-eye-slash"></i>';
+
+                        this.title =
+                            'Hide Password';
+
+                        this.dataset.revealed =
+                            'true';
+
+                    }
+                    else {
+
+                        display.textContent =
+                            '••••••••••';
+
+
+                        this.innerHTML =
+                            '<i class="bi bi-eye"></i>';
+
+                        this.title =
+                            'Reveal Password';
+
+                        this.dataset.revealed =
+                            'false';
+
+
+                        if (copyButton) {
+
+                            copyButton.classList.add(
+                                'd-none'
+                            );
+
+                        }
+
+                    }
+
+                }
+            );
+
+        });
+
+
+    /* ============================================================
+       COPY BUTTONS
+       ============================================================ */
+
+    document
+        .querySelectorAll('.copy-btn')
+        .forEach(function (button) {
+
+            button.addEventListener(
+                'click',
+                function () {
+
+                    const value =
+                        this.dataset.copy || '';
+
+
+                    if (!value ||
+                        value === '---' ||
+                        value === 'N/A') {
+
+                        return;
+
+                    }
+
+
+                    if (
+                        navigator.clipboard &&
+                        navigator.clipboard.writeText
+                    ) {
+
+                        navigator.clipboard
+                            .writeText(value)
+                            .then(() => {
+                                showCopyFeedback(this);
+                            })
+                            .catch(() => {
+                                fallbackCopy(
+                                    value,
+                                    this
+                                );
+                            });
+
+                    }
+                    else {
+
+                        fallbackCopy(
+                            value,
+                            this
+                        );
+
+                    }
+
+                }
+            );
+
+        });
+
+
+    function fallbackCopy(
+        text,
+        button
+    ) {
+
+        const textarea =
+            document.createElement(
+                'textarea'
+            );
+
+
+        textarea.value =
+            text;
+
+        textarea.style.position =
+            'fixed';
+
+        textarea.style.opacity =
+            '0';
+
+
+        document.body.appendChild(
+            textarea
+        );
+
+
+        textarea.select();
+
+
+        try {
+
+            document.execCommand(
+                'copy'
+            );
+
+            showCopyFeedback(
+                button
+            );
+
+        }
+        catch (error) {
+
+            console.error(
+                'Copy failed:',
+                error
+            );
+
+        }
+
+
+        document.body.removeChild(
+            textarea
+        );
+
+    }
+
+
+    function showCopyFeedback(button) {
+
+        const original =
+            button.innerHTML;
+
+
+        button.innerHTML =
+            '<i class="bi bi-check2 text-success"></i>';
+
+
+        setTimeout(function () {
+
+            button.innerHTML =
+                original;
+
+        }, 2000);
+
+    }
+
+
+    /* ============================================================
+       FACE REGISTRATION
+       ============================================================ */
+
+    window.openFaceRegistration =
+        function (
+            id,
+            name
+        ) {
+
+            const modal =
+                document.getElementById(
+                    'faceCaptureModal'
+                );
+
+
+            if (!modal) {
+
+                alert(
+                    'Face registration modal not found.'
+                );
+
+                return;
+
+            }
+
+
+            const studentInput =
+                document.getElementById(
+                    'faceStudentId'
+                );
+
+
+            const studentName =
+                document.getElementById(
+                    'faceStudentName'
+                );
+
+
+            if (studentInput) {
+
+                studentInput.value =
+                    id;
+
+            }
+
+
+            if (studentName) {
+
+                studentName.textContent =
+                    name;
+
+            }
+
+
+            const modalInstance =
+                bootstrap.Modal.getOrCreateInstance(
+                    modal
+                );
+
+
+            modalInstance.show();
+
+        };
+
+
+    /* ============================================================
+       EDIT PARENT
+       ============================================================ */
+
+    const editParentBtn =
+        document.getElementById(
+            'editParentBtn'
+        );
+
+    const editParentModal =
+        document.getElementById(
+            'editParentModal'
+        );
+
+    const editParentForm =
+        document.getElementById(
+            'editParentForm'
+        );
+
+    const editParentLoading =
+        document.getElementById(
+            'editParentLoading'
+        );
+
+    const editParentContent =
+        document.getElementById(
+            'editParentContent'
+        );
+
+    const editParentError =
+        document.getElementById(
+            'editParentError'
+        );
+
+    const editParentErrorMessage =
+        document.getElementById(
+            'editParentErrorMessage'
+        );
+
+    const editParentSuccess =
+        document.getElementById(
+            'editParentSuccess'
+        );
+
+    const editParentSuccessMessage =
+        document.getElementById(
+            'editParentSuccessMessage'
+        );
+
+    const saveParentBtn =
+        document.getElementById(
+            'saveParentBtn'
+        );
+
+
+    /* ============================================================
+       OPEN PARENT EDIT MODAL
+       ============================================================ */
+
+    if (
+        editParentBtn &&
+        editParentModal
+    ) {
+
+        editParentBtn.addEventListener(
+            'click',
+            function () {
+
+                hideParentError();
+                hideParentSuccess();
+
+
+                editParentLoading.style.display =
+                    'block';
+
+                editParentContent.style.display =
+                    'none';
+
+
+                const modal =
+                    bootstrap.Modal.getOrCreateInstance(
+                        editParentModal
+                    );
+
+
+                modal.show();
+
+
+                const getParentUrl =
+                    "{% url 'students:api_get_parent' student.parent.id %}";
+
+
+                fetch(
+                    getParentUrl,
+                    {
+                        method: 'GET',
+
+                        headers: {
+                            'X-Requested-With':
+                                'XMLHttpRequest',
+
+                            'Accept':
+                                'application/json'
+                        }
+                    }
+                )
+
+                .then(function (response) {
+
+                    return response
+                        .text()
+                        .then(function (text) {
+
+                            let data;
+
+
+                            try {
+
+                                data =
+                                    JSON.parse(
+                                        text
+                                    );
+
+                            }
+                            catch (error) {
+
+                                console.error(
+                                    'Invalid parent response:',
+                                    text
+                                );
+
+                                throw new Error(
+                                    'The server returned an invalid response.'
+                                );
+
+                            }
+
+
+                            if (!response.ok) {
+
+                                throw new Error(
+                                    data.error ||
+                                    'Unable to load parent information.'
+                                );
+
+                            }
+
+
+                            return data;
+
+                        });
+
+                })
+
+                .then(function (data) {
+
+                    if (!data.success) {
+
+                        throw new Error(
+                            data.error ||
+                            'Unable to load parent information.'
+                        );
+
+                    }
+
+
+                    const parent =
+                        data.parent || {};
+
+
+                    document.getElementById(
+                        'editParentFirstName'
+                    ).value =
+                        parent.first_name || '';
+
+
+                    document.getElementById(
+                        'editParentLastName'
+                    ).value =
+                        parent.last_name || '';
+
+
+                    document.getElementById(
+                        'editParentPhone'
+                    ).value =
+                        parent.phone_number ||
+                        parent.phone ||
+                        '';
+
+
+                    document.getElementById(
+                        'editParentPassword'
+                    ).value =
+                        '';
+
+
+                    editParentLoading.style.display =
+                        'none';
+
+
+                    editParentContent.style.display =
+                        'block';
+
+                })
+
+                .catch(function (error) {
+
+                    console.error(
+                        'Parent loading error:',
+                        error
+                    );
+
+
+                    editParentLoading.style.display =
+                        'none';
+
+
+                    showParentError(
+                        error.message ||
+                        'Unable to load parent information.'
+                    );
+
+                });
+
+            }
+        );
+
+    }
+
+
+    /* ============================================================
+       PARENT FORM SUBMISSION
+       ============================================================ */
+
+    if (editParentForm) {
+
+        editParentForm.addEventListener(
+            'submit',
+            function (event) {
+
+                const firstName =
+                    document.getElementById(
+                        'editParentFirstName'
+                    ).value.trim();
+
+
+                const lastName =
+                    document.getElementById(
+                        'editParentLastName'
+                    ).value.trim();
+
+
+                if (!firstName) {
+
+                    event.preventDefault();
+
+                    showParentError(
+                        'First name is required.'
+                    );
+
+                    return;
+
+                }
+
+
+                if (!lastName) {
+
+                    event.preventDefault();
+
+                    showParentError(
+                        'Last name is required.'
+                    );
+
+                    return;
+
+                }
+
+
+                // Show loading on submit button
+                if (saveParentBtn) {
+
+                    saveParentBtn.disabled =
+                        true;
+
+                    saveParentBtn.innerHTML =
+                        '<span class="spinner-border spinner-border-sm me-2"></span>' +
+                        'Saving...';
+
+                }
+
+
+                // Hide previous messages
+                hideParentError();
+                hideParentSuccess();
+
+
+                // Prevent default form submission - use AJAX instead
+                event.preventDefault();
+
+
+                const formData = new FormData(editParentForm);
+
+                fetch(editParentForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+
+                .then(function (response) {
+
+                    return response
+                        .text()
+                        .then(function (text) {
+
+                            let data;
+
+                            try {
+                                data = JSON.parse(text);
+                            }
+                            catch (error) {
+                                console.error('Invalid response:', text);
+                                throw new Error(
+                                    'The server returned an invalid response.'
+                                );
+                            }
+
+                            if (!response.ok) {
+                                throw new Error(
+                                    data.error ||
+                                    'Unable to save parent information.'
+                                );
+                            }
+
+                            return data;
+
+                        });
+
+                })
+
+                .then(function (data) {
+
+                    if (data.success) {
+
+                        // Show success
+                        showParentSuccess(
+                            data.message ||
+                            'Parent information updated successfully!'
+                        );
+
+                        // Update the parent name in the UI
+                        const parentFullName = document.getElementById('parentFullName');
+                        if (parentFullName && data.parent && data.parent.full_name) {
+                            parentFullName.textContent = data.parent.full_name;
+                        }
+
+                        // Reset button
+                        if (saveParentBtn) {
+                            saveParentBtn.disabled = false;
+                            saveParentBtn.innerHTML =
+                                '<i class="bi bi-check2-circle me-1"></i> Save Changes';
+                        }
+
+                        // Close modal after delay and reload
+                        setTimeout(function() {
+                            const modal = bootstrap.Modal.getInstance(editParentModal);
+                            if (modal) {
+                                modal.hide();
+                            }
+                            window.location.reload();
+                        }, 2000);
+
+                    }
+                    else {
+                        showParentError(
+                            data.error ||
+                            'Unable to save parent information.'
+                        );
+
+                        // Reset button
+                        if (saveParentBtn) {
+                            saveParentBtn.disabled = false;
+                            saveParentBtn.innerHTML =
+                                '<i class="bi bi-check2-circle me-1"></i> Save Changes';
+                        }
+                    }
+
+                })
+
+                .catch(function (error) {
+
+                    console.error(
+                        'Parent save error:',
+                        error
+                    );
+
+                    showParentError(
+                        error.message ||
+                        'Unable to save parent information.'
+                    );
+
+                    // Reset button
+                    if (saveParentBtn) {
+                        saveParentBtn.disabled = false;
+                        saveParentBtn.innerHTML =
+                            '<i class="bi bi-check2-circle me-1"></i> Save Changes';
+                    }
+
+                });
+
+            }
+        );
+
+    }
+
+
+    /* ============================================================
+       PARENT ERROR / SUCCESS
+       ============================================================ */
+
+    function showParentError(message) {
+
+        if (editParentError) {
+
+            editParentError.style.display =
+                'block';
+
+
+            editParentErrorMessage.textContent =
+                message ||
+                'Unable to process request.';
+
+        }
+
+    }
+
+
+    function hideParentError() {
+
+        if (editParentError) {
+
+            editParentError.style.display =
+                'none';
+
+        }
+
+    }
+
+
+    function showParentSuccess(message) {
+
+        if (editParentSuccess) {
+
+            editParentSuccess.style.display =
+                'block';
+
+
+            editParentSuccessMessage.textContent =
+                message ||
+                'Parent information updated successfully!';
+
+        }
+
+    }
+
+
+    function hideParentSuccess() {
+
+        if (editParentSuccess) {
+
+            editParentSuccess.style.display =
+                'none';
+
+        }
+
+    }
+
+
+    /* ============================================================
+       RESET MODAL
+       ============================================================ */
+
+    if (editParentModal) {
+
+        editParentModal.addEventListener(
+            'hidden.bs.modal',
+            function () {
+
+                hideParentError();
+                hideParentSuccess();
+
+
+                editParentLoading.style.display =
+                    'block';
+
+
+                editParentContent.style.display =
+                    'none';
+
+
+                if (saveParentBtn) {
+
+                    saveParentBtn.disabled =
+                        false;
+
+                    saveParentBtn.innerHTML =
+                        '<i class="bi bi-check2-circle me-1"></i>' +
+                        'Save Changes';
+
+                }
+
+            }
+        );
+
+    }
+
+
+    /* ============================================================
+       EDIT PARENT EMAIL - NEW
+       ============================================================ */
+
+    const editParentEmailBtn =
+        document.getElementById(
+            'editParentEmailBtn'
+        );
+
+    const editParentEmailModal =
+        document.getElementById(
+            'editParentEmailModal'
+        );
+
+    const editParentEmailForm =
+        document.getElementById(
+            'editParentEmailForm'
+        );
+
+    const editParentEmailInput =
+        document.getElementById(
+            'editParentEmailInput'
+        );
+
+    const editParentEmailError =
+        document.getElementById(
+            'editParentEmailError'
+        );
+
+    const editParentEmailErrorMessage =
+        document.getElementById(
+            'editParentEmailErrorMessage'
+        );
+
+    const editParentEmailSuccess =
+        document.getElementById(
+            'editParentEmailSuccess'
+        );
+
+    const editParentEmailSuccessMessage =
+        document.getElementById(
+            'editParentEmailSuccessMessage'
+        );
+
+    const saveParentEmailBtn =
+        document.getElementById(
+            'saveParentEmailBtn'
+        );
+
+
+    /* ============================================================
+       OPEN PARENT EMAIL EDIT MODAL
+       ============================================================ */
+
+    if (
+        editParentEmailBtn &&
+        editParentEmailModal
+    ) {
+
+        editParentEmailBtn.addEventListener(
+            'click',
+            function () {
+
+                hideParentEmailError();
+                hideParentEmailSuccess();
+
+
+                // Get current email from the parent info card
+                const currentEmail =
+                    document.getElementById(
+                        'parentEmail'
+                    ).textContent;
+
+
+                if (editParentEmailInput) {
+
+                    editParentEmailInput.value =
+                        currentEmail !== 'Not provided' && currentEmail !== '---'
+                            ? currentEmail
+                            : '';
+
+                }
+
+
+                const modal =
+                    bootstrap.Modal.getOrCreateInstance(
+                        editParentEmailModal
+                    );
+
+
+                modal.show();
+
+            }
+        );
+
+    }
+
+
+    /* ============================================================
+   PARENT EMAIL FORM SUBMISSION - Updated
+   ============================================================ */
+
+if (editParentEmailForm) {
+
+    editParentEmailForm.addEventListener(
+        'submit',
+        function (event) {
+
+            event.preventDefault();
+
+
+            const email =
+                editParentEmailInput.value.trim();
+
+
+            if (!email) {
+
+                showParentEmailError(
+                    'Email address is required.'
+                );
+
+                return;
+
+            }
+
+
+            // Simple email validation
+            const emailRegex =
+                /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+
+            if (!emailRegex.test(email)) {
+
+                showParentEmailError(
+                    'Please enter a valid email address.'
+                );
+
+                return;
+
+            }
+
+
+            // Show loading on submit button
+            if (saveParentEmailBtn) {
+
+                saveParentEmailBtn.disabled =
+                    true;
+
+                saveParentEmailBtn.innerHTML =
+                    '<span class="spinner-border spinner-border-sm me-2"></span>' +
+                    'Saving...';
+
+            }
+
+
+            // Hide previous messages
+            hideParentEmailError();
+            hideParentEmailSuccess();
+
+
+            const formData = new FormData(editParentEmailForm);
+
+            fetch(editParentEmailForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+
+            .then(function (response) {
+
+                return response
+                    .text()
+                    .then(function (text) {
+
+                        let data;
+
+                        try {
+                            data = JSON.parse(text);
+                        }
+                        catch (error) {
+                            console.error('Invalid response:', text);
+                            throw new Error(
+                                'The server returned an invalid response.'
+                            );
+                        }
+
+                        if (!response.ok) {
+                            throw new Error(
+                                data.error ||
+                                'Unable to update email.'
+                            );
+                        }
+
+                        return data;
+
+                    });
+
+            })
+
+            .then(function (data) {
+
+                if (data.success) {
+
+                    // Show success with student info
+                    let successMsg = data.message || 'Email updated successfully!';
+                    if (data.students_updated && data.students_updated > 0) {
+                        successMsg += ` (Updated ${data.students_updated} student(s))`;
+                    }
+
+                    showParentEmailSuccess(successMsg);
+
+                    // Update the email in the UI
+                    const parentEmail = document.getElementById('parentEmail');
+                    if (parentEmail && data.parent && data.parent.email) {
+                        parentEmail.textContent = data.parent.email;
+                    }
+
+                    // Reset button
+                    if (saveParentEmailBtn) {
+                        saveParentEmailBtn.disabled = false;
+                        saveParentEmailBtn.innerHTML =
+                            '<i class="bi bi-check2-circle me-1"></i> Update Email';
+                    }
+
+                    // Close modal after delay and reload
+                    setTimeout(function() {
+                        const modal = bootstrap.Modal.getInstance(editParentEmailModal);
+                        if (modal) {
+                            modal.hide();
+                        }
+                        window.location.reload();
+                    }, 2000);
+
+                }
+                else {
+                    showParentEmailError(
+                        data.error ||
+                        'Unable to update email.'
+                    );
+
+                    // Reset button
+                    if (saveParentEmailBtn) {
+                        saveParentEmailBtn.disabled = false;
+                        saveParentEmailBtn.innerHTML =
+                            '<i class="bi bi-check2-circle me-1"></i> Update Email';
+                    }
+                }
+
+            })
+
+            .catch(function (error) {
+
+                console.error(
+                    'Parent email save error:',
+                    error
+                );
+
+                showParentEmailError(
+                    error.message ||
+                    'Unable to update email.'
+                );
+
+                // Reset button
+                if (saveParentEmailBtn) {
+                    saveParentEmailBtn.disabled = false;
+                    saveParentEmailBtn.innerHTML =
+                        '<i class="bi bi-check2-circle me-1"></i> Update Email';
+                }
+
+            });
+
+        }
+    );
+
+}
+
+
+    /* ============================================================
+       PARENT EMAIL ERROR / SUCCESS
+       ============================================================ */
+
+    function showParentEmailError(message) {
+
+        if (editParentEmailError) {
+
+            editParentEmailError.style.display =
+                'block';
+
+
+            editParentEmailErrorMessage.textContent =
+                message ||
+                'Unable to process request.';
+
+        }
+
+    }
+
+
+    function hideParentEmailError() {
+
+        if (editParentEmailError) {
+
+            editParentEmailError.style.display =
+                'none';
+
+        }
+
+    }
+
+
+    function showParentEmailSuccess(message) {
+
+        if (editParentEmailSuccess) {
+
+            editParentEmailSuccess.style.display =
+                'block';
+
+
+            editParentEmailSuccessMessage.textContent =
+                message ||
+                'Email updated successfully!';
+
+        }
+
+    }
+
+
+    function hideParentEmailSuccess() {
+
+        if (editParentEmailSuccess) {
+
+            editParentEmailSuccess.style.display =
+                'none';
+
+        }
+
+    }
+
+
+    /* ============================================================
+       RESET EMAIL MODAL
+       ============================================================ */
+
+    if (editParentEmailModal) {
+
+        editParentEmailModal.addEventListener(
+            'hidden.bs.modal',
+            function () {
+
+                hideParentEmailError();
+                hideParentEmailSuccess();
+
+
+                if (saveParentEmailBtn) {
+
+                    saveParentEmailBtn.disabled =
+                        false;
+
+                    saveParentEmailBtn.innerHTML =
+                        '<i class="bi bi-check2-circle me-1"></i>' +
+                        'Update Email';
+
+                }
+
+            }
+        );
+
+    }
+
+});
+</script>
+
+{% endblock %}

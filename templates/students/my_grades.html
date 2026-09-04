@@ -1,0 +1,188 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}My Grades{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Header Card -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="bi bi-journal-check text-gold me-2"></i>My Grades</h5>
+                <p class="text-muted mb-0 small">{{ student.user.get_full_name }} &middot; {{ student.grade_level.name }}</p>
+            </div>
+            <a href="{% url 'dashboard:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- How Grades Work -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle-fill icon"></i>
+            <div>
+                <div class="title">How Grades Work</div>
+                <p class="text">
+                    This page shows all your academic grades. Each record displays the <strong>subject</strong>,
+                    <strong>assessment title</strong>, <strong>assessment type</strong> (e.g., Exam, Quiz, Assignment),
+                    your <strong>score</strong> achieved, and the <strong>percentage</strong> calculated.
+                    Teacher <strong>notes</strong> may also be included. Use the search box below to filter
+                    your grades by subject, assessment, or type.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grades Table -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h6 class="fw-bold mb-0">
+                    <i class="bi bi-table text-gold me-2"></i>Grade Records
+                    <span class="badge bg-light text-muted ms-2" id="gradeCount">{{ grades|length }}</span>
+                </h6>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="text-muted small" id="filterStatus"></span>
+                    <input type="text" id="gradeSearchInput" class="form-control form-control-sm" placeholder="Search grades..." style="max-width: 220px;">
+                </div>
+            </div>
+            {% if grades %}
+            <div class="table-responsive">
+                <table class="table align-middle" id="gradesTable">
+                    <thead>
+                        <tr class="text-muted small text-uppercase">
+                            <th>Subject</th>
+                            <th>Assessment</th>
+                            <th>Type</th>
+                            <th>Score</th>
+                            <th>Percentage</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gradesTableBody">
+                        {% for grade in grades %}
+                        <tr class="grade-row" data-id="{{ grade.id }}">
+                            <td class="fw-semibold">{{ grade.assessment.subject }}</td>
+                            <td>{{ grade.assessment.title }}</td>
+                            <td><span class="badge bg-secondary-subtle text-secondary">{{ grade.assessment.get_assessment_type_display }}</span></td>
+                            <td>{{ grade.score_achieved }}/{{ grade.assessment.max_score }}</td>
+                            <td>
+                                <span class="badge bg-{% if grade.percentage >= 80 %}teal-soft text-teal{% elif grade.percentage >= 50 %}warning-subtle text-warning{% else %}danger-subtle text-danger{% endif %}">
+                                    {{ grade.percentage|floatformat:1 }}%
+                                </span>
+                            </td>
+                            <td class="small text-muted">{{ grade.teacher_notes|default:"—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox fs-1 text-muted"></i>
+                <p class="text-muted mt-2 mb-0">No grades recorded yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+</style>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER
+    // ============================================================
+    const gradeSearchInput = document.getElementById('gradeSearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const gradeCount = document.getElementById('gradeCount');
+    const allRows = document.querySelectorAll('.grade-row');
+
+    if (gradeSearchInput && allRows.length > 0) {
+        gradeSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const text = row.textContent.toLowerCase();
+                const isVisible = text.includes(query);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            // Update count
+            if (gradeCount) {
+                if (query) {
+                    gradeCount.textContent = visibleCount;
+                    if (filterStatus) {
+                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                    }
+                } else {
+                    gradeCount.textContent = allRows.length;
+                    if (filterStatus) {
+                        filterStatus.textContent = '';
+                    }
+                }
+            }
+        });
+
+        // Clear filter status on blur if empty
+        gradeSearchInput.addEventListener('blur', function() {
+            if (!this.value && filterStatus) {
+                filterStatus.textContent = '';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+{% include "partials/pagination.html" with page_obj=grades %}
+
+{% endblock %}

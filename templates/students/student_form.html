@@ -1,0 +1,542 @@
+<!-- students/templates/students/student_form.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}{% if mode == 'edit' %}Edit Student{% else %}Add Student{% endif %}{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    'use strict';
+
+    // ============================================================
+    // 1. PARENT TOGGLE LOGIC
+    // ============================================================
+    const toggleCheckbox = document.getElementById('createNewParentToggle');
+    const parentInlineForm = document.getElementById('parentInlineForm');
+    const existingParentSelect = document.getElementById('existingParentSelect');
+
+    if (toggleCheckbox && parentInlineForm) {
+        parentInlineForm.style.display = 'none';
+
+        toggleCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                parentInlineForm.style.display = 'block';
+                if (existingParentSelect) existingParentSelect.value = '';
+            } else {
+                parentInlineForm.style.display = 'none';
+            }
+        });
+    }
+
+    // ============================================================
+    // 2. ENROLLMENT TYPE HELP TEXT
+    // ============================================================
+    const enrollmentTypeSelect = document.getElementById('enrollmentType');
+    const enrollmentTypeHelp = document.getElementById('enrollmentTypeHelp');
+
+    if (enrollmentTypeSelect && enrollmentTypeHelp) {
+        enrollmentTypeSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const text = selectedOption.text;
+            const code = selectedOption.value;
+            const addonInfo = selectedOption.getAttribute('data-addon-info') || '';
+
+            if (text.includes('New')) {
+                enrollmentTypeHelp.innerHTML = `
+                    <i class="bi bi-info-circle me-1"></i>
+                    New students get base fees PLUS new student add-ons (admission, uniform, etc.)
+                    ${addonInfo ? `<br><small class="text-gold">${addonInfo}</small>` : ''}
+                `;
+            } else if (text.includes('Returning')) {
+                enrollmentTypeHelp.innerHTML = `
+                    <i class="bi bi-info-circle me-1"></i>
+                    Returning students get only the base class fees.
+                    Optional add-ons can be requested separately.
+                `;
+            } else if (text.includes('Transfer')) {
+                enrollmentTypeHelp.innerHTML = `
+                    <i class="bi bi-info-circle me-1"></i>
+                    Transfer students get base fees plus optional add-ons based on enrollment policy.
+                `;
+            } else {
+                enrollmentTypeHelp.innerHTML = `
+                    <i class="bi bi-info-circle me-1"></i>
+                    Select an enrollment type to see fee details.
+                `;
+            }
+        });
+
+        // Trigger initial help text
+        setTimeout(function() {
+            enrollmentTypeSelect.dispatchEvent(new Event('change'));
+        }, 100);
+    }
+
+    // ============================================================
+    // 3. FEE PREVIEW
+    // ============================================================
+    const schoolClassSelect = document.getElementById('id_school_class');
+    const feePreviewContainer = document.getElementById('feePreviewContainer');
+    const feePreviewContent = document.getElementById('feePreviewContent');
+
+    function updateFeePreview() {
+        const enrollmentType = enrollmentTypeSelect ? enrollmentTypeSelect.value : '';
+        const schoolClass = schoolClassSelect ? schoolClassSelect.value : '';
+
+        if (!enrollmentType || !schoolClass) {
+            if (feePreviewContainer) {
+                feePreviewContainer.style.display = 'none';
+            }
+            return;
+        }
+
+        // Show loading
+        if (feePreviewContainer) {
+            feePreviewContainer.style.display = 'block';
+            feePreviewContent.innerHTML = `
+                <div class="text-center py-2">
+                    <div class="spinner-border spinner-border-sm text-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <small class="text-muted ms-2">Calculating fees...</small>
+                </div>
+            `;
+        }
+
+        const url = `/finance/api/fee-preview/?enrollment_type=${enrollmentType}&class_id=${schoolClass}`;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                let itemsHtml = '';
+
+                // Group items by type
+                const baseItems = data.items.filter(i => i.type === 'Base Fee');
+                const addonItems = data.items.filter(i => i.type === 'Class Add-on');
+
+                // Base fees
+                if (baseItems.length > 0) {
+                    itemsHtml += `<div class="border-bottom pb-1 mb-1"><small class="text-muted">Base Fees</small></div>`;
+                    baseItems.forEach(item => {
+                        itemsHtml += `
+                            <div class="d-flex justify-content-between border-bottom py-1">
+                                <span class="text-muted small">${item.description}</span>
+                                <span>GH¢ ${item.amount}</span>
+                            </div>
+                        `;
+                    });
+                }
+
+                // Add-ons
+                if (addonItems.length > 0) {
+                    itemsHtml += `<div class="border-bottom pb-1 mb-1 mt-2"><small class="text-gold">New Student Add-ons</small></div>`;
+                    addonItems.forEach(item => {
+                        itemsHtml += `
+                            <div class="d-flex justify-content-between border-bottom py-1">
+                                <span class="text-muted small">
+                                    ${item.description}
+                                    ${item.is_required ? '<span class="badge bg-danger-subtle text-danger ms-1 small">Required</span>' : ''}
+                                </span>
+                                <span>GH¢ ${item.amount}</span>
+                            </div>
+                        `;
+                    });
+                }
+
+                let discountHtml = '';
+                if (data.discount > 0) {
+                    discountHtml = `
+                        <div class="d-flex justify-content-between border-bottom py-1 text-success">
+                            <span class="text-muted small"><i class="bi bi-tag me-1"></i>Discount</span>
+                            <span>-GH¢ ${data.discount}</span>
+                        </div>
+                    `;
+                }
+
+                const isNew = data.enrollment_type_code === 'NEW';
+                const addonCount = addonItems.length;
+
+                feePreviewContent.innerHTML = `
+                    <div class="bg-light p-3 rounded-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong class="text-gold">Fee Preview</strong>
+                            <span class="badge ${isNew ? 'bg-success' : 'bg-info'}">
+                                ${data.enrollment_type}
+                                ${isNew ? `<span class="ms-1">+ ${addonCount} add-on(s)</span>` : ''}
+                            </span>
+                        </div>
+                        ${itemsHtml}
+                        ${discountHtml}
+                        <div class="d-flex justify-content-between border-top pt-2 mt-2 fw-bold">
+                            <span>Total</span>
+                            <span class="text-gold">GH¢ ${data.total}</span>
+                        </div>
+                        ${isNew ? `
+                            <small class="text-muted d-block mt-1 text-gold">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Includes new student registration fees and add-ons.
+                                ${data.has_package ? ` (Package: ${data.package_name})` : ''}
+                            </small>
+                        ` : `
+                            <small class="text-muted d-block mt-1">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Base class fees only. Add-ons can be requested separately.
+                            </small>
+                        `}
+                    </div>
+                `;
+                feePreviewContainer.style.display = 'block';
+            } else {
+                feePreviewContent.innerHTML = `
+                    <div class="alert alert-warning border-0 rounded-3 mb-0 small">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        ${data.error || 'Fee preview not available.'}
+                    </div>
+                `;
+                feePreviewContainer.style.display = 'block';
+            }
+        })
+        .catch(err => {
+            console.error('Fee preview error:', err);
+            feePreviewContent.innerHTML = `
+                <div class="alert alert-danger border-0 rounded-3 mb-0 small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Could not load fee preview.
+                </div>
+            `;
+            feePreviewContainer.style.display = 'block';
+        });
+    }
+
+    // Attach event listeners for fee preview
+    if (enrollmentTypeSelect) {
+        enrollmentTypeSelect.addEventListener('change', updateFeePreview);
+    }
+    if (schoolClassSelect) {
+        schoolClassSelect.addEventListener('change', updateFeePreview);
+    }
+
+    // Initial preview if both are selected
+    setTimeout(updateFeePreview, 500);
+
+    // ============================================================
+    // 4. FORM VALIDATION
+    // ============================================================
+    const form = document.getElementById('studentRegistrationForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const enrollmentType = enrollmentTypeSelect ? enrollmentTypeSelect.value : '';
+            if (!enrollmentType) {
+                e.preventDefault();
+                alert('Please select an Enrollment Type.');
+                enrollmentTypeSelect.focus();
+                return false;
+            }
+            return true;
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-secondary {
+        background: var(--surface-bg, #FFFFFF) !important;
+        border: 1px solid var(--surface-border, #D8D5CE) !important;
+        color: var(--text-primary, #1F2A28) !important;
+    }
+    .btn-outline-secondary:hover {
+        background: var(--app-bg, #F7F4EC) !important;
+        border-color: #C9C5BC !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .enrollment-badge {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+    }
+    .enrollment-badge-new {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .enrollment-badge-returning {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    .enrollment-badge-transfer {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+</style>
+
+<div class="card card-custom border-0 shadow-sm rounded-4" style="max-width: 850px; margin: auto;">
+    <div class="p-4">
+        <h5 class="fw-bold mb-4">
+            <i class="bi {% if mode == 'edit' %}bi-pencil-square{% else %}bi-person-plus-fill{% endif %} text-gold me-2"></i>
+            {% if mode == 'edit' %}Edit {{ student.user.get_full_name }}{% else %}Register New Student{% endif %}
+        </h5>
+
+        <form method="post" id="studentRegistrationForm">
+            {% csrf_token %}
+
+            <!-- ========================================== -->
+            <!-- SECTION 1: STUDENT DETAILS                  -->
+            <!-- ========================================== -->
+            <h6 class="fw-bold text-muted small text-uppercase border-bottom pb-2 mb-3">Student Details</h6>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">First Name <span class="text-danger">*</span></label>
+                    <input type="text" name="first_name" class="form-control"
+                           value="{% if mode == 'edit' %}{{ student.user.first_name }}{% else %}{{ form_data.first_name|default:'' }}{% endif %}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Last Name <span class="text-danger">*</span></label>
+                    <input type="text" name="last_name" class="form-control"
+                           value="{% if mode == 'edit' %}{{ student.user.last_name }}{% else %}{{ form_data.last_name|default:'' }}{% endif %}" required>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Date of Birth <span class="text-danger">*</span></label>
+                    <input type="date" name="date_of_birth" class="form-control"
+                           value="{% if mode == 'edit' %}{{ student.date_of_birth|date:'Y-m-d' }}{% else %}{{ form_data.date_of_birth|default:'' }}{% endif %}" required>
+                </div>
+                <div class="col-md-6">
+                    <div class="bg-light rounded-3 p-3">
+                        <small class="text-muted d-block">
+                            <i class="bi bi-info-circle me-1 text-gold"></i>
+                            <strong>Email:</strong> Student will use the parent/guardian's email address.
+                        </small>
+                        {% if mode == 'edit' %}
+                            <small class="text-muted d-block mt-1">
+                                Current email: <strong>{{ student.user.email }}</strong>
+                            </small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- SECTION: ENROLLMENT TYPE                   -->
+            <!-- ========================================== -->
+            <h6 class="fw-bold text-muted small text-uppercase border-bottom pb-2 mb-3 mt-4">Enrollment Information</h6>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Enrollment Type <span class="text-danger">*</span></label>
+                    <select name="enrollment_type" id="enrollmentType" class="form-select" required>
+                        <option value="">Select Enrollment Type</option>
+                        {% for type in enrollment_types %}
+                        <option value="{{ type.id }}"
+                                data-addon-info="{% if type.code == 'NEW' %}Includes admission, uniform, and other new student add-ons{% endif %}"
+                                {% if mode == 'edit' and student.enrollment_type.id == type.id %}selected{% endif %}>
+                            {{ type.get_name_display }}
+                            {% if type.code == 'NEW' %}
+                                <span class="enrollment-badge enrollment-badge-new ms-1">New + Add-ons</span>
+                            {% elif type.code == 'RETURNING' %}
+                                <span class="enrollment-badge enrollment-badge-returning ms-1">Base Fees Only</span>
+                            {% elif type.code == 'TRANSFER' %}
+                                <span class="enrollment-badge enrollment-badge-transfer ms-1">Transfer</span>
+                            {% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted" id="enrollmentTypeHelp">
+                        <i class="bi bi-info-circle me-1"></i> Select an enrollment type to see fee details.
+                    </small>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Previous School</label>
+                    <input type="text" name="previous_school" class="form-control"
+                           value="{% if mode == 'edit' %}{{ student.previous_school }}{% else %}{{ form_data.previous_school|default:'' }}{% endif %}"
+                           placeholder="Enter previous school name (for transfer students)">
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- FEE PREVIEW                               -->
+            <!-- ========================================== -->
+            <div id="feePreviewContainer" style="display:none;" class="mb-3">
+                <div id="feePreviewContent"></div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- CLASS AND ADMISSION                        -->
+            <!-- ========================================== -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-12">
+                    <label class="form-label fw-semibold">Student Class <span class="text-danger">*</span></label>
+                    <select name="school_class" id="id_school_class" class="form-select" required>
+                        <option value="">Select a Class</option>
+                        {% for c in school_classes %}
+                            <option value="{{ c.id }}"
+                                {% if mode == 'edit' and student.school_class.id == c.id %}selected{% endif %}>
+                                {{ c }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        The Class displays its linked Grade Level. The Grade Level is automatically assigned in the system.
+                    </small>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-12">
+                    <label class="form-label fw-semibold">Admission Number</label>
+                    {% if mode == 'edit' %}
+                        <input type="text" class="form-control bg-light" value="{{ student.admission_number }}" disabled>
+                        <small class="text-muted">Assigned automatically on creation.</small>
+                    {% else %}
+                        <input type="text" class="form-control bg-light" value="Auto-generated on save" disabled>
+                        <small class="text-muted">Automatically generated upon registration.</small>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- SECTION 2: PARENT / GUARDIAN                -->
+            <!-- ========================================== -->
+            <h6 class="fw-bold text-muted small text-uppercase border-bottom pb-2 mb-3 mt-4">Parent / Guardian</h6>
+
+            {% if mode == 'edit' and student.parent %}
+                <div class="alert alert-info border-0 shadow-sm rounded-4 mb-3 bg-gold-soft">
+                    <i class="bi bi-info-circle me-2 text-gold"></i> Currently linked to <strong>{{ student.parent.get_full_name }}</strong> ({{ student.parent.email }}).
+                    <br><small>If you want to change the parent, select a new one from the dropdown below.</small>
+                </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Link to Existing Parent</label>
+                <select name="parent_id" id="existingParentSelect" class="form-select">
+                    <option value="">No parent linked</option>
+                    {% for p in existing_parents %}
+                        <option value="{{ p.id }}"
+                            {% if mode == 'edit' and student.parent_id == p.id %}selected{% endif %}>
+                            {{ p.get_full_name }} ({{ p.email }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- ONLY SHOW THIS ON CREATE MODE               -->
+            <!-- ========================================== -->
+            {% if mode != 'edit' %}
+            <div class="card card-custom border-0 shadow-sm rounded-4 bg-light mb-3">
+                <div class="p-3">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="createNewParentToggle" name="create_new_parent">
+                        <label class="form-check-label fw-semibold" for="createNewParentToggle">
+                            <i class="bi bi-plus-circle text-gold me-1"></i> Create New Parent Account Inline
+                        </label>
+                    </div>
+                    <small class="text-muted">If the parent does not have an account yet, check this box to create one right here.</small>
+                </div>
+            </div>
+
+            <div id="parentInlineForm" class="card card-custom border-0 shadow-sm rounded-4 mb-3">
+                <div class="p-3">
+                    <h6 class="fw-bold small text-gold mb-3">New Parent Details</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">First Name <span class="text-danger">*</span></label>
+                            <input type="text" name="parent_first_name" class="form-control form-control-sm" placeholder="Parent First Name" value="{{ form_data.parent_first_name|default:'' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Last Name <span class="text-danger">*</span></label>
+                            <input type="text" name="parent_last_name" class="form-control form-control-sm" placeholder="Parent Last Name" value="{{ form_data.parent_last_name|default:'' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Email <span class="text-danger">*</span></label>
+                            <input type="email" name="parent_email" class="form-control form-control-sm" placeholder="parent@example.com" value="{{ form_data.parent_email|default:'' }}">
+                            <small class="text-muted">This email will be used for both parent and student accounts.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Phone Number</label>
+                            <input type="text" name="parent_phone" class="form-control form-control-sm" placeholder="+233 XX XXX XXXX" value="{{ form_data.parent_phone|default:'' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ========================================== -->
+            <!-- SECTION 3: IDENTIFICATION & CONTACT        -->
+            <!-- ========================================== -->
+            <h6 class="fw-bold text-muted small text-uppercase border-bottom pb-2 mb-3 mt-4">Identification & Contact</h6>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">ID Card Type</label>
+                    <select name="id_card_type" class="form-select">
+                        <option value="">Select ID Card Type</option>
+                        <option value="GHANA_CARD" {% if mode == 'edit' and student.id_card_type == 'GHANA_CARD' %}selected{% endif %}>Ghana Card</option>
+                        <option value="VOTER_ID" {% if mode == 'edit' and student.id_card_type == 'VOTER_ID' %}selected{% endif %}>Voter ID</option>
+                        <option value="PASSPORT" {% if mode == 'edit' and student.id_card_type == 'PASSPORT' %}selected{% endif %}>Passport</option>
+                        <option value="BIRTH_CERT" {% if mode == 'edit' and student.id_card_type == 'BIRTH_CERT' %}selected{% endif %}>Birth Certificate</option>
+                        <option value="OTHER" {% if mode == 'edit' and student.id_card_type == 'OTHER' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">ID Card Number</label>
+                    <input type="text" name="id_card_number" class="form-control" placeholder="GHA-XXXXXXXXX"
+                           value="{% if mode == 'edit' %}{{ student.id_card_number }}{% else %}{{ form_data.id_card_number|default:'' }}{% endif %}">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Residential Address</label>
+                <textarea name="address" class="form-control" rows="3" placeholder="P.O. Box Address or Street Location">{{ student.address|default:'' }}</textarea>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Contact Phone</label>
+                <input type="text" name="contact_phone" class="form-control" placeholder="e.g., 024XXXXXXX"
+                       value="{% if mode == 'edit' %}{{ student.contact_phone }}{% else %}{{ form_data.contact_phone|default:'' }}{% endif %}">
+            </div>
+
+            <!-- ========================================== -->
+            <!-- FORM ACTIONS                               -->
+            <!-- ========================================== -->
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-gold px-4">
+                    <i class="bi {% if mode == 'edit' %}bi-check2-circle{% else %}bi-person-plus-fill{% endif %} me-1"></i>
+                    {% if mode == 'edit' %}Save Changes{% else %}Register Student{% endif %}
+                </button>
+                <a href="{% if mode == 'edit' %}{% url 'students:student_detail' student.id %}{% else %}{% url 'students:student_list' %}{% endif %}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+<div class="sheet">
+<table class="band" cellpadding="0" cellspacing="0"><tr>
+    <td class="band-logo">{% if school_logo %}<img class="logo" src="{{ school_logo }}">{% endif %}</td>
+    <td class="band-mid">
+        <div class="school-name">{{ report_card.school.name|upper }}</div>
+        <div class="school-sub">{{ report_card.school.address }}{% if report_card.school.phone_number %} &bull; {{ report_card.school.phone_number }}{% endif %}{% if report_card.school.contact_email %} &bull; {{ report_card.school.contact_email }}{% endif %}</div>
+        <div class="title-pill">END-OF-TERM REPORT CARD</div>
+        <div class="subtitle">{{ academic_term.academic_year.name }} &bull; {{ academic_term.name }} &bull; {% if report_card.is_finalized %}FINALIZED &amp; OFFICIAL{% else %}DRAFT{% endif %}</div>
+    </td>
+    <td class="band-photo">
+        <table class="photo-frame" cellpadding="0" cellspacing="0"><tr><td>
+            {% if student_photo %}<img class="photo" src="{{ student_photo }}">{% else %}<div class="photo-fallback">{{ student.user.first_name|first|upper }}{{ student.user.last_name|first|upper }}</div>{% endif %}
+        </td></tr></table>
+    </td>
+</tr></table>
+
+<table class="info" style="margin-top:10px"><tr>
+    <td class="label">Student</td><td class="val">{{ student.user.get_full_name }}</td>
+    <td class="label">Admission No.</td><td class="val">{{ student.admission_number }}</td>
+</tr><tr>
+    <td class="label">Grade</td><td class="val">{{ student.grade_level|default:'N/A' }}</td>
+    <td class="label">Class</td><td class="val">{{ student.school_class|default:'N/A' }}</td>
+</tr></table>
+
+<table class="kpis" style="margin-top:9px"><tr>
+    <td class="kpi kpi-gold"><div class="kpi-label">Average</div><div class="kpi-value">{% if report_card.overall_average is not None %}{{ report_card.overall_average|floatformat:1 }}%{% else %}&mdash;{% endif %}</div></td>
+    <td class="kpi kpi-green"><div class="kpi-label">Grade</div><div class="kpi-value">{{ report_card.overall_grade|default:'—' }}</div></td>
+    <td class="kpi kpi-teal"><div class="kpi-label">Position</div><div class="kpi-value">{% if report_card.overall_position %}{{ report_card.overall_position }}/{{ report_card.class_size }}{% else %}&mdash;{% endif %}</div></td>
+    <td class="kpi kpi-gold"><div class="kpi-label">Attendance</div><div class="kpi-value">{% if report_card.attendance_rate is not None %}{{ report_card.attendance_rate|floatformat:1 }}%{% else %}&mdash;{% endif %}</div></td>
+    <td class="kpi kpi-green"><div class="kpi-label">Promotion</div><div class="kpi-value kpi-value-sm">{{ report_card.promotion_status|default:'—' }}</div></td>
+</tr></table>
+
+<div class="section"><span class="section-dot"></span>ACADEMIC PERFORMANCE</div>
+<table class="results"><thead><tr><th class="col-subject">Subject</th><th>Class /30</th><th>Exam /70</th><th>Final /100</th><th>Grade</th><th class="col-remark">Remark</th></tr></thead><tbody>
+{% for s in subject_breakdown %}
+<tr class="{% cycle 'r-a' 'r-b' %}">
+    <td class="col-subject">{{ s.subject }}</td>
+    <td class="center">{% if s.class_score is not None %}<span class="chip chip-teal">{{ s.class_score|floatformat:2 }}</span>{% else %}<span class="dash">&mdash;</span>{% endif %}</td>
+    <td class="center">{% if s.exam_score is not None %}<span class="chip chip-teal">{{ s.exam_score|floatformat:2 }}</span>{% else %}<span class="dash">&mdash;</span>{% endif %}</td>
+    <td class="center">{% if s.total is not None %}<span class="chip chip-gold">{{ s.total|floatformat:2 }}</span>{% else %}<span class="dash">&mdash;</span>{% endif %}</td>
+    <td class="center grade-cell">{{ s.grade|default:'—' }}</td>
+    <td class="col-remark">{{ s.remark|default:'—' }}</td>
+</tr>
+{% empty %}<tr><td colspan="6" class="center dash">No results recorded.</td></tr>{% endfor %}
+</tbody></table>
+<div class="scale-note">Official terminal scale &nbsp;&bull;&nbsp; Class Score /30 + Examination /70 = Final /100</div>
+
+<div class="section"><span class="section-dot"></span>ATTENDANCE &amp; GENERAL ASSESSMENT</div>
+<table class="info"><tr>
+    <td class="label">Present</td><td class="val">{{ report_card.attendance_present }}</td>
+    <td class="label">Late</td><td class="val">{{ report_card.attendance_late }}</td>
+    <td class="label">Absent</td><td class="val">{{ report_card.attendance_absent }}</td>
+</tr><tr>
+    <td class="label">Conduct</td><td class="val" colspan="3">{{ report_card.conduct|default:'—' }}</td>
+    <td class="label">Next Term</td><td class="val">{{ report_card.next_term_date|default:'—' }}</td>
+</tr></table>
+
+<table class="comments" style="margin-top:9px"><tr>
+    <td class="comment-cell">
+        <div class="comment-title">CLASS TEACHER'S COMMENT</div>
+        <div class="comment-box">{{ report_card.teacher_comment|default:report_card.ai_narrative|default:'No comment recorded.' }}</div>
+    </td>
+    <td class="comment-cell">
+        <div class="comment-title">HEADTEACHER'S COMMENT</div>
+        <div class="comment-box">{{ report_card.headteacher_comment|default:'No comment recorded.' }}</div>
+    </td>
+</tr></table>
+
+<table class="sign" style="margin-top:16px"><tr><td>________________________</td><td>________________________</td><td>________________________</td></tr><tr><td>Class Teacher</td><td>Headteacher</td><td>Parent / Guardian</td></tr></table>
+
+<div class="footer">{{ report_card.school.name }} &bull; {{ report_card.academic_term }} &bull; {% if report_card.is_finalized %}FINALIZED{% else %}DRAFT{% endif %} &bull; Generated {{ generated_at|date:"F d, Y" }}</div>
+</div>

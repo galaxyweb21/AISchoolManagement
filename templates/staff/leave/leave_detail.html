@@ -1,0 +1,542 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Leave Request Details{% endblock %}
+
+{% block content %}
+<style>
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.8rem;
+        border-radius: 999px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .detail-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--bs-secondary-color);
+        font-weight: 600;
+        display: block;
+        margin-bottom: 0.15rem;
+    }
+    .detail-value {
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+    .info-card {
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        background: var(--bs-tertiary-bg);
+        height: 100%;
+        border: 1px solid var(--bs-border-color);
+    }
+    .timeline-item {
+        border-left: 3px solid var(--bs-border-color);
+        padding-left: 1rem;
+        padding-bottom: 1rem;
+        position: relative;
+    }
+    .timeline-item:last-child {
+        padding-bottom: 0;
+    }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -6px;
+        top: 0;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--eduai-gold, #946B1C);
+        border: 2px solid var(--bs-body-bg);
+    }
+    .timeline-item.approved::before {
+        background: var(--eduai-signal, #2C7A6D);
+    }
+    .timeline-item.rejected::before {
+        background: #dc2626;
+    }
+    .timeline-item.pending::before {
+        background: #d97706;
+    }
+    .timeline-item.cancelled::before {
+        background: #6b7280;
+    }
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <h5 class="fw-bold mb-0">
+                            <i class="bi bi-calendar-check text-gold me-2"></i>Leave Request
+                        </h5>
+                        <span class="status-badge
+                            {% if leave.status == 'APPROVED' %}bg-teal-soft text-teal
+                            {% elif leave.status == 'TAKEN' %}bg-teal-soft text-teal
+                            {% elif leave.status == 'PENDING' %}bg-warning-subtle text-warning
+                            {% elif leave.status == 'REJECTED' %}bg-danger-subtle text-danger
+                            {% elif leave.status == 'CANCELLED' %}bg-secondary-subtle text-secondary
+                            {% else %}bg-info-subtle text-info{% endif %}
+                        ">
+                            <i class="bi
+                                {% if leave.status == 'APPROVED' or leave.status == 'TAKEN' %}bi-check-circle-fill
+                                {% elif leave.status == 'PENDING' %}bi-clock-fill
+                                {% elif leave.status == 'REJECTED' %}bi-x-circle-fill
+                                {% elif leave.status == 'CANCELLED' %}bi-dash-circle-fill
+                                {% else %}bi-info-circle-fill{% endif %}
+                                me-1
+                            "></i>
+                            {{ leave.get_status_display }}
+                        </span>
+                    </div>
+                    <p class="text-muted mb-0 mt-1">
+                        Request #{{ leave.id|slice:":8" }} • {{ leave.leave_type.name }}
+                    </p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{% url 'staff:leave_list' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i>Back to List
+                    </a>
+                    {% if can_edit_this_leave and leave.status == 'PENDING' %}
+                    <a href="{% url 'staff:leave_request_edit' leave.id %}" class="btn btn-outline-gold btn-sm">
+                        <i class="bi bi-pencil me-1"></i>Edit
+                    </a>
+                    {% endif %}
+                    {% if can_cancel_this_leave and leave.status != 'CANCELLED' and leave.status != 'REJECTED' %}
+                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                        <i class="bi bi-x-circle me-1"></i>Cancel
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Column: Details -->
+        <div class="col-lg-8">
+            <!-- Main Details -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-info-circle text-gold me-2"></i>Request Details
+                    </h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="info-card">
+                                <span class="detail-label"><i class="bi bi-person me-1"></i>Staff Member</span>
+                                <span class="detail-value">{{ leave.staff.user.get_full_name }}</span>
+                                <div class="text-muted small">{{ leave.staff.staff_id }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-card">
+                                <span class="detail-label"><i class="bi bi-tag me-1"></i>Leave Type</span>
+                                <span class="detail-value">{{ leave.leave_type.name }}</span>
+                                <div class="text-muted small">{{ leave.leave_type.code }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-card">
+                                <span class="detail-label"><i class="bi bi-calendar-start me-1"></i>Start Date</span>
+                                <span class="detail-value">{{ leave.start_date|date:"M d, Y" }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-card">
+                                <span class="detail-label"><i class="bi bi-calendar-end me-1"></i>End Date</span>
+                                <span class="detail-value">{{ leave.end_date|date:"M d, Y" }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-card">
+                                <span class="detail-label"><i class="bi bi-clock me-1"></i>Working Days</span>
+                                <span class="detail-value">{{ leave.requested_days|floatformat:0 }} days</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="info-card">
+                                <span class="detail-label"><i class="bi bi-chat me-1"></i>Reason</span>
+                                <span class="detail-value">{{ leave.reason|default:"No reason provided" }}</span>
+                            </div>
+                        </div>
+                        {% if leave.notes %}
+                        <div class="col-12">
+                            <div class="info-card">
+                                <span class="detail-label"><i class="bi bi-sticky me-1"></i>Additional Notes</span>
+                                <span class="detail-value">{{ leave.notes }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline / History -->
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-clock-history text-gold me-2"></i>Timeline
+                    </h6>
+                    <div class="timeline">
+                        <!-- Created -->
+                        <div class="timeline-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <span class="fw-semibold">Request Created</span>
+                                    <div class="text-muted small">{{ leave.created_at|date:"M d, Y H:i" }}</div>
+                                </div>
+                                <span class="badge bg-light text-muted">Submitted</span>
+                            </div>
+                        </div>
+
+                        <!-- Submitted -->
+                        {% if leave.status != 'DRAFT' %}
+                        <div class="timeline-item pending">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <span class="fw-semibold">Submitted for Approval</span>
+                                    <div class="text-muted small">{{ leave.updated_at|date:"M d, Y H:i" }}</div>
+                                </div>
+                                <span class="badge bg-warning-subtle text-warning">Pending</span>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Approved -->
+                        {% if leave.status == 'APPROVED' or leave.status == 'TAKEN' %}
+                        <div class="timeline-item approved">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <span class="fw-semibold">Approved</span>
+                                    <div class="text-muted small">
+                                        By {{ leave.approved_by.get_full_name|default:leave.approved_by.username }}
+                                        on {{ leave.approved_at|date:"M d, Y H:i" }}
+                                    </div>
+                                    {% if leave.approval_note %}
+                                    <div class="text-muted small mt-1"><em>"{{ leave.approval_note }}"</em></div>
+                                    {% endif %}
+                                </div>
+                                <span class="badge bg-teal-soft text-teal">Approved</span>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Taken -->
+                        {% if leave.status == 'TAKEN' %}
+                        <div class="timeline-item approved">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <span class="fw-semibold">Marked as Taken</span>
+                                    <div class="text-muted small">{{ leave.updated_at|date:"M d, Y H:i" }}</div>
+                                </div>
+                                <span class="badge bg-teal-soft text-teal">Taken</span>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Rejected -->
+                        {% if leave.status == 'REJECTED' %}
+                        <div class="timeline-item rejected">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <span class="fw-semibold">Rejected</span>
+                                    <div class="text-muted small">
+                                        By {{ leave.rejected_by.get_full_name|default:leave.rejected_by.username }}
+                                        on {{ leave.rejected_at|date:"M d, Y H:i" }}
+                                    </div>
+                                    {% if leave.rejection_reason %}
+                                    <div class="text-muted small mt-1"><em>"{{ leave.rejection_reason }}"</em></div>
+                                    {% endif %}
+                                </div>
+                                <span class="badge bg-danger-subtle text-danger">Rejected</span>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Cancelled -->
+                        {% if leave.status == 'CANCELLED' %}
+                        <div class="timeline-item cancelled">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <span class="fw-semibold">Cancelled</span>
+                                    <div class="text-muted small">
+                                        By {{ leave.cancelled_by.get_full_name|default:leave.cancelled_by.username }}
+                                        on {{ leave.cancelled_at|date:"M d, Y H:i" }}
+                                    </div>
+                                    {% if leave.cancellation_reason %}
+                                    <div class="text-muted small mt-1"><em>"{{ leave.cancellation_reason }}"</em></div>
+                                    {% endif %}
+                                </div>
+                                <span class="badge bg-secondary-subtle text-secondary">Cancelled</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Actions & Info -->
+        <div class="col-lg-4">
+            <!-- Leave Balance -->
+            {% if balance %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-wallet2 text-gold me-2"></i>Leave Balance
+                    </h6>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Entitled</span>
+                        <span class="fw-semibold">{{ balance.total_entitled|floatformat:0 }} days</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Used</span>
+                        <span class="fw-semibold">{{ balance.used|floatformat:0 }} days</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Pending</span>
+                        <span class="fw-semibold">{{ balance.pending|floatformat:0 }} days</span>
+                    </div>
+                    <div class="d-flex justify-content-between pt-2 border-top">
+                        <span class="text-muted">Remaining</span>
+                        <span class="fw-bold text-teal">{{ balance.remaining|floatformat:0 }} days</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Replacement Staff -->
+            {% if leave.replacement_staff %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-2">
+                        <i class="bi bi-person-check text-gold me-2"></i>Replacement Staff
+                    </h6>
+                    <div class="fw-semibold">{{ leave.replacement_staff.user.get_full_name }}</div>
+                    <div class="text-muted small">{{ leave.replacement_staff.staff_id }}</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Contact Information -->
+            {% if leave.contact_number or leave.emergency_contact %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-2">
+                        <i class="bi bi-telephone text-gold me-2"></i>Contact Information
+                    </h6>
+                    {% if leave.contact_number %}
+                    <div class="mb-1">
+                        <span class="text-muted small">Contact Number:</span>
+                        <span class="fw-semibold">{{ leave.contact_number }}</span>
+                    </div>
+                    {% endif %}
+                    {% if leave.emergency_contact %}
+                    <div class="mb-1">
+                        <span class="text-muted small">Emergency Contact:</span>
+                        <span class="fw-semibold">{{ leave.emergency_contact }}</span>
+                    </div>
+                    {% endif %}
+                    {% if leave.emergency_phone %}
+                    <div>
+                        <span class="text-muted small">Emergency Phone:</span>
+                        <span class="fw-semibold">{{ leave.emergency_phone }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Approval Actions -->
+            {% if can_approve_this_leave and leave.status == 'PENDING' %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-check-circle text-teal me-2"></i>Approval Actions
+                    </h6>
+                    <form method="post" action="{% url 'staff:leave_approve' leave.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="approval_note" class="form-label small fw-semibold">Approval Note (Optional)</label>
+                            <textarea name="approval_note" id="approval_note" class="form-control" rows="2" placeholder="Add any notes about this approval..."></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle me-1"></i>Approve Leave
+                            </button>
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                                <i class="bi bi-x-circle me-1"></i>Reject Leave
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Status Information -->
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-2">
+                        <i class="bi bi-info-circle text-gold me-2"></i>Status Information
+                    </h6>
+                    <div class="mb-2">
+                        <span class="text-muted small">Current Status:</span>
+                        <span class="status-badge
+                            {% if leave.status == 'APPROVED' or leave.status == 'TAKEN' %}bg-teal-soft text-teal
+                            {% elif leave.status == 'PENDING' %}bg-warning-subtle text-warning
+                            {% elif leave.status == 'REJECTED' %}bg-danger-subtle text-danger
+                            {% elif leave.status == 'CANCELLED' %}bg-secondary-subtle text-secondary
+                            {% else %}bg-info-subtle text-info{% endif %}
+                            d-inline-block ms-1
+                        ">
+                            {{ leave.get_status_display }}
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-muted small">Last Updated:</span>
+                        <span class="text-muted small">{{ leave.updated_at|date:"M d, Y H:i" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold text-danger">
+                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>Reject Leave Request
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted mb-3">Please provide a reason for rejecting this leave request.</p>
+                <form method="post" action="{% url 'staff:leave_reject' leave.id %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label fw-semibold">Rejection Reason <span class="text-danger">*</span></label>
+                        <textarea name="rejection_reason" id="rejection_reason" class="form-control" rows="3" required placeholder="Explain why this leave request is being rejected..."></textarea>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-circle me-1"></i>Cancel
+                        </button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-x-circle me-1"></i>Reject Leave
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold text-danger">
+                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>Cancel Leave Request
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted mb-3">Are you sure you want to cancel this leave request?</p>
+                <form method="post" action="{% url 'staff:leave_cancel' leave.id %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="cancellation_reason" class="form-label fw-semibold">Cancellation Reason</label>
+                        <textarea name="cancellation_reason" id="cancellation_reason" class="form-control" rows="3" placeholder="Optional reason for cancellation..."></textarea>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-circle me-1"></i>Close
+                        </button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-x-circle me-1"></i>Cancel Leave
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-dismiss messages after 5 seconds
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

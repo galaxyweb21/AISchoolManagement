@@ -1,0 +1,135 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block page_title %}AI School Command Center{% endblock %}
+
+{% block content %}
+<style>
+.role-ai-hero{border:0;border-radius:24px;overflow:hidden;background:linear-gradient(135deg,#111827,#1e3a8a);color:#fff}
+.ai-scope{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:12px 14px}
+.ai-kpi{border:0;border-radius:20px;box-shadow:0 10px 35px rgba(15,23,42,.07)}
+.ai-kpi .icon{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:var(--bs-tertiary-bg);font-size:1.25rem}
+.ai-cap{border:1px solid var(--bs-border-color);border-radius:12px;padding:8px 11px;background:var(--bs-body-bg);font-size:.82rem}
+.copilot{border:0;border-radius:22px;overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,.08)}
+.chat-window{height:470px;overflow-y:auto;background:var(--bs-tertiary-bg);padding:20px}
+.msg{max-width:88%;padding:12px 15px;border-radius:16px;margin-bottom:12px;white-space:pre-wrap;line-height:1.55}
+.msg.user{margin-left:auto;background:#2563eb;color:#fff;border-bottom-right-radius:5px}
+.msg.ai{background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-bottom-left-radius:5px}
+.source{font-size:.78rem;border-left:3px solid #2563eb;padding-left:9px;margin-top:8px}
+.quick-btn{border-radius:12px}
+</style>
+
+<div class="container-fluid py-3">
+    <div class="role-ai-hero p-4 p-lg-5 mb-4">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-4">
+            <div>
+                <div class="text-uppercase small fw-bold opacity-75 mb-2"><i class="bi bi-cpu me-2"></i>AI School Command Center</div>
+                <h2 class="fw-bold mb-2">Your education intelligence workspace</h2>
+                <p class="mb-0 opacity-75">AI School Copilot is available for your role, but private school data remains restricted to your authorized scope.</p>
+            </div>
+            <div class="ai-scope">
+                <div class="small opacity-75">Signed in as</div>
+                <div class="fw-bold">{{ ai_role }}</div>
+                <div class="small opacity-75 mt-1">Scope: {{ ai_scope|title }}</div>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            {% for capability in ai_capabilities %}<span class="ai-cap text-white border-light bg-transparent">{{ capability|title }}</span>{% endfor %}
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="card ai-kpi h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><small class="text-muted fw-semibold">Students in scope</small><h3 class="fw-bold mb-0 mt-1">{{ students_count|default:0 }}</h3></div><div class="icon"><i class="bi bi-people"></i></div></div></div>
+        </div>
+        {% if classes_count is not None %}<div class="col-6 col-xl-3"><div class="card ai-kpi h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><small class="text-muted fw-semibold">Classes in scope</small><h3 class="fw-bold mb-0 mt-1">{{ classes_count|default:0 }}</h3></div><div class="icon"><i class="bi bi-diagram-3"></i></div></div></div></div>{% endif %}
+        {% if attendance_rate is not None %}<div class="col-6 col-xl-3"><div class="card ai-kpi h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><small class="text-muted fw-semibold">Today's attendance</small><h3 class="fw-bold mb-0 mt-1">{{ attendance_rate|default:0 }}%</h3></div><div class="icon"><i class="bi bi-calendar-check"></i></div></div></div></div>{% endif %}
+        {% if average_score is not None %}<div class="col-6 col-xl-3"><div class="card ai-kpi h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><small class="text-muted fw-semibold">Average score</small><h3 class="fw-bold mb-0 mt-1">{{ average_score|default:0 }}%</h3></div><div class="icon"><i class="bi bi-graph-up-arrow"></i></div></div></div></div>{% endif %}
+        {% if unpaid_invoices is not None %}<div class="col-6 col-xl-3"><div class="card ai-kpi h-100"><div class="card-body d-flex justify-content-between align-items-center"><div><small class="text-muted fw-semibold">Unpaid invoices</small><h3 class="fw-bold mb-0 mt-1">{{ unpaid_invoices|default:0 }}</h3></div><div class="icon"><i class="bi bi-wallet2"></i></div></div></div></div>{% endif %}
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-8">
+            <div class="card copilot">
+                <div class="card-header bg-transparent p-4 border-bottom d-flex justify-content-between align-items-center">
+                    <div><h5 class="fw-bold mb-1"><i class="bi bi-stars text-primary me-2" style="color: var(--primary-color, #946B1C) !important;"></i>AI School Copilot</h5><small class="text-muted">Ask questions, analyze your authorized school data, or research Ghana education topics.</small></div>
+                    <span class="badge" style="background: var(--primary-color, #946B1C); color: #fff;">{{ ai_role }}</span>
+                </div>
+                <div id="copilotMessages" class="chat-window">
+                    <div class="msg ai"><strong>AI School Copilot</strong><br>Welcome. I can help within your role with school data, teaching and learning, and Ghana education questions.</div>
+                </div>
+                <div class="card-body border-top">
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        {% if 'students' in ai_capabilities %}<button type="button" class="btn btn-sm btn-light quick-btn" data-q="Show me a summary of the students within my authorized scope.">Student summary</button>{% endif %}
+                        {% if 'attendance' in ai_capabilities %}<button type="button" class="btn btn-sm btn-light quick-btn" data-q="Analyze today's attendance within my authorized scope.">Attendance</button>{% endif %}
+                        {% if 'academics' in ai_capabilities %}<button type="button" class="btn btn-sm btn-light quick-btn" data-q="What academic areas should I focus on based on the available data?">Academic insight</button>{% endif %}
+                        <button type="button" class="btn btn-sm btn-light quick-btn" data-q="Explain the Ghana Standards-Based Curriculum and how I should use it in my role.">Ghana curriculum</button>
+                        {% if 'research' in ai_capabilities %}<button type="button" class="btn btn-sm" style="border-color: var(--primary-color, #946B1C); color: var(--primary-color, #946B1C); background: transparent; quick-btn" data-q="Research the latest official Ghana education guidance relevant to schools."><i class="bi bi-search me-1"></i>Research Ghana Education</button>{% endif %}
+                    </div>
+                    <form id="roleCopilotForm" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <input id="roleCopilotQuestion" class="form-control form-control-lg" placeholder="Ask AI School Copilot..." autocomplete="off">
+                        <button class="btn px-4" type="submit" style="background: var(--primary-color, #946B1C); color: #fff; border-color: var(--primary-color, #946B1C);"><i class="bi bi-send"></i></button>
+                    </form>
+                    <div class="small text-muted mt-2"><i class="bi bi-shield-check me-1"></i>Role-scoped AI: the model only receives data authorized for this account.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold">Your Copilot can help with</h6>
+                    <p class="text-muted small">{{ ai_scope_description }}</p>
+                    <div class="d-flex flex-column gap-2">
+                        {% for capability in ai_capabilities %}<div class="d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill" style="color: var(--eduai-signal, #2C7A6D);"></i><span>{{ capability|title }} intelligence</span></div>{% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold"><i class="bi bi-shield-lock text-primary me-2" style="color: var(--primary-color, #946B1C) !important;"></i>Privacy boundary</h6>
+                    <p class="text-muted small mb-0">AI cannot use another user's private records, unrelated classes, restricted finance information, or administrative secrets merely because a question asks for them.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    const form=document.getElementById('roleCopilotForm');
+    const input=document.getElementById('roleCopilotQuestion');
+    const box=document.getElementById('copilotMessages');
+    const csrf=document.querySelector('[name=csrfmiddlewaretoken]').value;
+    let conversationId=null;
+
+    function addMessage(text, cls, sources){
+        const el=document.createElement('div'); el.className='msg '+cls;
+        el.textContent=text;
+        if(sources && sources.length){
+            sources.forEach(s=>{
+                const div=document.createElement('div'); div.className='source';
+                const a=document.createElement('a'); a.href=s.url; a.target='_blank'; a.rel='noopener'; a.textContent=s.title || s.url;
+                div.appendChild(a); el.appendChild(div);
+            });
+        }
+        box.appendChild(el); box.scrollTop=box.scrollHeight;
+    }
+    async function ask(q){
+        q=(q||'').trim(); if(!q) return;
+        addMessage(q,'user'); input.value='';
+        const typing=document.createElement('div'); typing.className='msg ai'; typing.textContent='AI School Copilot is thinking…'; box.appendChild(typing); box.scrollTop=box.scrollHeight;
+        try{
+            const r=await fetch("{% url 'ai_engine:ai_copilot' %}", {method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf},body:JSON.stringify({question:q,conversation_id:conversationId})});
+            const data=await r.json(); typing.remove();
+            if(!data.success){ addMessage(data.error || 'Unable to process the request.','ai'); return; }
+            conversationId=data.conversation_id || conversationId;
+            addMessage(data.answer,'ai',data.sources || []);
+        }catch(e){ typing.remove(); addMessage('The Copilot could not connect. Please try again.','ai'); }
+    }
+    form.addEventListener('submit',e=>{e.preventDefault();ask(input.value);});
+    document.querySelectorAll('.quick-btn').forEach(b=>b.addEventListener('click',()=>ask(b.dataset.q)));
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,330 @@
+<!-- ai_engine/invoice_risk_detail.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Invoice Detail{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-outline-secondary-custom {
+        border-color: var(--text-muted, #6B7570);
+        color: var(--text-muted, #6B7570);
+        background: transparent;
+    }
+    .btn-outline-secondary-custom:hover {
+        background: var(--text-muted, #6B7570);
+        color: #fff;
+    }
+    .btn-outline-success-custom {
+        border-color: var(--eduai-signal, #2C7A6D);
+        color: var(--eduai-signal, #2C7A6D);
+        background: transparent;
+    }
+    .btn-outline-success-custom:hover {
+        background: var(--eduai-signal, #2C7A6D);
+        color: #fff;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+    .stat-card {
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        border: 1px solid var(--surface-border);
+        background: var(--surface-bg);
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+    }
+    .stat-card .stat-number {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1.2;
+    }
+    .stat-card .stat-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Invoice Risk Detail
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% elif request.user.role == 'BURSAR' %}
+                            Bursar View
+                        {% else %}
+                            Read-Only View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    This page shows detailed risk analysis for invoice <strong>{{ invoice.id }}</strong>
+                    belonging to <strong>{{ invoice.student.user.get_full_name }}</strong>.
+                    The AI analyzes payment history, overdue status, and other factors to calculate a risk score.
+                    Use the <strong>"Draft AI Reminder"</strong> button to generate a personalized payment reminder.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 p-4">
+            <div>
+                <h5 class="fw-bold mb-1">
+                    <i class="bi bi-person-badge text-gold me-2"></i>
+                    {{ invoice.student.user.get_full_name }}
+                </h5>
+                <small class="text-muted">
+                    {{ invoice.student.admission_number }} &middot;
+                    {% for li in invoice.line_items.all %}{{ li.fee_category.name }}{% if not forloop.last %}, {% endif %}{% endfor %} &middot;
+                    due {{ invoice.due_date|date:"M d, Y" }}
+                </small>
+            </div>
+            {% if assessment %}
+                {% if assessment.risk_band == 'CRITICAL' %}
+                    <span class="badge fs-6 px-3 py-2" style="background: rgba(220,38,38,0.1); color: #dc2626; border-radius: 20px;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        Critical &middot; {{ assessment.risk_score|floatformat:0 }}/100
+                    </span>
+                {% elif assessment.risk_band == 'HIGH' %}
+                    <span class="badge fs-6 px-3 py-2" style="background: rgba(217,119,6,0.1); color: #d97706; border-radius: 20px;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        High &middot; {{ assessment.risk_score|floatformat:0 }}/100
+                    </span>
+                {% elif assessment.risk_band == 'MEDIUM' %}
+                    <span class="badge fs-6 px-3 py-2" style="background: rgba(59,130,246,0.1); color: #3b82f6; border-radius: 20px;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Medium &middot; {{ assessment.risk_score|floatformat:0 }}/100
+                    </span>
+                {% else %}
+                    <span class="badge fs-6 px-3 py-2" style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D); border-radius: 20px;">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Low &middot; {{ assessment.risk_score|floatformat:0 }}/100
+                    </span>
+                {% endif %}
+            {% else %}
+                <span class="badge fs-6 px-3 py-2" style="background: var(--eduai-gold-soft, rgba(148,107,28,0.1)); color: var(--eduai-gold, #946B1C); border-radius: 20px;">
+                    <i class="bi bi-check-circle me-1"></i> Paid
+                </span>
+            {% endif %}
+        </div>
+        <div class="px-4 pb-4">
+            <a href="{% url 'ai_engine:finance_insights_dashboard' %}" class="btn btn-sm btn-outline-secondary-custom">
+                <i class="bi bi-arrow-left me-1"></i>Back to dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-label">Total</div>
+                <div class="stat-number mt-1">{{ invoice.total_amount }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-label text-teal">Paid</div>
+                <div class="stat-number mt-1" style="color: var(--eduai-signal, #2C7A6D);">{{ invoice.amount_paid }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-label text-danger">Balance Due</div>
+                <div class="stat-number mt-1 text-danger">{{ invoice.balance_due }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Risk Factors -->
+    {% if assessment %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="p-4">
+            <h6 class="fw-bold mb-3">
+                <i class="bi bi-graph-up-arrow text-gold me-2"></i>Why this score
+            </h6>
+            {% for f in assessment.contributing_factors %}
+                <div class="d-flex justify-content-between border-bottom py-2">
+                    <div>
+                        <span class="fw-semibold">{{ f.factor }}</span>
+                        <div class="text-muted small">{{ f.detail }}</div>
+                    </div>
+                    <span class="fw-semibold {% if f.points > 0 %}text-danger{% else %}text-success{% endif %}">
+                        {% if f.points > 0 %}+{% endif %}{{ f.points }}
+                    </span>
+                </div>
+            {% empty %}
+                <p class="text-muted mb-0">No risk factors - this invoice looks fine.</p>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Payment Reminders -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0">
+                    <i class="bi bi-envelope text-gold me-2"></i>Payment reminders
+                </h6>
+                <form method="post" action="{% url 'ai_engine:generate_reminder' invoice.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-gold">
+                        <i class="bi bi-stars me-1"></i>Draft AI Reminder
+                    </button>
+                </form>
+            </div>
+
+            {% for r in reminders %}
+            <div class="border rounded-3 p-3 mb-3" style="border-color: var(--surface-border) !important; border-radius: 12px !important;">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <small class="text-muted">
+                        <i class="bi bi-clock me-1"></i>
+                        Drafted {{ r.generated_at|date:"M d, Y H:i" }}
+                        {% if r.edited_by %} &middot; edited by {{ r.edited_by.get_full_name }}{% endif %}
+                    </small>
+                    {% if r.is_sent %}
+                        <span class="badge" style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D); border-radius: 20px; padding: 0.3rem 0.75rem;">
+                            <i class="bi bi-check-circle me-1"></i>Sent {{ r.sent_at|date:"M d, Y" }}
+                        </span>
+                    {% else %}
+                        <span class="badge" style="background: var(--app-bg, #F7F4EC); color: var(--text-muted, #6B7570); border-radius: 20px; padding: 0.3rem 0.75rem;">
+                            <i class="bi bi-pencil me-1"></i>Draft
+                        </span>
+                    {% endif %}
+                </div>
+
+                {% if r.is_sent %}
+                    <p class="mb-0" style="white-space: pre-wrap;">{{ r.message }}</p>
+                {% else %}
+                    <form method="post" action="{% url 'ai_engine:save_reminder' r.id %}" class="mb-2">
+                        {% csrf_token %}
+                        <textarea name="message" class="form-control mb-2" rows="5">{{ r.message }}</textarea>
+                        <button type="submit" class="btn btn-sm btn-outline-secondary-custom">
+                            <i class="bi bi-save me-1"></i>Save Edit
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'ai_engine:mark_reminder_sent' r.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-success-custom">
+                            <i class="bi bi-check2-circle me-1"></i>Mark as Sent
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+            {% empty %}
+                <p class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    No reminders drafted yet for this invoice.
+                </p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

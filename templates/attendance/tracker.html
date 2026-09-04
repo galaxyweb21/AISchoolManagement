@@ -1,0 +1,1511 @@
+<!-- attendance/templates/attendance/tracker.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Daily Roll Call Registry{% endblock %}
+
+{% block content %}
+
+<style>
+    :root {
+        --attendance-gold: var(--eduai-gold, #946B1C);
+        --attendance-gold-dark: #7a5917;
+        --attendance-teal: var(--eduai-signal, #2C7A6D);
+        --attendance-teal-soft: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16));
+        --attendance-gold-soft: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+    }
+
+    .text-gold { color: var(--attendance-gold) !important; }
+    .text-teal { color: var(--attendance-teal) !important; }
+    .bg-gold-soft { background-color: var(--attendance-gold-soft) !important; }
+    .bg-teal-soft { background-color: var(--attendance-teal-soft) !important; }
+
+    .btn-gold {
+        background-color: var(--attendance-gold) !important;
+        border-color: var(--attendance-gold) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: var(--attendance-gold-dark) !important;
+        border-color: var(--attendance-gold-dark) !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--attendance-gold) !important;
+        border-color: var(--attendance-gold) !important;
+    }
+    .btn-outline-gold:hover,
+    .btn-outline-gold.active {
+        background-color: var(--attendance-gold) !important;
+        border-color: var(--attendance-gold) !important;
+        color: #fff !important;
+    }
+    .spinner-gold { color: var(--attendance-gold) !important; }
+    .badge-gold {
+        background-color: var(--attendance-gold-soft) !important;
+        color: var(--attendance-gold) !important;
+    }
+    .badge-teal {
+        background-color: var(--attendance-teal-soft) !important;
+        color: var(--attendance-teal) !important;
+    }
+    .border-gold { border-color: var(--attendance-gold) !important; }
+
+    .attendance-header { border-radius: 18px; }
+
+    .class-scope-card {
+        border-radius: 14px;
+        background: var(--attendance-teal-soft);
+        border: 1px solid rgba(44, 122, 109, 0.15);
+    }
+
+    .class-scope-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 11px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.8);
+        color: var(--attendance-teal);
+        border: 1px solid rgba(44, 122, 109, 0.15);
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .attendance-table th { white-space: nowrap; }
+    .attendance-table tbody tr { transition: background-color 0.2s ease; }
+    .attendance-table tbody tr:hover { background-color: rgba(44, 122, 109, 0.035); }
+    .attendance-buttons { min-width: 290px; }
+
+    .camera-box {
+        position: relative;
+        background: #000;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+    .camera-box video {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .recognized-item { transition: background-color 0.2s ease; }
+    .recognized-item:hover { background-color: rgba(44, 122, 109, 0.08); }
+
+    .alert-sm { font-size: 13px; }
+
+    .empty-attendance { padding: 55px 20px; }
+    .empty-attendance-icon {
+        width: 76px;
+        height: 76px;
+        border-radius: 50%;
+        margin: 0 auto 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--attendance-gold-soft);
+        color: var(--attendance-gold);
+        font-size: 32px;
+    }
+
+    @keyframes attendanceBlink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.35; }
+    }
+    .live-indicator { animation: attendanceBlink 1s infinite; }
+
+    /* ============================================================
+       PAGE DESCRIPTION
+    ============================================================ */
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+    /* ============================================================
+       AUTO-FILTER
+    ============================================================ */
+    .attendance-row.hidden-row { display: none !important; }
+    .attendance-row.visible-row { display: table-row !important; }
+    .filter-badge {
+        display: none;
+        background-color: var(--eduai-gold-soft);
+        color: var(--eduai-gold);
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .filter-badge.show { display: inline-block; }
+    @keyframes pulse-badge {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .filter-active { animation: pulse-badge 1.5s ease-in-out 1; }
+
+    @media (max-width: 767.98px) {
+        .attendance-buttons { min-width: 0; }
+        .attendance-buttons .btn { padding-left: 8px; padding-right: 8px; }
+    }
+</style>
+
+<!-- ============================================================
+     MESSAGES
+============================================================ -->
+<div id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div class="container-fluid py-4">
+
+    <!-- ============================================================
+         PAGE DESCRIPTION
+    ============================================================ -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Daily Roll Call Registry
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if is_admin %}
+                            Admin View
+                        {% elif is_class_teacher %}
+                            Class Teacher View
+                        {% else %}
+                            Staff View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    This page manages daily student attendance for your classroom.
+                    {% if is_admin or is_class_teacher %}
+                        You can <strong>mark</strong> students as Present, Late, or Absent using the buttons.
+                        Use the <strong>search bar</strong> below to filter students by name or admission number.
+                        The <strong>Face Scan</strong> feature allows you to mark attendance using facial recognition.
+                    {% else %}
+                        You have read-only access to view attendance.
+                    {% endif %}
+                    Students with registered faces show a <strong>Registered</strong> badge.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         PAGE HEADER
+    ============================================================ -->
+    <div class="card border-0 shadow-sm attendance-header mb-4">
+        <div class="p-4">
+
+            <div class="row align-items-center g-3">
+
+                <div class="col-lg-7">
+
+                    <div class="d-flex align-items-start gap-3">
+
+                        <div class="rounded-3 d-flex align-items-center justify-content-center bg-gold-soft" style="width:48px;height:48px;">
+                            <i class="bi bi-calendar-check fs-4 text-gold"></i>
+                        </div>
+
+                        <div>
+                            <h5 class="fw-bold mb-1">Classroom Attendance</h5>
+                            <p class="text-muted small mb-2">
+                                {% if is_admin %}
+                                    School-wide daily attendance management.
+                                {% elif is_class_teacher %}
+                                    Morning attendance for students in your assigned classroom.
+                                {% else %}
+                                    Attendance is restricted to assigned classroom teachers.
+                                {% endif %}
+                            </p>
+
+                            {% if is_class_teacher %}
+                                <span class="badge badge-teal rounded-pill px-3 py-2">
+                                    <i class="bi bi-person-workspace me-1"></i> Class Teacher
+                                </span>
+                            {% elif is_teacher %}
+                                <span class="badge bg-warning-subtle text-warning border rounded-pill px-3 py-2">
+                                    <i class="bi bi-exclamation-circle me-1"></i> No Classroom Assignment
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="d-flex justify-content-lg-end gap-2 flex-wrap">
+                        {% if is_admin or is_class_teacher %}
+                            <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#attendanceCameraModal">
+                                <i class="bi bi-camera-video me-1"></i> Face Scan
+                            </button>
+                        {% endif %}
+
+                        <form method="GET" action="" class="d-flex gap-2">
+                            <input type="date" name="date" class="form-control" value="{{ selected_date|date:'Y-m-d' }}" onchange="this.form.submit()">
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Classroom Scope -->
+            {% if is_class_teacher %}
+                <div class="class-scope-card mt-4 p-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-mortarboard-fill text-teal"></i>
+                        <strong class="small">Your Classroom Assignment</strong>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for classroom in assigned_classes %}
+                            <span class="class-scope-chip">
+                                <i class="bi bi-people-fill"></i> {{ classroom.name }}
+                            </span>
+                        {% empty %}
+                            <span class="text-muted small">No classroom assignment found.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if attendance_access_error %}
+                <div class="alert alert-warning alert-sm mt-3 mb-0">
+                    <i class="bi bi-shield-exclamation me-2"></i> {{ attendance_access_error }}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ============================================================
+         ATTENDANCE TABLE
+    ============================================================ -->
+    <div class="card border-0 shadow-sm">
+        <div class="p-4">
+
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <div>
+                    <h6 class="fw-bold mb-1">Daily Roll Call</h6>
+                    <small class="text-muted">{{ selected_date|date:"l, d F Y" }}</small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-light text-dark border rounded-pill px-3 py-2">
+                        {{ students|length }} student{{ students|length|pluralize }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Auto-filter search bar -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-8 col-lg-6">
+                    <div class="position-relative">
+                        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                        <input type="text" id="attendanceSearchInput" class="form-control ps-5"
+                               placeholder="Search by student name or admission number..." autocomplete="off">
+                    </div>
+                    <small class="text-muted" id="searchResultCount">Showing all {{ students|length }} students</small>
+                </div>
+                <div class="col-md-4 col-lg-6 text-md-end">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearAttendanceSearch" style="display: none;">
+                        <i class="bi bi-x-circle me-1"></i>Clear Search
+                    </button>
+                    <span class="filter-badge" id="filterBadge">
+                        <i class="bi bi-funnel-fill me-1"></i>Filtered
+                    </span>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 attendance-table">
+                    <thead>
+                        <tr>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Student Name</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Admission No.</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Class</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center" style="width:320px;">
+                                Attendance Status
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center" style="width:130px;">
+                                Face
+                            </th>
+                        </tr>
+                    </thead>
+
+                    <tbody class="border-top-0" id="attendanceTableBody">
+                        {% for student in students %}
+                            <tr id="row-{{ student.id }}" class="border-bottom attendance-row visible-row"
+                                data-student="{{ student.user.get_full_name|default:'Unnamed Student'|lower }}"
+                                data-admission="{{ student.admission_number|default:'—'|lower }}"
+                                data-class="{{ student.school_class.name|default:'No Class'|lower }}">
+                                <!-- STUDENT -->
+                                <td class="py-3">
+                                    <span class="fw-bold d-block attendance-name">
+                                        {{ student.user.get_full_name|default:"Unnamed Student" }}
+                                    </span>
+                                    {% if student.user.email %}
+                                        <small class="text-muted attendance-email">{{ student.user.email }}</small>
+                                    {% endif %}
+                                </td>
+
+                                <!-- ADMISSION -->
+                                <td class="py-3">
+                                    <code class="fw-semibold text-muted small bg-light px-2 py-1 rounded-2 border attendance-admission">
+                                        {{ student.admission_number|default:"—" }}
+                                    </code>
+                                </td>
+
+                                <!-- CLASS -->
+                                <td class="py-3">
+                                    <div class="d-flex flex-column">
+                                        <span class="badge bg-primary-subtle text-primary border px-2 py-1 rounded-pill align-self-start attendance-class">
+                                            {{ student.school_class.name|default:"No Class" }}
+                                        </span>
+                                        {% if student.grade_level %}
+                                            <small class="text-muted mt-1">{{ student.grade_level }}</small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+
+                                <!-- ATTENDANCE -->
+                                <td class="py-3 text-center">
+                                    {% if is_admin or is_class_teacher %}
+                                        <div class="btn-group attendance-buttons" role="group">
+                                            <button type="button" id="btn-present-{{ student.id }}"
+                                                    class="btn btn-sm
+                                                    {% if student.current_attendance_status == 'PRESENT' %}btn-success{% else %}btn-outline-success{% endif %}"
+                                                    onclick="updateAttendance('{{ student.id }}', 'PRESENT')">
+                                                <i class="bi bi-check-circle me-1"></i> Present
+                                            </button>
+                                            <button type="button" id="btn-late-{{ student.id }}"
+                                                    class="btn btn-sm
+                                                    {% if student.current_attendance_status == 'LATE' %}btn-warning{% else %}btn-outline-warning{% endif %}"
+                                                    onclick="updateAttendance('{{ student.id }}', 'LATE')">
+                                                <i class="bi bi-clock me-1"></i> Late
+                                            </button>
+                                            <button type="button" id="btn-absent-{{ student.id }}"
+                                                    class="btn btn-sm
+                                                    {% if student.current_attendance_status == 'ABSENT' %}btn-danger{% else %}btn-outline-danger{% endif %}"
+                                                    onclick="updateAttendance('{{ student.id }}', 'ABSENT')">
+                                                <i class="bi bi-x-circle me-1"></i> Absent
+                                            </button>
+                                        </div>
+                                    {% else %}
+                                        <span class="badge bg-light text-muted border">Attendance Restricted</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- FACE -->
+                                <td class="py-3 text-center">
+                                    {% if student.face_registered %}
+                                        <span class="badge badge-teal border-0 px-2 py-2 rounded-pill">
+                                            <i class="bi bi-check-circle-fill me-1"></i> Registered
+                                        </span>
+                                    {% elif is_admin or is_class_teacher %}
+                                        <button type="button" class="btn btn-sm btn-outline-gold"
+                                                onclick="openFaceRegistration(
+                                                    '{{ student.id }}',
+                                                    '{{ student.user.get_full_name|escapejs }}',
+                                                    '{{ student.admission_number|default:"N/A"|escapejs }}',
+                                                    '{{ student.grade_level|default:"N/A"|escapejs }}'
+                                                )">
+                                            <i class="bi bi-camera me-1"></i> Register
+                                        </button>
+                                    {% else %}
+                                        <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="border-0">
+                                    <div class="empty-attendance text-center">
+                                        <div class="empty-attendance-icon">
+                                            <i class="bi bi-people"></i>
+                                        </div>
+                                        {% if is_teacher and not is_class_teacher %}
+                                            <h6 class="fw-bold">Classroom Assignment Required</h6>
+                                            <p class="text-muted small mb-0">
+                                                You are a teacher, but no classroom has been assigned to you as class teacher.
+                                                <br>Your subject teaching assignments do not give you attendance access.
+                                            </p>
+                                        {% elif is_class_teacher %}
+                                            <h6 class="fw-bold">No Students Found</h6>
+                                            <p class="text-muted small mb-0">
+                                                Your classroom is assigned, but there are currently no active students linked to that classroom.
+                                            </p>
+                                        {% else %}
+                                            <h6 class="fw-bold">No Attendance Students</h6>
+                                            <p class="text-muted small mb-0">There are no students available for attendance.</p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div id="searchEmptyState" class="text-center text-muted py-4" style="display: none;">
+                <i class="bi bi-search d-block mb-2 fs-3"></i>
+                <p>No students match your search.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     FACE REGISTRATION MODAL
+============================================================ -->
+<div class="modal fade" id="faceRegisterModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-camera text-gold me-2"></i> Register Student Face
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="regStudentInfo" class="p-3 bg-light border rounded-3 mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-circle fs-3 text-gold"></i>
+                        <div>
+                            <div id="regStudentName" class="fw-bold">Student</div>
+                            <div id="regStudentDetails" class="text-muted small">ID: —</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="camera-box" style="height:260px;">
+                    <video id="regVideo" autoplay muted playsinline></video>
+                    <div id="regPlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center">
+                        <i class="bi bi-camera-off fs-1 text-secondary"></i>
+                        <button type="button" id="regStartCameraBtn" class="btn btn-gold btn-sm mt-1" onclick="startRegistrationCamera()">
+                            <i class="bi bi-play-circle me-1"></i> Start Camera
+                        </button>
+                    </div>
+                </div>
+
+                <div id="regFacePreview" class="mt-3 text-center" style="display:none;">
+                    <img id="regCapturedImagePreview" src="" alt="Captured face" class="img-fluid rounded-3 border" style="max-height:140px;">
+                </div>
+
+                <div id="regStatusMessages" class="mt-3">
+                    <div class="alert alert-info alert-sm mb-0">
+                        <i class="bi bi-info-circle me-1"></i> Start the camera to capture the student's face.
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer border-0">
+                <button type="button" id="regCaptureBtn" class="btn btn-success btn-sm" onclick="captureRegistrationFace()" style="display:none;">
+                    <i class="bi bi-camera me-1"></i> Capture
+                </button>
+                <button type="button" id="regRetakeBtn" class="btn btn-warning btn-sm" onclick="retakeRegistrationFace()" style="display:none;">
+                    <i class="bi bi-arrow-repeat me-1"></i> Retake
+                </button>
+                <button type="button" id="regStopBtn" class="btn btn-secondary btn-sm" onclick="stopRegistrationCamera()" style="display:none;">
+                    <i class="bi bi-stop-circle me-1"></i> Stop
+                </button>
+                <button type="button" id="regRegisterBtn" class="btn btn-gold btn-sm" onclick="registerStudentFace()" style="display:none;">
+                    <i class="bi bi-check2-circle me-1"></i> Register Face
+                </button>
+                <button type="button" class="btn btn-light border btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     FACE ATTENDANCE MODAL
+============================================================ -->
+<div class="modal fade" id="attendanceCameraModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-camera-video text-teal me-2"></i> Face Scan Attendance
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <!-- CAMERA -->
+                    <div class="col-lg-7">
+                        <div class="text-center">
+                            <div class="btn-group btn-group-sm mb-3" role="group">
+                                <button id="manualModeBtn" type="button" class="btn btn-outline-gold active" onclick="setCaptureMode('manual')">
+                                    <i class="bi bi-hand-index me-1"></i> Manual
+                                </button>
+                                <button id="autoModeBtn" type="button" class="btn btn-outline-success" onclick="setCaptureMode('auto')">
+                                    <i class="bi bi-play-circle me-1"></i> Auto Capture
+                                </button>
+                            </div>
+
+                            <div class="camera-box" style="height:310px;">
+                                <video id="scanVideo" autoplay muted playsinline></video>
+                                <div id="cameraPlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center">
+                                    <i class="bi bi-camera-off fs-1 text-secondary"></i>
+                                    <button type="button" id="startCameraBtn" class="btn btn-gold btn-sm" onclick="startScanCamera()">
+                                        <i class="bi bi-play-circle me-1"></i> Start Camera
+                                    </button>
+                                </div>
+                                <div id="cameraLoading" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;background:rgba(0,0,0,.45);">
+                                    <div class="spinner-border text-light" role="status"></div>
+                                </div>
+                                <div id="autoCaptureIndicator" class="live-indicator" style="display:none;position:absolute;top:12px;right:12px;background:rgba(220,53,69,.9);color:white;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;">
+                                    <i class="bi bi-record-circle me-1"></i> LIVE
+                                </div>
+                            </div>
+
+                            <div id="scanStatus" class="mt-3">
+                                <p class="text-muted small mb-0">Click Start Camera to begin.</p>
+                            </div>
+
+                            <div class="d-flex justify-content-center flex-wrap gap-2 mt-3">
+                                <button id="captureBtn" type="button" class="btn btn-success btn-sm" onclick="captureAttendance()" style="display:none;">
+                                    <i class="bi bi-check2-circle me-1"></i> Capture Now
+                                </button>
+                                <button id="stopScanBtn" type="button" class="btn btn-warning btn-sm" onclick="stopScanCamera()" style="display:none;">
+                                    <i class="bi bi-stop-circle me-1"></i> Stop Camera
+                                </button>
+                                <button id="retryBtn" type="button" class="btn btn-gold btn-sm" onclick="startScanCamera()" style="display:none;">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Restart
+                                </button>
+                                <button id="pauseAutoBtn" type="button" class="btn btn-secondary btn-sm" onclick="toggleAutoCapture()" style="display:none;">
+                                    <i class="bi bi-pause-circle me-1"></i> Pause
+                                </button>
+                            </div>
+
+                            <div id="autoSettings" class="mt-3" style="display:none;">
+                                <div class="d-flex justify-content-center align-items-center gap-2">
+                                    <label for="autoInterval" class="small text-muted">Interval:</label>
+                                    <select id="autoInterval" class="form-select form-select-sm" style="width:80px;">
+                                        <option value="2000">2s</option>
+                                        <option value="3000" selected>3s</option>
+                                        <option value="5000">5s</option>
+                                        <option value="10000">10s</option>
+                                    </select>
+                                    <span id="autoCountdown" class="small text-muted">Ready</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RECOGNIZED STUDENTS -->
+                    <div class="col-lg-5">
+                        <div class="border rounded-4 p-3 bg-light h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold mb-0">
+                                    <i class="bi bi-people-fill text-teal me-1"></i> Recognized Students
+                                </h6>
+                                <span id="recognizedCount" class="badge badge-teal rounded-pill">0</span>
+                            </div>
+
+                            <div id="recognizedStudentsList" style="max-height:320px;overflow-y:auto;">
+                                <div class="text-center text-muted py-4">
+                                    <i class="bi bi-camera fs-2 d-block mb-2"></i>
+                                    <small>No students recognized yet.</small>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2 mt-3">
+                                <button type="button" class="btn btn-sm btn-outline-secondary w-50" onclick="clearRecognizedList()">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                                </button>
+                                <button type="button" class="btn btn-sm btn-gold w-50" onclick="applyRecognizedAttendance()">
+                                    <i class="bi bi-check2-all me-1"></i> Apply All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// AUTO-FILTER FUNCTIONALITY
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('attendanceSearchInput');
+    const clearSearchBtn = document.getElementById('clearAttendanceSearch');
+    const searchResultCount = document.getElementById('searchResultCount');
+    const filterBadge = document.getElementById('filterBadge');
+    const rows = document.querySelectorAll('#attendanceTableBody .attendance-row');
+    const searchEmptyState = document.getElementById('searchEmptyState');
+
+    function filterAttendance() {
+        const query = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        rows.forEach(function(row) {
+            const name = row.dataset.student || '';
+            const admission = row.dataset.admission || '';
+            const className = row.dataset.class || '';
+
+            const searchableText = `${name} ${admission} ${className}`;
+
+            if (query === '' || searchableText.includes(query)) {
+                row.classList.remove('hidden-row');
+                row.classList.add('visible-row');
+                visibleCount++;
+            } else {
+                row.classList.add('hidden-row');
+                row.classList.remove('visible-row');
+            }
+        });
+
+        const total = rows.length;
+        if (query === '') {
+            searchResultCount.textContent = `Showing all ${total} students`;
+            clearSearchBtn.style.display = 'none';
+            filterBadge.classList.remove('show');
+            if (searchEmptyState) searchEmptyState.style.display = 'none';
+        } else {
+            searchResultCount.textContent = `Showing ${visibleCount} of ${total} students${visibleCount === 0 ? ' (no matches found)' : ''}`;
+            clearSearchBtn.style.display = 'inline-block';
+            filterBadge.classList.add('show');
+            filterBadge.classList.add('filter-active');
+            setTimeout(() => filterBadge.classList.remove('filter-active'), 1500);
+
+            if (visibleCount === 0) {
+                if (searchEmptyState) searchEmptyState.style.display = '';
+            } else {
+                if (searchEmptyState) searchEmptyState.style.display = 'none';
+            }
+        }
+    }
+
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(filterAttendance, 200);
+    });
+
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        filterAttendance();
+        searchInput.focus();
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            clearSearchBtn.click();
+        }
+    });
+
+    // Keyboard shortcut: Ctrl+F to focus search
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+    });
+
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+
+<!-- ============================================================
+   FACE REGISTRATION & SCAN JAVASCRIPT
+============================================================ -->
+<script>
+// ============================================================
+// ENDPOINTS
+// ============================================================
+const ATTENDANCE_TOGGLE_URL = "{% url 'attendance:api_toggle_attendance' %}";
+const FACE_CAPTURE_URL = "{% url 'attendance:api_capture_attendance' %}";
+const FACE_REGISTER_URL = "{% url 'attendance:api_register_face' %}";
+const ATTENDANCE_DATE = "{{ selected_date|date:'Y-m-d' }}";
+
+// ============================================================
+// CSRF
+// ============================================================
+function getCSRFToken() {
+    const cookieName = "csrftoken";
+    let cookieValue = null;
+    if (document.cookie) {
+        const cookies = document.cookie.split(";");
+        for (const cookie of cookies) {
+            const trimmed = cookie.trim();
+            if (trimmed.substring(0, cookieName.length + 1) === cookieName + "=") {
+                cookieValue = decodeURIComponent(trimmed.substring(cookieName.length + 1));
+                break;
+            }
+        }
+    }
+    if (cookieValue) return cookieValue;
+    const csrfInput = document.querySelector("[name=csrfmiddlewaretoken]");
+    if (csrfInput) return csrfInput.value;
+    return "{{ csrf_token }}";
+}
+
+// ============================================================
+// SAFE JSON
+// ============================================================
+async function readJsonResponse(response) {
+    const text = await response.text();
+    if (!text) return {};
+    try { return JSON.parse(text); }
+    catch (error) {
+        console.error("Invalid JSON response:", text);
+        return { success: false, error: "The server returned an invalid response." };
+    }
+}
+
+// ============================================================
+// NOTIFICATION
+// ============================================================
+function showNotification(type, message) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "position-fixed bottom-0 end-0 p-3";
+    wrapper.style.zIndex = "99999";
+    const typeClass = {
+        success: "bg-success text-white",
+        danger: "bg-danger text-white",
+        warning: "bg-warning text-dark",
+        info: "bg-info text-white"
+    };
+    const icon = {
+        success: "bi-check-circle-fill",
+        danger: "bi-exclamation-triangle-fill",
+        warning: "bi-exclamation-triangle-fill",
+        info: "bi-info-circle-fill"
+    };
+    wrapper.innerHTML = `
+        <div class="toast show shadow" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header ${typeClass[type] || typeClass.info}">
+                <i class="bi ${icon[type] || icon.info} me-2"></i>
+                <strong class="me-auto">Attendance</strong>
+                <button type="button" class="btn-close ${type === "warning" ? "" : "btn-close-white"}" onclick="this.closest('.position-fixed').remove()"></button>
+            </div>
+            <div class="toast-body">${escapeHtml(message)}</div>
+        </div>
+    `;
+    document.body.appendChild(wrapper);
+    setTimeout(() => wrapper.remove(), 3500);
+}
+
+// ============================================================
+// HTML ESCAPE
+// ============================================================
+function escapeHtml(value) {
+    const div = document.createElement("div");
+    div.textContent = value == null ? "" : String(value);
+    return div.innerHTML;
+}
+
+// ============================================================
+// MANUAL ATTENDANCE
+// ============================================================
+async function updateAttendance(studentId, targetStatus, showToast = true) {
+    const payload = { student_id: studentId, status: targetStatus, date: ATTENDANCE_DATE };
+    try {
+        const response = await fetch(ATTENDANCE_TOGGLE_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken(),
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: JSON.stringify(payload)
+        });
+        const data = await readJsonResponse(response);
+        if (response.ok && data.success) {
+            resetRowButtons(studentId);
+            const button = document.getElementById(`btn-${targetStatus.toLowerCase()}-${studentId}`);
+            if (button) {
+                if (targetStatus === "PRESENT") button.className = "btn btn-sm btn-success";
+                else if (targetStatus === "LATE") button.className = "btn btn-sm btn-warning";
+                else if (targetStatus === "ABSENT") button.className = "btn btn-sm btn-danger";
+            }
+            if (showToast) showNotification("success", `${data.student_name || "Student"} marked as ${targetStatus}.`);
+            return data;
+        }
+        const message = data.error || data.message || "Unable to update attendance.";
+        if (showToast) showNotification("danger", message);
+        throw new Error(message);
+    } catch (error) {
+        console.error("Attendance update error:", error);
+        if (showToast) showNotification("danger", error.message || "Unable to update attendance.");
+        throw error;
+    }
+}
+
+function resetRowButtons(studentId) {
+    const present = document.getElementById(`btn-present-${studentId}`);
+    const late = document.getElementById(`btn-late-${studentId}`);
+    const absent = document.getElementById(`btn-absent-${studentId}`);
+    if (present) present.className = "btn btn-sm btn-outline-success";
+    if (late) late.className = "btn btn-sm btn-outline-warning";
+    if (absent) absent.className = "btn btn-sm btn-outline-danger";
+}
+
+// ============================================================
+// FACE REGISTRATION
+// ============================================================
+let regStream = null;
+let regStudentId = null;
+let regCapturedImageData = null;
+let regStudentData = null;
+
+function openFaceRegistration(studentId, studentName, admission, grade) {
+    regStudentId = studentId;
+    regStudentData = { name: studentName || "Student", admission: admission || "N/A", grade: grade || "N/A" };
+    regCapturedImageData = null;
+    stopRegistrationCamera(false);
+    document.getElementById("regStudentName").textContent = regStudentData.name;
+    document.getElementById("regStudentDetails").textContent = `ID: ${regStudentData.admission} · ${regStudentData.grade}`;
+    document.getElementById("regFacePreview").style.display = "none";
+    document.getElementById("regRegisterBtn").style.display = "none";
+    document.getElementById("regRetakeBtn").style.display = "none";
+    document.getElementById("regCaptureBtn").style.display = "none";
+    document.getElementById("regStatusMessages").innerHTML = `
+        <div class="alert alert-info alert-sm mb-0">
+            <i class="bi bi-info-circle me-1"></i> Start the camera to capture the student's face.
+        </div>
+    `;
+    const modalElement = document.getElementById("faceRegisterModal");
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+    modal.show();
+}
+
+async function startRegistrationCamera() {
+    const video = document.getElementById("regVideo");
+    const placeholder = document.getElementById("regPlaceholder");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showRegistrationStatus("danger", "Your browser does not support camera access.");
+        return;
+    }
+    try {
+        showRegistrationStatus("info", "Requesting camera access...");
+        regStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+            audio: false
+        });
+        video.srcObject = regStream;
+        video.style.display = "block";
+        placeholder.style.display = "none";
+        await video.play();
+        document.getElementById("regStartCameraBtn").style.display = "none";
+        document.getElementById("regCaptureBtn").style.display = "inline-block";
+        document.getElementById("regStopBtn").style.display = "inline-block";
+        showRegistrationStatus("success", "Camera ready. Position the student's face clearly and click Capture.");
+    } catch (error) {
+        console.error("Registration camera error:", error);
+        let message = "Unable to access the camera.";
+        if (error.name === "NotAllowedError") message = "Camera permission was denied. Please allow camera access.";
+        else if (error.name === "NotFoundError") message = "No camera was found on this device.";
+        else if (error.name === "NotReadableError") message = "The camera is already being used by another application.";
+        showRegistrationStatus("danger", message);
+    }
+}
+
+function captureRegistrationFace() {
+    const video = document.getElementById("regVideo");
+    if (!video.srcObject || !video.videoWidth) {
+        showRegistrationStatus("warning", "Please start the camera and wait until the video is ready.");
+        return;
+    }
+    const canvas = document.createElement("canvas");
+    const width = Math.min(video.videoWidth, 640);
+    const height = Math.min(video.videoHeight, 480);
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    context.drawImage(video, 0, 0, width, height);
+    regCapturedImageData = canvas.toDataURL("image/jpeg", 0.90);
+    document.getElementById("regCapturedImagePreview").src = regCapturedImageData;
+    document.getElementById("regFacePreview").style.display = "block";
+    document.getElementById("regCaptureBtn").style.display = "none";
+    document.getElementById("regRetakeBtn").style.display = "inline-block";
+    document.getElementById("regRegisterBtn").style.display = "inline-block";
+    showRegistrationStatus("info", `Face captured for ${regStudentData?.name || "Student"}. Click Register Face to save.`);
+}
+
+function retakeRegistrationFace() {
+    regCapturedImageData = null;
+    document.getElementById("regFacePreview").style.display = "none";
+    document.getElementById("regRetakeBtn").style.display = "none";
+    document.getElementById("regRegisterBtn").style.display = "none";
+    document.getElementById("regCaptureBtn").style.display = "inline-block";
+    showRegistrationStatus("warning", "Ready to retake the photo.");
+}
+
+async function registerStudentFace() {
+    if (!regStudentId || !regCapturedImageData) {
+        showRegistrationStatus("warning", "Please capture the student's face first.");
+        return;
+    }
+    const button = document.getElementById("regRegisterBtn");
+    button.disabled = true;
+    button.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Registering...`;
+    try {
+        const response = await fetch(FACE_REGISTER_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken(),
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: JSON.stringify({ student_id: regStudentId, image: regCapturedImageData })
+        });
+        const data = await readJsonResponse(response);
+        if (response.ok && data.success) {
+            showRegistrationStatus("success", data.message || `${regStudentData?.name || "Student"} registered successfully.`);
+            button.className = "btn btn-success btn-sm";
+            button.innerHTML = `<i class="bi bi-check2-circle me-1"></i> Registered`;
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById("faceRegisterModal"));
+                if (modal) modal.hide();
+                window.location.reload();
+            }, 1200);
+            return;
+        }
+        throw new Error(data.message || data.error || "Face registration failed.");
+    } catch (error) {
+        console.error("Face registration error:", error);
+        showRegistrationStatus("danger", error.message || "Unable to register the student's face.");
+        button.disabled = false;
+        button.innerHTML = `<i class="bi bi-arrow-repeat me-1"></i> Try Again`;
+    }
+}
+
+function stopRegistrationCamera(showMessage = true) {
+    if (regStream) {
+        regStream.getTracks().forEach(track => track.stop());
+        regStream = null;
+    }
+    const video = document.getElementById("regVideo");
+    if (video) { video.srcObject = null; video.style.display = "none"; }
+    const placeholder = document.getElementById("regPlaceholder");
+    if (placeholder) placeholder.style.display = "flex";
+    const startButton = document.getElementById("regStartCameraBtn");
+    if (startButton) startButton.style.display = "inline-block";
+    const captureButton = document.getElementById("regCaptureBtn");
+    if (captureButton) captureButton.style.display = "none";
+    const stopButton = document.getElementById("regStopBtn");
+    if (stopButton) stopButton.style.display = "none";
+    if (showMessage) showRegistrationStatus("info", "Camera stopped.");
+}
+
+function showRegistrationStatus(type, message) {
+    const container = document.getElementById("regStatusMessages");
+    if (!container) return;
+    container.innerHTML = `<div class="alert alert-${type} alert-sm mb-0"><i class="bi bi-info-circle me-1"></i> ${escapeHtml(message)}</div>`;
+}
+
+// ============================================================
+// FACE SCAN
+// ============================================================
+let scanStream = null;
+let isCameraStarted = false;
+let captureMode = "manual";
+let autoTimer = null;
+let countdownTimer = null;
+let isAutoCapturing = false;
+let autoIntervalMs = 3000;
+let recognizedStudents = new Map();
+
+// Student directory for resolving recognized students
+let studentDirectory = new Map();
+let studentDirectoryByName = new Map();
+
+function normalizeIdKey(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function buildStudentDirectory() {
+    studentDirectory = new Map();
+    studentDirectoryByName = new Map();
+    document.querySelectorAll('#attendanceTableBody tr[data-student-id]').forEach(function(row) {
+        const rawId = row.getAttribute('data-student-id');
+        if (!rawId) return;
+        const nameCell = row.cells[0];
+        const admissionCell = row.cells[1];
+        const classCell = row.cells[2];
+        const name = nameCell?.querySelector('.fw-bold')?.textContent?.trim();
+        const admission = admissionCell?.querySelector('code')?.textContent?.trim();
+        const className = classCell?.querySelector('.badge')?.textContent?.trim();
+        const gradeLevel = classCell?.querySelector('small')?.textContent?.trim();
+        const entry = {
+            id: rawId,
+            name: name || null,
+            admission: (admission && admission !== '—') ? admission : null,
+            className: (className && className !== 'No Class') ? className : null,
+            gradeLevel: gradeLevel || null
+        };
+        studentDirectory.set(rawId, entry);
+        studentDirectory.set(normalizeIdKey(rawId), entry);
+        if (name) studentDirectoryByName.set(name.trim().toLowerCase(), entry);
+    });
+}
+
+function lookupStudentDirectory(id, name) {
+    if (id && studentDirectory.has(id)) return studentDirectory.get(id);
+    const normalizedId = normalizeIdKey(id);
+    if (normalizedId && studentDirectory.has(normalizedId)) return studentDirectory.get(normalizedId);
+    if (name) {
+        const match = studentDirectoryByName.get(name.trim().toLowerCase());
+        if (match) return match;
+    }
+    return {};
+}
+
+function getInitials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    const first = parts[0][0] || '';
+    const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+    return (first + last).toUpperCase();
+}
+
+function setCaptureMode(mode) {
+    captureMode = mode;
+    const manual = document.getElementById("manualModeBtn");
+    const auto = document.getElementById("autoModeBtn");
+    const capture = document.getElementById("captureBtn");
+    const settings = document.getElementById("autoSettings");
+    const pause = document.getElementById("pauseAutoBtn");
+    if (mode === "manual") {
+        manual.className = "btn btn-outline-gold active";
+        auto.className = "btn btn-outline-success";
+        capture.style.display = isCameraStarted ? "inline-block" : "none";
+        settings.style.display = "none";
+        pause.style.display = "none";
+        document.getElementById("autoCaptureIndicator").style.display = "none";
+        stopAutoCapture();
+    } else {
+        auto.className = "btn btn-outline-success active";
+        manual.className = "btn btn-outline-gold";
+        capture.style.display = "none";
+        settings.style.display = "block";
+        pause.style.display = isCameraStarted ? "inline-block" : "none";
+        if (isCameraStarted) startAutoCapture();
+    }
+}
+
+async function startScanCamera() {
+    const video = document.getElementById("scanVideo");
+    const placeholder = document.getElementById("cameraPlaceholder");
+    const loading = document.getElementById("cameraLoading");
+    const startButton = document.getElementById("startCameraBtn");
+    const stopButton = document.getElementById("stopScanBtn");
+    const retryButton = document.getElementById("retryBtn");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setScanStatus("danger", "Your browser does not support camera access.");
+        return;
+    }
+    loading.style.display = "flex";
+    placeholder.style.display = "none";
+    retryButton.style.display = "none";
+    setScanStatus("info", "Requesting camera access...");
+    try {
+        scanStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+            audio: false
+        });
+        video.srcObject = scanStream;
+        video.style.display = "block";
+        loading.style.display = "none";
+        await video.play();
+        isCameraStarted = true;
+        startButton.style.display = "none";
+        stopButton.style.display = "inline-block";
+        recognizedStudents.clear();
+        updateRecognizedList();
+        if (captureMode === "manual") {
+            document.getElementById("captureBtn").style.display = "inline-block";
+            setScanStatus("success", "Camera ready. Click Capture Now to scan.");
+        } else {
+            document.getElementById("autoSettings").style.display = "block";
+            document.getElementById("pauseAutoBtn").style.display = "inline-block";
+            document.getElementById("autoCaptureIndicator").style.display = "block";
+            setScanStatus("success", "Auto capture is running.");
+            startAutoCapture();
+        }
+    } catch (error) {
+        console.error("Scan camera error:", error);
+        loading.style.display = "none";
+        placeholder.style.display = "flex";
+        let message = "Unable to access the camera.";
+        if (error.name === "NotAllowedError") message = "Camera permission was denied. Please allow camera access.";
+        else if (error.name === "NotFoundError") message = "No camera was found on this device.";
+        else if (error.name === "NotReadableError") message = "The camera is already being used by another application.";
+        setScanStatus("danger", message);
+        retryButton.style.display = "inline-block";
+    }
+}
+
+function stopScanCamera() {
+    if (scanStream) {
+        scanStream.getTracks().forEach(track => track.stop());
+        scanStream = null;
+    }
+    const video = document.getElementById("scanVideo");
+    if (video) { video.srcObject = null; video.style.display = "none"; }
+    isCameraStarted = false;
+    stopAutoCapture();
+    document.getElementById("cameraPlaceholder").style.display = "flex";
+    document.getElementById("startCameraBtn").style.display = "inline-block";
+    document.getElementById("captureBtn").style.display = "none";
+    document.getElementById("stopScanBtn").style.display = "none";
+    document.getElementById("retryBtn").style.display = "none";
+    document.getElementById("pauseAutoBtn").style.display = "none";
+    document.getElementById("autoSettings").style.display = "none";
+    document.getElementById("autoCaptureIndicator").style.display = "none";
+    setScanStatus("info", "Camera stopped. Click Start Camera to begin again.");
+}
+
+function captureAttendance() {
+    const video = document.getElementById("scanVideo");
+    const button = document.getElementById("captureBtn");
+    const stopButton = document.getElementById("stopScanBtn");
+    if (!isCameraStarted || !video.srcObject) {
+        setScanStatus("warning", "Please start the camera first.");
+        return;
+    }
+    if (video.readyState < 2) {
+        setScanStatus("info", "Camera is still loading. Please wait.");
+        return;
+    }
+    button.disabled = true;
+    stopButton.disabled = true;
+    processFrame(video, true).finally(() => {
+        button.disabled = false;
+        stopButton.disabled = false;
+    });
+}
+
+function startAutoCapture() {
+    if (!isCameraStarted) return;
+    if (isAutoCapturing) return;
+    isAutoCapturing = true;
+    const pauseButton = document.getElementById("pauseAutoBtn");
+    pauseButton.innerHTML = '<i class="bi bi-pause-circle me-1"></i>Pause';
+    autoIntervalMs = parseInt(document.getElementById("autoInterval").value, 10) || 3000;
+    runAutoCapture();
+}
+
+async function runAutoCapture() {
+    if (!isAutoCapturing || !isCameraStarted) return;
+    const video = document.getElementById("scanVideo");
+    if (video.readyState >= 2) {
+        await processFrame(video, false);
+    }
+    if (!isAutoCapturing || !isCameraStarted) return;
+    startCountdown(autoIntervalMs);
+    autoTimer = setTimeout(runAutoCapture, autoIntervalMs);
+}
+
+function stopAutoCapture() {
+    isAutoCapturing = false;
+    if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    const pauseButton = document.getElementById("pauseAutoBtn");
+    if (pauseButton) pauseButton.innerHTML = '<i class="bi bi-play-circle me-1"></i>Resume';
+    const countdown = document.getElementById("autoCountdown");
+    if (countdown) countdown.textContent = "Paused";
+}
+
+function toggleAutoCapture() {
+    if (isAutoCapturing) {
+        stopAutoCapture();
+        setScanStatus("warning", "Auto capture paused. Click Resume to continue.");
+    } else {
+        startAutoCapture();
+        setScanStatus("success", "Auto capture resumed.");
+    }
+}
+
+function startCountdown(milliseconds) {
+    if (countdownTimer) clearInterval(countdownTimer);
+    const element = document.getElementById("autoCountdown");
+    let seconds = Math.ceil(milliseconds / 1000);
+    element.textContent = `Next scan in ${seconds}s`;
+    countdownTimer = setInterval(() => {
+        seconds--;
+        if (seconds <= 0) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+            element.textContent = "Scanning...";
+        } else {
+            element.textContent = `Next scan in ${seconds}s`;
+        }
+    }, 1000);
+}
+
+async function processFrame(video, showProgress) {
+    const canvas = document.createElement("canvas");
+    const width = Math.min(video.videoWidth || 640, 640);
+    const height = Math.min(video.videoHeight || 480, 480);
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    context.drawImage(video, 0, 0, width, height);
+    const imageData = canvas.toDataURL("image/jpeg", 0.85);
+    if (showProgress) setScanStatus("info", "Scanning faces...");
+    try {
+        const response = await fetch(FACE_CAPTURE_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken(),
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: JSON.stringify({ image: imageData, date: ATTENDANCE_DATE })
+        });
+        const data = await readJsonResponse(response);
+        if (!response.ok || !data.success) {
+            if (showProgress) setScanStatus("warning", data.error || data.message || "No faces recognized.");
+            return;
+        }
+        const normalized = normalizeRecognizedStudents(data.students);
+        if (normalized.length) {
+            const newStudents = [];
+            normalized.forEach(student => {
+                const id = String(student.id);
+                if (!id || id === "undefined") return;
+                if (!recognizedStudents.has(id)) {
+                    const directoryEntry = lookupStudentDirectory(id, student.name);
+                    recognizedStudents.set(id, {
+                        id: id,
+                        name: directoryEntry.name || student.name || "Unknown Student",
+                        className: directoryEntry.className || student.className || "Class not on record",
+                        admission: directoryEntry.admission || student.admission || "No admission no.",
+                        status: "PRESENT"
+                    });
+                    newStudents.push(id);
+                }
+            });
+            updateRecognizedList();
+            if (newStudents.length) {
+                const names = newStudents.map(id => recognizedStudents.get(id)?.name).filter(Boolean);
+                setScanStatus("success", `Recognized: ${names.join(", ")}.`);
+                if (captureMode === "auto") {
+                    for (const id of newStudents) {
+                        try { await updateAttendance(id, "PRESENT", false); }
+                        catch (error) { console.error("Auto attendance error:", error); }
+                    }
+                }
+            } else if (showProgress) {
+                setScanStatus("info", `Faces recognized. ${recognizedStudents.size} student(s) currently listed.`);
+            }
+        } else if (showProgress) {
+            setScanStatus("warning", "No authorized classroom students were recognized. Try again.");
+        }
+    } catch (error) {
+        console.error("Face capture error:", error);
+        if (showProgress) setScanStatus("danger", "An error occurred while scanning. Please try again.");
+    }
+}
+
+function normalizeStudentFields(raw, fallbackId) {
+    if (!raw || typeof raw !== 'object') return null;
+    const id = raw.id ?? raw.student_id ?? raw.pk ?? fallbackId ?? null;
+    const name = raw.name || raw.full_name || raw.student_name || raw.display_name || null;
+    const admission = raw.admission || raw.admission_number || raw.admission_no || null;
+    const className = raw.class_name || raw.school_class || raw.className || raw.class || raw.grade || null;
+    return { id: id !== null ? String(id) : null, name, admission, className };
+}
+
+function normalizeRecognizedStudents(results) {
+    if (!results) return [];
+    const normalized = [];
+    if (Array.isArray(results)) {
+        results.forEach(raw => {
+            const student = normalizeStudentFields(raw);
+            if (student && student.id) normalized.push(student);
+        });
+        return normalized;
+    }
+    if (typeof results === "object") {
+        Object.entries(results).forEach(([key, raw]) => {
+            const student = normalizeStudentFields(raw, key);
+            if (student && student.id) normalized.push(student);
+        });
+    }
+    return normalized;
+}
+
+function updateRecognizedList() {
+    const container = document.getElementById("recognizedStudentsList");
+    const count = document.getElementById("recognizedCount");
+    count.textContent = recognizedStudents.size;
+    if (recognizedStudents.size === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-camera fs-2 d-block mb-2"></i>
+                <small>No students recognized yet.</small>
+                <br><small>Show faces to the camera.</small>
+            </div>
+        `;
+        return;
+    }
+    let html = "";
+    recognizedStudents.forEach(student => {
+        const initials = getInitials(student.name);
+        html += `
+            <div class="recognized-item d-flex justify-content-between align-items-center py-2 px-2 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-teal-soft d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px;">
+                        <span class="fw-bold small text-teal">${escapeHtml(initials)}</span>
+                    </div>
+                    <div>
+                        <div class="fw-bold small">${escapeHtml(student.name)}</div>
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <span class="badge bg-primary-subtle text-primary border rounded-pill px-2 py-1">
+                                <i class="bi bi-mortarboard-fill me-1"></i>${escapeHtml(student.className)}
+                            </span>
+                            <code class="small text-muted bg-transparent p-0">${escapeHtml(student.admission)}</code>
+                        </div>
+                    </div>
+                </div>
+                <span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i> PRESENT</span>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+function clearRecognizedList() {
+    recognizedStudents.clear();
+    updateRecognizedList();
+    setScanStatus("info", "Recognition list cleared.");
+}
+
+async function applyRecognizedAttendance() {
+    if (recognizedStudents.size === 0) {
+        showNotification("warning", "No students have been recognized.");
+        return;
+    }
+    const students = Array.from(recognizedStudents.values());
+    showNotification("info", `Applying attendance for ${students.length} student(s)...`);
+    let applied = 0;
+    let failed = 0;
+    const failedNames = [];
+    for (const student of students) {
+        try {
+            await updateAttendance(student.id, "PRESENT", false);
+            applied++;
+        } catch (error) {
+            failed++;
+            failedNames.push(student.name);
+        }
+    }
+    if (failed === 0) {
+        showNotification("success", `${applied} student(s) marked present.`);
+        setTimeout(() => {
+            const modal = bootstrap.Modal.getInstance(document.getElementById("attendanceCameraModal"));
+            if (modal) modal.hide();
+            window.location.reload();
+        }, 1200);
+    } else {
+        showNotification("warning", `${applied} applied successfully. ${failed} failed.`);
+        if (failedNames.length) console.warn("Failed students:", failedNames);
+    }
+}
+
+function setScanStatus(type, message) {
+    const container = document.getElementById("scanStatus");
+    if (!container) return;
+    container.innerHTML = `<div class="alert alert-${type} alert-sm mb-0"><i class="bi bi-info-circle me-1"></i> ${escapeHtml(message)}</div>`;
+}
+
+// ============================================================
+// AUTO INTERVAL & INIT
+// ============================================================
+document.addEventListener("DOMContentLoaded", function () {
+    buildStudentDirectory();
+
+    const interval = document.getElementById("autoInterval");
+    if (interval) {
+        interval.addEventListener("change", function () {
+            autoIntervalMs = parseInt(this.value, 10) || 3000;
+            if (isAutoCapturing) {
+                stopAutoCapture();
+                startAutoCapture();
+            }
+        });
+    }
+
+    const registrationModal = document.getElementById("faceRegisterModal");
+    if (registrationModal) {
+        registrationModal.addEventListener("hidden.bs.modal", function () {
+            stopRegistrationCamera(false);
+            regStudentId = null;
+            regCapturedImageData = null;
+            regStudentData = null;
+        });
+    }
+
+    const attendanceModal = document.getElementById("attendanceCameraModal");
+    if (attendanceModal) {
+        attendanceModal.addEventListener("hidden.bs.modal", function () {
+            stopScanCamera();
+            recognizedStudents.clear();
+            updateRecognizedList();
+        });
+    }
+
+    setCaptureMode("manual");
+});
+</script>
+
+{% endblock %}

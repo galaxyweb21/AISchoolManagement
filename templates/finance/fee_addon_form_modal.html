@@ -1,0 +1,656 @@
+<!-- finance/templates/finance/fee_addon_form_modal.html -->
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+
+    /* Term badge styling */
+    .term-badge {
+        font-size: 0.6rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 10px;
+        display: inline-block;
+        font-weight: 600;
+    }
+    .term-badge-all {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .term-badge-first {
+        background-color: #cce5ff;
+        color: #004085;
+    }
+    .term-badge-second {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .term-badge-third {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .term-badge-custom {
+        background-color: #e2e3e5;
+        color: #383d41;
+    }
+
+    /* Item row styling - SIMPLIFIED */
+    .item-row {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
+        border: 1px solid #e9ecef;
+        transition: all 0.2s ease;
+    }
+    .item-row:hover {
+        background: #f1f3f5;
+        border-color: var(--eduai-gold, #946B1C);
+    }
+
+    /* Help text */
+    .help-text {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    .help-text i {
+        color: var(--eduai-gold, #946B1C);
+    }
+
+    /* Custom terms checkbox styling */
+    .custom-terms-group .form-check {
+        padding-left: 2.5rem;
+    }
+    .custom-terms-group .form-check-input {
+        width: 1.2rem;
+        height: 1.2rem;
+        margin-left: -2.5rem;
+    }
+    .custom-terms-group .form-check-input:checked {
+        background-color: var(--eduai-gold, #946B1C);
+        border-color: var(--eduai-gold, #946B1C);
+    }
+
+    /* Toggle switches */
+    .form-switch .form-check-input {
+        width: 2.8rem;
+        height: 1.4rem;
+    }
+    .form-switch .form-check-input:checked {
+        background-color: var(--eduai-gold, #946B1C);
+        border-color: var(--eduai-gold, #946B1C);
+    }
+
+    /* Toggle label */
+    .toggle-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .toggle-sub-label {
+        font-size: 0.7rem;
+        color: #6c757d;
+        display: block;
+        margin-top: -0.15rem;
+    }
+
+    /* Summary box */
+    .summary-box {
+        background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
+        border-radius: 8px;
+        padding: 12px 16px;
+        border: 1px solid #e9ecef;
+    }
+</style>
+
+<form method="post"
+      action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url addon.id %}{% endif %}"
+      class="addon-form"
+      data-mode="{{ mode }}">
+    {% csrf_token %}
+
+    <!-- ========================================== -->
+    <!-- BASIC INFORMATION                         -->
+    <!-- ========================================== -->
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">
+                Add-on Name <span class="text-danger">*</span>
+            </label>
+            <input type="text" name="name" class="form-control form-control-lg"
+                   value="{% if mode == 'edit' %}{{ addon.name }}{% endif %}"
+                   placeholder="e.g., New Student Uniform Package" required>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">
+                Fee Category <span class="text-danger">*</span>
+            </label>
+            <select class="form-select form-select-lg" name="fee_category" required>
+                <option value="">Select Category</option>
+                {% for category in fee_categories %}
+                <option value="{{ category.id }}" {% if mode == 'edit' and addon.fee_category.id == category.id %}selected{% endif %}>
+                    {{ category.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TERM CONFIGURATION - SIMPLIFIED           -->
+    <!-- ========================================== -->
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">
+                <i class="bi bi-calendar3 me-1"></i>Apply To <span class="text-danger">*</span>
+            </label>
+            <select class="form-select form-select-lg" name="term_type" id="termTypeSelect" required>
+                <option value="ALL" {% if mode == 'edit' and addon.term_type == 'ALL' %}selected{% endif %}>
+                    <i class="bi bi-check-all"></i> All Terms (Same amount for all)
+                </option>
+                <option value="FIRST" {% if mode == 'edit' and addon.term_type == 'FIRST' %}selected{% endif %}>
+                    <i class="bi bi-1-circle"></i> First Term Only
+                </option>
+                <option value="SECOND" {% if mode == 'edit' and addon.term_type == 'SECOND' %}selected{% endif %}>
+                    <i class="bi bi-2-circle"></i> Second Term Only
+                </option>
+                <option value="THIRD" {% if mode == 'edit' and addon.term_type == 'THIRD' %}selected{% endif %}>
+                    <i class="bi bi-3-circle"></i> Third Term Only
+                </option>
+                <option value="CUSTOM" {% if mode == 'edit' and addon.term_type == 'CUSTOM' %}selected{% endif %}>
+                    <i class="bi bi-sliders"></i> Select Specific Terms
+                </option>
+            </select>
+            <div class="help-text mt-1">
+                <i class="bi bi-info-circle me-1"></i>
+                <span id="termHelpText">
+                    {% if mode == 'edit' %}
+                        {% if addon.term_type == 'ALL' %}
+                            Applied to Terms 1, 2 &amp; 3 with the same amount.
+                        {% elif addon.term_type == 'FIRST' %}
+                            Applied only to Term 1.
+                        {% elif addon.term_type == 'SECOND' %}
+                            Applied only to Term 2.
+                        {% elif addon.term_type == 'THIRD' %}
+                            Applied only to Term 3.
+                        {% elif addon.term_type == 'CUSTOM' %}
+                            Applied to selected terms.
+                        {% endif %}
+                    {% else %}
+                        Choose which terms this add-on applies to.
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="col-md-6" id="customTermsContainer" style="{% if mode == 'edit' and addon.term_type != 'CUSTOM' %}display:none;{% endif %}">
+            <label class="form-label fw-semibold">
+                <i class="bi bi-sliders me-1"></i>Custom Terms
+            </label>
+            <div class="custom-terms-group d-flex gap-4 pt-2">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="custom_terms" value="1" id="term1"
+                           {% if mode == 'edit' and 1 in addon.custom_terms %}checked{% endif %}>
+                    <label class="form-check-label fw-semibold" for="term1">
+                        <i class="bi bi-1-circle-fill text-primary"></i> Term 1
+                    </label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="custom_terms" value="2" id="term2"
+                           {% if mode == 'edit' and 2 in addon.custom_terms %}checked{% endif %}>
+                    <label class="form-check-label fw-semibold" for="term2">
+                        <i class="bi bi-2-circle-fill text-success"></i> Term 2
+                    </label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="custom_terms" value="3" id="term3"
+                           {% if mode == 'edit' and 3 in addon.custom_terms %}checked{% endif %}>
+                    <label class="form-check-label fw-semibold" for="term3">
+                        <i class="bi bi-3-circle-fill text-warning"></i> Term 3
+                    </label>
+                </div>
+            </div>
+            <div class="help-text">
+                <i class="bi bi-info-circle me-1"></i>
+                The amount you set below will apply to ALL selected terms.
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- OPTIONS (Toggle switches)                 -->
+    <!-- ========================================== -->
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="apply_to_new_students_only" id="applyToNewOnly"
+                       {% if mode == 'edit' and addon.apply_to_new_students_only %}checked{% endif %}>
+                <label class="form-check-label toggle-label" for="applyToNewOnly">
+                    <i class="bi bi-person-plus me-1"></i> Apply to New Students Only
+                </label>
+                <span class="toggle-sub-label">Only new students receive this add-on</span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_required" id="isRequired"
+                       {% if mode == 'edit' and addon.is_required %}checked{% endif %}>
+                <label class="form-check-label toggle-label" for="isRequired">
+                    <i class="bi bi-exclamation-circle me-1"></i> Required
+                </label>
+                <span class="toggle-sub-label">Mandatory for all applicable students</span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_active" id="isActive"
+                       {% if mode == 'edit' and addon.is_active %}checked{% endif %}>
+                <label class="form-check-label toggle-label" for="isActive">
+                    <i class="bi bi-check-circle me-1"></i> Active
+                </label>
+                <span class="toggle-sub-label">Enable or disable this add-on</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- DESCRIPTION                                -->
+    <!-- ========================================== -->
+    <div class="mb-3">
+        <label class="form-label fw-semibold">
+            <i class="bi bi-file-text me-1"></i>Description
+        </label>
+        <textarea name="description" class="form-control" rows="2"
+                  placeholder="Brief description of this add-on...">{% if mode == 'edit' %}{{ addon.description|default:'' }}{% endif %}</textarea>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- CLASS PRICING - ONE AMOUNT PER CLASS      -->
+    <!-- ========================================== -->
+    <div class="mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label fw-semibold mb-0">
+                <i class="bi bi-layers me-1"></i> Class Pricing <span class="text-danger">*</span>
+            </label>
+            <button type="button" class="btn btn-gold btn-sm" onclick="addClassRow()">
+                <i class="bi bi-plus-lg me-1"></i> Add Class
+            </button>
+        </div>
+
+        <div id="itemsContainer">
+            <!-- Default row -->
+            <div class="item-row">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-8">
+                        <label class="form-label small text-muted mb-1">Grade / Class</label>
+                        <select class="form-select" name="grade_levels">
+                            <option value="">All Grades</option>
+                            {% for grade in grade_levels %}
+                            <option value="{{ grade.id }}">{{ grade.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted mb-1">Amount (GH¢) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" class="form-control" name="amounts" placeholder="0.00" required>
+                    </div>
+                    <div class="col-md-1 text-end">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeClassRow(this)" style="margin-top: 26px;">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- Existing items -->
+            {% if existing_items %}
+                {% for item in existing_items %}
+                <div class="item-row">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-8">
+                            <label class="form-label small text-muted mb-1">Grade / Class</label>
+                            <select class="form-select" name="grade_levels">
+                                <option value="">All Grades</option>
+                                {% for grade in grade_levels %}
+                                <option value="{{ grade.id }}" {% if item.grade_level.id == grade.id %}selected{% endif %}>{{ grade.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted mb-1">Amount (GH¢) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" class="form-control" name="amounts" value="{{ item.amount }}" placeholder="0.00" required>
+                        </div>
+                        <div class="col-md-1 text-end">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeClassRow(this)" style="margin-top: 26px;">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <div id="itemsRequiredError" class="text-danger small mt-2" style="display:none;">
+            <i class="bi bi-exclamation-circle me-1"></i>
+            Please add at least one class with a valid amount.
+        </div>
+
+        <div class="help-text mt-1">
+            <i class="bi bi-info-circle me-1"></i>
+            <span class="fw-semibold">One amount per class applies to all selected terms.</span>
+            <span class="text-muted">Set different amounts for different classes.</span>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SUMMARY / PREVIEW                         -->
+    <!-- ========================================== -->
+    <div class="summary-box mb-3">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <span class="fw-semibold text-gold">
+                <i class="bi bi-eye me-1"></i> Summary:
+            </span>
+            <span id="summaryName" class="fw-semibold">
+                {% if mode == 'edit' %}{{ addon.name }}{% else %}New Add-on{% endif %}
+            </span>
+            <span class="text-muted">•</span>
+            <span id="summaryTerm" class="badge
+                {% if mode == 'edit' %}
+                    {% if addon.term_type == 'ALL' %}term-badge-all
+                    {% elif addon.term_type == 'FIRST' %}term-badge-first
+                    {% elif addon.term_type == 'SECOND' %}term-badge-second
+                    {% elif addon.term_type == 'THIRD' %}term-badge-third
+                    {% else %}term-badge-custom{% endif %}
+                {% else %}term-badge-all{% endif %}">
+                <i class="bi bi-calendar3 me-1"></i>
+                {% if mode == 'edit' %}
+                    {{ addon.get_term_type_display }}
+                {% else %}
+                    All Terms
+                {% endif %}
+            </span>
+            <span class="text-muted">•</span>
+            <span class="text-muted">
+                <i class="bi bi-layers me-1"></i>
+                <span id="classCount">0</span> class(es)
+            </span>
+            {% if mode == 'edit' and addon.apply_to_new_students_only %}
+            <span class="badge bg-info-subtle text-info">
+                <i class="bi bi-person-plus me-1"></i>New Only
+            </span>
+            {% endif %}
+            {% if mode == 'edit' and addon.is_required %}
+            <span class="badge bg-danger-subtle text-danger">
+                <i class="bi bi-exclamation-circle me-1"></i>Required
+            </span>
+            {% endif %}
+        </div>
+        <div class="mt-1">
+            <span class="text-muted small">
+                <i class="bi bi-info-circle me-1"></i>
+                <span id="termSummaryText">
+                    {% if mode == 'edit' %}
+                        {% if addon.term_type == 'ALL' %}
+                            ✅ Applied to Terms 1, 2, and 3
+                        {% elif addon.term_type == 'FIRST' %}
+                            ✅ Applied to Term 1 only
+                        {% elif addon.term_type == 'SECOND' %}
+                            ✅ Applied to Term 2 only
+                        {% elif addon.term_type == 'THIRD' %}
+                            ✅ Applied to Term 3 only
+                        {% elif addon.term_type == 'CUSTOM' %}
+                            ✅ Applied to selected terms
+                        {% endif %}
+                    {% else %}
+                        ✅ Applied to Terms 1, 2, and 3
+                    {% endif %}
+                </span>
+            </span>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- ACTIONS                                    -->
+    <!-- ========================================== -->
+    <div class="d-flex gap-2 justify-content-end border-top pt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn btn-gold px-4">
+            <i class="bi {% if mode == 'create' %}bi-check2-circle{% else %}bi-pencil-square{% endif %} me-1"></i>
+            {% if mode == 'create' %}Create Add-on{% else %}Save Changes{% endif %}
+        </button>
+    </div>
+</form>
+
+<!-- ========================================== -->
+<!-- SIMPLE JAVASCRIPT - NO CONFLICTS          -->
+<!-- ========================================== -->
+<script>
+(function() {
+    // ============================================================
+    // TERM TYPE TOGGLE
+    // ============================================================
+    const termTypeSelect = document.getElementById('termTypeSelect');
+    const customTermsContainer = document.getElementById('customTermsContainer');
+    const termHelpText = document.getElementById('termHelpText');
+    const termSummaryText = document.getElementById('termSummaryText');
+
+    const termHelpTexts = {
+        'ALL': 'Applied to Terms 1, 2 &amp; 3 with the same amount.',
+        'FIRST': 'Applied only to Term 1.',
+        'SECOND': 'Applied only to Term 2.',
+        'THIRD': 'Applied only to Term 3.',
+        'CUSTOM': 'Applied to selected terms with the same amount.'
+    };
+
+    const termSummaryTexts = {
+        'ALL': '✅ Applied to Terms 1, 2, and 3',
+        'FIRST': '✅ Applied to Term 1 only',
+        'SECOND': '✅ Applied to Term 2 only',
+        'THIRD': '✅ Applied to Term 3 only',
+        'CUSTOM': '✅ Applied to selected terms'
+    };
+
+    if (termTypeSelect) {
+        termTypeSelect.addEventListener('change', function() {
+            // Show/hide custom terms
+            if (customTermsContainer) {
+                if (this.value === 'CUSTOM') {
+                    customTermsContainer.style.display = 'block';
+                    customTermsContainer.style.transition = 'all 0.3s ease';
+                    customTermsContainer.style.opacity = '0';
+                    setTimeout(() => {
+                        customTermsContainer.style.opacity = '1';
+                    }, 10);
+                } else {
+                    customTermsContainer.style.display = 'none';
+                }
+            }
+
+            // Update help text
+            if (termHelpText) {
+                termHelpText.innerHTML = termHelpTexts[this.value] || 'Choose which terms this add-on applies to.';
+            }
+
+            // Update summary text
+            if (termSummaryText) {
+                termSummaryText.textContent = termSummaryTexts[this.value] || '✅ Applied to all selected terms';
+            }
+
+            // Update summary badge
+            updateSummary();
+        });
+
+        // Trigger initial update
+        setTimeout(function() {
+            if (termTypeSelect.value === 'CUSTOM' && customTermsContainer) {
+                customTermsContainer.style.display = 'block';
+                setTimeout(() => {
+                    customTermsContainer.style.opacity = '1';
+                }, 10);
+            }
+            if (termHelpText) {
+                termHelpText.innerHTML = termHelpTexts[termTypeSelect.value] || 'Choose which terms this add-on applies to.';
+            }
+            if (termSummaryText) {
+                termSummaryText.textContent = termSummaryTexts[termTypeSelect.value] || '✅ Applied to all selected terms';
+            }
+        }, 100);
+    }
+
+    // ============================================================
+    // UPDATE SUMMARY
+    // ============================================================
+    function updateSummary() {
+        const termSelect = document.getElementById('termTypeSelect');
+        const summaryTerm = document.getElementById('summaryTerm');
+        const classCount = document.getElementById('classCount');
+
+        if (termSelect && summaryTerm) {
+            const selectedOption = termSelect.options[termSelect.selectedIndex];
+            const termText = selectedOption ? selectedOption.text.trim() : 'All Terms';
+
+            const termClass = {
+                'ALL': 'term-badge-all',
+                'FIRST': 'term-badge-first',
+                'SECOND': 'term-badge-second',
+                'THIRD': 'term-badge-third',
+                'CUSTOM': 'term-badge-custom'
+            }[termSelect.value] || 'term-badge-all';
+
+            summaryTerm.className = 'badge ' + termClass;
+            summaryTerm.innerHTML = '<i class="bi bi-calendar3 me-1"></i> ' + termText;
+        }
+
+        // Count classes
+        const rows = document.querySelectorAll('#itemsContainer .item-row');
+        if (classCount) {
+            classCount.textContent = rows.length;
+        }
+    }
+
+    // ============================================================
+    // ADD ROW - NO T1, T2, T3!
+    // ============================================================
+    window.addClassRow = function() {
+        const container = document.getElementById('itemsContainer');
+        if (!container) return;
+
+        // Get the first select element to copy options
+        const firstSelect = container.querySelector('select[name="grade_levels"]');
+        let optionsHtml = '<option value="">All Grades</option>';
+        if (firstSelect) {
+            firstSelect.querySelectorAll('option').forEach(function(opt) {
+                if (opt.value) {
+                    optionsHtml += `<option value="${opt.value}">${opt.textContent}</option>`;
+                }
+            });
+        }
+
+        // Create new row - NO T1, T2, T3!
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.style.opacity = '0';
+        row.style.transform = 'translateY(-10px)';
+        row.innerHTML = `
+            <div class="row g-2 align-items-center">
+                <div class="col-md-8">
+                    <label class="form-label small text-muted mb-1">Grade / Class</label>
+                    <select class="form-select" name="grade_levels">${optionsHtml}</select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-1">Amount (GH¢) <span class="text-danger">*</span></label>
+                    <input type="number" step="0.01" class="form-control" name="amounts" placeholder="0.00" required>
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeClassRow(this)" style="margin-top: 26px;">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        container.appendChild(row);
+
+        // Animate in
+        setTimeout(() => {
+            row.style.transition = 'all 0.3s ease';
+            row.style.opacity = '1';
+            row.style.transform = 'translateY(0)';
+            updateSummary();
+        }, 10);
+
+        const errorEl = document.getElementById('itemsRequiredError');
+        if (errorEl) errorEl.style.display = 'none';
+    };
+
+    // ============================================================
+    // REMOVE ROW
+    // ============================================================
+    window.removeClassRow = function(btn) {
+        const container = document.getElementById('itemsContainer');
+        if (!container) return;
+
+        const rows = container.querySelectorAll('.item-row');
+        if (rows.length <= 1) {
+            const errorEl = document.getElementById('itemsRequiredError');
+            if (errorEl) errorEl.style.display = 'block';
+            return;
+        }
+
+        // Animate out
+        const row = btn.closest('.item-row');
+        row.style.transition = 'all 0.3s ease';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(20px)';
+
+        setTimeout(() => {
+            row.remove();
+            updateSummary();
+        }, 300);
+    };
+
+    // ============================================================
+    // NAME PREVIEW UPDATE
+    // ============================================================
+    const nameInput = document.querySelector('input[name="name"]');
+    const summaryName = document.getElementById('summaryName');
+
+    if (nameInput && summaryName) {
+        nameInput.addEventListener('input', function() {
+            summaryName.textContent = this.value || 'New Add-on';
+        });
+    }
+
+    // ============================================================
+    // INITIALIZE SUMMARY
+    // ============================================================
+    setTimeout(updateSummary, 200);
+
+    // Update summary when custom terms change
+    document.querySelectorAll('input[name="custom_terms"]').forEach(function(cb) {
+        cb.addEventListener('change', updateSummary);
+    });
+})();
+</script>

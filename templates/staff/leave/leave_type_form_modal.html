@@ -1,0 +1,273 @@
+<!-- staff/leave/leave_type_form_modal.html -->
+{% load static %}
+
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+</style>
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold">
+        <i class="bi bi-tags text-gold me-2"></i>
+        {% if mode == 'edit' %}Edit{% else %}New{% endif %} Leave Type
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form method="post" action="{% if mode == 'edit' %}{% url action_url leave_type.id %}{% else %}{% url action_url %}{% endif %}"
+      id="leaveTypeForm" class="needs-validation" novalidate
+      onsubmit="if(!this.checkValidity()){event.preventDefault();event.stopPropagation();} this.classList.add('was-validated');">
+    {% csrf_token %}
+
+    <div class="modal-body p-4">
+        <!-- Name -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="leaveTypeName">
+                Name <span class="text-danger">*</span>
+            </label>
+            <input type="text" name="name" id="leaveTypeName" class="form-control"
+                   placeholder="e.g., Annual Leave"
+                   value="{% if mode == 'edit' %}{{ leave_type.name }}{% endif %}" required
+                   oninput="
+                        var codeEl = document.getElementById('leaveTypeCode');
+                        if (codeEl.dataset.manualOverride === 'true') return;
+                        var name = (this.value || '').trim();
+                        var code = '';
+                        if (name) {
+                            var words = name.split(/\s+/);
+                            code = words.length >= 2
+                                ? words.map(function(w){ return w.substring(0,2).toUpperCase(); }).join('')
+                                : name.substring(0,4).toUpperCase();
+                            code = code.replace(/[^A-Z0-9]/g, '');
+                            if (code.length < 2) { code = (code + 'XX').substring(0,2); }
+                        }
+                        codeEl.value = code;
+                   ">
+            <div class="invalid-feedback">Please enter a leave type name.</div>
+            <small class="text-muted">The code will be auto-generated from the name.</small>
+        </div>
+
+        <!-- Code - Auto-generated and Read-Only -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="leaveTypeCode">
+                Code <span class="text-danger">*</span>
+            </label>
+            <div class="input-group">
+                <input type="text" name="code" id="leaveTypeCode" class="form-control text-uppercase"
+                       placeholder="Auto-generated"
+                       value="{% if mode == 'edit' %}{{ leave_type.code }}{% endif %}"
+                       data-manual-override="{% if mode == 'edit' and leave_type.code %}true{% else %}false{% endif %}"
+                       readonly style="background-color: #f8f9fa; cursor: not-allowed;">
+                <button type="button" class="btn btn-outline-gold" id="regenerateCodeBtn" title="Regenerate code from name"
+                        onclick="
+                            var nameEl = document.getElementById('leaveTypeName');
+                            var codeEl = document.getElementById('leaveTypeCode');
+                            var feedback = document.getElementById('codeFeedback');
+                            var icon = this.querySelector('i');
+                            var name = (nameEl.value || '').trim();
+
+                            function showFeedback(message, type) {
+                                if (!feedback) return;
+                                feedback.style.display = 'block';
+                                feedback.className = 'mt-1 alert alert-' + (type || 'success') + ' border-0 py-1 px-2';
+                                feedback.innerHTML = '<small><i class=\'bi bi-check-circle-fill me-1\'></i> ' + message + '</small>';
+                                clearTimeout(feedback._timeout);
+                                feedback._timeout = setTimeout(function(){ feedback.style.display = 'none'; }, 3000);
+                            }
+
+                            if (!name) {
+                                nameEl.focus();
+                                nameEl.classList.add('is-invalid');
+                                showFeedback('Please enter a name first.', 'warning');
+                                setTimeout(function(){ nameEl.classList.remove('is-invalid'); }, 2000);
+                                return;
+                            }
+
+                            var words = name.split(/\s+/);
+                            var code = words.length >= 2
+                                ? words.map(function(w){ return w.substring(0,2).toUpperCase(); }).join('')
+                                : name.substring(0,4).toUpperCase();
+                            code = code.replace(/[^A-Z0-9]/g, '');
+                            if (code.length < 2) { code = (code + 'XX').substring(0,2); }
+                            codeEl.value = code;
+                            codeEl.dataset.manualOverride = 'false';
+
+                            var orig = icon.className;
+                            icon.className = 'bi bi-check-lg';
+                            this.classList.add('btn-success');
+                            this.classList.remove('btn-outline-gold');
+                            var btn = this;
+                            setTimeout(function(){
+                                icon.className = orig;
+                                btn.classList.remove('btn-success');
+                                btn.classList.add('btn-outline-gold');
+                            }, 1500);
+
+                            showFeedback('Code regenerated: <strong>' + code + '</strong>', 'success');
+                        ">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button type="button" class="btn btn-outline-gold" id="copyCodeBtn" title="Copy code"
+                        onclick="
+                            var codeEl = document.getElementById('leaveTypeCode');
+                            var code = codeEl.value;
+                            var icon = this.querySelector('i');
+                            var orig = icon.className;
+                            function done(ok) {
+                                icon.className = ok ? 'bi bi-check-lg text-success' : 'bi bi-exclamation-triangle text-warning';
+                                setTimeout(function(){ icon.className = orig; }, 1200);
+                            }
+                            if (!code) { done(false); return; }
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(code).then(function(){ done(true); }).catch(function(){
+                                    var ta = document.createElement('textarea');
+                                    ta.value = code;
+                                    document.body.appendChild(ta);
+                                    ta.select();
+                                    document.execCommand('copy');
+                                    document.body.removeChild(ta);
+                                    done(true);
+                                });
+                            } else {
+                                var ta = document.createElement('textarea');
+                                ta.value = code;
+                                document.body.appendChild(ta);
+                                ta.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(ta);
+                                done(true);
+                            }
+                        ">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+            <small class="text-muted">Code is auto-generated from the name. Click the refresh icon to regenerate.</small>
+            <div id="codeFeedback" style="display: none;" class="mt-1"></div>
+        </div>
+
+        <!-- Category -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="leaveTypeCategory">
+                Category <span class="text-danger">*</span>
+            </label>
+            <select name="category" id="leaveTypeCategory" class="form-select" required>
+                <option value="">Select Category</option>
+                <option value="ANNUAL" {% if mode == 'edit' and leave_type.category == 'ANNUAL' %}selected{% endif %}>Annual Leave</option>
+                <option value="SICK" {% if mode == 'edit' and leave_type.category == 'SICK' %}selected{% endif %}>Sick Leave</option>
+                <option value="MATERNITY" {% if mode == 'edit' and leave_type.category == 'MATERNITY' %}selected{% endif %}>Maternity Leave</option>
+                <option value="PATERNITY" {% if mode == 'edit' and leave_type.category == 'PATERNITY' %}selected{% endif %}>Paternity Leave</option>
+                <option value="CASUAL" {% if mode == 'edit' and leave_type.category == 'CASUAL' %}selected{% endif %}>Casual Leave</option>
+                <option value="STUDY" {% if mode == 'edit' and leave_type.category == 'STUDY' %}selected{% endif %}>Study Leave</option>
+                <option value="COMPASSIONATE" {% if mode == 'edit' and leave_type.category == 'COMPASSIONATE' %}selected{% endif %}>Compassionate Leave</option>
+                <option value="UNPAID" {% if mode == 'edit' and leave_type.category == 'UNPAID' %}selected{% endif %}>Unpaid Leave</option>
+                <option value="OTHER" {% if mode == 'edit' and leave_type.category == 'OTHER' %}selected{% endif %}>Other</option>
+            </select>
+            <div class="invalid-feedback">Please select a category.</div>
+        </div>
+
+        <!-- Entitlement -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="leaveTypeDefaultDays">
+                    Default Days <span class="text-danger">*</span>
+                </label>
+                <input type="number" name="default_days" id="leaveTypeDefaultDays" class="form-control"
+                       value="{% if mode == 'edit' %}{{ leave_type.default_days }}{% else %}21{% endif %}"
+                       min="0" max="365" required>
+                <div class="invalid-feedback">Please enter a valid number of days.</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="leaveTypeMaxCarryover">
+                    Max Carryover Days
+                </label>
+                <input type="number" name="max_carryover_days" id="leaveTypeMaxCarryover" class="form-control"
+                       value="{% if mode == 'edit' %}{{ leave_type.max_carryover_days }}{% else %}30{% endif %}"
+                       min="0" max="365">
+                <small class="text-muted">Maximum days that can be carried over.</small>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="requires_approval" id="requiresApproval"
+                           {% if mode == 'edit' and leave_type.requires_approval %}checked{% endif %}>
+                    <label class="form-check-label" for="requiresApproval">
+                        Requires Approval
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="allow_carryover" id="allowCarryover"
+                           {% if mode == 'edit' and leave_type.allow_carryover %}checked{% endif %}>
+                    <label class="form-check-label" for="allowCarryover">
+                        Allow Carryover
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="requires_documentation" id="requiresDocumentation"
+                           {% if mode == 'edit' and leave_type.requires_documentation %}checked{% endif %}>
+                    <label class="form-check-label" for="requiresDocumentation">
+                        Requires Documentation
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Description -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="leaveTypeDescription">
+                Description
+            </label>
+            <textarea name="description" id="leaveTypeDescription" class="form-control" rows="2"
+                      placeholder="Brief description of this leave type...">{% if mode == 'edit' %}{{ leave_type.description }}{% endif %}</textarea>
+        </div>
+
+        <!-- Active Status (Edit mode only) -->
+        {% if mode == 'edit' %}
+        <div class="mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_active" id="isActive"
+                       {% if leave_type.is_active %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="isActive">
+                    Active
+                </label>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn btn-gold" id="leaveTypeSubmitBtn">
+            <i class="bi {% if mode == 'create' %}bi-plus-circle{% else %}bi-save{% endif %} me-1"></i>
+            {% if mode == 'edit' %}Update{% else %}Create{% endif %} Leave Type
+        </button>
+    </div>
+</form>

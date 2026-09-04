@@ -1,0 +1,199 @@
+<!-- accounts/templates/accounts/user_detail.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}{{ user_obj.get_full_name|default:user_obj.username }}{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    User Details
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        Admin View
+                    </span>
+                </div>
+                <p class="text">
+                    This page shows detailed information for <strong>{{ user_obj.get_full_name|default:user_obj.username }}</strong>.
+                    You can <strong>edit</strong> the user's account or return to the <strong>user list</strong>.
+                    The <strong>Account Information</strong> section shows the user's basic details, while
+                    the <strong>Audit Trail</strong> shows login history and account creation date.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 p-4">
+            <div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-gold-soft text-gold rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <i class="bi bi-person fs-2"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">{{ user_obj.get_full_name|default:user_obj.username }}</h5>
+                        <small class="text-muted">{{ user_obj.email }} &middot; {{ user_obj.role.name|default:"No Role" }}</small>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'user_edit' user_obj.id %}" class="btn btn-outline-gold">Edit User</a>
+                <a href="{% url 'user_access' %}" class="btn btn-outline-secondary">Back to List</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle text-gold me-2"></i>Account Information</h6>
+                    <div class="mb-2">
+                        <small class="text-muted d-block">Username</small>
+                        <span>{{ user_obj.username }}</span>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted d-block">Email Address</small>
+                        <span>{{ user_obj.email|default:"—" }}</span>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted d-block">Role</small>
+                        <span class="badge badge-gold">{{ user_obj.role.name|default:"Not Assigned" }}</span>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">Status</small>
+                        {% if user_obj.is_active %}
+                            <span class="badge badge-teal">Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-clock-history text-gold me-2"></i>Audit Trail</h6>
+                    <div class="mb-2">
+                        <small class="text-muted d-block">Date Joined</small>
+                        <span>{{ user_obj.date_joined|date:"M d, Y H:i" }}</span>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted d-block">Last Login</small>
+                        <span>{{ user_obj.last_login|date:"M d, Y H:i"|default:"Never" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

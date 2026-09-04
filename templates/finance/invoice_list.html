@@ -1,0 +1,651 @@
+{% extends 'base/base.html' %}
+{% block page_title %}Invoices{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+</style>
+
+<!-- How Invoices Work -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How Invoices Work</div>
+            <p class="text">
+                This page lists all invoices generated for students. Each invoice shows the
+                <strong>invoice number</strong>, <strong>student</strong>, <strong>class</strong>,
+                <strong>term</strong>, <strong>total amount</strong>, and <strong>status</strong>
+                (Paid, Partial, or Unpaid). Use the search box below to filter invoices by
+                invoice number, student name, or status. Click <strong>"Bulk Generate Invoices"</strong>
+                to create invoices for multiple students at once based on their prepared and
+                approved fee records.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+            <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-text text-gold me-2"></i>Invoice Generation</h5>
+            {% if can_manage %}
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-gold" id="bulkStatementsBtn" data-bs-toggle="modal" data-bs-target="#bulkStatementsModal">
+                    <i class="bi bi-file-earmark-text me-1"></i> Bulk Fee Statements
+                </button>
+                <button type="button" class="btn btn-gold" id="generateInvoiceBtn" data-bs-toggle="modal" data-bs-target="#generateInvoiceModal">
+                    <i class="bi bi-plus-circle me-1"></i> Bulk Generate Invoices
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-table text-gold me-2"></i>All Invoices
+                <span class="badge bg-light text-muted ms-2" id="invoiceCount">{{ invoices|length }}</span>
+            </h6>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="text-muted small" id="filterStatus"></span>
+                <input type="text" id="invoiceListSearchInput" class="form-control form-control-sm" placeholder="Search invoices..." style="max-width: 220px;">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="invoiceListTable">
+                <thead>
+                    <tr>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Invoice #</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Student</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Class</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Term</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Total</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Status</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Due Date</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Receipt</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0" id="invoiceListTableBody">
+                    {% for inv in invoices %}
+                    <tr class="border-bottom invoice-list-row" data-search="{{ inv.invoice_number }} {{ inv.student.user.get_full_name }} {{ inv.status }}">
+                        <td class="py-3 ps-0 fw-semibold">{{ inv.invoice_number }}</td>
+                        <td class="py-3">{{ inv.student.user.get_full_name }}</td>
+                        <td class="py-3">{{ inv.student.school_class.name|default:"-" }}</td>
+                        <td class="py-3">{{ inv.academic_term.name|default:"-" }}</td>
+                        <td class="py-3 fw-bold">GH¢ {{ inv.total_amount|floatformat:2 }}</td>
+                        <td class="py-3">
+                            <span class="badge
+                                {% if inv.status == 'PAID' %}badge-teal
+                                {% elif inv.status == 'PARTIAL' %}bg-warning-subtle text-warning
+                                {% else %}bg-danger-subtle text-danger{% endif %} border px-2.5 py-1.5 rounded-pill">
+                                {{ inv.status }}
+                            </span>
+                        </td>
+                        <td class="py-3 pe-0 text-end text-muted small">{{ inv.due_date|date:"M d, Y" }}</td>
+                        <td class="py-3 pe-0 text-end">
+                            {% with inv.payments.all|first as latest_payment %}
+                            {% if latest_payment and latest_payment.status == 'CONFIRMED' %}
+                            <a href="{% url 'finance:payment_receipt' latest_payment.id %}" target="_blank"
+                               class="btn btn-sm btn-outline-secondary" title="View receipt">
+                                <i class="bi bi-receipt"></i>
+                            </a>
+                            {% else %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr class="empty-state-row">
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                            No invoices generated yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Invoice Modal -->
+<div class="modal fade" id="generateInvoiceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-file-earmark-plus text-teal me-2"></i> Bulk Generate Invoices
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="generateError" class="alert alert-danger border-0 shadow-sm rounded-4" style="display:none;">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <span id="generateErrorText"></span>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Academic Term <span class="text-danger">*</span></label>
+                        <select class="form-select" id="gen_term_id" required>
+                            <option value="">Select Term</option>
+                            {% for term in terms %}
+                                <option value="{{ term.id }}">{{ term.name }} — {{ term.academic_year.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Due Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="gen_due_date" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Select School Classes <span class="text-danger">*</span></label>
+                        <div class="row g-2">
+                            {% for cls in school_classes %}
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input school-class-checkbox" type="checkbox" value="{{ cls.id }}" id="class_{{ cls.id }}">
+                                    <label class="form-check-label" for="class_{{ cls.id }}">
+                                        {{ cls.name }} ({{ cls.grade_level.name }})
+                                    </label>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="col-12 text-muted py-2">No school classes available.</div>
+                            {% endfor %}
+                        </div>
+                        <small class="text-muted d-block mt-1">Students will be invoiced based on their enrolled class.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-gold px-4" id="submitGenerateBtn">
+                    <i class="bi bi-magic me-1"></i> Generate Invoices
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Fee Statements Modal -->
+<div class="modal fade" id="bulkStatementsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-file-earmark-text text-gold me-2"></i> Bulk Fee Statements
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-3">
+                    Generates a full itemized fee statement (base fees + add-ons, amounts, and payment
+                    history) for every invoice matching the filters below. Leave a filter empty to include
+                    all terms or all classes.
+                </p>
+                <div id="statementsError" class="alert alert-danger border-0 shadow-sm rounded-4" style="display:none;">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <span id="statementsErrorText"></span>
+                </div>
+                <div id="statementsSuccess" class="alert alert-success border-0 shadow-sm rounded-4" style="display:none;">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <span id="statementsSuccessText"></span>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Academic Term</label>
+                        <select class="form-select" id="stmt_term_id">
+                            <option value="">All Terms</option>
+                            {% for term in terms %}
+                                <option value="{{ term.id }}">{{ term.name }} — {{ term.academic_year.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Select School Classes</label>
+                        <div class="row g-2">
+                            {% for cls in school_classes %}
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input statement-class-checkbox" type="checkbox" value="{{ cls.id }}" id="stmt_class_{{ cls.id }}">
+                                    <label class="form-check-label" for="stmt_class_{{ cls.id }}">
+                                        {{ cls.name }} ({{ cls.grade_level.name }})
+                                    </label>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="col-12 text-muted py-2">No school classes available.</div>
+                            {% endfor %}
+                        </div>
+                        <small class="text-muted d-block mt-1">Leave all unchecked to include every class.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-outline-gold px-4" id="submitBulkEmailStatementsBtn">
+                    <i class="bi bi-envelope me-1"></i> Email to Parents
+                </button>
+                <button type="button" class="btn btn-gold px-4" id="submitBulkDownloadStatementsBtn">
+                    <i class="bi bi-download me-1"></i> Download ZIP
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER
+    // ============================================================
+    const invoiceListSearchInput = document.getElementById('invoiceListSearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const invoiceCount = document.getElementById('invoiceCount');
+    const allRows = document.querySelectorAll('.invoice-list-row');
+    const emptyState = document.querySelector('.empty-state-row');
+
+    if (invoiceListSearchInput) {
+        invoiceListSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const searchData = row.getAttribute('data-search') || '';
+                const text = row.textContent.toLowerCase();
+                const isVisible = searchData.includes(query) || text.includes(query);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (invoiceCount) {
+                if (query) {
+                    invoiceCount.textContent = visibleCount;
+                    if (filterStatus) {
+                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                    }
+                } else {
+                    invoiceCount.textContent = allRows.length;
+                    if (filterStatus) {
+                        filterStatus.textContent = '';
+                    }
+                }
+            }
+
+            if (emptyState) {
+                if (visibleCount === 0 && allRows.length > 0) {
+                    emptyState.style.display = '';
+                } else {
+                    emptyState.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // GENERATE INVOICE BUTTON - Using data attributes for Bootstrap
+    // ============================================================
+    // The button already has data-bs-toggle and data-bs-target attributes
+    // so Bootstrap will handle the modal opening automatically.
+    // No additional code needed for opening the modal.
+
+    // ============================================================
+    // SUBMIT GENERATE INVOICES
+    // ============================================================
+    const submitBtn = document.getElementById('submitGenerateBtn');
+    const modalElement = document.getElementById('generateInvoiceModal');
+
+    // Get the modal instance
+    let modal = null;
+    if (modalElement) {
+        modal = new bootstrap.Modal(modalElement, {
+            backdrop: 'static',
+            keyboard: true
+        });
+    }
+
+    if (submitBtn) {
+        submitBtn.addEventListener('click', function() {
+            submitBulkGenerate(modal);
+        });
+    }
+
+    // Handle Enter key on inputs
+    if (modalElement) {
+        const inputs = modalElement.querySelectorAll('input, select');
+        inputs.forEach(function(input) {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    submitBulkGenerate(modal);
+                }
+            });
+        });
+    }
+
+    // ============================================================
+    // BULK FEE STATEMENTS (download ZIP / email to parents)
+    // ============================================================
+    const downloadStatementsBtn = document.getElementById('submitBulkDownloadStatementsBtn');
+    const emailStatementsBtn = document.getElementById('submitBulkEmailStatementsBtn');
+
+    if (downloadStatementsBtn) {
+        downloadStatementsBtn.addEventListener('click', function() {
+            submitBulkStatements('download');
+        });
+    }
+    if (emailStatementsBtn) {
+        emailStatementsBtn.addEventListener('click', function() {
+            submitBulkStatements('email');
+        });
+    }
+});
+
+function getBulkStatementFilters() {
+    const termId = document.getElementById('stmt_term_id').value;
+    const checkedBoxes = document.querySelectorAll('.statement-class-checkbox:checked');
+    const schoolClassIds = Array.from(checkedBoxes).map(cb => cb.value);
+    return { term_id: termId, school_class_ids: schoolClassIds };
+}
+
+async function submitBulkStatements(mode) {
+    const filters = getBulkStatementFilters();
+    const downloadBtn = document.getElementById('submitBulkDownloadStatementsBtn');
+    const emailBtn = document.getElementById('submitBulkEmailStatementsBtn');
+    const errorDiv = document.getElementById('statementsError');
+    const errorText = document.getElementById('statementsErrorText');
+    const successDiv = document.getElementById('statementsSuccess');
+    const successText = document.getElementById('statementsSuccessText');
+    const activeBtn = mode === 'download' ? downloadBtn : emailBtn;
+    const originalHtml = activeBtn.innerHTML;
+
+    if (errorDiv) errorDiv.style.display = 'none';
+    if (successDiv) successDiv.style.display = 'none';
+
+    downloadBtn.disabled = true;
+    emailBtn.disabled = true;
+    activeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>' +
+        (mode === 'download' ? 'Preparing ZIP...' : 'Sending...');
+
+    try {
+        const url = mode === 'download'
+            ? '{% url "finance:api_bulk_invoice_statements_pdf" %}'
+            : '{% url "finance:api_bulk_email_invoice_statements" %}';
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCSRFToken()
+            },
+            body: JSON.stringify(filters)
+        });
+
+        if (mode === 'download') {
+            if (response.ok) {
+                const blob = await response.blob();
+                const disposition = response.headers.get('Content-Disposition') || '';
+                const match = disposition.match(/filename="?([^"]+)"?/);
+                const filename = match ? match[1] : 'Fee-Statements.zip';
+                const link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                if (successText) successText.textContent = 'Fee statements downloaded.';
+                if (successDiv) successDiv.style.display = 'block';
+            } else {
+                const data = await response.json();
+                if (errorText) errorText.textContent = data.error || 'Could not generate fee statements.';
+                if (errorDiv) errorDiv.style.display = 'block';
+            }
+        } else {
+            const data = await response.json();
+            if (response.ok && data.success) {
+                if (successText) {
+                    successText.textContent = `Sent ${data.sent} of ${data.total} fee statement(s) by email.` +
+                        (data.failed > 0 ? ` ${data.failed} could not be sent (e.g. missing parent email).` : '');
+                }
+                if (successDiv) successDiv.style.display = 'block';
+            } else {
+                if (errorText) errorText.textContent = data.error || 'Could not email fee statements.';
+                if (errorDiv) errorDiv.style.display = 'block';
+            }
+        }
+    } catch (err) {
+        console.error('Error:', err);
+        if (errorText) errorText.textContent = 'An error occurred. Please try again.';
+        if (errorDiv) errorDiv.style.display = 'block';
+    } finally {
+        downloadBtn.disabled = false;
+        emailBtn.disabled = false;
+        activeBtn.innerHTML = originalHtml;
+    }
+}
+
+async function submitBulkGenerate(modal) {
+    const termId = document.getElementById('gen_term_id').value;
+    const dueDate = document.getElementById('gen_due_date').value;
+    const checkedBoxes = document.querySelectorAll('.school-class-checkbox:checked');
+    const schoolClassIds = Array.from(checkedBoxes).map(cb => cb.value);
+    const submitBtn = document.getElementById('submitGenerateBtn');
+    const originalText = submitBtn.innerHTML;
+    const errorDiv = document.getElementById('generateError');
+    const errorText = document.getElementById('generateErrorText');
+
+    // Reset error
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+    }
+
+    // Validate
+    if (!termId) {
+        if (errorText) errorText.textContent = 'Please select an Academic Term.';
+        if (errorDiv) errorDiv.style.display = 'block';
+        document.getElementById('gen_term_id').focus();
+        return;
+    }
+
+    if (!dueDate) {
+        if (errorText) errorText.textContent = 'Please select a Due Date.';
+        if (errorDiv) errorDiv.style.display = 'block';
+        document.getElementById('gen_due_date').focus();
+        return;
+    }
+
+    if (schoolClassIds.length === 0) {
+        if (errorText) errorText.textContent = 'Please select at least one School Class.';
+        if (errorDiv) errorDiv.style.display = 'block';
+        return;
+    }
+
+    // Disable button and show loading
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Generating...';
+
+    try {
+        const response = await fetch('{% url "finance:api_generate_invoices" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCSRFToken()
+            },
+            body: JSON.stringify({
+                term_id: termId,
+                school_class_ids: schoolClassIds,
+                due_date: dueDate
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            // Hide modal
+            if (modal) {
+                modal.hide();
+            }
+
+            // Show success message with details
+            let message = '';
+            if (data.generated > 0) {
+                message += `✅ ${data.generated} invoice(s) generated successfully.`;
+            }
+            if (data.skipped > 0) {
+                message += `\n⚠️ ${data.skipped} invoice(s) already existed and were skipped.`;
+            }
+            if (data.not_approved > 0) {
+                message += `\n⚠️ ${data.not_approved} class(es) have fees that are not approved. Please approve fees first.`;
+            }
+            if (data.no_fees > 0) {
+                message += `\n⚠️ ${data.no_fees} class(es) have no fee preparation. Please prepare fees first.`;
+            }
+            if (data.errors && data.errors.length > 0) {
+                message += `\n\nErrors:\n${data.errors.slice(0, 5).join('\n')}`;
+                if (data.errors.length > 5) {
+                    message += `\n... and ${data.errors.length - 5} more errors.`;
+                }
+            }
+            if (!message) {
+                message = 'No invoices were generated. Please ensure fees are prepared and approved.';
+            }
+
+            alert(message);
+
+            // Reload if any invoices were generated
+            if (data.generated > 0) {
+                window.location.reload();
+            } else {
+                // Just refresh the page to show any changes
+                setTimeout(() => window.location.reload(), 2000);
+            }
+        } else {
+            if (errorText) errorText.textContent = data.error || 'Unknown error occurred.';
+            if (errorDiv) errorDiv.style.display = 'block';
+        }
+    } catch (err) {
+        console.error('Error:', err);
+        if (errorText) errorText.textContent = 'An error occurred while generating invoices. Please try again.';
+        if (errorDiv) errorDiv.style.display = 'block';
+    } finally {
+        // Re-enable button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+}
+
+// Helper function to get CSRF token from cookie
+function getCSRFToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('generateInvoiceModal');
+        if (modal && modal.classList.contains('show')) {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.hide();
+        }
+    }
+});
+</script>
+{% endblock %}
+{% include "partials/pagination.html" with page_obj=invoices %}
+
+{% endblock %}

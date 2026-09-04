@@ -1,0 +1,334 @@
+<!-- accounts/templates/accounts/role_list.html -->
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block page_title %}Role Management{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+    .role-row.hidden-row { display: none !important; }
+    .role-row.visible-row { display: table-row !important; }
+    .filter-badge {
+        display: none;
+        background-color: var(--eduai-gold-soft);
+        color: var(--eduai-gold);
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .filter-badge.show { display: inline-block; }
+    @keyframes pulse-badge {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .filter-active { animation: pulse-badge 1.5s ease-in-out 1; }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Role Management
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        Admin View
+                    </span>
+                </div>
+                <p class="text">
+                    This page manages system roles and permissions.
+                    A <strong>role</strong> is a named set of permissions (e.g. Bursar, Registrar, Class
+                    Teacher) that controls what a user can see and do in the system.
+                    You can <strong>create</strong> new roles, <strong>edit</strong> existing ones,
+                    or <strong>delete</strong> roles. Use the <strong>search bar</strong> below to
+                    filter roles by name or description.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 p-4">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="bi bi-shield-lock text-gold me-2"></i>System Roles</h5>
+                <p class="text-muted mb-0">Manage user roles and permissions across the institution.</p>
+                <small class="text-muted">{{ roles|length }} role(s) configured</small>
+            </div>
+            <a href="{% url 'role_create' %}" class="btn btn-gold"><i class="bi bi-plus-lg me-1"></i>Add Role</a>
+        </div>
+    </div>
+
+    <!-- Roles Table -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="p-4">
+            <!-- Auto-filter search bar -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-8 col-lg-6">
+                    <div class="position-relative">
+                        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                        <input type="text" id="roleSearchInput" class="form-control ps-5"
+                               placeholder="Search roles by name or description..." autocomplete="off">
+                    </div>
+                    <small class="text-muted" id="searchResultCount">Showing all {{ roles|length }} roles</small>
+                </div>
+                <div class="col-md-4 col-lg-6 text-md-end">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearRoleSearch" style="display: none;">
+                        <i class="bi bi-x-circle me-1"></i>Clear Search
+                    </button>
+                    <span class="filter-badge" id="filterBadge">
+                        <i class="bi bi-funnel-fill me-1"></i>Filtered
+                    </span>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="rolesTable">
+                    <thead>
+                        <tr>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Role Name</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Description</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Permissions</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0" id="rolesTableBody">
+                        {% for role in roles %}
+                        <tr class="border-bottom role-row visible-row" data-role-id="{{ role.id }}">
+                            <td class="py-3 ps-0">
+                                <span class="fw-semibold role-name">{{ role.name }}</span>
+                            </td>
+                            <td class="text-muted role-desc">{{ role.description|default:"—" }}</td>
+                            <td class="role-perms">
+                                {% for perm in role.permissions.all|slice:":3" %}
+                                    <span class="badge bg-secondary-subtle text-secondary me-1">{{ perm.name }}</span>
+                                {% empty %}
+                                    <span class="text-muted small">No permissions assigned</span>
+                                {% endfor %}
+                                {% if role.permissions.count > 3 %}
+                                    <span class="badge badge-gold">+{{ role.permissions.count|add:"-3" }} more</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end py-3 pe-0 text-nowrap">
+                                <a href="{% url 'role_edit' role.id %}" class="btn btn-sm btn-outline-gold px-3">
+                                    <i class="bi bi-pencil me-1"></i>Edit
+                                </a>
+                                <form method="post" action="{% url 'role_delete' role.id %}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this role?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger px-3">
+                                        <i class="bi bi-trash me-1"></i>Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr id="emptyStateRow">
+                            <td colspan="4" class="text-center text-muted py-5">
+                                <i class="bi bi-shield-lock fs-2 d-block mb-2 text-secondary"></i>
+                                No roles have been created yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div id="searchEmptyState" class="text-center text-muted py-4" style="display: none;">
+                <i class="bi bi-search d-block mb-2 fs-3"></i>
+                <p>No roles match your search.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // AUTO-FILTER FUNCTIONALITY
+    // ============================================================
+    const searchInput = document.getElementById('roleSearchInput');
+    const clearSearchBtn = document.getElementById('clearRoleSearch');
+    const searchResultCount = document.getElementById('searchResultCount');
+    const filterBadge = document.getElementById('filterBadge');
+    const rows = document.querySelectorAll('#rolesTableBody .role-row');
+    const emptyState = document.getElementById('emptyStateRow');
+    const searchEmptyState = document.getElementById('searchEmptyState');
+
+    function filterRoles() {
+        const query = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        rows.forEach(function(row) {
+            const name = row.querySelector('.role-name')?.textContent?.toLowerCase() || '';
+            const desc = row.querySelector('.role-desc')?.textContent?.toLowerCase() || '';
+            const perms = row.querySelector('.role-perms')?.textContent?.toLowerCase() || '';
+
+            const searchableText = `${name} ${desc} ${perms}`;
+
+            if (query === '' || searchableText.includes(query)) {
+                row.classList.remove('hidden-row');
+                row.classList.add('visible-row');
+                visibleCount++;
+            } else {
+                row.classList.add('hidden-row');
+                row.classList.remove('visible-row');
+            }
+        });
+
+        const total = rows.length;
+        if (query === '') {
+            searchResultCount.textContent = `Showing all ${total} roles`;
+            clearSearchBtn.style.display = 'none';
+            filterBadge.classList.remove('show');
+            if (searchEmptyState) searchEmptyState.style.display = 'none';
+            if (emptyState) emptyState.style.display = '';
+        } else {
+            searchResultCount.textContent = `Showing ${visibleCount} of ${total} roles${visibleCount === 0 ? ' (no matches found)' : ''}`;
+            clearSearchBtn.style.display = 'inline-block';
+            filterBadge.classList.add('show');
+            filterBadge.classList.add('filter-active');
+            setTimeout(() => filterBadge.classList.remove('filter-active'), 1500);
+
+            if (visibleCount === 0) {
+                if (searchEmptyState) searchEmptyState.style.display = '';
+                if (emptyState) emptyState.style.display = 'none';
+            } else {
+                if (searchEmptyState) searchEmptyState.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'none';
+            }
+        }
+    }
+
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(filterRoles, 200);
+    });
+
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        filterRoles();
+        searchInput.focus();
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            clearSearchBtn.click();
+        }
+    });
+
+    // Keyboard shortcut: Ctrl+F to focus search
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+    });
+
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% include "partials/pagination.html" with page_obj=roles %}
+
+{% endblock %}

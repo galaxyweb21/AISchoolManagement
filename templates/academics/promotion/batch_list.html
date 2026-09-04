@@ -1,0 +1,538 @@
+<!-- academics/templates/academics/promotion/batch_list.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Promotion Batches{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+    .batch-row.hidden-row { display: none !important; }
+    .batch-row.visible-row { display: table-row !important; }
+    .filter-badge {
+        display: none;
+        background-color: var(--eduai-gold-soft);
+        color: var(--eduai-gold);
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .filter-badge.show { display: inline-block; }
+    @keyframes pulse-badge {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .filter-active { animation: pulse-badge 1.5s ease-in-out 1; }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Promotion Batches
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% else %}
+                            Staff View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    This page displays all promotion batches for your school.
+                    You can <strong>create</strong> new batches, <strong>view</strong> batch details,
+                    and <strong>apply</strong> promotions. Use the <strong>search bar</strong> below to
+                    filter batches by name, year, or status.
+                    A batch is a single run of end-of-year promotion for a class or year group.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-list-check text-gold me-2"></i>
+                        Promotion Batches
+                    </h5>
+                    <p class="text-muted mb-0">View all promotion batches and their status.</p>
+                    <small class="text-muted">{{ batches|length }} batch(es) configured</small>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#promotionBatchModal">
+                        <i class="bi bi-plus-lg me-1"></i>New Batch
+                    </button>
+                    <a href="{% url 'academics:promotion_dashboard' %}" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;">
+                        <i class="bi bi-arrow-left me-1"></i>Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batches Table -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-transparent border-0 p-4 pb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-table text-gold me-2"></i>Batches
+                <span class="badge bg-light text-muted ms-2">{{ batches|length }}</span>
+            </h6>
+            <div class="d-flex align-items-center gap-2">
+                <div class="position-relative">
+                    <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 0.75rem;"></i>
+                    <input type="text" id="batchSearchInput" class="form-control form-control-sm ps-5"
+                           placeholder="Search batches..." style="width: 200px;" autocomplete="off">
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="clearBatchSearch" style="display: none;">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+                <span class="filter-badge" id="filterBadge">
+                    <i class="bi bi-funnel-fill me-1"></i>Filtered
+                </span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="batchesTable">
+                    <thead>
+                        <tr>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 ps-4">Batch Name</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Academic Year / Term</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Total</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Promoted</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Conditional</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Repeated</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Status</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0" id="batchesTableBody">
+                        {% for batch in batches %}
+                        <tr class="border-bottom batch-row visible-row" data-batch-id="{{ batch.id }}" data-batch-name="{{ batch.name|lower }}" data-status="{{ batch.get_status_display|lower }}">
+                            <td class="ps-4 py-3">
+                                <span class="fw-bold batch-name">{{ batch.name }}</span>
+                                <br>
+                                <small class="text-muted batch-date">{{ batch.created_at|date:"M d, Y H:i" }}</small>
+                            </td>
+                            <td class="py-3">
+                                {{ batch.academic_year.name }}
+                                <br>
+                                <small class="text-muted batch-term">{{ batch.academic_term.name }}</small>
+                            </td>
+                            <td class="py-3 text-center fw-bold batch-total">{{ batch.total_students }}</td>
+                            <td class="py-3 text-center fw-bold batch-promoted" style="color: var(--eduai-signal, #2C7A6D);">{{ batch.promoted }}</td>
+                            <td class="py-3 text-center text-warning fw-bold batch-conditional">{{ batch.conditional }}</td>
+                            <td class="py-3 text-center text-danger fw-bold batch-repeated">{{ batch.repeated }}</td>
+                            <td class="py-3 text-center">
+                                <span class="badge batch-status
+                                    {% if batch.status == 'COMPLETED' %}style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D);"
+                                    {% elif batch.status == 'PROCESSING' %}style="background: rgba(59,130,246,0.1); color: #3b82f6;"
+                                    {% elif batch.status == 'FAILED' %}style="background: rgba(220,38,38,0.1); color: #dc2626;"
+                                    {% else %}style="background: rgba(217,119,6,0.1); color: #d97706;"{% endif %}
+                                ">
+                                    {{ batch.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="py-3 pe-4 text-end">
+                                <a href="{% url 'academics:promotion_batch_detail' batch.id %}" class="btn btn-sm btn-outline-gold px-3">
+                                    <i class="bi bi-eye me-1"></i>View
+                                </a>
+                                {% if batch.status == 'COMPLETED' and batch.promoted > 0 %}
+                                <a href="{% url 'academics:promotion_bulk_apply' batch.id %}"
+                                   class="btn btn-sm"
+                                   style="border-color: var(--eduai-signal, #2C7A6D); color: var(--eduai-signal, #2C7A6D); background: transparent; padding: 0.25rem 0.75rem;"
+                                   onclick="return confirm('Apply all promotions for this batch? This action cannot be undone.')">
+                                    <i class="bi bi-check-all me-1"></i>Apply All
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr id="emptyStateRow">
+                            <td colspan="8" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                                <p class="text-muted mt-2">No promotion batches found.</p>
+                                <button type="button" class="btn btn-sm mt-2 btn-gold" data-bs-toggle="modal" data-bs-target="#promotionBatchModal">
+                                    <i class="bi bi-plus-lg me-1"></i>Process First Batch
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div id="searchEmptyState" class="text-center text-muted py-4" style="display: none;">
+                <i class="bi bi-search d-block mb-2 fs-3"></i>
+                <p>No batches match your search.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if batches.has_other_pages %}
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <small class="text-muted">
+            Showing {{ batches.start_index }} to {{ batches.end_index }} of {{ batches.paginator.count }} entries
+        </small>
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                {% if batches.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ batches.previous_page_number }}">&laquo;</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+                {% endif %}
+
+                {% for num in batches.paginator.page_range %}
+                    {% if batches.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > batches.number|add:'-3' and num < batches.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if batches.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ batches.next_page_number }}">&raquo;</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Promotion Batch Modal -->
+<div class="modal fade" id="promotionBatchModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-body p-0">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // AUTO-FILTER FUNCTIONALITY
+    // ============================================================
+    const searchInput = document.getElementById('batchSearchInput');
+    const clearSearchBtn = document.getElementById('clearBatchSearch');
+    const filterBadge = document.getElementById('filterBadge');
+    const rows = document.querySelectorAll('#batchesTableBody .batch-row');
+    const emptyState = document.getElementById('emptyStateRow');
+    const searchEmptyState = document.getElementById('searchEmptyState');
+
+    function filterBatches() {
+        const query = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        rows.forEach(function(row) {
+            const name = row.querySelector('.batch-name')?.textContent?.toLowerCase() || '';
+            const date = row.querySelector('.batch-date')?.textContent?.toLowerCase() || '';
+            const term = row.querySelector('.batch-term')?.textContent?.toLowerCase() || '';
+            const status = row.querySelector('.batch-status')?.textContent?.toLowerCase() || '';
+            const promoted = row.querySelector('.batch-promoted')?.textContent?.toLowerCase() || '';
+            const conditional = row.querySelector('.batch-conditional')?.textContent?.toLowerCase() || '';
+            const repeated = row.querySelector('.batch-repeated')?.textContent?.toLowerCase() || '';
+
+            const searchableText = `${name} ${date} ${term} ${status} ${promoted} ${conditional} ${repeated}`;
+
+            if (query === '' || searchableText.includes(query)) {
+                row.classList.remove('hidden-row');
+                row.classList.add('visible-row');
+                visibleCount++;
+            } else {
+                row.classList.add('hidden-row');
+                row.classList.remove('visible-row');
+            }
+        });
+
+        const total = rows.length;
+        if (query === '') {
+            clearSearchBtn.style.display = 'none';
+            filterBadge.classList.remove('show');
+            if (searchEmptyState) searchEmptyState.style.display = 'none';
+            if (emptyState) emptyState.style.display = '';
+        } else {
+            clearSearchBtn.style.display = 'inline-block';
+            filterBadge.classList.add('show');
+            filterBadge.classList.add('filter-active');
+            setTimeout(() => filterBadge.classList.remove('filter-active'), 1500);
+
+            if (visibleCount === 0) {
+                if (searchEmptyState) searchEmptyState.style.display = '';
+                if (emptyState) emptyState.style.display = 'none';
+            } else {
+                if (searchEmptyState) searchEmptyState.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'none';
+            }
+        }
+    }
+
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(filterBatches, 200);
+    });
+
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        filterBatches();
+        searchInput.focus();
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            clearSearchBtn.click();
+        }
+    });
+
+    // Keyboard shortcut: Ctrl+F to focus search
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+    });
+
+    // ============================================================
+    // PROMOTION BATCH MODAL
+    // ============================================================
+    const modal = document.getElementById('promotionBatchModal');
+    const modalContent = modal.querySelector('.modal-body');
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    modal.addEventListener('show.bs.modal', function () {
+        const url = "{% url 'academics:promotion_batch_create' %}";
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+            bindFormSubmit();
+        })
+        .catch(err => {
+            console.error('Error loading form:', err);
+            modalContent.innerHTML = `
+                <div class="p-4 text-center">
+                    <div class="alert alert-danger border-0 rounded-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error loading form. Please try again.
+                    </div>
+                    <button type="button" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        });
+    });
+
+    function bindFormSubmit() {
+        const form = modalContent.querySelector('form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
+            submitBtn.disabled = true;
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Server returned an invalid response.');
+                }
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    window.location.href = data.redirect_url || window.location.href;
+                } else {
+                    showError(data.error || 'An error occurred while processing.');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                showError(err.message || 'An unexpected error occurred.');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    modal.addEventListener('hidden.bs.modal', function () {
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+    });
+
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% include "partials/pagination.html" with page_obj=batches %}
+
+{% endblock %}

@@ -1,0 +1,156 @@
+<!-- staff/templates/staff/payroll/staff_allowance_delete_modal.html -->
+{% load static %}
+
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+</style>
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold text-danger">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>Remove Staff Allowance
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form method="post"
+      action="{% url action_url staff_allowance.id %}"
+      id="staffAllowanceDeleteForm"
+      class="delete-form">
+    {% csrf_token %}
+
+    <div class="modal-body p-4">
+        <div class="text-center mb-4">
+            <div class="bg-danger-subtle rounded-circle d-inline-flex p-3 mb-3">
+                <i class="bi bi-trash3 fs-1 text-danger"></i>
+            </div>
+            <h5 class="fw-bold">Confirm Removal</h5>
+            <p class="text-muted">
+                Are you sure you want to remove this staff allowance?
+            </p>
+        </div>
+
+        <div class="alert alert-warning border-0 rounded-4">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-info-circle me-2 mt-1"></i>
+                <div>
+                    <strong>Staff:</strong> 
+                    {% if staff_allowance.staff.user.get_full_name %}
+                        {{ staff_allowance.staff.user.get_full_name }}
+                    {% else %}
+                        {{ staff_allowance.staff.user.username }}
+                    {% endif %}
+                    <br>
+                    <strong>Allowance:</strong> {{ staff_allowance.allowance.name }}<br>
+                    <strong>Amount:</strong>
+                    {% if staff_allowance.amount is not None %}
+                        {% if staff_allowance.allowance.is_percentage %}
+                            {{ staff_allowance.amount }}% of basic salary (Custom)
+                        {% else %}
+                            GH₵ {{ staff_allowance.amount|floatformat:2 }} (Custom)
+                        {% endif %}
+                    {% else %}
+                        {% if staff_allowance.allowance.is_percentage %}
+                            {{ staff_allowance.allowance.amount }}% of basic salary (Default)
+                        {% else %}
+                            GH₵ {{ staff_allowance.allowance.amount|floatformat:2 }} (Default)
+                        {% endif %}
+                    {% endif %}
+                    <br>
+                    <strong>Status:</strong> {% if staff_allowance.is_active %}Active{% else %}Inactive{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-danger border-0 rounded-4">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Warning:</strong> This action cannot be undone.
+            The staff member will no longer receive this individual allowance.
+            They may still receive grade-level allowances if configured.
+        </div>
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn btn-danger" id="staffAllowanceDeleteBtn">
+            <i class="bi bi-trash me-1"></i>Remove Allowance
+        </button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('staffAllowanceDeleteForm');
+    const submitBtn = document.getElementById('staffAllowanceDeleteBtn');
+
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Removing...';
+
+            const formData = new FormData(this);
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const modal = form.closest('.modal');
+                    if (modal) {
+                        const modalInstance = bootstrap.Modal.getInstance(modal);
+                        if (modalInstance) {
+                            modalInstance.hide();
+                        }
+                    }
+                    location.reload();
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    showError(data.error || 'Error removing staff allowance.');
+                }
+            })
+            .catch(error => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                showError('Network error. Please try again.');
+                console.error('Error:', error);
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = form.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            form.insertBefore(errorDiv, form.firstChild);
+        }
+    }
+});
+</script>

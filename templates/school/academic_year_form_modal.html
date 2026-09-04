@@ -1,0 +1,49 @@
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+</style>
+
+<form method="post" action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url academic_year.id %}{% endif %}">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Year Name <span class="text-danger">*</span></label>
+        <input type="text" name="name" class="form-control" placeholder="e.g. 2025/2026 Academic Year"
+               value="{% if mode == 'edit' %}{{ academic_year.name }}{% endif %}" required>
+    </div>
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Start Date <span class="text-danger">*</span></label>
+            <input type="date" name="start_date" class="form-control"
+                   value="{% if mode == 'edit' %}{{ academic_year.start_date|date:'Y-m-d' }}{% endif %}" required>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">End Date <span class="text-danger">*</span></label>
+            <input type="date" name="end_date" class="form-control"
+                   value="{% if mode == 'edit' %}{{ academic_year.end_date|date:'Y-m-d' }}{% endif %}" required>
+        </div>
+    </div>
+    <div class="form-check form-switch mb-4">
+        <input class="form-check-input" type="checkbox" name="is_active" id="activeSwitch"
+               {% if mode == 'edit' and academic_year.is_active %}checked{% endif %}>
+        <label class="form-check-label fw-semibold" for="activeSwitch">Set as Active Year</label>
+        <small class="text-muted d-block">Only one year can be active at a time. Enabling this will deactivate others.</small>
+    </div>
+    <div class="d-flex gap-2 justify-content-end border-top pt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-gold">
+            <i class="bi {% if mode == 'create' %}bi-check2-circle{% else %}bi-pencil-square{% endif %} me-1"></i>
+            {% if mode == 'create' %}Create Year{% else %}Save Changes{% endif %}
+        </button>
+    </div>
+</form>

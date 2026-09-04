@@ -1,0 +1,83 @@
+<!-- academics/timeslot_form_modal.html -->
+<form method="post" action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url timeslot.id %}{% endif %}"
+      class="timeslot-form"
+      data-mode="{{ mode }}">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        {% for error in form.non_field_errors %}
+            {{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Day <span class="text-danger">*</span></label>
+        <select name="day" class="form-select {% if form.day.errors %}is-invalid{% endif %}" required>
+            <option value="">Select a day</option>
+            <option value="MON" {% if form.day.value == 'MON' %}selected{% endif %}>Monday</option>
+            <option value="TUE" {% if form.day.value == 'TUE' %}selected{% endif %}>Tuesday</option>
+            <option value="WED" {% if form.day.value == 'WED' %}selected{% endif %}>Wednesday</option>
+            <option value="THU" {% if form.day.value == 'THU' %}selected{% endif %}>Thursday</option>
+            <option value="FRI" {% if form.day.value == 'FRI' %}selected{% endif %}>Friday</option>
+        </select>
+        {% if form.day.errors %}
+        <div class="invalid-feedback">
+            {% for error in form.day.errors %}
+                {{ error }}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Period Index <span class="text-danger">*</span></label>
+        <input type="number" name="period_index" class="form-control {% if form.period_index.errors %}is-invalid{% endif %}"
+               min="1" placeholder="e.g., 1" value="{{ form.period_index.value|default:'' }}" required>
+        <div class="form-text">1 = first period of the day, 2 = second, etc.</div>
+        {% if form.period_index.errors %}
+        <div class="invalid-feedback">
+            {% for error in form.period_index.errors %}
+                {{ error }}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Start Time <span class="text-danger">*</span></label>
+            <input type="time" name="start_time" class="form-control {% if form.start_time.errors %}is-invalid{% endif %}"
+                   value="{% if form.start_time.value %}{{ form.start_time.value|time:'H:i' }}{% endif %}" required>
+            {% if form.start_time.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.start_time.errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">End Time <span class="text-danger">*</span></label>
+            <input type="time" name="end_time" class="form-control {% if form.end_time.errors %}is-invalid{% endif %}"
+                   value="{% if form.end_time.value %}{{ form.end_time.value|time:'H:i' }}{% endif %}" required>
+            {% if form.end_time.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.end_time.errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end border-top pt-3">
+        <button type="button" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn" style="background: var(--primary-color, #946B1C); color: #fff; border-color: var(--primary-color, #946B1C);">
+            <i class="bi {% if mode == 'create' %}bi-check2-circle{% else %}bi-pencil-square{% endif %} me-1"></i>
+            {% if mode == 'create' %}Add TimeSlot{% else %}Save Changes{% endif %}
+        </button>
+    </div>
+</form>

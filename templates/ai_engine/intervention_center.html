@@ -1,0 +1,410 @@
+<!-- ai_engine/intervention_center.html -->
+{% extends "base/base.html" %}
+
+{% block page_title %}Intervention Center{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+    .intervention-card.hidden-row { display: none !important; }
+    .intervention-card.visible-row { display: block !important; }
+    .filter-badge {
+        display: none;
+        background-color: var(--eduai-gold-soft);
+        color: var(--eduai-gold);
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .filter-badge.show { display: inline-block; }
+    @keyframes pulse-badge {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .filter-active { animation: pulse-badge 1.5s ease-in-out 1; }
+
+    .card-hover {
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .card-hover:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 0.75rem 2rem rgba(0,0,0,0.06) !important;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Early-Warning Intervention Center
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% else %}
+                            Staff View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    Automated multi-signal risk triangulation and action dispatch.
+                    This page displays students flagged with <strong>Critical Risk</strong> levels.
+                    Use the <strong>search bar</strong> below to filter by student name.
+                    Click <strong>"Dispatch Automated Actions"</strong> to trigger AI-recommended interventions.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h2 class="h3 mb-0 text-gray-800 fw-bold">
+                <i class="bi bi-shield-exclamation text-gold me-2"></i>
+                Early-Warning Intervention Center
+            </h2>
+            <p class="text-muted mb-0">Automated multi-signal risk triangulation and action dispatch.</p>
+            <small class="text-muted">{{ high_risk_students|length }} high-risk student(s) flagged</small>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <!-- Search Input -->
+            <div class="position-relative">
+                <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 0.75rem;"></i>
+                <input type="text" id="interventionSearchInput" class="form-control form-control-sm ps-5"
+                       placeholder="Search students..." style="width: 180px;" autocomplete="off">
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="clearInterventionSearch" style="display: none;">
+                <i class="bi bi-x-circle"></i>
+            </button>
+            <span class="filter-badge" id="interventionFilterBadge">
+                <i class="bi bi-funnel-fill me-1"></i>Filtered
+            </span>
+            <button class="btn btn-sm btn-outline-gold" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Intervention Cards Grid -->
+    <div class="row g-4" id="interventionContainer">
+        {% for student in high_risk_students %}
+        <div class="col-12 col-md-6 col-lg-4 intervention-card visible-row" id="student-card-{{ student.id }}" data-student="{{ student.full_name|lower }}">
+            <div class="card border-0 shadow-sm rounded-4 h-100 card-hover">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 border-bottom">
+                    <h5 class="card-title mb-0 fs-6 fw-bold">{{ student.full_name }}</h5>
+                    <span class="badge" style="background: #dc2626; color: #fff; padding: 0.35rem 0.75rem; border-radius: 20px;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> Critical Risk
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-around text-center mb-3 p-2 bg-light rounded-3">
+                        <div>
+                            <small class="text-muted d-block">Absences (30d)</small>
+                            <span class="fw-bold text-danger" id="absences-{{ student.id }}">-</span>
+                        </div>
+                        <div class="border-end"></div>
+                        <div>
+                            <small class="text-muted d-block">Unpaid Balance</small>
+                            <span class="fw-bold text-dark" id="balance-{{ student.id }}">-</span>
+                        </div>
+                    </div>
+
+                    <h6 class="fs-7 fw-bold text-uppercase text-muted mb-2">
+                        <i class="bi bi-list-check me-1"></i> Recommended Actions
+                    </h6>
+                    <ul class="list-group list-group-flush mb-3 fs-7" id="actions-{{ student.id }}">
+                        <li class="list-group-item px-0 text-muted">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            Calculating interventions...
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-white border-top-0 pt-0">
+                    <button class="btn w-100 btn-sm fw-semibold" style="background: #dc2626; color: #fff; border-color: #dc2626;" onclick="triggerIntervention('{{ student.id }}')">
+                        <i class="bi bi-lightning-fill me-1"></i> Dispatch Automated Actions
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5" id="emptyStateRow">
+            <i class="bi bi-check-circle fs-1" style="color: var(--eduai-signal, #2C7A6D);"></i>
+            <p class="mt-2 text-muted">No high-risk student alerts detected.</p>
+            <small class="text-muted">All students are currently stable.</small>
+        </div>
+        {% endfor %}
+    </div>
+    <!-- Search Empty State -->
+    <div id="searchEmptyState" class="text-center text-muted py-5" style="display: none;">
+        <i class="bi bi-search d-block mb-2 fs-3"></i>
+        <p>No high-risk students match your search.</p>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // AUTO-FILTER FUNCTIONALITY
+    // ============================================================
+    const searchInput = document.getElementById('interventionSearchInput');
+    const clearSearchBtn = document.getElementById('clearInterventionSearch');
+    const filterBadge = document.getElementById('interventionFilterBadge');
+    const cards = document.querySelectorAll('#interventionContainer .intervention-card');
+    const emptyState = document.getElementById('emptyStateRow');
+    const searchEmptyState = document.getElementById('searchEmptyState');
+
+    function filterInterventions() {
+        const query = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        cards.forEach(function(card) {
+            const student = card.dataset.student || '';
+            const searchableText = student;
+
+            if (query === '' || searchableText.includes(query)) {
+                card.classList.remove('hidden-row');
+                card.classList.add('visible-row');
+                visibleCount++;
+            } else {
+                card.classList.add('hidden-row');
+                card.classList.remove('visible-row');
+            }
+        });
+
+        const total = cards.length;
+        if (query === '') {
+            clearSearchBtn.style.display = 'none';
+            filterBadge.classList.remove('show');
+            if (searchEmptyState) searchEmptyState.style.display = 'none';
+            if (emptyState) emptyState.style.display = '';
+        } else {
+            clearSearchBtn.style.display = 'inline-block';
+            filterBadge.classList.add('show');
+            filterBadge.classList.add('filter-active');
+            setTimeout(() => filterBadge.classList.remove('filter-active'), 1500);
+
+            if (visibleCount === 0) {
+                if (searchEmptyState) searchEmptyState.style.display = '';
+                if (emptyState) emptyState.style.display = 'none';
+            } else {
+                if (searchEmptyState) searchEmptyState.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'none';
+            }
+        }
+    }
+
+    let searchTimeout;
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(filterInterventions, 200);
+        });
+
+        clearSearchBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            filterInterventions();
+            searchInput.focus();
+        });
+
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                clearSearchBtn.click();
+            }
+        });
+    }
+
+    // Keyboard shortcut: Ctrl+F to focus search
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+        }
+    });
+
+    // ============================================================
+    // FETCH INTERVENTION PROFILES
+    // ============================================================
+    {% for student in high_risk_students %}
+    fetchInterventionProfile("{{ student.id }}");
+    {% endfor %}
+
+    // ============================================================
+    // AUTO-DISMISS MESSAGES
+    // ============================================================
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+
+function fetchInterventionProfile(studentId) {
+    fetch(`/ai-engine/api/interventions/${studentId}/`)
+        .then(response => response.json())
+        .then(res => {
+            if (res.status === 'success') {
+                const data = res.data;
+                const absencesEl = document.getElementById(`absences-${studentId}`);
+                const balanceEl = document.getElementById(`balance-${studentId}`);
+                const actionList = document.getElementById(`actions-${studentId}`);
+
+                if (absencesEl) absencesEl.innerText = data.recent_absences || 0;
+                if (balanceEl) balanceEl.innerText = `$${data.unpaid_balance || '0.00'}`;
+
+                if (actionList) {
+                    actionList.innerHTML = '';
+                    if (data.recommended_interventions && data.recommended_interventions.length > 0) {
+                        data.recommended_interventions.forEach(action => {
+                            const priorityClass = action.priority === 'CRITICAL' ? 'text-danger' :
+                                                 action.priority === 'HIGH' ? 'text-warning' : 'text-info';
+                            actionList.innerHTML += `
+                                <li class="list-group-item px-0 d-flex align-items-start text-dark border-0">
+                                    <i class="bi bi-exclamation-circle-fill ${priorityClass} me-2 mt-1"></i>
+                                    <div>
+                                        <strong class="d-block">${action.type}</strong>
+                                        <small class="text-muted">${action.recommendation}</small>
+                                    </div>
+                                </li>`;
+                        });
+                    } else {
+                        actionList.innerHTML = `
+                            <li class="list-group-item px-0 text-success border-0" style="color: var(--eduai-signal, #2C7A6D) !important;">
+                                <i class="bi bi-check-circle-fill me-1"></i>
+                                No interventions required at this time.
+                            </li>`;
+                    }
+                }
+            }
+        })
+        .catch(err => console.error('Error fetching profile:', err));
+}
+
+function triggerIntervention(studentId) {
+    if (!confirm('Dispatch automated interventions for this student?')) return;
+
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Executing...';
+
+    fetch(`/ai-engine/api/interventions/${studentId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(res => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        if (res.status === 'success') {
+            alert('Interventions successfully executed and logged.');
+            fetchInterventionProfile(studentId);
+        } else {
+            alert('Error: ' + (res.message || 'Could not execute interventions.'));
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        console.error('Error:', err);
+        alert('Network error. Please try again.');
+    });
+}
+</script>
+{% endblock %}

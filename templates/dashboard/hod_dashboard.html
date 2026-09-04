@@ -1,0 +1,147 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}HOD Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+</style>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1">
+                    <i class="bi bi-diagram-3 text-gold me-2"></i>Head of Department Dashboard
+                </h5>
+                <p class="text-muted mb-0">Welcome back, {{ request.user.get_full_name|default:request.user.username }}</p>
+            </div>
+            <div>
+                <span class="badge bg-warning-subtle text-warning border px-3 py-2">
+                    <i class="bi bi-person-badge me-1"></i> HOD
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Department Stats -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card card-custom border-0 shadow-sm rounded-4">
+            <div class="p-4">
+                <h6 class="text-muted text-uppercase small fw-bold">Teachers</h6>
+                <h2 class="fw-bold mb-0">{{ department_teachers }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom border-0 shadow-sm rounded-4">
+            <div class="p-4">
+                <h6 class="text-muted text-uppercase small fw-bold">Students</h6>
+                <h2 class="fw-bold mb-0">{{ department_students }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom border-0 shadow-sm rounded-4">
+            <div class="p-4">
+                <h6 class="text-muted text-uppercase small fw-bold">Exams Generated</h6>
+                <h2 class="fw-bold mb-0">{{ generated_exams }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-custom border-0 shadow-sm rounded-4">
+            <div class="p-4">
+                <h6 class="text-muted text-uppercase small fw-bold">Risk Students</h6>
+                <h2 class="fw-bold text-warning mb-0">{{ high_risk_students }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4">
+        <h6 class="fw-bold mb-3">Quick Actions</h6>
+        <div class="d-flex gap-3 flex-wrap">
+            <a href="{% url 'ai_engine:exam_dashboard' %}" class="btn btn-outline-gold">
+                <i class="bi bi-patch-question me-1"></i> Generate Exams
+            </a>
+            <a href="{% url 'ai_engine:report_card_dashboard' %}" class="btn btn-outline-success">
+                <i class="bi bi-file-earmark-text me-1"></i> Report Cards
+            </a>
+            <a href="{% url 'ai_engine:risk_dashboard' %}" class="btn btn-outline-danger">
+                <i class="bi bi-shield-check me-1"></i> Risk Analysis
+            </a>
+            <a href="{% url 'staff:staff_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-people-fill me-1"></i> Department Staff
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Exams -->
+<div class="card card-custom border-0 shadow-sm rounded-4">
+    <div class="card-header bg-transparent border-0 p-4">
+        <h6 class="fw-bold mb-0"><i class="bi bi-patch-question text-gold me-2"></i>Recent Exams</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Title</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Subject</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Class</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Questions</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Created</th>
+                </tr>
+            </thead>
+            <tbody class="border-top-0">
+                {% for exam in recent_exams %}
+                <tr class="border-bottom">
+                    <td class="py-3 ps-0 fw-semibold">{{ exam.title }}</td>
+                    <td class="py-3">{{ exam.subject }}</td>
+                    <td class="py-3">{{ exam.school_class.name|default:"-" }}</td>
+                    <td class="py-3">{{ exam.questions.count }}</td>
+                    <td class="py-3">{{ exam.created_at|date:"M d, Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-5">No recent exams generated.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

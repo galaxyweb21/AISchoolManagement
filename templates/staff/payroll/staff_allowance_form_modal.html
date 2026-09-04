@@ -1,0 +1,354 @@
+<!-- staff/templates/staff/payroll/staff_allowance_form_modal.html -->
+{% load static %}
+
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .form-hint {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+</style>
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold">
+        {% if mode == 'create' %}
+            <i class="bi bi-person-plus text-gold me-2"></i>Assign Staff Allowance
+        {% else %}
+            <i class="bi bi-pencil-square text-gold me-2"></i>Edit Staff Allowance
+        {% endif %}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form method="post" 
+      action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url staff_allowance.id %}{% endif %}"
+      id="staffAllowanceForm"
+      class="needs-validation"
+      novalidate>
+    {% csrf_token %}
+
+    <div class="modal-body p-4">
+        <!-- Staff Selection -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="staffSelect">
+                Staff Member <span class="text-danger">*</span>
+            </label>
+            <select name="staff" id="staffSelect" class="form-select" required>
+                <option value="">Select staff member...</option>
+                {% for staff in staff_members %}
+                    <option value="{{ staff.id }}"
+                            {% if mode == 'edit' and staff_allowance.staff.id == staff.id %}selected{% endif %}>
+                        {% if staff.user.get_full_name %}
+                            {{ staff.user.get_full_name }}
+                        {% else %}
+                            {{ staff.user.username }}
+                        {% endif %}
+                        ({{ staff.staff_id|default:"No ID" }})
+                        {% if staff.staff_grade %}
+                            - {{ staff.staff_grade.name }} (Level {{ staff.staff_grade.level }})
+                        {% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+            <div class="invalid-feedback">
+                Please select a staff member.
+            </div>
+            <div class="form-hint">
+                <i class="bi bi-info-circle me-1"></i>
+                This allowance will be assigned to the selected staff member, overriding any grade-level allowance.
+            </div>
+        </div>
+
+        <!-- Allowance Selection -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="allowanceSelect">
+                Allowance <span class="text-danger">*</span>
+            </label>
+            <select name="allowance" id="allowanceSelect" class="form-select" required>
+                <option value="">Select allowance...</option>
+                {% for allowance in allowances %}
+                    <option value="{{ allowance.id }}"
+                            data-amount="{{ allowance.amount }}"
+                            data-percentage="{% if allowance.is_percentage %}1{% else %}0{% endif %}"
+                            {% if mode == 'edit' and staff_allowance.allowance.id == allowance.id %}selected{% endif %}>
+                        {{ allowance.name }}
+                        {% if allowance.is_percentage %}
+                            ({{ allowance.amount }}% of basic salary)
+                        {% else %}
+                            (GH₵ {{ allowance.amount|floatformat:2 }})
+                        {% endif %}
+                        {% if allowance.taxable %} - Taxable{% else %} - Non-Taxable{% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+            <div class="invalid-feedback">
+                Please select an allowance.
+            </div>
+            <div class="form-hint">
+                <i class="bi bi-info-circle me-1"></i>
+                Select the allowance to assign to this staff member.
+            </div>
+        </div>
+
+        <!-- Default Amount Display -->
+        <div class="alert alert-light border rounded-3 mb-3">
+            <div class="small text-muted">Default Allowance Amount</div>
+            <div id="defaultAmount" class="fw-bold text-gold">
+                Select an allowance
+            </div>
+        </div>
+
+        <!-- Custom Amount -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="staffAmount">
+                Custom Amount (Optional)
+            </label>
+            <div class="input-group">
+                <span class="input-group-text">GH₵</span>
+                <input type="number"
+                       name="amount"
+                       id="staffAmount"
+                       class="form-control"
+                       placeholder="Leave blank to use default"
+                       step="0.01"
+                       min="0"
+                       value="{% if mode == 'edit' and staff_allowance.amount %}{{ staff_allowance.amount }}{% endif %}">
+            </div>
+            <div class="form-hint">
+                <i class="bi bi-info-circle me-1"></i>
+                Leave blank to use the default allowance amount. Enter a custom amount to override it for this staff member.
+            </div>
+        </div>
+
+        <!-- Active Status -->
+        <div class="mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input"
+                       type="checkbox"
+                       name="is_active"
+                       id="isActive"
+                       {% if mode == 'edit' and staff_allowance.is_active %}checked{% endif %}
+                       {% if mode == 'create' %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="isActive">
+                    Active
+                </label>
+                <div class="form-hint">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Inactive staff allowances will not be applied to payroll.
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="alert alert-info border-0 rounded-3 bg-gold-soft mt-3">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-eye text-gold me-2 mt-1"></i>
+                <div>
+                    <strong class="d-block mb-1">What this does:</strong>
+                    <ul class="small mb-0 ps-3">
+                        <li>This allowance overrides any grade-level allowance for this staff member</li>
+                        <li>If no custom amount is set, the default allowance amount is used</li>
+                        <li>This is an <strong>individual-level</strong> configuration for flexibility</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Impact Info -->
+        {% if mode == 'edit' and staff_allowance.staff %}
+        <div class="alert alert-secondary border-0 rounded-3">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-person text-secondary me-2 mt-1"></i>
+                <div>
+                    <strong class="d-block mb-1">Current Assignment:</strong>
+                    <span class="small">
+                        <strong>{{ staff_allowance.staff.user.get_full_name }}</strong>
+                        {% if staff_allowance.staff.staff_grade %}
+                            ({{ staff_allowance.staff.staff_grade.name }} - Level {{ staff_allowance.staff.staff_grade.level }})
+                        {% endif %}
+                        currently receives <strong>{{ staff_allowance.allowance.name }}</strong>
+                        {% if staff_allowance.amount is not None %}
+                            at a custom rate of GH₵ {{ staff_allowance.amount|floatformat:2 }}
+                        {% else %}
+                            at the default rate of GH₵ {{ staff_allowance.allowance.amount|floatformat:2 }}
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn btn-gold" id="staffAllowanceSubmitBtn">
+            <i class="bi {% if mode == 'create' %}bi-plus-circle{% else %}bi-save{% endif %} me-1"></i>
+            {% if mode == 'create' %}Assign Allowance{% else %}Update Allowance{% endif %}
+        </button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('staffAllowanceForm');
+    const submitBtn = document.getElementById('staffAllowanceSubmitBtn');
+    const allowanceSelect = document.getElementById('allowanceSelect');
+    const defaultAmount = document.getElementById('defaultAmount');
+    const staffAmount = document.getElementById('staffAmount');
+
+    // ============================================================
+    // UPDATE DEFAULT AMOUNT DISPLAY
+    // ============================================================
+    function updateDefaultAmount() {
+        const selectedOption = allowanceSelect.options[allowanceSelect.selectedIndex];
+        if (!selectedOption || !selectedOption.value) {
+            defaultAmount.textContent = 'Select an allowance';
+            return;
+        }
+
+        const amount = selectedOption.dataset.amount || '0.00';
+        const isPercentage = selectedOption.dataset.percentage === '1';
+
+        defaultAmount.textContent = isPercentage
+            ? amount + '% of basic salary'
+            : 'GH₵ ' + parseFloat(amount).toFixed(2);
+
+        // Update placeholder
+        if (staffAmount) {
+            staffAmount.placeholder = isPercentage
+                ? 'Leave blank to use ' + amount + '%'
+                : 'Leave blank to use GH₵ ' + parseFloat(amount).toFixed(2);
+        }
+    }
+
+    if (allowanceSelect) {
+        allowanceSelect.addEventListener('change', updateDefaultAmount);
+        // Trigger on load if an allowance is selected
+        if (allowanceSelect.value) {
+            updateDefaultAmount();
+        }
+    }
+
+    // ============================================================
+    // FORM VALIDATION
+    // ============================================================
+    form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // ============================================================
+    // AJAX FORM SUBMISSION
+    // ============================================================
+    let isSubmitting = false;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (isSubmitting) {
+            return;
+        }
+
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        isSubmitting = true;
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+
+        const formData = new FormData(this);
+
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            isSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+
+            if (data.success) {
+                const modal = form.closest('.modal');
+                if (modal) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                }
+                location.reload();
+            } else {
+                showError(data.error || 'An error occurred while saving.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            isSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            showError('Network error. Please try again.');
+            console.error('Error:', error);
+        });
+    });
+
+    // ============================================================
+    // ERROR DISPLAY
+    // ============================================================
+    function showError(message) {
+        const existingErrors = form.querySelectorAll('.alert-danger');
+        existingErrors.forEach(el => el.remove());
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+        errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+        form.insertBefore(errorDiv, form.firstChild);
+    }
+});
+</script>

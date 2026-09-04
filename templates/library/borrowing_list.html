@@ -1,0 +1,267 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Borrowings{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+</style>
+
+<!-- How Borrowings Work -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How Borrowings Work</div>
+            <p class="text">
+                This page tracks all books currently borrowed from the library. Each record shows
+                the <strong>book</strong>, <strong>borrower</strong> (with type badge: Student or Staff),
+                <strong>borrowed date</strong>, <strong>due date</strong>, and current <strong>status</strong>
+                (Active, Overdue, or Returned). Use the search box below to filter borrowings by
+                book title or borrower name. Click <strong>"New Borrowing"</strong> to lend a book,
+                or use the <strong>"Return"</strong> or <strong>"Lost"</strong> buttons to update
+                the borrowing status.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="bi bi-arrow-repeat text-gold me-2"></i>Borrowings</h5>
+                <p class="text-muted mb-0">Track all books currently borrowed from the library.</p>
+            </div>
+            <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#borrowingModal" data-action="create" data-url="{% url 'library:borrowing_create' %}">
+                <i class="bi bi-plus-lg me-1"></i>New Borrowing
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-table text-gold me-2"></i>All Borrowings
+                <span class="badge bg-light text-muted ms-2" id="borrowingCount">{{ borrowings|length }}</span>
+            </h6>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="text-muted small" id="filterStatus"></span>
+                <input type="text" id="borrowingSearchInput" class="form-control form-control-sm" placeholder="Search borrowings..." style="max-width: 220px;">
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="borrowingsTable">
+                <thead>
+                    <tr>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Book</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Borrower</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Borrowed Date</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Due Date</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Status</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0" id="borrowingTableBody">
+                    {% for b in borrowings %}
+                    <tr class="border-bottom borrowing-row" data-id="{{ b.id }}" data-search="{{ b.book.title }} {{ b.get_borrower_name }}">
+                        <td class="fw-semibold py-3 ps-0" data-field="book">{{ b.book.title }}</td>
+                        <td class="py-3" data-field="borrower">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span>{{ b.get_borrower_name }}</span>
+                                {% if b.borrowed_by_student %}
+                                    <span class="badge badge-gold rounded-pill px-2 py-1 small">Student</span>
+                                {% elif b.borrowed_by_staff %}
+                                    <span class="badge bg-info-subtle text-info rounded-pill px-2 py-1 small">Staff</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="py-3 text-muted small" data-field="borrowed_date">{{ b.borrowed_at|date:"M d, Y" }}</td>
+                        <td class="py-3 {% if b.status == 'OVERDUE' %}text-danger fw-bold{% endif %}" data-field="due_date">{{ b.due_date|date:"M d, Y" }}</td>
+                        <td class="text-center py-3" data-field="status">
+                            {% if b.status == 'OVERDUE' %}
+                                <span class="badge bg-danger rounded-pill px-3 py-2">Overdue</span>
+                            {% elif b.status == 'ACTIVE' %}
+                                <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2">Active</span>
+                            {% elif b.status == 'RETURNED' %}
+                                <span class="badge badge-teal rounded-pill px-3 py-2">Returned</span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">{{ b.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end py-3 pe-0 text-nowrap">
+                            {% if b.status == 'ACTIVE' or b.status == 'OVERDUE' %}
+                            <button type="button" class="btn btn-sm btn-success px-3"
+                                    data-bs-toggle="modal" data-bs-target="#borrowingModal"
+                                    data-action="return" data-url="{% url 'library:return_book' b.id %}" data-id="{{ b.id }}">
+                                <i class="bi bi-check2-circle me-1"></i> Return
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger px-3 ms-1"
+                                    data-bs-toggle="modal" data-bs-target="#borrowingModal"
+                                    data-action="lost" data-url="{% url 'library:mark_lost' b.id %}" data-id="{{ b.id }}">
+                                <i class="bi bi-exclamation-triangle me-1"></i> Lost
+                            </button>
+                            {% else %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr class="empty-state-row">
+                        <td colspan="6" class="text-center text-muted py-5">
+                            <i class="bi bi-book fs-2 d-block mb-2 text-secondary"></i>
+                            No borrowing records found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- INCLUDE THE SHARED MODAL FRAGMENTS AT THE BOTTOM             -->
+<!-- ============================================================ -->
+{% include 'library/borrowing_modals_include.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER
+    // ============================================================
+    const borrowingSearchInput = document.getElementById('borrowingSearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const borrowingCount = document.getElementById('borrowingCount');
+    const allRows = document.querySelectorAll('.borrowing-row');
+    const emptyState = document.querySelector('.empty-state-row');
+
+    if (borrowingSearchInput) {
+        borrowingSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const searchData = row.getAttribute('data-search') || '';
+                const text = row.textContent.toLowerCase();
+                const isVisible = searchData.includes(query) || text.includes(query);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (borrowingCount) {
+                if (query) {
+                    borrowingCount.textContent = visibleCount;
+                    if (filterStatus) {
+                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                    }
+                } else {
+                    borrowingCount.textContent = allRows.length;
+                    if (filterStatus) {
+                        filterStatus.textContent = '';
+                    }
+                }
+            }
+
+            if (emptyState) {
+                if (visibleCount === 0 && allRows.length > 0) {
+                    emptyState.style.display = '';
+                } else {
+                    emptyState.style.display = 'none';
+                }
+            }
+        });
+    }
+});
+</script>
+{% include "partials/pagination.html" with page_obj=borrowings %}
+
+{% endblock %}

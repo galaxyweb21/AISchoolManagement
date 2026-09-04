@@ -1,0 +1,432 @@
+<!-- students/templates/students/face_capture_modal.html -->
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+</style>
+
+<div class="modal fade" id="faceCaptureModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-camera text-gold me-2"></i>Face Registration
+                    <span id="bulkProgress" style="display: none;" class="ms-2 text-muted small"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-4">
+                    <div class="col-lg-7">
+                        <div class="position-relative" style="background: #f8f9fa; border-radius: 12px; overflow: hidden;">
+                            <div id="cameraContainer" style="position: relative; min-height: 400px;">
+                                <video id="faceVideo" width="100%" height="auto" autoplay muted style="display: none;"></video>
+                                <canvas id="faceCanvas" style="display: none;"></canvas>
+                                <div id="cameraPlaceholder" class="text-center py-5">
+                                    <i class="bi bi-camera fs-1 text-secondary"></i>
+                                    <p class="text-muted mt-2">Click "Start Camera" to begin</p>
+                                </div>
+                                <div id="faceOverlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; display: none;">
+                                    <div class="border border-2 border-gold rounded-circle" style="width: 200px; height: 200px; animation: pulse 2s infinite; border-color: var(--eduai-gold, #946B1C) !important;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex gap-2 flex-wrap">
+                            <button id="startCameraBtn" class="btn btn-gold" onclick="startFaceCamera()">
+                                <i class="bi bi-play-circle me-1"></i>Start Camera
+                            </button>
+                            <button id="captureFaceBtn" class="btn btn-success" onclick="captureFace()" style="display: none;">
+                                <i class="bi bi-camera me-1"></i>Capture
+                            </button>
+                            <button id="retakeFaceBtn" class="btn btn-warning" onclick="retakeFace()" style="display: none;">
+                                <i class="bi bi-arrow-repeat me-1"></i>Retake
+                            </button>
+                            <button class="btn btn-secondary" onclick="stopFaceCamera()">
+                                <i class="bi bi-stop-circle me-1"></i>Stop Camera
+                            </button>
+                            <button id="skipStudentBtn" class="btn btn-outline-gold" onclick="skipStudent()" style="display: none;">
+                                <i class="bi bi-skip-forward me-1"></i>Skip
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div id="registrationStatus">
+                            <h6 class="fw-bold mb-3">
+                                <i class="bi bi-info-circle text-gold me-2"></i>Registration Status
+                            </h6>
+                            <div id="statusMessages" class="mb-3"></div>
+
+                            <div id="facePreview" style="display: none;">
+                                <div class="border rounded-4 p-3 bg-light text-center">
+                                    <img id="capturedImagePreview" src="" class="img-fluid rounded-4" style="max-height: 200px;" />
+                                    <div id="qualityIndicator" class="mt-2"></div>
+                                </div>
+                            </div>
+
+                            <div class="border rounded-4 p-3 bg-light mt-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-lightbulb text-warning"></i>
+                                    <small class="text-muted">
+                                        <strong>Tips:</strong> Ensure good lighting, face the camera directly, and remove glasses if possible.
+                                    </small>
+                                </div>
+                            </div>
+
+                            <button id="registerFaceBtn" class="btn btn-gold w-100 mt-3" onclick="registerFace()" style="display: none;">
+                                <i class="bi bi-check2-circle me-2"></i>Register Face
+                            </button>
+
+                            <div id="bulkControls" style="display: none;" class="mt-3">
+                                <div class="progress" style="height: 20px;">
+                                    <div id="bulkProgressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar" style="width: 0%; background-color: var(--eduai-gold, #946B1C) !important;"></div>
+                                </div>
+                                <p id="bulkStatusText" class="text-center text-muted small mt-2"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.05); }
+    100% { opacity: 1; transform: scale(1); }
+}
+.border-gold {
+    border-color: var(--eduai-gold, #946B1C) !important;
+}
+</style>
+
+<script>
+let faceStream = null;
+let capturedImageData = null;
+let currentStudentId = null;
+let currentStudentName = null;
+let isBulkMode = false;
+let isFaceRegistered = false;
+
+function openFaceRegistration(studentId, studentName, bulkMode = false) {
+    currentStudentId = studentId;
+    currentStudentName = studentName;
+    isBulkMode = bulkMode;
+    isFaceRegistered = false;
+    capturedImageData = null;
+
+    // Reset UI
+    document.getElementById('faceVideo').style.display = 'none';
+    document.getElementById('faceCanvas').style.display = 'none';
+    document.getElementById('cameraPlaceholder').style.display = 'block';
+    document.getElementById('faceOverlay').style.display = 'none';
+    document.getElementById('facePreview').style.display = 'none';
+    document.getElementById('registerFaceBtn').style.display = 'none';
+    document.getElementById('captureFaceBtn').style.display = 'none';
+    document.getElementById('retakeFaceBtn').style.display = 'none';
+    document.getElementById('startCameraBtn').style.display = 'inline-block';
+
+    // Show/hide bulk controls
+    if (bulkMode) {
+        document.getElementById('bulkControls').style.display = 'block';
+        document.getElementById('skipStudentBtn').style.display = 'inline-block';
+        document.getElementById('bulkProgress').style.display = 'inline';
+        updateBulkProgress();
+    } else {
+        document.getElementById('bulkControls').style.display = 'none';
+        document.getElementById('skipStudentBtn').style.display = 'none';
+        document.getElementById('bulkProgress').style.display = 'none';
+    }
+
+    document.getElementById('statusMessages').innerHTML = `
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            ${bulkMode ? `Bulk Registration: ` : ''}Registering face for: <strong>${studentName}</strong>
+        </div>
+    `;
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('faceCaptureModal'));
+    modal.show();
+
+    // Auto-start camera
+    setTimeout(startFaceCamera, 500);
+}
+
+function updateBulkProgress() {
+    const total = window.registrationQueue ? window.registrationQueue.length : 0;
+    const current = window.currentRegistrationIndex || 0;
+    const percent = total > 0 ? (current / total) * 100 : 0;
+
+    document.getElementById('bulkProgressBar').style.width = `${percent}%`;
+    document.getElementById('bulkStatusText').textContent =
+        `Processing ${current + 1} of ${total} students`;
+    document.getElementById('bulkProgress').textContent =
+        `(${current + 1}/${total})`;
+}
+
+function startFaceCamera() {
+    const video = document.getElementById('faceVideo');
+    const constraints = {
+        video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: 'user'
+        }
+    };
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(function(stream) {
+                faceStream = stream;
+                video.srcObject = stream;
+                video.style.display = 'block';
+                document.getElementById('cameraPlaceholder').style.display = 'none';
+                document.getElementById('faceOverlay').style.display = 'block';
+                document.getElementById('startCameraBtn').style.display = 'none';
+                document.getElementById('captureFaceBtn').style.display = 'inline-block';
+
+                video.onloadedmetadata = function() {
+                    video.play();
+                };
+
+                document.getElementById('statusMessages').innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        Camera started. Position your face in the circle and click "Capture".
+                    </div>
+                `;
+            })
+            .catch(function(err) {
+                console.error("Error accessing camera:", err);
+                document.getElementById('statusMessages').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Unable to access camera. Please allow camera permissions.
+                    </div>
+                `;
+            });
+    }
+}
+
+function captureFace() {
+    const video = document.getElementById('faceVideo');
+    const canvas = document.getElementById('faceCanvas');
+    const context = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.style.display = 'block';
+    video.style.display = 'none';
+    document.getElementById('faceOverlay').style.display = 'none';
+
+    capturedImageData = canvas.toDataURL('image/jpeg');
+
+    document.getElementById('facePreview').style.display = 'block';
+    document.getElementById('capturedImagePreview').src = capturedImageData;
+
+    document.getElementById('statusMessages').innerHTML = `
+        <div class="alert alert-info">
+            <i class="bi bi-camera-fill me-2"></i>
+            Face captured! Review the image and click "Register Face" to save.
+        </div>
+    `;
+
+    document.getElementById('registerFaceBtn').style.display = 'block';
+    document.getElementById('captureFaceBtn').style.display = 'none';
+    document.getElementById('retakeFaceBtn').style.display = 'inline-block';
+
+    checkFaceQuality(capturedImageData);
+}
+
+function retakeFace() {
+    const video = document.getElementById('faceVideo');
+    const canvas = document.getElementById('faceCanvas');
+
+    canvas.style.display = 'none';
+    video.style.display = 'block';
+    document.getElementById('faceOverlay').style.display = 'block';
+    document.getElementById('facePreview').style.display = 'none';
+    document.getElementById('registerFaceBtn').style.display = 'none';
+    document.getElementById('captureFaceBtn').style.display = 'inline-block';
+    document.getElementById('retakeFaceBtn').style.display = 'none';
+
+    capturedImageData = null;
+
+    document.getElementById('statusMessages').innerHTML = `
+        <div class="alert alert-warning">
+            <i class="bi bi-arrow-repeat me-2"></i>
+            Retaking photo. Position your face in the circle and click "Capture".
+        </div>
+    `;
+}
+
+function checkFaceQuality(imageData) {
+    document.getElementById('qualityIndicator').innerHTML = `
+        <span class="badge badge-teal">
+            <i class="bi bi-check-circle me-1"></i> Good quality
+        </span>
+    `;
+}
+
+function registerFace() {
+    if (!capturedImageData || !currentStudentId) {
+        alert('No face captured or student not selected.');
+        return;
+    }
+
+    document.getElementById('registerFaceBtn').innerHTML = `
+        <span class="spinner-border spinner-border-sm me-2 spinner-gold" role="status"></span>
+        Registering...
+    `;
+    document.getElementById('registerFaceBtn').disabled = true;
+
+    fetch(`/students/${currentStudentId}/face/register/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            image: capturedImageData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            isFaceRegistered = true;
+            document.getElementById('statusMessages').innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    ${data.message}
+                </div>
+            `;
+            document.getElementById('registerFaceBtn').innerHTML = `
+                <i class="bi bi-check2-circle me-2"></i>Registered Successfully!
+            `;
+            document.getElementById('registerFaceBtn').className = 'btn btn-success w-100 mt-3';
+
+            if (isBulkMode) {
+                // Notify bulk registration
+                if (window.onFaceRegistered) {
+                    window.onFaceRegistered(currentStudentId, true);
+                }
+                updateBulkProgress();
+            }
+
+            setTimeout(() => {
+                if (isBulkMode) {
+                    // Continue to next student
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('faceCaptureModal'));
+                    modal.hide();
+                } else {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('faceCaptureModal'));
+                    modal.hide();
+                    location.reload();
+                }
+            }, isBulkMode ? 500 : 1500);
+        } else {
+            document.getElementById('statusMessages').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    ${data.message}
+                </div>
+            `;
+            document.getElementById('registerFaceBtn').innerHTML = `
+                <i class="bi bi-check2-circle me-2"></i>Try Again
+            `;
+            document.getElementById('registerFaceBtn').disabled = false;
+
+            if (isBulkMode && window.onFaceRegistered) {
+                window.onFaceRegistered(currentStudentId, false);
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('statusMessages').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                An error occurred during registration. Please try again.
+            </div>
+        `;
+        document.getElementById('registerFaceBtn').innerHTML = `
+            <i class="bi bi-check2-circle me-2"></i>Try Again
+        `;
+        document.getElementById('registerFaceBtn').disabled = false;
+    });
+}
+
+function skipStudent() {
+    if (isBulkMode && window.onFaceRegistered) {
+        window.onFaceRegistered(currentStudentId, false);
+    }
+    const modal = bootstrap.Modal.getInstance(document.getElementById('faceCaptureModal'));
+    modal.hide();
+}
+
+function stopFaceCamera() {
+    if (faceStream) {
+        faceStream.getTracks().forEach(track => track.stop());
+        faceStream = null;
+    }
+    const video = document.getElementById('faceVideo');
+    video.srcObject = null;
+    video.style.display = 'none';
+    document.getElementById('cameraPlaceholder').style.display = 'block';
+    document.getElementById('faceOverlay').style.display = 'none';
+    document.getElementById('captureFaceBtn').style.display = 'none';
+    document.getElementById('registerFaceBtn').style.display = 'none';
+    document.getElementById('startCameraBtn').style.display = 'inline-block';
+}
+
+document.getElementById('faceCaptureModal').addEventListener('hidden.bs.modal', function () {
+    stopFaceCamera();
+});
+</script>

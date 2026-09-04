@@ -1,0 +1,601 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}End-of-Term Report Card{% endblock %}
+
+{% block content %}
+<style>
+    /* ============================================================ */
+    /* MATCHING BASE.HTML THEME COLORS                              */
+    /* ============================================================ */
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-outline-secondary:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .status-badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+    .stat-card {
+        border-radius: 12px;
+        padding: 1.25rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: var(--surface-bg, #FFFFFF);
+        height: 100%;
+        border: 1px solid var(--surface-border, #E7E1D3);
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+    .stat-card .number {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--text-primary, #1F2A28);
+    }
+    .stat-card .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted, #6B7570);
+        font-weight: 600;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+    .page-description {
+        background: var(--surface-bg, #FFFFFF);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+        color: var(--text-primary, #1F2A28);
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--text-muted, #6B7570);
+        margin-bottom: 0;
+    }
+
+    /* Report Hero */
+    .report-hero {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 1.35rem;
+        padding: 1.5rem 1.75rem;
+        border-radius: 22px;
+        background: linear-gradient(135deg, #1a2a24 0%, #2c4038 50%, #1f3a30 100%);
+        box-shadow: 0 14px 34px rgba(23, 53, 44, 0.28);
+        overflow: hidden;
+    }
+    .report-hero::after {
+        content: '';
+        position: absolute;
+        top: -40%;
+        right: -8%;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(148, 107, 28, 0.28), transparent 70%);
+        pointer-events: none;
+    }
+    .report-hero-photo {
+        position: relative;
+        width: 104px;
+        height: 104px;
+        flex: 0 0 104px;
+        border-radius: 50%;
+        overflow: hidden;
+        background: linear-gradient(135deg, var(--eduai-gold, #946B1C), var(--eduai-signal, #2C7A6D));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1.9rem;
+        font-weight: 800;
+        border: 3px solid rgba(148, 107, 28, 0.85);
+        box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08), 0 10px 24px rgba(0, 0, 0, 0.3);
+        z-index: 1;
+    }
+    .report-hero-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .eyebrow {
+        font-size: .68rem;
+        letter-spacing: .14em;
+        font-weight: 800;
+        color: #e7c88a;
+        margin-bottom: .25rem;
+    }
+    .hero-name {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #ffffff;
+    }
+    .hero-meta {
+        font-size: .84rem;
+        color: #bcd0c8;
+    }
+    .hero-meta span {
+        margin: 0 .4rem;
+        color: #e7c88a;
+    }
+    .hero-status {
+        margin-left: auto;
+        z-index: 1;
+    }
+    .hero-status .status-badge {
+        border: 1px solid rgba(255, 255, 255, 0.35);
+    }
+    .result-score {
+        font-weight: 800;
+        color: var(--eduai-signal);
+    }
+    .result-final {
+        font-weight: 900;
+        color: var(--eduai-gold);
+    }
+    .results-table thead th {
+        background: var(--app-bg, #F7F4EC);
+        border-bottom: 2px solid var(--eduai-gold);
+        white-space: nowrap;
+    }
+    .results-table tbody tr:hover {
+        background: rgba(148, 107, 28, 0.045);
+    }
+    .score-chip {
+        display: inline-flex;
+        min-width: 58px;
+        justify-content: center;
+        padding: .32rem .5rem;
+        border-radius: 9px;
+        background: var(--eduai-signal-soft);
+        font-weight: 800;
+        color: var(--eduai-signal);
+    }
+    .final-chip {
+        background: var(--eduai-gold-soft);
+        color: var(--eduai-gold);
+    }
+    .card {
+        background: var(--surface-bg, #FFFFFF) !important;
+        border-color: var(--surface-border, #E7E1D3) !important;
+        color: var(--text-primary, #1F2A28) !important;
+    }
+    .card-header {
+        background: transparent !important;
+        border-color: var(--surface-border, #E7E1D3) !important;
+    }
+    .form-control, .form-select {
+        background: var(--surface-bg, #FFFFFF) !important;
+        border-color: var(--surface-border, #E7E1D3) !important;
+        color: var(--text-primary, #1F2A28) !important;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--eduai-gold, #946B1C) !important;
+        box-shadow: 0 0 0 0.25rem var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .text-muted {
+        color: var(--text-muted, #6B7570) !important;
+    }
+    .alert-light {
+        background: var(--app-bg, #F7F4EC) !important;
+        border-color: var(--surface-border, #E7E1D3) !important;
+        color: var(--text-primary, #1F2A28) !important;
+    }
+
+    @media (max-width: 767px) {
+        .report-hero {
+            align-items: flex-start;
+            padding: 1.15rem 1.25rem;
+        }
+        .hero-status {
+            display: none;
+        }
+        .report-hero-photo {
+            width: 72px;
+            height: 72px;
+            flex-basis: 72px;
+            font-size: 1.3rem;
+        }
+        .hero-name {
+            font-size: 1.1rem;
+        }
+    }
+</style>
+
+<!-- ========================================================== -->
+<!-- PAGE DESCRIPTION                                            -->
+<!-- ========================================================== -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">End-of-Term Report Card</div>
+            <p class="text">
+                This page shows the complete end-of-term report card for a student. The KPI cards display the
+                <strong>Overall Average</strong>, <strong>Grade</strong>, <strong>Position</strong>, and
+                <strong>Attendance Rate</strong>. The <strong>Academic Results</strong> table lists all subjects
+                with their CA and Exam averages, total percentage, grade, and remark. The <strong>Attendance</strong>
+                section shows the term's attendance summary.
+                {% if can_edit %}
+                Use the form below to add teacher and headteacher comments, conduct, promotion status, and edit the AI narrative.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- REPORT HERO                                                -->
+<!-- ========================================================== -->
+<div class="report-hero mb-4">
+    <div class="report-hero-photo">
+        {% if report_card.student.profile_photo %}
+            <img src="{{ report_card.student.profile_photo.url }}" alt="Student photo">
+        {% else %}
+            <span>{{ report_card.student.user.first_name|first|upper }}{{ report_card.student.user.last_name|first|upper }}</span>
+        {% endif %}
+    </div>
+    <div class="flex-grow-1">
+        <div class="eyebrow">STUDENT PERFORMANCE PROFILE</div>
+        <h2 class="hero-name mb-1">{{ report_card.student.user.get_full_name }}</h2>
+        <div class="hero-meta">{{ report_card.student.admission_number }} <span>•</span> {{ report_card.student.school_class|default:'Class not assigned' }} <span>•</span> {{ report_card.academic_term }}</div>
+    </div>
+    <div class="hero-status">
+        <span class="status-badge {% if report_card.is_finalized %}badge-teal{% else %}badge-gold{% endif %}">
+            {% if report_card.is_finalized %}FINALIZED{% else %}DRAFT{% endif %}
+        </span>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- HEADER CARD                                                -->
+<!-- ========================================================== -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h4 class="fw-bold mb-1">
+                    <i class="bi bi-file-text text-gold me-2"></i>
+                    End-of-Term Report Card
+                </h4>
+                <div class="text-muted">
+                    {{ report_card.student.user.get_full_name }} · {{ report_card.academic_term }}
+                </div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'ai_engine:report_card_dashboard' %}">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </a>
+                <a class="btn btn-outline-gold btn-sm" href="{% url 'ai_engine:export_report_card_pdf' report_card.id %}">
+                    <i class="bi bi-file-pdf me-1"></i>PDF
+                </a>
+                <a class="btn btn-outline-gold btn-sm" href="{% url 'ai_engine:export_report_card' report_card.id 'doc' %}">
+                    <i class="bi bi-file-word me-1"></i>Word
+                </a>
+                {% if report_card.is_finalized %}
+                    <span class="badge badge-teal align-self-center p-2">
+                        <i class="bi bi-check-circle-fill me-1"></i>FINALIZED
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- STUDENT INFORMATION                                        -->
+<!-- ========================================================== -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4">
+        <h6 class="fw-bold mb-3">
+            <i class="bi bi-person text-gold me-2"></i>Student Information
+        </h6>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <small class="text-muted">Student</small>
+                <div class="fw-semibold">{{ report_card.student.user.get_full_name }}</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Admission No.</small>
+                <div class="fw-semibold">{{ report_card.student.admission_number }}</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Grade</small>
+                <div class="fw-semibold">{{ report_card.student.grade_level }}</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Class</small>
+                <div class="fw-semibold">{{ report_card.student.school_class|default:'N/A' }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- KPI CARDS                                                  -->
+<!-- ========================================================== -->
+<div class="row g-3 mb-4">
+    {% for label, value in stats %}
+    <div class="col-md-3">
+        <div class="stat-card">
+            <span class="label">{{ label }}</span>
+            <span class="number text-gold">{{ value }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ========================================================== -->
+<!-- ACADEMIC RESULTS                                           -->
+<!-- ========================================================== -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <div class="eyebrow">TERMINAL ASSESSMENT</div>
+                <h5 class="fw-bold mb-0">Academic Results</h5>
+            </div>
+            <span class="badge badge-gold rounded-pill px-3 py-2">Class /30 + Exam /70</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 results-table">
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th class="text-center">Class /30</th>
+                        <th class="text-center">Exam /70</th>
+                        <th class="text-center">Final /100</th>
+                        <th class="text-center">Grade</th>
+                        <th>Remark</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in subject_breakdown %}
+                    <tr>
+                        <td class="fw-bold">{{ row.subject }}</td>
+                        <td class="text-center">
+                            {% if row.class_score is not None %}
+                                <span class="score-chip">{{ row.class_score|floatformat:2 }}</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if row.exam_score is not None %}
+                                <span class="score-chip">{{ row.exam_score|floatformat:2 }}</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if row.total is not None %}
+                                <span class="score-chip final-chip">{{ row.total|floatformat:2 }}</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center"><strong>{{ row.grade|default:'—' }}</strong></td>
+                        <td>{{ row.remark|default:'—' }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">No terminal results available.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="small text-muted mt-3">
+            <i class="bi bi-shield-check text-teal me-1"></i>
+            Figures are calculated from the authoritative terminal result records. Draft report cards automatically refresh when marks are entered, and finalized cards automatically repair any subject still missing its Class /30 or Exam /70 score — without changing the official locked average, grade, or position.
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- ATTENDANCE                                                 -->
+<!-- ========================================================== -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4">
+        <h6 class="fw-bold mb-3">
+            <i class="bi bi-calendar-check text-gold me-2"></i>Term Attendance
+        </h6>
+        <div class="row text-center g-2">
+            <div class="col">
+                <strong class="text-teal">{{ report_card.attendance_present }}</strong>
+                <small class="d-block text-muted">Present</small>
+            </div>
+            <div class="col">
+                <strong class="text-warning">{{ report_card.attendance_late }}</strong>
+                <small class="d-block text-muted">Late</small>
+            </div>
+            <div class="col">
+                <strong class="text-danger">{{ report_card.attendance_absent }}</strong>
+                <small class="d-block text-muted">Absent</small>
+            </div>
+            <div class="col">
+                <strong>{{ report_card.attendance_total }}</strong>
+                <small class="d-block text-muted">Recorded</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- TEACHER / ADMINISTRATION REVIEW                            -->
+<!-- ========================================================== -->
+{% if can_edit %}
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-chat-square-text text-gold me-2"></i>Comments & Administrative Review
+            </h6>
+            <div class="small text-muted">
+                Teacher: <strong>{{ report_card.get_teacher_comment_source_display }}</strong> ·
+                Headteacher: <strong>{{ report_card.get_headteacher_comment_source_display }}</strong>
+            </div>
+        </div>
+        <form method="post" action="{% url 'ai_engine:save_report_card_narrative' report_card.id %}">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">Conduct / Behaviour</label>
+                    <input name="conduct" class="form-control form-control-sm" value="{{ report_card.conduct }}" placeholder="Excellent">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">Promotion Status</label>
+                    <select name="promotion_status" class="form-select form-select-sm">
+                        <option value="">Select</option>
+                        <option value="PROMOTED" {% if report_card.promotion_status == 'PROMOTED' %}selected{% endif %}>Promoted</option>
+                        <option value="CONDITIONAL" {% if report_card.promotion_status == 'CONDITIONAL' %}selected{% endif %}>Conditionally Promoted</option>
+                        <option value="REPEAT" {% if report_card.promotion_status == 'REPEAT' %}selected{% endif %}>Repeat Class</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">Teacher Comment</label>
+                    <textarea name="teacher_comment" rows="5" class="form-control form-control-sm">{{ report_card.teacher_comment }}</textarea>
+                    <div class="d-flex gap-2 mt-2">
+                        {% if can_teacher_comment %}
+                            <button class="btn btn-sm btn-outline-gold" formaction="{% url 'ai_engine:generate_report_card_comment' report_card.id 'teacher' %}" formmethod="post"{% if report_card.teacher_comment_source == 'MANUAL' %} onclick="return confirm('Replace the manually edited teacher comment with a new AI comment?')"{% endif %}>
+                                <i class="bi bi-stars me-1"></i>
+                                {% if report_card.teacher_comment_source == 'MANUAL' %}Replace with AI{% elif report_card.teacher_comment %}Regenerate AI{% else %}Generate AI{% endif %}
+                            </button>
+                            {% if report_card.teacher_comment_source == 'MANUAL' %}<input type="hidden" name="force" value="1">{% endif %}
+                        {% endif %}
+                        <span class="small text-muted align-self-center">Manual edits are protected.</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">Headteacher Comment</label>
+                    <textarea name="headteacher_comment" rows="5" class="form-control form-control-sm">{{ report_card.headteacher_comment }}</textarea>
+                    {% if can_headteacher_comment %}
+                        <div class="d-flex gap-2 mt-2">
+                            <button class="btn btn-sm btn-outline-gold" formaction="{% url 'ai_engine:generate_report_card_comment' report_card.id 'headteacher' %}" formmethod="post"{% if report_card.headteacher_comment_source == 'MANUAL' %} onclick="return confirm('Replace the manually edited headteacher comment with a new AI comment?')"{% endif %}>
+                                <i class="bi bi-stars me-1"></i>
+                                {% if report_card.headteacher_comment_source == 'MANUAL' %}Replace with AI{% elif report_card.headteacher_comment %}Regenerate AI{% else %}Generate AI{% endif %}
+                            </button>
+                            {% if report_card.headteacher_comment_source == 'MANUAL' %}<input type="hidden" name="force" value="1">{% endif %}
+                            <span class="small text-muted align-self-center">Explicit action required to replace AI text.</span>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">Next Term Begins</label>
+                    <input type="date" name="next_term_date" class="form-control form-control-sm" value="{{ report_card.next_term_date|date:'Y-m-d' }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold small">AI Draft / Final Narrative</label>
+                    <textarea name="narrative" rows="4" class="form-control form-control-sm">{{ report_card.ai_narrative }}</textarea>
+                </div>
+            </div>
+            <button class="btn btn-gold mt-3 btn-sm">
+                <i class="bi bi-save me-1"></i>Save Report Card
+            </button>
+        </form>
+        <div class="alert alert-light border mt-3 mb-0 small">
+            <i class="bi bi-shield-check text-teal me-1"></i>
+            Bulk generation defaults to <strong>missing comments only</strong>. A manually edited comment is marked <strong>MANUAL</strong> and will not be overwritten by bulk AI generation.
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4">
+        <h6 class="fw-bold mb-3">
+            <i class="bi bi-chat text-gold me-2"></i>Report Comments
+        </h6>
+        <p>{{ report_card.teacher_comment|default:report_card.ai_narrative|default:'No comment recorded.' }}</p>
+        <h6 class="fw-bold mt-3">Headteacher's Comment</h6>
+        <p>{{ report_card.headteacher_comment|default:'No comment recorded.' }}</p>
+        <div class="row">
+            <div class="col-md-6">
+                <strong>Conduct:</strong> {{ report_card.conduct|default:'—' }}
+            </div>
+            <div class="col-md-6">
+                <strong>Promotion:</strong> {{ report_card.promotion_status|default:'—' }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ========================================================== -->
+<!-- FINALIZE ACTIONS                                           -->
+<!-- ========================================================== -->
+<div class="d-flex gap-2 mb-5">
+    {% if report_card.is_finalized %}
+        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+        <form method="post" action="{% url 'ai_engine:unfinalize_report_card' report_card.id %}">
+            {% csrf_token %}
+            <button class="btn btn-warning btn-sm">
+                <i class="bi bi-unlock me-1"></i>Unlock for Correction
+            </button>
+        </form>
+        {% endif %}
+    {% else %}
+    <form method="post" action="{% url 'ai_engine:finalize_report_card' report_card.id %}">
+        {% csrf_token %}
+        <button class="btn btn-success btn-sm">
+            <i class="bi bi-lock me-1"></i>Finalize & Lock Report Card
+        </button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
