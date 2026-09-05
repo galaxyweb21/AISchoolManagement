@@ -229,6 +229,11 @@
                 <a href="#">Forgot Password?</a>
             </div>
 
+            <button type="button" class="btn btn-primary" style="background-color: var(--eduai-gold); border-color: var(--eduai-gold);" data-bs-toggle="modal" data-bs-target="#staffModal"
+                    data-action="create" data-url="{% url 'staff:staff_create' %}">
+                <i class="bi bi-plus-lg me-1"></i>Add Staff
+            </button>
+
             <button type="submit" class="btn btn-primary-custom d-flex align-items-center justify-content-center gap-2">
                 Sign In <i class="bi bi-arrow-right-short fs-5"></i>
             </button>
