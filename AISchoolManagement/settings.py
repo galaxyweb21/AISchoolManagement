@@ -208,6 +208,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 WHITENOISE_USE_FINDERS = DEBUG
 WHITENOISE_ALLOW_ALL_ORIGINS = True
+# Keep deployment resilient to optional third-party static artifacts.
+WHITENOISE_MANIFEST_STRICT = False
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
