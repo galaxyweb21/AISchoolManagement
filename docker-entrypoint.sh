@@ -26,6 +26,13 @@ if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
   python manage.py migrate --noinput
 fi
 
+# Ensure the fictional demo administrator exists after every deployment.
+# This is idempotent and does not create an account for real school data.
+if [ "${ENSURE_DEMO_ADMIN:-1}" = "1" ]; then
+  echo "Ensuring demo administrator account..."
+  python manage.py ensure_demo_admin
+fi
+
 if [ "${RUN_COLLECTSTATIC:-1}" = "1" ]; then
   echo "Collecting static files..."
   python manage.py collectstatic --noinput

@@ -152,6 +152,15 @@ class Command(BaseCommand):
         user.default_password = password
         user.set_password(password)
         user.is_active = True
+
+        # The primary demo administrator also needs access to Django's built-in
+        # admin site. Keeping the same account avoids creating a second set of
+        # credentials and remains safe because this command only seeds the
+        # fictional EduAI demonstration environment.
+        if username == "demo_admin":
+            user.is_staff = True
+            user.is_superuser = True
+
         user.save()
         return user
 
