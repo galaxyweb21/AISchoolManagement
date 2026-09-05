@@ -9,7 +9,12 @@ services:
     dockerContext: .
     healthCheckPath: /healthz/
     autoDeployTrigger: commit
-    initialDeployHook: python manage.py seed_demo_school --reset --students 18
+    # NOTE: seeding the demo dataset is handled in docker-entrypoint.sh (runs
+    # "ensure_demo_admin" on every container start, on every plan tier -- see
+    # that file for why). Render's own pre-deploy-command feature requires a
+    # paid plan (this service is on "free"), and initialDeployHook only ever
+    # runs once, after the app has already started serving traffic -- so
+    # neither is a reliable place to seed login-critical demo data.
     envVars:
       - key: DEBUG
         value: "False"

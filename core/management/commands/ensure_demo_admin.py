@@ -1,5 +1,14 @@
-"""Ensure the fictional demo administrator can access both the application and Django admin."""
+"""Ensure the fictional demo administrator can access both the application and Django admin.
 
+This command is called from docker-entrypoint.sh on every container start, on every
+plan tier (Render's pre-deploy command and initialDeployHook are either paid-plan-only
+or unreliable/one-shot, so they cannot be depended on here). If the demo school itself
+is missing -- e.g. a brand new database on first deploy -- this command now seeds the
+full demo dataset first (via seed_demo_school, which is idempotent/get_or_create-based
+and safe to call repeatedly) instead of silently giving up and leaving no login at all.
+"""
+
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
 from accounts.models import User
@@ -24,8 +33,16 @@ class Command(BaseCommand):
 
         school = School.objects.filter(subdomain=DEMO_SUBDOMAIN).first()
         if not school:
-            self.stdout.write(self.style.WARNING("Demo school not found; demo administrator was not created."))
-            return
+            self.stdout.write(self.style.WARNING(
+                "Demo school not found; seeding the full EduAI demo dataset now..."
+            ))
+            call_command("seed_demo_school", password=password)
+            school = School.objects.filter(subdomain=DEMO_SUBDOMAIN).first()
+            if not school:
+                self.stdout.write(self.style.ERROR(
+                    "Demo school seeding did not succeed; demo administrator was not created."
+                ))
+                return
 
         user, created = User.objects.get_or_create(
             username=username,
