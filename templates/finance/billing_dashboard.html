@@ -419,7 +419,7 @@
 
                 if (filterStatus) {
                     if (query) {
-                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                        filterStatus.textContent = `(filtered: ¢{visibleCount} shown)`;
                     } else {
                         filterStatus.textContent = '';
                     }
@@ -435,13 +435,13 @@
             const toastBody = document.getElementById('toastBody');
 
             if (type === 'success') {
-                toastBody.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i> <span id="toastMessage">${message}</span>`;
+                toastBody.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i> <span id="toastMessage">¢{message}</span>`;
                 toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-success-subtle';
             } else if (type === 'error') {
-                toastBody.innerHTML = `<i class="bi bi-exclamation-circle-fill text-danger me-2"></i> <span id="toastMessage">${message}</span>`;
+                toastBody.innerHTML = `<i class="bi bi-exclamation-circle-fill text-danger me-2"></i> <span id="toastMessage">¢{message}</span>`;
                 toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-danger-subtle';
             } else {
-                toastBody.innerHTML = `<i class="bi bi-info-circle-fill text-info me-2"></i> <span id="toastMessage">${message}</span>`;
+                toastBody.innerHTML = `<i class="bi bi-info-circle-fill text-info me-2"></i> <span id="toastMessage">¢{message}</span>`;
                 toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-info-subtle';
             }
 

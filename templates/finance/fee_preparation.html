@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (filterStatus) {
                 if (query) {
-                    filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                    filterStatus.textContent = `(filtered: ¢{visibleCount} shown)`;
                 } else {
                     filterStatus.textContent = '';
                 }
@@ -452,8 +452,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     resultDiv.innerHTML = `
                         <div class="alert alert-success border-0 shadow-sm rounded-4">
                             <i class="bi bi-check-circle me-2"></i>
-                            ${data.message}
-                            <br><small>Prepared: ${data.prepared} / ${data.total}</small>
+                            ¢{data.message}
+                            <br><small>Prepared: ¢{data.prepared} / ¢{data.total}</small>
                         </div>
                     `;
                     setTimeout(() => window.location.reload(), 1500);
@@ -461,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     resultDiv.innerHTML = `
                         <div class="alert alert-danger border-0 shadow-sm rounded-4">
                             <i class="bi bi-exclamation-triangle me-2"></i>
-                            ${data.error || 'An error occurred.'}
+                            ¢{data.error || 'An error occurred.'}
                         </div>
                     `;
                 }
@@ -509,13 +509,13 @@ function viewStudentFee(feeId) {
                 itemsHtml += `
                     <div class="d-flex justify-content-between border-bottom py-2">
                         <div>
-                            <span class="fw-medium">${item.category}</span>
-                            <div class="text-muted small">${item.description}</div>
+                            <span class="fw-medium">¢{item.category}</span>
+                            <div class="text-muted small">¢{item.description}</div>
                         </div>
                         <div class="text-end">
                             <div class="small">
                                 <span class="text-muted">Base: ₵${item.standard_amount}</span>
-                                ${item.discount_amount > 0 ? `<span class="text-success"> Discount: -₵${item.discount_amount}</span>` : ''}
+                                ¢{item.discount_amount > 0 ? `<span class="text-success"> Discount: -₵${item.discount_amount}</span>` : ''}
                             </div>
                             <span class="fw-bold">₵${item.final_amount}</span>
                         </div>
@@ -528,13 +528,13 @@ function viewStudentFee(feeId) {
                     <div class="row g-3">
                         <div class="col-md-6">
                             <small class="text-muted">Student</small>
-                            <div class="fw-bold">${data.student_name}</div>
+                            <div class="fw-bold">¢{data.student_name}</div>
                         </div>
                         <div class="col-md-6">
                             <small class="text-muted">Status</small>
                             <div>
-                                <span class="badge bg-${data.status === 'APPROVED' ? 'teal' : data.status === 'PREPARED' ? 'warning' : 'secondary'}">
-                                    ${data.status}
+                                <span class="badge bg-¢{data.status === 'APPROVED' ? 'teal' : data.status === 'PREPARED' ? 'warning' : 'secondary'}">
+                                    ¢{data.status}
                                 </span>
                             </div>
                         </div>
@@ -543,7 +543,7 @@ function viewStudentFee(feeId) {
                 <hr>
                 <div class="mb-3">
                     <h6 class="fw-bold">Fee Items</h6>
-                    ${itemsHtml}
+                    ¢{itemsHtml}
                 </div>
                 <hr>
                 <div class="row g-3 text-end">
@@ -572,7 +572,7 @@ function viewStudentFee(feeId) {
             modalContent.innerHTML = `
                 <div class="alert alert-danger border-0 shadow-sm rounded-4">
                     <i class="bi bi-exclamation-triangle me-2"></i>
-                    ${data.error || 'Error loading fee details.'}
+                    ¢{data.error || 'Error loading fee details.'}
                 </div>
                 <div class="mt-3 text-end">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
