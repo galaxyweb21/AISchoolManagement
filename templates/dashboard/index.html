@@ -151,7 +151,7 @@
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
                         <h6 class="text-muted text-uppercase small fw-bold">Total Invoiced</h6>
-                        <h3 class="fw-bold mb-0">${{ total_billed }}</h3>
+                        <h3 class="fw-bold mb-0">Gh¢{{ total_billed }}</h3>
                     </div>
                     <div class="bg-info-subtle p-3 rounded-circle text-info">
                         <i class="bi bi-wallet2 fs-4"></i>
@@ -166,7 +166,7 @@
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
                         <h6 class="text-muted text-uppercase small fw-bold">Revenue Collected</h6>
-                        <h3 class="fw-bold mb-0 text-teal">${{ total_collected }}</h3>
+                        <h3 class="fw-bold mb-0 text-teal">Gh¢{{ total_collected }}</h3>
                     </div>
                     <div class="bg-teal-soft p-3 rounded-circle text-teal">
                         <i class="bi bi-currency-dollar fs-4"></i>
@@ -574,7 +574,7 @@ document.addEventListener("DOMContentLoaded", function(){
                             if (label) {
                                 label += ': ';
                             }
-                            label += '$' + context.parsed.toFixed(2);
+                            label += 'Gh¢' + context.parsed.toFixed(2);
                             return label;
                         }
                     }
