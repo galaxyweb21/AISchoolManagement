@@ -87,3 +87,27 @@ def auto_release_due_report_cards():
             ReportCardReleaseService.run(batch, user=None)
         else:
             run_report_card_release_task.delay(str(batch.id))
+
+
+@shared_task
+def retry_failed_report_card_deliveries():
+    """Retry failed parent report-card emails using bounded exponential backoff."""
+    from django.conf import settings
+    from django.utils import timezone
+    from ai_engine.models import ReportCardDelivery
+    from ai_engine.services.email_monitoring import EmailMonitoringService
+
+    max_retries = max(1, int(getattr(settings, 'REPORT_CARD_EMAIL_MAX_RETRIES', 3)))
+    now = timezone.now()
+    deliveries = (ReportCardDelivery.objects
+                  .filter(status='FAILED', retry_count__lt=max_retries, next_retry_at__isnull=False, next_retry_at__lte=now)
+                  .select_related('report_card__student__user', 'report_card__student__parent', 'release_batch__school'))[:100]
+    processed = 0
+    for delivery in deliveries:
+        result = EmailMonitoringService.send_report_card_delivery(delivery)
+        processed += 1
+        try:
+            EmailMonitoringService.refresh_batch_counts(delivery.release_batch)
+        except Exception:
+            pass
+    return processed

@@ -274,3 +274,26 @@ class ReportCommentBatchAdmin(admin.ModelAdmin):
     list_filter = ('status', 'only_missing', 'regenerate_ai', 'generate_teacher', 'generate_headteacher')
     search_fields = ('school__name', 'academic_term__name', 'school_class__name')
     readonly_fields = ('generated_at',)
+
+@admin.register(ReportCardReleaseBatch)
+class ReportCardReleaseBatchAdmin(admin.ModelAdmin):
+    list_display = ('academic_term', 'status', 'finalized_count', 'emailed_count', 'email_failed_count', 'email_skipped_count', 'created_at', 'school')
+    list_filter = ('status', 'school')
+    search_fields = ('academic_term__name', 'error_message')
+    readonly_fields = ('created_at', 'started_at', 'completed_at')
+
+
+@admin.register(ReportCardDelivery)
+class ReportCardDeliveryAdmin(admin.ModelAdmin):
+    list_display = ('report_card', 'recipient_email', 'status', 'retry_count', 'last_attempt_at', 'next_retry_at')
+    list_filter = ('status', 'release_batch__school')
+    search_fields = ('recipient_email', 'report_card__student__user__first_name', 'report_card__student__user__last_name', 'error_message')
+    readonly_fields = ('created_at', 'sent_at', 'last_attempt_at')
+
+
+@admin.register(EmailHealthCheck)
+class EmailHealthCheckAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'school', 'recipient_email', 'success', 'connection_verified', 'duration_ms')
+    list_filter = ('success', 'connection_verified', 'school')
+    search_fields = ('recipient_email', 'message')
+    readonly_fields = ('id', 'created_at', 'tested_by', 'school', 'recipient_email', 'success', 'connection_verified', 'message', 'duration_ms')

@@ -302,3 +302,69 @@ def release_all_report_cards(request):
     else:
         messages.error(request, batch.error_message or 'Report-card release failed.')
     return redirect('ai_engine:report_card_dashboard')
+
+
+@login_required
+def email_health_dashboard(request):
+    """SMTP health test and report-card delivery monitoring dashboard."""
+    if not role_allows(request.user, 'reports', 'view'):
+        messages.error(request, "You don't have permission to view email health.")
+        return redirect('dashboard')
+    school = _school(request)
+    from ai_engine.models import EmailHealthCheck, ReportCardReleaseBatch, ReportCardDelivery
+    checks = EmailHealthCheck.objects.filter(school=school).select_related('tested_by')[:10]
+    releases = ReportCardReleaseBatch.objects.filter(school=school).prefetch_related('deliveries')[:10]
+    deliveries = (ReportCardDelivery.objects.filter(release_batch__school=school)
+                  .select_related('release_batch', 'report_card__student__user')
+                  .order_by('-created_at')[:50])
+    stats = {
+        'sent': ReportCardDelivery.objects.filter(release_batch__school=school, status='SENT').count(),
+        'failed': ReportCardDelivery.objects.filter(release_batch__school=school, status='FAILED').count(),
+        'pending': ReportCardDelivery.objects.filter(release_batch__school=school, status='PENDING').count(),
+        'skipped': ReportCardDelivery.objects.filter(release_batch__school=school, status='SKIPPED').count(),
+    }
+    return render(request, 'ai_engine/email_health_dashboard.html', {
+        'checks': checks, 'releases': releases, 'deliveries': deliveries, 'stats': stats,
+        'default_recipient': request.user.email or '',
+    })
+
+
+@login_required
+@require_POST
+def run_email_health_test(request):
+    if not role_allows(request.user, 'reports', 'approve'):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+    from ai_engine.services.email_monitoring import EmailMonitoringService
+    recipient = (request.POST.get('recipient') or request.user.email or '').strip()
+    if not recipient:
+        return JsonResponse({'success': False, 'error': 'Enter a test recipient email address.'}, status=400)
+    check = EmailMonitoringService.test(_school(request), request.user, recipient)
+    return JsonResponse({
+        'success': check.success, 'message': check.message,
+        'connection_verified': check.connection_verified, 'duration_ms': check.duration_ms,
+        'created_at': timezone.localtime(check.created_at).strftime('%Y-%m-%d %H:%M:%S'),
+    }, status=200 if check.success else 500)
+
+
+@login_required
+@require_POST
+def retry_report_card_delivery(request, delivery_id):
+    if not role_allows(request.user, 'reports', 'approve'):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+    from ai_engine.models import ReportCardDelivery
+    from ai_engine.services.email_monitoring import EmailMonitoringService
+    delivery = get_object_or_404(ReportCardDelivery.objects.select_related('release_batch', 'report_card'), id=delivery_id, release_batch__school=_school(request))
+    if delivery.status == 'SENT':
+        return JsonResponse({'success': True, 'status': 'SENT', 'message': 'This report card has already been sent.'})
+    # A manual retry starts a fresh bounded retry cycle after automatic retries
+    # have been exhausted. This avoids silently exceeding the configured limit.
+    from django.conf import settings
+    max_retries = max(1, int(getattr(settings, 'REPORT_CARD_EMAIL_MAX_RETRIES', 3)))
+    if delivery.retry_count >= max_retries:
+        delivery.retry_count = 0
+        delivery.next_retry_at = None
+        delivery.status = 'PENDING'
+        delivery.save(update_fields=['retry_count', 'next_retry_at', 'status'])
+    result = EmailMonitoringService.send_report_card_delivery(delivery)
+    EmailMonitoringService.refresh_batch_counts(delivery.release_batch)
+    return JsonResponse({'success': result == 'SENT', 'status': result, 'message': delivery.error_message or 'Report-card email sent successfully.'})

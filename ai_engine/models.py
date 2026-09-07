@@ -256,6 +256,23 @@ class ReportCardReleaseBatch(models.Model):
         ordering = ['-created_at']
 
 
+class EmailHealthCheck(models.Model):
+    """Persistent SMTP health-test history for each school."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='email_health_checks')
+    tested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    recipient_email = models.EmailField(blank=True, default='')
+    success = models.BooleanField(default=False)
+    connection_verified = models.BooleanField(default=False)
+    message = models.TextField(blank=True, default='')
+    duration_ms = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    objects = managers.TenantManager()
+
+    class Meta:
+        ordering = ['-created_at']
+
+
 class ReportCardDelivery(models.Model):
     STATUS_CHOICES = (('PENDING', 'Pending'), ('SENT', 'Sent'), ('FAILED', 'Failed'), ('SKIPPED', 'Skipped'))
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -264,11 +281,18 @@ class ReportCardDelivery(models.Model):
     recipient_email = models.EmailField(blank=True, default='')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
     sent_at = models.DateTimeField(null=True, blank=True)
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    next_retry_at = models.DateTimeField(null=True, blank=True)
+    retry_count = models.PositiveSmallIntegerField(default=0)
     error_message = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['release_batch', 'report_card'], name='unique_release_report_card_delivery')]
+        indexes = [
+            models.Index(fields=['status', 'next_retry_at'], name='rcdelivery_retry_idx'),
+            models.Index(fields=['release_batch', 'status'], name='rcdelivery_batch_status_idx'),
+        ]
 
 
 class PaymentReminder(models.Model):

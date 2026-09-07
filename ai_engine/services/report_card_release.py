@@ -9,6 +9,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from ai_engine.models import ReportCard, ReportCardBatch, ReportCardDelivery, ReportCardReleaseBatch
+from ai_engine.services.email_monitoring import EmailMonitoringService
 from ai_engine.services.report_card_batch import ReportCardBatchService
 from ai_engine.services.report_comment_service import ReportCommentService
 from ai_engine.services.export_service import ExportService
@@ -154,35 +155,15 @@ class ReportCardReleaseService:
             if delivery.status == 'SENT':
                 sent += 1
                 continue
-            if not recipient:
-                delivery.status = 'SKIPPED'
-                delivery.error_message = 'No parent/guardian email address.'
-                delivery.save(update_fields=['status', 'error_message', 'recipient_email'])
-                skipped += 1
-                continue
-            try:
-                response = ExportService.export_report_card_to_pdf(card)
-                pdf_bytes = bytes(response.content)
-                student_name = card.student.user.get_full_name()
-                subject = f'{release_batch.school.name} – {card.academic_term.name} Report Card – {student_name}'
-                text = (f'Dear {parent.get_full_name() or "Parent/Guardian"},\n\n'
-                        f'Please find attached the official report card for {student_name} for {card.academic_term}.\n\n'
-                        f'Regards,\n{release_batch.school.name}')
-                email = EmailMultiAlternatives(subject=subject, body=text,
-                                               from_email=None, to=[recipient])
-                email.attach(f'Report-Card-{card.student.admission_number}.pdf', pdf_bytes, 'application/pdf')
-                email.send(fail_silently=False)
-                delivery.status = 'SENT'
-                delivery.sent_at = timezone.now()
-                delivery.error_message = ''
-                delivery.save(update_fields=['status', 'sent_at', 'error_message', 'recipient_email'])
-                sent += 1
-            except Exception as exc:
-                delivery.status = 'FAILED'
-                delivery.error_message = str(exc)[:500]
-                delivery.save(update_fields=['status', 'error_message', 'recipient_email'])
-                failed += 1
-                logger.exception('Report card email failed for %s', card.id)
+            if recipient and delivery.recipient_email != recipient:
+                delivery.recipient_email = recipient
+                delivery.status = 'PENDING'
+                delivery.next_retry_at = None
+                delivery.save(update_fields=['recipient_email', 'status', 'next_retry_at'])
+            result = EmailMonitoringService.send_report_card_delivery(delivery)
+            if result == 'SENT': sent += 1
+            elif result == 'SKIPPED': skipped += 1
+            else: failed += 1
         return sent, failed, skipped
 
     @classmethod
@@ -219,7 +200,7 @@ class ReportCardReleaseService:
                     release_batch.print_pack_generated_at = timezone.now()
                     release_batch.print_pack_count = count
 
-            release_batch.status = 'COMPLETE' if not blocked else 'PARTIAL'
+            release_batch.status = 'COMPLETE' if (not blocked and release_batch.email_failed_count == 0 and release_batch.email_skipped_count == 0) else 'PARTIAL'
             release_batch.completed_at = timezone.now()
             release_batch.save()
         except Exception as exc:

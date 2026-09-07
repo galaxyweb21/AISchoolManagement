@@ -239,9 +239,11 @@ EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").strip().lower() in {"1", "true", "yes", "on"}
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "galaxyweb21@gmail.com")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "cqyxgdeujbuvzpwi")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "galaxyweb21@gmail.com")
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "15"))
+REPORT_CARD_EMAIL_MAX_RETRIES = int(os.getenv("REPORT_CARD_EMAIL_MAX_RETRIES", "3"))
+REPORT_CARD_EMAIL_RETRY_DELAY_MINUTES = int(os.getenv("REPORT_CARD_EMAIL_RETRY_DELAY_MINUTES", "15"))
 
 # ==========================================
 # CELERY CONFIG
@@ -304,5 +306,9 @@ CELERY_BEAT_SCHEDULE = {
     'auto-release-due-report-cards-daily': {
         'task': 'ai_engine.tasks.auto_release_due_report_cards',
         'schedule': 86400.0,
+    },
+    'retry-failed-report-card-emails': {
+        'task': 'ai_engine.tasks.retry_failed_report_card_deliveries',
+        'schedule': 900.0,
     },
 }
