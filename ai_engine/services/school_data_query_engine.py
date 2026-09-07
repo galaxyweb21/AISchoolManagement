@@ -32,6 +32,7 @@ administration roles because leave information is HR-sensitive.
 """
 
 import re
+import logging
 from datetime import timedelta
 from decimal import Decimal
 
@@ -40,6 +41,8 @@ from django.utils import timezone
 
 from students.models import Student
 from attendance.models import Attendance
+
+logger = logging.getLogger(__name__)
 
 
 class SchoolDataQueryEngine:

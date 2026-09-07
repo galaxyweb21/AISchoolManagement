@@ -54,6 +54,8 @@ from django.db.models import Model
 from .services import AIService
 from .role_ai_policy import get_policy, can_use
 from .school_data_query_engine import SchoolDataQueryEngine
+from .database_intelligence import SchoolDatabaseIntelligence
+from .full_school_database_intelligence import FullSchoolDatabaseIntelligence
 
 logger = logging.getLogger(__name__)
 
@@ -1189,6 +1191,31 @@ into private school records.
                 )
             )
 
+            # V4: comprehensive, deterministic school-database layer.
+            # It runs before the older universal/direct engines so broad
+            # school questions are resolved from verified ORM data first.
+            full_database_engine = FullSchoolDatabaseIntelligence(
+                user=self.user,
+                school=school,
+                allowed_students=authorized_students,
+            )
+            full_database_result = full_database_engine.answer(question)
+            if full_database_result is not None:
+                full_database_result.setdefault("role", self.policy["label"])
+                full_database_result.setdefault("scope", self.policy["scope"])
+                return full_database_result
+
+            universal_engine = SchoolDatabaseIntelligence(
+                user=self.user,
+                school=school,
+                allowed_students=authorized_students,
+            )
+            universal_result = universal_engine.answer(question)
+            if universal_result is not None:
+                universal_result.setdefault("role", self.policy["label"])
+                universal_result.setdefault("scope", self.policy["scope"])
+                return universal_result
+
             direct_engine = (
                 SchoolDataQueryEngine(
                     user=self.user,
@@ -1197,11 +1224,7 @@ into private school records.
                 )
             )
 
-            direct_result = (
-                direct_engine.answer(
-                    question
-                )
-            )
+            direct_result = direct_engine.answer(question)
 
             if direct_result is not None:
 
@@ -1292,6 +1315,26 @@ into private school records.
                 ),
                 question[:300],
             )
+
+        # ==================================================================
+        # VERIFIED DATABASE SAFETY GUARD
+        # ==================================================================
+        try:
+            guard_engine = FullSchoolDatabaseIntelligence(self.user, school, authorized_students)
+            if guard_engine.looks_like_school_fact(question):
+                return {
+                    "answer": (
+                        "I could not match this school-database question to a verified query, "
+                        "so I will not guess or invent a value. Please rephrase the question "
+                        "or use the relevant school module."
+                    ),
+                    "mode": "database_unverified",
+                    "sources": ["school_database"],
+                    "scope": self.policy.get("scope"),
+                    "role": self.policy.get("label"),
+                }
+        except Exception:
+            logger.exception("Verified database safety guard failed.")
 
         # ==================================================================
         # NORMAL COPILOT CONTEXT
