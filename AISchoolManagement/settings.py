@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 # =========================
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
@@ -135,9 +135,13 @@ WSGI_APPLICATION = 'AISchoolManagement.wsgi.application'
 
 
 # Database
+# Local development intentionally prefers the values in the project .env file.
+# This prevents unrelated Windows/system environment variables (for example
+# DB_USER=USER with no DB_PASSWORD) from silently overriding local settings.
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+LOCAL_DEV_USE_MYSQL = os.getenv("LOCAL_DEV_USE_MYSQL", "True" if DEBUG else "False").strip().lower() in {"1", "true", "yes", "on"}
 
-if DATABASE_URL:
+if DATABASE_URL and not (DEBUG and LOCAL_DEV_USE_MYSQL):
     DATABASES = {
         "default": dj_database_url.parse(
             DATABASE_URL,
@@ -150,9 +154,9 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.mysql",
-            "NAME": os.getenv("DB_NAME"),
-            "USER": os.getenv("DB_USER"),
-            "PASSWORD": os.getenv("DB_PASSWORD"),
+            "NAME": os.getenv("DB_NAME", "ai_school_management"),
+            "USER": os.getenv("DB_USER", "Raja"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": os.getenv("DB_HOST", "localhost"),
             "PORT": os.getenv("DB_PORT", "3306"),
             "OPTIONS": {

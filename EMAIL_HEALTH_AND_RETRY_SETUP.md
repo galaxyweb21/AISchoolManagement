@@ -1,3 +1,31 @@
+## Local development: MySQL + Gmail SMTP
+
+The development server can test real email delivery. Use `EMAIL_PROVIDER=smtp` locally and configure Gmail SMTP with a Gmail App Password. Do not use the Render/Brevo provider for this local SMTP test.
+
+The project loads `.env` with override enabled so a Windows environment variable such as `DB_USER=USER` cannot silently override the project's local database settings. In DEBUG mode, `LOCAL_DEV_USE_MYSQL=True` also makes the local MySQL configuration take precedence over an unrelated `DATABASE_URL`.
+
+Recommended local values:
+- `DB_NAME=ai_school_management`
+- `DB_USER=Raja`
+- `DB_HOST=localhost`
+- `DB_PORT=3306`
+- `EMAIL_PROVIDER=smtp`
+- `EMAIL_HOST=smtp.gmail.com`
+- `EMAIL_PORT=587`
+- `EMAIL_USE_TLS=True`
+
+Put the Gmail address and App Password only in your local `.env`; never commit them.
+
+Run:
+
+```text
+python manage.py migrate
+python manage.py ensure_demo_admin
+python manage.py runserver
+```
+
+Then test password reset, report-card email, and receipt email from the browser. The terminal will show SMTP connection/authentication errors immediately if Gmail rejects the connection.
+
 # EduAI Email Health, Password Reset and Report-Card Delivery
 
 ## Why SMTP was replaced
