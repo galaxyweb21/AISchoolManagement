@@ -296,3 +296,13 @@ CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "").strip()
 if CLOUDINARY_URL:
     DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
+
+# Automatic end-of-term report-card release. Requires a Celery worker + beat
+# process in production. It is intentionally disabled by default on UAT/free
+# Render services so report cards cannot be published unexpectedly.
+CELERY_BEAT_SCHEDULE = {
+    'auto-release-due-report-cards-daily': {
+        'task': 'ai_engine.tasks.auto_release_due_report_cards',
+        'schedule': 86400.0,
+    },
+}

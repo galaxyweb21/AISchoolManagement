@@ -45,3 +45,45 @@ def run_report_comment_batch_task(batch_id):
     except ReportCommentBatch.DoesNotExist:
         return
     ReportCommentService.run_batch(batch)
+
+@shared_task
+def run_report_card_release_task(release_batch_id):
+    from ai_engine.models import ReportCardReleaseBatch
+    from ai_engine.services.report_card_release import ReportCardReleaseService
+    try:
+        batch = ReportCardReleaseBatch.objects.get(id=release_batch_id)
+    except ReportCardReleaseBatch.DoesNotExist:
+        return
+    ReportCardReleaseService.run(batch, user=batch.triggered_by)
+
+
+@shared_task
+def auto_release_due_report_cards():
+    """Scheduled end-of-term release hook.
+
+    Terms whose end date has passed are processed once. Incomplete results are
+    left PARTIAL rather than silently issuing an official report with missing marks.
+    """
+    from django.utils import timezone
+    from django.conf import settings
+    from ai_engine.models import ReportCardReleaseBatch
+    from school.models import AcademicTerm
+    from ai_engine.services.report_card_release import ReportCardReleaseService
+
+    today = timezone.localdate()
+    for term in AcademicTerm.objects.filter(end_date__lte=today).select_related('academic_year__school'):
+        batch = (ReportCardReleaseBatch.objects
+                 .filter(academic_term=term)
+                 .order_by('-created_at')
+                 .first())
+        if batch and batch.status in ['COMPLETE', 'RUNNING']:
+            continue
+        if not batch or batch.status == 'FAILED':
+            batch = ReportCardReleaseBatch.objects.create(
+                school=term.academic_year.school, academic_term=term, triggered_by=None,
+                auto_finalize=True, email_parents=True, generate_print_pack=True,
+            )
+        if getattr(settings, 'CELERY_TASK_ALWAYS_EAGER', False):
+            ReportCardReleaseService.run(batch, user=None)
+        else:
+            run_report_card_release_task.delay(str(batch.id))

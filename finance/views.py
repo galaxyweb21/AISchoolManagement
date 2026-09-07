@@ -205,202 +205,103 @@ def billing_dashboard(request):
 @login_required
 @require_POST
 def api_record_payment(request):
-    """Record a payment against one or more invoices."""
+    """Persist a payment and keep invoice + ledger accounting consistent."""
+    import logging
+    logger = logging.getLogger(__name__)
     if not user_can_manage_finance(request.user):
-        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
-
+        return json_error('Permission denied.', 403)
+    if not getattr(request.user, 'school', None):
+        return json_error('Your account is not linked to a school.', 403)
     try:
-        data = json.loads(request.body or '{}')
+        if request.content_type and 'application/json' in request.content_type:
+            data = json.loads(request.body or '{}')
+        else:
+            data = request.POST.dict()
         invoice_ids = data.get('invoice_ids', [])
-
-        # Handle single invoice_id for backward compatibility
+        if isinstance(invoice_ids, str):
+            try:
+                parsed = json.loads(invoice_ids)
+                invoice_ids = parsed if isinstance(parsed, list) else [invoice_ids]
+            except Exception:
+                invoice_ids = [v.strip() for v in invoice_ids.split(',') if v.strip()]
         if not invoice_ids and data.get('invoice_id'):
             invoice_ids = [data.get('invoice_id')]
-
+        invoice_ids = [str(v) for v in invoice_ids if v]
         payment_amount = decimal_from_value(data.get('amount'))
-        method = data.get('method', 'CASH')
-        reference_number = data.get('reference_number', '').strip()
-        notes = data.get('notes', '').strip()
-
-        if not invoice_ids:
-            return JsonResponse({'success': False, 'error': 'At least one invoice is required.'}, status=400)
-
-        if payment_amount <= Decimal('0.00'):
-            return JsonResponse({'success': False, 'error': 'Payment amount must be greater than zero.'}, status=400)
-
-        if method not in dict(Payment.METHOD_CHOICES):
-            return JsonResponse({'success': False, 'error': 'Invalid payment method.'}, status=400)
+        method = str(data.get('method') or 'CASH').strip().upper()
+        reference_number = str(data.get('reference_number') or '').strip()
+        notes = str(data.get('notes') or '').strip()
+        if not invoice_ids: return json_error('At least one invoice is required.')
+        if payment_amount <= ZERO: return json_error('Payment amount must be greater than zero.')
+        if method not in dict(Payment.METHOD_CHOICES): return json_error('Invalid payment method.')
+        if len(reference_number) > 100: return json_error('Reference number is too long (maximum 100 characters).')
+        if len(notes) > 200: return json_error('Notes are too long (maximum 200 characters).')
 
         school = request.user.school
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Processing payment: amount={payment_amount}, method={method}, invoices={invoice_ids}")
-
+        payments, updated_invoices = [], []
+        total_paid = ZERO
         with transaction.atomic():
-            # Get all invoices
-            invoices = Invoice.objects.filter(
-                id__in=invoice_ids,
-                school=school
-            ).exclude(status='VOID').select_for_update()
-
-            if not invoices.exists():
-                return JsonResponse({'success': False, 'error': 'No valid invoices found.'}, status=404)
-
-            # Calculate total outstanding
-            total_outstanding = Decimal('0.00')
-            invoice_balances = {}
-
+            invoices = list(Invoice.objects.filter(school=school, id__in=invoice_ids)
+                            .exclude(status='VOID').select_for_update()
+                            .order_by('due_date', 'created_at'))
+            if not invoices: return json_error('No valid unpaid invoices were found.', 404)
+            balances, total_outstanding = {}, ZERO
             for invoice in invoices:
-                # Calculate balance directly from line items and payments
-                total_amount = invoice.line_items.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-                amount_paid = invoice.payments.filter(status='CONFIRMED').aggregate(total=Sum('amount'))[
-                                  'total'] or Decimal('0.00')
-                balance = total_amount - amount_paid
-                invoice_balances[invoice.id] = {
-                    'total': total_amount,
-                    'paid': amount_paid,
-                    'balance': balance
-                }
-                if balance > 0:
-                    total_outstanding += balance
-
-            logger.info(f"Total outstanding: {total_outstanding}")
-
-            if total_outstanding <= Decimal('0.00'):
-                return JsonResponse({'success': False, 'error': 'All selected invoices are already paid.'}, status=400)
-
+                total_amount = invoice.line_items.aggregate(total=Sum('amount'))['total'] or ZERO
+                paid = invoice.payments.filter(status='CONFIRMED').aggregate(total=Sum('amount'))['total'] or ZERO
+                balance = total_amount - paid
+                balances[invoice.pk] = (total_amount, paid, balance)
+                if balance > ZERO: total_outstanding += balance
+            if total_outstanding <= ZERO: return json_error('All selected invoices are already fully paid.')
             if payment_amount > total_outstanding:
-                return JsonResponse({
-                    'success': False,
-                    'error': f'Payment amount (GH¢ {payment_amount:.2f}) exceeds total outstanding (GH¢ {total_outstanding:.2f})'
-                }, status=400)
-
-            # Distribute payment across invoices (oldest first)
+                return json_error(f'Payment amount (GH¢ {payment_amount:.2f}) exceeds total outstanding (GH¢ {total_outstanding:.2f}).')
             remaining = payment_amount
-            payments = []
-            total_paid = Decimal('0.00')
-            updated_invoices = []
-
-            # Sort invoices by due date (oldest first)
-            sorted_invoices = invoices.order_by('due_date', 'created_at')
-
-            for invoice in sorted_invoices:
-                if remaining <= Decimal('0.00'):
-                    break
-
-                balance = invoice_balances[invoice.id]['balance']
-                if balance <= Decimal('0.00'):
-                    continue
-
-                # Amount to allocate to this invoice
+            for invoice in invoices:
+                if remaining <= ZERO: break
+                total_amount, paid_before, balance = balances[invoice.pk]
+                if balance <= ZERO: continue
                 allocated = min(remaining, balance)
-
-                # Create payment
-                payment = Payment.objects.create(
-                    invoice=invoice,
-                    amount=allocated,
-                    method=method,
-                    reference_number=reference_number or '',
-                    recorded_by=request.user,
-                    status='CONFIRMED',
-                    notes=notes or '',
-                )
-
+                payment = Payment(invoice=invoice, amount=allocated, method=method,
+                                  reference_number=reference_number, recorded_by=request.user,
+                                  status='CONFIRMED', notes=notes)
+                payment.save(force_insert=True)
+                payment.refresh_from_db()
+                new_paid = paid_before + allocated
+                new_balance = total_amount - new_paid
+                invoice.status = 'PAID' if new_balance <= ZERO else ('PARTIAL' if new_paid > ZERO else 'UNPAID')
+                invoice.save(update_fields=['status'])
+                # Ledger is part of the accounting transaction; failure rolls back payment.
+                create_payment_ledger_entry(payment, created_by=request.user)
                 payments.append(payment)
+                updated_invoices.append({'id': str(invoice.id), 'number': invoice.invoice_number,
+                                         'new_status': invoice.status, 'new_paid': str(new_paid),
+                                         'new_balance': str(new_balance)})
                 total_paid += allocated
                 remaining -= allocated
+            if not payments: raise ValueError('No payment could be allocated to the selected invoices.')
 
-                # Update invoice balance and status
-                new_total = invoice_balances[invoice.id]['total']
-                new_paid = invoice_balances[invoice.id]['paid'] + allocated
-                new_balance = new_total - new_paid
-
-                # Update status based on new balance
-                if new_balance <= Decimal('0.00'):
-                    invoice.status = 'PAID'
-                elif new_paid > Decimal('0.00'):
-                    invoice.status = 'PARTIAL'
-                else:
-                    invoice.status = 'UNPAID'
-                invoice.save(update_fields=['status'])
-
-                updated_invoices.append({
-                    'id': str(invoice.id),
-                    'number': invoice.invoice_number,
-                    'new_status': invoice.status,
-                    'new_paid': new_paid,
-                    'new_balance': new_balance
-                })
-
-                # Create ledger entry
-                try:
-                    from .services.ledger import create_payment_ledger_entry
-                    create_payment_ledger_entry(payment, created_by=request.user)
-                except Exception as ledger_error:
-                    logger.error(f"Error creating ledger entry for payment {payment.id}: {ledger_error}")
-
-                logger.info(
-                    f"Payment allocated to invoice {invoice.invoice_number}: {allocated}, new status: {invoice.status}")
-
-            # If there's remaining amount, log it
-            if remaining > Decimal('0.00'):
-                logger.info(f"Remaining amount {remaining} after payment distribution")
-
-        # Email the PDF receipt + text a confirmation to the parent for each
-        # payment just created. Fired on a background thread (see
-        # send_receipt_notifications_async) so a slow/misconfigured email or
-        # SMS provider never delays this response -- and wrapped here too so
-        # a failure to even queue it can't affect a payment that has already
-        # been saved and deducted from the balance.
+        # Only after commit: notifications cannot roll back accounting data.
         try:
             from .services.receipts import send_receipt_notifications_async
-            for p in payments:
-                send_receipt_notifications_async(p)
+            for payment in payments: send_receipt_notifications_async(payment)
         except Exception as exc:
-            logger.error(f"Could not queue receipt notifications: {exc}")
+            logger.exception('Payment saved but receipt notification queue failed: %s', exc)
 
-        # Prepare response.
-        # NOTE: don't call invoices.first() here — `invoices` has
-        # select_for_update() applied, and by this point we're outside the
-        # `with transaction.atomic():` block above. Evaluating a
-        # select_for_update() queryset outside a transaction raises
-        # TransactionManagementError, which was crashing every payment
-        # with a 500 *after* it had already been saved and deducted from
-        # the balance. Use the per-invoice data already collected inside
-        # the transaction instead.
-        first_updated = updated_invoices[0] if updated_invoices else None
-        response_data = {
-            'success': True,
+        first = updated_invoices[0]
+        return JsonResponse({'success': True,
             'message': f'Payment of GH¢ {total_paid:.2f} recorded successfully across {len(payments)} invoice(s).',
-            'payment_id': str(payments[0].id) if payments else None,
-            'receipt_number': payments[0].receipt_number if payments else None,
-            'total_paid': str(total_paid),
-            'invoices_affected': len(payments),
-            'remaining_balance': str(total_outstanding - total_paid),
+            'payment_id': str(payments[0].id), 'receipt_number': payments[0].receipt_number,
+            'total_paid': str(total_paid), 'invoices_affected': len(payments),
+            'new_status': first['new_status'], 'new_amount_paid': first['new_paid'],
+            'new_balance': first['new_balance'], 'remaining_balance': str(max(total_outstanding-total_paid, ZERO)),
             'updated_invoices': updated_invoices,
-        }
-
-        if payments:
-            response_data['receipt_url'] = reverse('finance:payment_receipt', args=[payments[0].id])
-            response_data['receipt_pdf_url'] = reverse('finance:payment_receipt_pdf', args=[payments[0].id])
-
-        if first_updated:
-            response_data['new_status'] = first_updated['new_status']
-            response_data['new_amount_paid'] = str(first_updated['new_paid'])
-            response_data['new_balance'] = str(first_updated['new_balance'])
-
-        logger.info(f"Payment successful: {response_data}")
-        return JsonResponse(response_data)
-
+            'receipt_url': reverse('finance:payment_receipt', args=[payments[0].id]),
+            'receipt_pdf_url': reverse('finance:payment_receipt_pdf', args=[payments[0].id])})
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON request.'}, status=400)
+        return json_error('Invalid JSON request.')
     except Exception as exc:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Payment error: {exc}")
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'success': False, 'error': str(exc)}, status=500)
+        logger.exception('Record payment failed: %s', exc)
+        return json_error(f'Payment was not saved: {str(exc)[:500]}', 400)
 
 
 # ============================================================================

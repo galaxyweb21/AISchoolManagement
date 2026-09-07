@@ -4,7 +4,7 @@ from .risk import risk_dashboard, trigger_risk_assessment, student_risk_detail
 from .reports import (
     report_card_dashboard, trigger_report_card_batch, report_card_detail,
     save_report_card_narrative, regenerate_report_card_narrative,
-    finalize_report_card, unfinalize_report_card, trigger_report_comment_batch, generate_report_card_comment
+    finalize_report_card, unfinalize_report_card, trigger_report_comment_batch, generate_report_card_comment, release_all_report_cards
 )
 from .finance import (
     finance_insights_dashboard, invoice_risk_detail,
@@ -52,7 +52,7 @@ __all__ = [
     'risk_dashboard', 'trigger_risk_assessment', 'student_risk_detail',
     'report_card_dashboard', 'trigger_report_card_batch', 'report_card_detail',
     'save_report_card_narrative', 'regenerate_report_card_narrative',
-    'finalize_report_card', 'unfinalize_report_card', 'trigger_report_comment_batch', 'generate_report_card_comment',
+    'finalize_report_card', 'unfinalize_report_card', 'trigger_report_comment_batch', 'generate_report_card_comment', 'release_all_report_cards',
     'finance_insights_dashboard', 'invoice_risk_detail',
     'generate_reminder', 'save_reminder', 'mark_reminder_sent',
     'exam_dashboard', 'create_exam', 'exam_detail',

@@ -223,6 +223,54 @@ class ReportCard(models.Model):
         return f"{self.student.user.get_full_name()} - {self.academic_term} [{status}]"
 
 
+class ReportCardReleaseBatch(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Queued'), ('RUNNING', 'Processing'), ('COMPLETE', 'Complete'),
+        ('PARTIAL', 'Partial - some cards blocked'), ('FAILED', 'Failed'),
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='report_card_release_batches')
+    academic_term = models.ForeignKey('school.AcademicTerm', on_delete=models.CASCADE, related_name='report_card_release_batches')
+    triggered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='PENDING')
+    auto_finalize = models.BooleanField(default=True)
+    email_parents = models.BooleanField(default=True)
+    generate_print_pack = models.BooleanField(default=True)
+    generated_count = models.PositiveIntegerField(default=0)
+    finalized_count = models.PositiveIntegerField(default=0)
+    blocked_count = models.PositiveIntegerField(default=0)
+    emailed_count = models.PositiveIntegerField(default=0)
+    email_failed_count = models.PositiveIntegerField(default=0)
+    email_skipped_count = models.PositiveIntegerField(default=0)
+    print_pack_count = models.PositiveIntegerField(default=0)
+    print_pack = models.FileField(upload_to='report_card_print_packs/%Y/%m/', blank=True, null=True)
+    print_pack_generated_at = models.DateTimeField(null=True, blank=True)
+    blocked_details = models.JSONField(default=list, blank=True)
+    error_message = models.TextField(blank=True, default='')
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    objects = managers.TenantManager()
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class ReportCardDelivery(models.Model):
+    STATUS_CHOICES = (('PENDING', 'Pending'), ('SENT', 'Sent'), ('FAILED', 'Failed'), ('SKIPPED', 'Skipped'))
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    release_batch = models.ForeignKey(ReportCardReleaseBatch, on_delete=models.CASCADE, related_name='deliveries')
+    report_card = models.ForeignKey('ReportCard', on_delete=models.CASCADE, related_name='deliveries')
+    recipient_email = models.EmailField(blank=True, default='')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
+    sent_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['release_batch', 'report_card'], name='unique_release_report_card_delivery')]
+
+
 class PaymentReminder(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='payment_reminders')

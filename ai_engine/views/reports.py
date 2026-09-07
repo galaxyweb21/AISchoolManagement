@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -62,7 +63,7 @@ def report_card_dashboard(request):
     school = _school(request)
     active_term = AcademicTerm.objects.filter(academic_year__school=school, academic_year__is_active=True, is_active=True).first()
     page_obj = []
-    latest_batch = latest_comment_batch = None
+    latest_batch = latest_comment_batch = latest_release = None
     comment_counts = {'total': 0, 'teacher_missing': 0, 'head_missing': 0, 'complete': 0}
     accessible_classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
     if request.user.role == 'TEACHER':
@@ -70,6 +71,11 @@ def report_card_dashboard(request):
     if active_term:
         latest_batch = ReportCardBatch.objects.filter(school=school, academic_term=active_term).first()
         latest_comment_batch = ReportCommentBatch.objects.filter(school=school, academic_term=active_term).first()
+        try:
+            from ai_engine.models import ReportCardReleaseBatch
+            latest_release = ReportCardReleaseBatch.objects.filter(school=school, academic_term=active_term).first()
+        except Exception:
+            latest_release = None
         qs = ReportCard.objects.filter(school=school, academic_term=active_term).select_related('student__user', 'student__school_class')
         if request.user.role == 'TEACHER':
             qs = qs.filter(student__school_class_id__in=_teacher_scope_class_ids(request.user, school))
@@ -90,7 +96,7 @@ def report_card_dashboard(request):
         comment_counts['complete'] = qs.exclude(teacher_comment='').exclude(headteacher_comment='').count()
         page_obj = paginate_queryset(qs, request)
     return render(request, 'ai_engine/report_card_dashboard.html', {
-        'active_term': active_term, 'latest_batch': latest_batch, 'latest_comment_batch': latest_comment_batch,
+        'active_term': active_term, 'latest_batch': latest_batch, 'latest_comment_batch': latest_comment_batch, 'latest_release': latest_release,
         'report_cards': page_obj, 'page_obj': page_obj, 'selected_status': request.GET.get('status', ''),
         'search_query': request.GET.get('q', ''), 'can_generate': role_allows(request.user, 'reports', 'create'),
         'can_generate_headteacher': _can_generate_headteacher(request.user), 'comment_counts': comment_counts, 'accessible_classes': accessible_classes,
@@ -273,3 +279,26 @@ def unfinalize_report_card(request, report_card_id):
     card.save(update_fields=['is_finalized', 'finalized_by', 'finalized_at'])
     messages.success(request, 'Report card unlocked for editing.')
     return redirect('ai_engine:report_card_detail', report_card_id=card.id)
+@login_required
+@require_POST
+def release_all_report_cards(request):
+    """Run the full enterprise report-card release pipeline."""
+    if not role_allows(request.user, 'reports', 'approve'):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+    from ai_engine.models import ReportCardReleaseBatch
+    from ai_engine.services.report_card_release import ReportCardReleaseService
+    school = request.user.school
+    term_id = request.POST.get('term_id')
+    term = get_object_or_404(AcademicTerm, id=term_id, academic_year__school=school)
+    batch = ReportCardReleaseBatch.objects.create(
+        school=school, academic_term=term, triggered_by=request.user,
+        auto_finalize=True, email_parents=True, generate_print_pack=True,
+    )
+    ReportCardReleaseService.run(batch, user=request.user)
+    if batch.status == 'COMPLETE':
+        messages.success(request, f'Report-card release completed: {batch.finalized_count} finalized, {batch.emailed_count} emailed, {batch.print_pack_count} print pages generated.')
+    elif batch.status == 'PARTIAL':
+        messages.warning(request, f'Report-card release completed with {batch.blocked_count} blocked card(s). Review the release details before publishing.')
+    else:
+        messages.error(request, batch.error_message or 'Report-card release failed.')
+    return redirect('ai_engine:report_card_dashboard')

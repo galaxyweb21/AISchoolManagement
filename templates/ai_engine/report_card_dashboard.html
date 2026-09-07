@@ -178,6 +178,15 @@
                     </button>
                 </form>
             {% endif %}
+            {% if can_generate_headteacher and active_term %}
+                <form method="post" action="{% url 'ai_engine:release_all_report_cards' %}" class="d-inline" onsubmit="return confirm('This will generate missing comments, finalize all complete report cards, build one A4 print pack grouped by class, and email finalized cards to parents. Continue?');">
+                    {% csrf_token %}
+                    <input type="hidden" name="term_id" value="{{ active_term.id }}">
+                    <button class="btn btn-outline-gold">
+                        <i class="bi bi-send-check me-1"></i> Auto Release All Report Cards
+                    </button>
+                </form>
+            {% endif %}
         </div>
         {% if latest_batch %}
             <div class="mt-3 small text-muted">
@@ -185,6 +194,15 @@
                 Last run: {{ latest_batch.generated_at|date:'M d, Y H:i' }} ·
                 {{ latest_batch.students_processed }} processed ·
                 {{ latest_batch.students_skipped_finalized }} finalized skipped.
+            </div>
+        {% endif %}
+        {% if latest_release %}
+            <div class="mt-3 p-3 rounded-3 bg-body-tertiary small">
+                <strong><i class="bi bi-shield-check me-1"></i> Latest automatic release:</strong>
+                {{ latest_release.status }} · {{ latest_release.finalized_count }} finalized · {{ latest_release.emailed_count }} emailed · {{ latest_release.print_pack_count }} A4 pages
+                {% if latest_release.print_pack %}
+                    · <a href="{{ latest_release.print_pack.url }}" target="_blank" rel="noopener"><i class="bi bi-printer me-1"></i>Open / Print Complete Class Pack</a>
+                {% endif %}
             </div>
         {% endif %}
     </div>
