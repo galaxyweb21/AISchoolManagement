@@ -211,6 +211,38 @@ class SchoolDataQueryEngine:
         except ImportError:
             return None
 
+
+    # ==================================================================
+    # SCHOOL IDENTITY
+    # ==================================================================
+
+    def _is_school_name_question(self, q):
+        """Recognize questions asking for the current tenant school's name."""
+        phrases = (
+            "what is the name of this school",
+            "what is the school name",
+            "what is our school name",
+            "which school is this",
+            "which school are we",
+            "tell me the school name",
+            "school name",
+        )
+        return any(phrase in q for phrase in phrases)
+
+    def _answer_school_name(self):
+        """Return the exact name from the authenticated tenant, never from the LLM."""
+        name = str(getattr(self.school, "name", "") or "").strip()
+        if not name:
+            return {
+                "answer": "The current school record does not have a school name configured.",
+                **self._meta("database"),
+            }
+        return {
+            "answer": f"## School Information\n\nThe name of this school is **{name}**.",
+            "data": {"school_name": name},
+            **self._meta("database"),
+        }
+
     # ==================================================================
     # FEE QUESTION DETECTION
     # ==================================================================
@@ -266,7 +298,6 @@ class SchoolDataQueryEngine:
             "total debt",
             "total fee arrears",
             "total unpaid fees",
-            "what is the total",
             "how much is owed",
             "total amount owing",
             "total fees outstanding",
@@ -622,6 +653,139 @@ class SchoolDataQueryEngine:
             },
             **self._meta("database"),
         }
+
+    # ==================================================================
+    # STAFF / HR DATABASE QUESTIONS
+    # ==================================================================
+
+    def _has_staff_access(self):
+        """Return whether the current user may read school staff data."""
+        try:
+            from .role_ai_policy import can_use
+            return bool(can_use(self.user, "staff"))
+        except Exception:
+            return False
+
+    def _get_staff_queryset(self):
+        """Return the tenant-scoped StaffProfile queryset."""
+        try:
+            from staff.models import StaffProfile
+            return (
+                StaffProfile.objects
+                .filter(school=self.school)
+                .select_related("user", "department", "staff_grade")
+            )
+        except Exception:
+            return None
+
+    def _active_staff_queryset(self):
+        qs = self._get_staff_queryset()
+        return qs.filter(is_active=True) if qs is not None else None
+
+    def _current_staff_on_leave_ids(self):
+        """Return active staff IDs covered by approved/taken leave today."""
+        try:
+            from staff.models import LeaveRequest
+            today = timezone.localdate()
+            return set(
+                LeaveRequest.objects
+                .filter(
+                    school=self.school,
+                    staff__school=self.school,
+                    staff__is_active=True,
+                    status__in=("APPROVED", "TAKEN"),
+                    start_date__lte=today,
+                    end_date__gte=today,
+                )
+                .values_list("staff_id", flat=True)
+            )
+        except Exception:
+            logger.exception("Unable to determine current staff availability.")
+            return set()
+
+    def _is_staff_count_question(self, q):
+        """Recognize natural-language staff population/count questions."""
+        has_staff = any(term in q for term in (
+            "staff", "staff member", "staff members",
+            "employee", "employees", "personnel",
+            "teaching staff", "non teaching staff", "non-teaching staff",
+        ))
+        has_count = any(term in q for term in (
+            "how many", "number of", "count", "total", "population",
+            "how much staff",
+        ))
+        return has_staff and has_count
+
+    def _is_staff_list_question(self, q):
+        has_staff = any(term in q for term in (
+            "staff", "staff member", "staff members",
+            "employee", "employees", "teachers", "teacher",
+        ))
+        has_list = any(term in q for term in (
+            "who", "which", "list", "show", "names", "name",
+        ))
+        return has_staff and has_list
+
+    def _answer_staff_count(self, question):
+        if not self._has_staff_access():
+            return {"answer": "You do not have permission to access staff information.", **self._meta("permission_denied")}
+
+        qs = self._active_staff_queryset()
+        if qs is None:
+            return {"answer": "The staff module is currently unavailable. Please try again later.", **self._meta("error")}
+
+        try:
+            active_count = qs.count()
+            q = self._norm(question)
+            asks_available = any(term in q for term in ("available", "currently working", "at work"))
+            today = timezone.localdate()
+
+            if asks_available:
+                on_leave_ids = self._current_staff_on_leave_ids()
+                available_count = qs.exclude(pk__in=on_leave_ids).count() if on_leave_ids else active_count
+                on_leave_count = active_count - available_count
+                return {
+                    "answer": (
+                        "## Staff Availability\n\n"
+                        f"There are **{active_count:,} active staff members** in the school.\n\n"
+                        f"As of **{today:%d %B %Y}**, **{available_count:,} active staff members** are currently available "
+                        f"(not on approved/taken leave), while **{on_leave_count:,}** are currently on approved/taken leave."
+                    ),
+                    "data": {"active_staff": active_count, "available_staff": available_count, "staff_on_leave": on_leave_count, "date": today.isoformat()},
+                    **self._meta("database"),
+                }
+
+            return {
+                "answer": f"## Staff Information\n\nThere are **{active_count:,} active staff members** in the school.",
+                "data": {"active_staff": active_count},
+                **self._meta("database"),
+            }
+        except Exception:
+            logger.exception("Failed calculating active staff count.")
+            return {"answer": "I could not safely retrieve the staff count from the school database at the moment.", **self._meta("error")}
+
+    def _answer_staff_list(self, question):
+        if not self._has_staff_access():
+            return {"answer": "You do not have permission to access staff information.", **self._meta("permission_denied")}
+        qs = self._active_staff_queryset()
+        if qs is None:
+            return {"answer": "The staff module is currently unavailable. Please try again later.", **self._meta("error")}
+        try:
+            total = qs.count()
+            lines = ["## Active Staff", "", f"There are **{total:,} active staff members** in the school.", ""]
+            records = []
+            for index, staff in enumerate(qs.order_by("user__last_name", "user__first_name")[:50], 1):
+                name = staff.user.get_full_name().strip() or staff.user.username
+                position = staff.get_staff_position_display()
+                department = getattr(staff.department, "name", None) or "No department"
+                lines.append(f"{index}. **{name}** — {position} — {department}")
+                records.append({"name": name, "position": position, "department": department})
+            if total > 50:
+                lines.append(f"\n*Showing the first 50 of {total:,} active staff members.*")
+            return {"answer": "\n".join(lines), "data": {"active_staff": total, "staff": records}, **self._meta("database")}
+        except Exception:
+            logger.exception("Failed retrieving active staff list.")
+            return {"answer": "I could not safely retrieve the active staff list from the school database at the moment.", **self._meta("error")}
 
     # ==================================================================
     # STAFF LEAVE DETECTION
@@ -1657,6 +1821,24 @@ class SchoolDataQueryEngine:
             return None
 
         # ==============================================================
+        # 0. SCHOOL IDENTITY
+        # ==============================================================
+        # Exact tenant data must never go to the LLM.
+        if self._is_school_name_question(q):
+            return self._answer_school_name()
+
+        # ==============================================================
+        # 1. STAFF / HR
+        # ==============================================================
+        # Staff facts are authoritative database facts. Never delegate
+        # staff counts/lists to the LLM.
+        if self._is_staff_count_question(q):
+            return self._answer_staff_count(question)
+
+        if self._is_staff_list_question(q) and "leave" not in q:
+            return self._answer_staff_list(question)
+
+        # ==============================================================
         # 1. STAFF LEAVE
         #
         # This MUST be checked before the question reaches Groq.
@@ -1666,6 +1848,25 @@ class SchoolDataQueryEngine:
             return self._answer_current_staff_leave(
                 question
             )
+
+        # ==============================================================
+        # 1B. STUDENT COUNTS
+        # ==============================================================
+        # Check before finance. A phrase such as "what is the total number"
+        # is common in student questions and must not be mistaken for a
+        # generic financial "what is the total" query.
+        if self._is_active_student_count(q):
+            students = self._students()
+            count = students.count()
+            word = "student" if count == 1 else "students"
+            return {
+                "answer": (
+                    f"There {'is' if count == 1 else 'are'} **{count:,} active {word}** "
+                    "within your authorized school scope."
+                ),
+                "data": {"active_students": count},
+                **self._meta("database"),
+            }
 
         # ==============================================================
         # 2. FEES

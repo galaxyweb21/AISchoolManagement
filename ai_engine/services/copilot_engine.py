@@ -1103,6 +1103,53 @@ into private school records.
             }
 
         # ====================================================================
+        # HARD GUARANTEE: SCHOOL IDENTITY / STUDENT COUNT
+        # ====================================================================
+        # These are exact database facts. Resolve them locally before any
+        # AI/provider call so Groq cannot hallucinate a school name or count.
+        try:
+            direct_text = _normalize(question)
+            if any(p in direct_text for p in (
+                "what is the name of this school",
+                "what is the school name",
+                "what is our school name",
+                "which school is this",
+                "which school are we",
+                "tell me the school name",
+            )):
+                school_name = str(getattr(school, "name", "") or "").strip()
+                return {
+                    "answer": f"## School Information\n\nThe name of this school is **{school_name}**.",
+                    "mode": "database",
+                    "sources": ["school_database"],
+                    "scope": self.policy["scope"],
+                    "role": self.policy["label"],
+                    "data": {"school_name": school_name},
+                }
+
+            if self._is_student_count_question(question):
+                authorized = self._get_authorized_students(school)
+                if authorized is None:
+                    return {
+                        "answer": "You do not have permission to access student information.",
+                        "mode": "permission_denied",
+                        "sources": ["school_database"],
+                        "scope": self.policy["scope"],
+                        "role": self.policy["label"],
+                    }
+                count = authorized.count()
+                return {
+                    "answer": f"There are **{count:,} active students** within your authorized school scope.",
+                    "mode": "database",
+                    "sources": ["school_database"],
+                    "scope": self.policy["scope"],
+                    "role": self.policy["label"],
+                    "data": {"active_students": count},
+                }
+        except Exception:
+            logger.exception("Hard deterministic Copilot fact lookup failed.")
+
+        # ====================================================================
         # 1. DIRECT STUDENT DATABASE QUESTIONS
         # ====================================================================
 

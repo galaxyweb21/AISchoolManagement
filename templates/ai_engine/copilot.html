@@ -1027,7 +1027,7 @@
                             </span>
 
                             <span class="conv-count">
-                                {{ conv.messages.all|length }}
+                                {{ conv.message_count|default:0 }}
                             </span>
 
                         </div>
@@ -2431,29 +2431,6 @@
         item.tabIndex =
             0;
 
-        item.onclick =
-            function () {
-                loadConversation(
-                    conversationId
-                );
-            };
-
-        item.onkeydown =
-            function (event) {
-
-                if (
-                    event.key === "Enter" ||
-                    event.key === " "
-                ) {
-
-                    event.preventDefault();
-
-                    loadConversation(
-                        conversationId
-                    );
-                }
-            };
-
         const icon =
             document.createElement(
                 "div"
@@ -3061,6 +3038,117 @@
 
             scrollBottom();
         }
+    }
+
+
+    // ============================================================
+    // CONVERSATION LIST EVENT DELEGATION
+    // ============================================================
+    //
+    // IMPORTANT:
+    // Server-rendered conversations and newly-created conversations
+    // must behave identically.  Older versions only attached click
+    // handlers to conversations created by JavaScript, which meant
+    // conversations loaded from the database could appear in the
+    // sidebar but could not be opened or deleted.
+    //
+    // A single delegated handler fixes both cases and also survives
+    // dynamic list updates without repeatedly binding handlers.
+
+    if (conversationList) {
+
+        conversationList.addEventListener(
+            "click",
+            function (event) {
+
+                const deleteButton =
+                    event.target.closest(
+                        ".conv-delete"
+                    );
+
+                if (deleteButton) {
+
+                    const item =
+                        deleteButton.closest(
+                            ".copilot-conv-item"
+                        );
+
+                    const conversationId =
+                        item?.dataset.conversationId;
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    if (conversationId) {
+                        deleteConversation(
+                            conversationId
+                        );
+                    }
+
+                    return;
+                }
+
+                const item =
+                    event.target.closest(
+                        ".copilot-conv-item"
+                    );
+
+                if (!item || !conversationList.contains(item)) {
+                    return;
+                }
+
+                const conversationId =
+                    item.dataset.conversationId;
+
+                if (conversationId) {
+                    loadConversation(
+                        conversationId
+                    );
+                }
+            }
+        );
+
+        conversationList.addEventListener(
+            "keydown",
+            function (event) {
+
+                if (
+                    event.key !== "Enter" &&
+                    event.key !== " "
+                ) {
+                    return;
+                }
+
+                const item =
+                    event.target.closest(
+                        ".copilot-conv-item"
+                    );
+
+                if (!item || !conversationList.contains(item)) {
+                    return;
+                }
+
+                // Never trigger conversation loading from the
+                // delete button with the keyboard.
+                if (
+                    event.target.closest(
+                        ".conv-delete"
+                    )
+                ) {
+                    return;
+                }
+
+                const conversationId =
+                    item.dataset.conversationId;
+
+                if (conversationId) {
+                    event.preventDefault();
+                    loadConversation(
+                        conversationId
+                    );
+                }
+            }
+        );
     }
 
 

@@ -41,6 +41,7 @@ import uuid
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -275,7 +276,9 @@ def ai_copilot_page(request):
 
     conversations = (
         _conversation_queryset(request)
-        .prefetch_related("messages")
+        .annotate(
+            message_count=Count("messages", distinct=True),
+        )
         .order_by(
             "-updated_at",
             "-id",

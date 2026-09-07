@@ -2,15 +2,547 @@
 {% block page_title %}Email Health & Delivery Monitoring{% endblock %}
 {% block content %}
 <style>
-.health-card{border:1px solid var(--bs-border-color);border-radius:14px;background:var(--bs-tertiary-bg);height:100%;}.health-number{font-size:1.7rem;font-weight:700}.delivery-error{max-width:360px;white-space:normal;word-break:break-word}.status{font-size:.72rem;border-radius:20px;padding:.3rem .65rem;font-weight:700}.status-SENT{background:#dff3e8;color:#17663d}.status-FAILED{background:#fde2e2;color:#9b1c1c}.status-PENDING{background:#fff1cf;color:#7a5917}.status-SKIPPED{background:#e9ecef;color:#59636d}</style>
+    /* ============================================================ */
+    /* MATCHING THEME COLORS                                        */
+    /* ============================================================ */
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-outline-secondary:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+
+    /* ============================================================ */
+    /* PAGE DESCRIPTION                                             */
+    /* ============================================================ */
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+        color: var(--bs-body-color);
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+
+    /* ============================================================ */
+    /* KPI CARDS                                                    */
+    /* ============================================================ */
+    .kpi-card {
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+    .kpi-card .kpi-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .kpi-card .kpi-number {
+        font-size: 1.6rem;
+        font-weight: 700;
+        line-height: 1.2;
+        color: var(--bs-body-color);
+    }
+    .kpi-card .kpi-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--bs-secondary-color);
+        font-weight: 600;
+    }
+
+    /* ============================================================ */
+    /* CARDS                                                        */
+    /* ============================================================ */
+    .card {
+        background: var(--bs-tertiary-bg) !important;
+        border-color: var(--bs-border-color) !important;
+        color: var(--bs-body-color) !important;
+        border: 1px solid var(--bs-border-color) !important;
+    }
+    .card-header {
+        background: transparent !important;
+        border-color: var(--bs-border-color) !important;
+    }
+
+    /* ============================================================ */
+    /* STATUS BADGES                                                */
+    /* ============================================================ */
+    .status-badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        display: inline-block;
+    }
+    .status-badge.status-SENT {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .status-badge.status-FAILED {
+        background-color: #fde2e2 !important;
+        color: #9b1c1c !important;
+    }
+    .status-badge.status-PENDING {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .status-badge.status-SKIPPED {
+        background-color: #e9ecef !important;
+        color: #59636d !important;
+    }
+
+    /* ============================================================ */
+    /* FORM CONTROLS                                                */
+    /* ============================================================ */
+    .form-control, .form-select {
+        background: var(--bs-body-bg) !important;
+        border-color: var(--bs-border-color) !important;
+        color: var(--bs-body-color) !important;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--eduai-gold, #946B1C) !important;
+        box-shadow: 0 0 0 0.25rem var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+
+    /* ============================================================ */
+    /* TABLES                                                       */
+    /* ============================================================ */
+    .table {
+        color: var(--bs-body-color) !important;
+    }
+    .table thead th {
+        background: var(--bs-tertiary-bg);
+        color: var(--bs-secondary-color);
+        font-weight: 700;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border-bottom: 2px solid var(--eduai-gold, #946B1C);
+    }
+    .table tbody tr:hover {
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.04));
+    }
+    .table td {
+        vertical-align: middle;
+        border-color: var(--bs-border-color);
+    }
+
+    /* ============================================================ */
+    /* DELIVERY ERROR                                               */
+    /* ============================================================ */
+    .delivery-error {
+        max-width: 360px;
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    /* ============================================================ */
+    /* TEXT MUTED                                                   */
+    /* ============================================================ */
+    .text-muted {
+        color: var(--bs-secondary-color) !important;
+    }
+
+    /* ============================================================ */
+    /* RESPONSIVE                                                   */
+    /* ============================================================ */
+    @media (max-width: 768px) {
+        .kpi-card .kpi-number {
+            font-size: 1.3rem;
+        }
+        .table {
+            font-size: 0.85rem;
+        }
+        .table thead th {
+            font-size: 0.6rem;
+        }
+        .delivery-error {
+            max-width: 200px;
+        }
+    }
+</style>
+
+<!-- ========================================================== -->
+<!-- PAGE DESCRIPTION                                            -->
+<!-- ========================================================== -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">Email Health & Delivery Monitoring</div>
+            <p class="text">
+                This page monitors the health of your email system and tracks parent report-card deliveries.
+                The KPI cards show the total number of <strong>Deliveries</strong>, <strong>Sent</strong>,
+                <strong>Failed</strong>, and <strong>Pending</strong> emails. Use the <strong>Email Provider Health Test</strong>
+                to verify your email configuration. Failed emails are automatically retried up to 3 attempts
+                with exponential backoff.
+            </p>
+        </div>
+    </div>
+</div>
+
 <div class="container-fluid py-4">
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4"><div><h4 class="fw-bold mb-1"><i class="bi bi-envelope-check me-2"></i>Email Health & Delivery Monitoring</h4><p class="text-muted mb-0">Verify the configured email provider, monitor parent report-card delivery and retry failed messages.</p></div><a href="{% url 'ai_engine:report_card_dashboard' %}" class="btn btn-outline-secondary">Back to Report Cards</a></div>
-<div class="row g-3 mb-4">
-{% for key,label in stats.items %}<div class="col-md-3"><div class="health-card p-4"><div class="text-muted small text-uppercase">{{ key }}</div><div class="health-number">{{ label }}</div></div></div>{% endfor %}
+    <!-- ========================================================== -->
+    <!-- HEADER                                                     -->
+    <!-- ========================================================== -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">
+                <i class="bi bi-envelope-check text-gold me-2"></i>
+                Email Health & Delivery Monitoring
+            </h4>
+            <p class="text-muted mb-0">Verify the configured email provider, monitor parent report-card delivery and retry failed messages.</p>
+        </div>
+        <a href="{% url 'ai_engine:report_card_dashboard' %}" class="btn btn-outline-gold btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back to Report Cards
+        </a>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- KPI CARDS                                                  -->
+    <!-- ========================================================== -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-gold-soft text-gold">
+                        <i class="bi bi-envelope"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-gold">{{ stats.total|default:0 }}</div>
+                        <div class="kpi-label">Total Deliveries</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-teal-soft text-teal">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-teal">{{ stats.sent|default:0 }}</div>
+                        <div class="kpi-label">Sent</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-danger-subtle text-danger">
+                        <i class="bi bi-exclamation-circle"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-danger">{{ stats.failed|default:0 }}</div>
+                        <div class="kpi-label">Failed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-warning-subtle text-warning">
+                        <i class="bi bi-clock"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-warning">{{ stats.pending|default:0 }}</div>
+                        <div class="kpi-label">Pending</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- EMAIL PROVIDER HEALTH TEST                                 -->
+    <!-- ========================================================== -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <h5 class="fw-bold mb-2">
+                <i class="bi bi-heart-pulse text-gold me-2"></i>
+                Email Provider Health Test
+            </h5>
+            <p class="text-muted small">This performs an HTTPS provider check and sends a real test email. Local development can use the console backend.</p>
+            <form id="emailHealthForm" method="post" action="{% url 'ai_engine:run_email_health_test' %}">
+                {% csrf_token %}
+                <div class="row g-2">
+                    <div class="col-md-8">
+                        <input type="email" name="recipient" value="{{ default_recipient }}" class="form-control" required placeholder="test@example.com">
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-gold w-100" type="submit">
+                            <i class="bi bi-send me-1"></i>Run Email Health Test
+                        </button>
+                    </div>
+                </div>
+            </form>
+            <div id="healthResult" class="mt-3"></div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- PARENT REPORT-CARD DELIVERIES                              -->
+    <!-- ========================================================== -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h5 class="fw-bold mb-0">
+                    <i class="bi bi-file-text text-gold me-2"></i>
+                    Parent Report-Card Deliveries
+                </h5>
+                <span class="text-muted small">
+                    <i class="bi bi-arrow-repeat me-1"></i>
+                    Automatic retry: failed emails are retried up to 3 attempts with exponential backoff.
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Recipient</th>
+                            <th>Status</th>
+                            <th>Attempts</th>
+                            <th>Last Attempt</th>
+                            <th>Next Retry</th>
+                            <th>Error / Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in deliveries %}
+                        <tr>
+                            <td>
+                                <span class="fw-semibold">{{ d.report_card.student.user.get_full_name }}</span>
+                                <small class="d-block text-muted">{{ d.report_card.student.admission_number }}</small>
+                            </td>
+                            <td>{{ d.recipient_email|default:'—' }}</td>
+                            <td>
+                                <span class="status-badge status-{{ d.status }}">
+                                    {{ d.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ d.retry_count }}/3</span>
+                            </td>
+                            <td>{{ d.last_attempt_at|date:'M d, Y H:i'|default:'—' }}</td>
+                            <td>{{ d.next_retry_at|date:'M d, Y H:i'|default:'—' }}</td>
+                            <td class="delivery-error">
+                                {% if d.status == 'FAILED' %}
+                                    <div class="small text-danger mb-2">{{ d.error_message }}</div>
+                                    <form method="post" action="{% url 'ai_engine:retry_report_card_delivery' d.id %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-arrow-clockwise me-1"></i>Retry Now
+                                        </button>
+                                    </form>
+                                {% elif d.status == 'SENT' %}
+                                    <span class="small text-teal">
+                                        <i class="bi bi-check-circle-fill me-1"></i>
+                                        Submitted to email provider at {{ d.sent_at|date:'M d, Y H:i' }}
+                                    </span>
+                                {% else %}
+                                    <span class="small text-muted">{{ d.error_message|default:'No delivery attempt yet.' }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                                <p class="mb-0">No report-card email deliveries recorded yet.</p>
+                                <small>Deliveries will appear here once report cards are generated and emailed.</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- RECENT EMAIL PROVIDER HEALTH TESTS                         -->
+    <!-- ========================================================== -->
+    <div class="card border-0 shadow-sm rounded-4 mt-4">
+        <div class="card-body p-4">
+            <h5 class="fw-bold mb-3">
+                <i class="bi bi-clock-history text-gold me-2"></i>
+                Recent Email Provider Health Tests
+            </h5>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Recipient</th>
+                            <th>Result</th>
+                            <th>Duration</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in checks %}
+                        <tr>
+                            <td>{{ c.created_at|date:'M d, Y H:i' }}</td>
+                            <td>{{ c.recipient_email|default:'Connection only' }}</td>
+                            <td>
+                                {% if c.success %}
+                                    <span class="badge badge-teal">
+                                        <i class="bi bi-check-circle-fill me-1"></i>PASS
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger">
+                                        <i class="bi bi-exclamation-circle-fill me-1"></i>FAIL
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ c.duration_ms }} ms</span>
+                            </td>
+                            <td class="small">{{ c.message }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                                No health tests have been run.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
-<div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4"><h5 class="fw-bold">Email Provider Health Test</h5><p class="text-muted small">This performs an HTTPS provider check and sends a real test email. Local development can use the console backend.</p><form id="emailHealthForm" method="post" action="{% url 'ai_engine:run_email_health_test' %}">{% csrf_token %}<div class="row g-2"><div class="col-md-8"><input type="email" name="recipient" value="{{ default_recipient }}" class="form-control" required placeholder="test@example.com"></div><div class="col-md-4"><button class="btn btn-primary w-100" type="submit"><i class="bi bi-send me-1"></i>Run Email Health Test</button></div></div></form><div id="healthResult" class="mt-3"></div></div></div>
-<div class="card border-0 shadow-sm rounded-4"><div class="card-body p-4"><div class="d-flex justify-content-between mb-3"><h5 class="fw-bold mb-0">Parent Report-Card Deliveries</h5><span class="text-muted small">Automatic retry: failed emails are retried up to 3 attempts with exponential backoff.</span></div><div class="table-responsive"><table class="table align-middle"><thead><tr><th>Student</th><th>Recipient</th><th>Status</th><th>Attempts</th><th>Last Attempt</th><th>Next Retry</th><th>Error / Action</th></tr></thead><tbody>{% for d in deliveries %}<tr><td>{{ d.report_card.student.user.get_full_name }}</td><td>{{ d.recipient_email|default:'—' }}</td><td><span class="status status-{{ d.status }}">{{ d.get_status_display }}</span></td><td>{{ d.retry_count }}</td><td>{{ d.last_attempt_at|date:'M d, Y H:i'|default:'—' }}</td><td>{{ d.next_retry_at|date:'M d, Y H:i'|default:'—' }}</td><td class="delivery-error">{% if d.status == 'FAILED' %}<div class="small text-danger mb-2">{{ d.error_message }}</div><form method="post" action="{% url 'ai_engine:retry_report_card_delivery' d.id %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Retry Now</button></form>{% elif d.status == 'SENT' %}<span class="small text-success">Submitted to email provider at {{ d.sent_at|date:'M d, Y H:i' }}.</span>{% else %}<span class="small text-muted">{{ d.error_message|default:'No delivery attempt yet.' }}</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="7" class="text-center text-muted py-5">No report-card email deliveries recorded yet.</td></tr>{% endfor %}</tbody></table></div></div></div>
-<div class="card border-0 shadow-sm rounded-4 mt-4"><div class="card-body p-4"><h5 class="fw-bold">Recent Email Provider Health Tests</h5><div class="table-responsive"><table class="table"><thead><tr><th>Date</th><th>Recipient</th><th>Result</th><th>Duration</th><th>Details</th></tr></thead><tbody>{% for c in checks %}<tr><td>{{ c.created_at|date:'M d, Y H:i' }}</td><td>{{ c.recipient_email|default:'Connection only' }}</td><td>{% if c.success %}<span class="text-success fw-bold">PASS</span>{% else %}<span class="text-danger fw-bold">FAIL</span>{% endif %}</td><td>{{ c.duration_ms }} ms</td><td>{{ c.message }}</td></tr>{% empty %}<tr><td colspan="5" class="text-muted text-center py-4">No health tests have been run.</td></tr>{% endfor %}</tbody></table></div></div></div>
-</div>
-<script>document.getElementById('emailHealthForm').addEventListener('submit',async function(e){e.preventDefault();const form=e.currentTarget;const box=document.getElementById('healthResult');box.innerHTML='<div class="alert alert-info">Testing the email provider and sending the test message…</div>';try{const r=await fetch(form.action,{method:'POST',body:new FormData(form),headers:{'X-Requested-With':'XMLHttpRequest'}});const data=await r.json();box.innerHTML='<div class="alert alert-'+(data.success?'success':'danger')+'">'+data.message+(data.duration_ms?' ('+data.duration_ms+' ms)':'')+'</div>';if(data.success)setTimeout(()=>window.location.reload(),1200)}catch(err){box.innerHTML='<div class="alert alert-danger">Email health test failed: '+err+'</div>'}});</script>
+
+<script>
+    document.getElementById('emailHealthForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const box = document.getElementById('healthResult');
+
+        box.innerHTML = `
+            <div class="alert alert-info d-flex align-items-center gap-2">
+                <span class="spinner-border spinner-border-sm" role="status"></span>
+                Testing the email provider and sending the test message...
+            </div>
+        `;
+
+        try {
+            const r = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            const data = await r.json();
+
+            if (data.success) {
+                box.innerHTML = `
+                    <div class="alert alert-success d-flex align-items-center gap-2">
+                        <i class="bi bi-check-circle-fill fs-5"></i>
+                        <div>
+                            <strong>Success!</strong> ${data.message}
+                            ${data.duration_ms ? ` (${data.duration_ms} ms)` : ''}
+                        </div>
+                    </div>
+                `;
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                box.innerHTML = `
+                    <div class="alert alert-danger d-flex align-items-center gap-2">
+                        <i class="bi bi-exclamation-circle-fill fs-5"></i>
+                        <div>
+                            <strong>Failed!</strong> ${data.message}
+                            ${data.duration_ms ? ` (${data.duration_ms} ms)` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+        } catch(err) {
+            box.innerHTML = `
+                <div class="alert alert-danger d-flex align-items-center gap-2">
+                    <i class="bi bi-exclamation-circle-fill fs-5"></i>
+                    <div>
+                        <strong>Error!</strong> Email health test failed: ${err.message || err}
+                    </div>
+                </div>
+            `;
+        }
+    });
+</script>
 {% endblock %}
