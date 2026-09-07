@@ -1,0 +1,540 @@
+<!-- academics/templates/academics/promotion/rule_list.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Promotion Rules{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+    .rule-card.hidden-row { display: none !important; }
+    .rule-card.visible-row { display: block !important; }
+    .filter-badge {
+        display: none;
+        background-color: var(--eduai-gold-soft);
+        color: var(--eduai-gold);
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .filter-badge.show { display: inline-block; }
+    @keyframes pulse-badge {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .filter-active { animation: pulse-badge 1.5s ease-in-out 1; }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Promotion Rules
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% else %}
+                            Staff View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    This page manages promotion rules that define the criteria for student promotion.
+                    {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                        You can <strong>create</strong> new rules, <strong>edit</strong> existing ones,
+                        or <strong>delete</strong> rules. Use the <strong>search bar</strong> below to
+                        filter rules by grade level or mode.
+                    {% else %}
+                        You have read-only access to view promotion rules.
+                    {% endif %}
+                    Rules include minimum passing grades, attendance requirements, and conditional promotion settings.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-gear text-gold me-2"></i>
+                        Promotion Rules
+                    </h5>
+                    <p class="text-muted mb-0">Configure promotion criteria for each grade level transition.</p>
+                    <small class="text-muted">{{ rules|length }} rule(s) configured</small>
+                </div>
+                <div class="d-flex gap-2">
+                    {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                    <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#ruleModal"
+                            data-action="create" data-url="{% url 'academics:promotion_rule_create' %}">
+                        <i class="bi bi-plus-lg me-1"></i>Add Rule
+                    </button>
+                    {% endif %}
+                    <a href="{% url 'academics:promotion_dashboard' %}" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;">
+                        <i class="bi bi-arrow-left me-1"></i>Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rules Grid -->
+    <div class="row g-4" id="rulesContainer">
+        {% for rule in rules %}
+        <div class="col-md-6 col-lg-4 rule-card visible-row" data-rule-id="{{ rule.id }}" data-from="{{ rule.from_grade_level.name|lower }}" data-to="{{ rule.to_grade_level.name|lower }}" data-mode="{{ rule.get_promotion_mode_display|lower }}">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h6 class="fw-bold mb-0 rule-grade">
+                                {{ rule.from_grade_level.name }}
+                                <i class="bi bi-arrow-right text-gold mx-1"></i>
+                                {{ rule.to_grade_level.name }}
+                            </h6>
+                            <span class="badge mt-1 rule-mode" style="background: rgba(59,130,246,0.1); color: #3b82f6; border-radius: 20px;">
+                                {{ rule.get_promotion_mode_display }}
+                            </span>
+                        </div>
+                        <span class="badge rule-status {% if rule.is_active %}style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D);"{% else %}style="background: var(--app-bg, #F7F4EC); color: var(--text-muted, #6B7570);"{% endif %}>
+                            {% if rule.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Min Passing Grade</small>
+                            <strong class="rule-min-pass">{{ rule.minimum_passing_grade }}%</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Min Overall Average</small>
+                            <strong class="rule-min-avg">{{ rule.minimum_overall_average }}%</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Min Subjects to Pass</small>
+                            <strong>{{ rule.minimum_subjects_to_pass|default:"All" }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Min Attendance</small>
+                            <strong class="rule-attendance">{{ rule.minimum_attendance_percentage }}%</strong>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        {% if rule.allow_conditional_promotion %}
+                        <span class="badge border" style="background: rgba(217,119,6,0.1); color: #d97706; border-radius: 20px;">
+                            <i class="bi bi-shield-check me-1"></i>Conditional Allowed
+                            <small>({{ rule.max_conditional_subjects }} subjects)</small>
+                        </span>
+                        {% endif %}
+                        <span class="badge bg-light text-muted border">
+                            <i class="bi bi-calendar me-1"></i>Term {{ rule.evaluation_term_sequence }}
+                        </span>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                        <button type="button" class="btn btn-sm btn-outline-gold px-3"
+                                data-bs-toggle="modal" data-bs-target="#ruleModal"
+                                data-action="edit" data-url="{% url 'academics:promotion_rule_edit' rule.id %}">
+                            <i class="bi bi-pencil me-1"></i>Edit
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger px-3"
+                                data-bs-toggle="modal" data-bs-target="#confirmDeleteModal"
+                                data-rule-id="{{ rule.id }}"
+                                data-rule-name="{{ rule.from_grade_level.name }} → {{ rule.to_grade_level.name }}"
+                                data-url="{% url 'academics:promotion_rule_delete' rule.id %}">
+                            <i class="bi bi-trash me-1"></i>Delete
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12" id="emptyStateRow">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-gear fs-1 text-muted"></i>
+                    <p class="text-muted mt-2">No promotion rules configured.</p>
+                    {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                    <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#ruleModal"
+                            data-action="create" data-url="{% url 'academics:promotion_rule_create' %}">
+                        <i class="bi bi-plus-lg me-1"></i>Add Your First Rule
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <!-- Search Empty State -->
+    <div id="searchEmptyState" class="text-center text-muted py-5" style="display: none;">
+        <i class="bi bi-search d-block mb-2 fs-3"></i>
+        <p>No rules match your search.</p>
+    </div>
+</div>
+
+<!-- Rule Modal -->
+<div class="modal fade" id="ruleModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-body p-0">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold text-danger">
+                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="deleteConfirmContent">
+                <p class="text-muted">Are you sure you want to delete this promotion rule?</p>
+                <p class="fw-bold" id="deleteRuleName">-</p>
+                <p class="text-muted small">This action cannot be undone.</p>
+                <form method="post" id="deleteForm" action="">
+                    {% csrf_token %}
+                    <input type="hidden" name="confirm" value="yes">
+                </form>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn" id="confirmDeleteBtn" style="background: #dc2626; color: #fff; border-color: #dc2626;">
+                    <i class="bi bi-trash me-1"></i>Delete Rule
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // AUTO-FILTER FUNCTIONALITY
+    // ============================================================
+    const searchInput = document.getElementById('ruleSearchInput');
+    const clearSearchBtn = document.getElementById('clearRuleSearch');
+    const filterBadge = document.getElementById('filterBadge');
+    const cards = document.querySelectorAll('#rulesContainer .rule-card');
+    const emptyState = document.getElementById('emptyStateRow');
+    const searchEmptyState = document.getElementById('searchEmptyState');
+
+    function filterRules() {
+        const query = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        cards.forEach(function(card) {
+            const from = card.dataset.from || '';
+            const to = card.dataset.to || '';
+            const mode = card.dataset.mode || '';
+            const searchableText = `${from} ${to} ${mode}`;
+
+            if (query === '' || searchableText.includes(query)) {
+                card.classList.remove('hidden-row');
+                card.classList.add('visible-row');
+                visibleCount++;
+            } else {
+                card.classList.add('hidden-row');
+                card.classList.remove('visible-row');
+            }
+        });
+
+        const total = cards.length;
+        if (query === '') {
+            clearSearchBtn.style.display = 'none';
+            filterBadge.classList.remove('show');
+            if (searchEmptyState) searchEmptyState.style.display = 'none';
+            if (emptyState) emptyState.style.display = '';
+        } else {
+            clearSearchBtn.style.display = 'inline-block';
+            filterBadge.classList.add('show');
+            filterBadge.classList.add('filter-active');
+            setTimeout(() => filterBadge.classList.remove('filter-active'), 1500);
+
+            if (visibleCount === 0) {
+                if (searchEmptyState) searchEmptyState.style.display = '';
+                if (emptyState) emptyState.style.display = 'none';
+            } else {
+                if (searchEmptyState) searchEmptyState.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'none';
+            }
+        }
+    }
+
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(filterRules, 200);
+    });
+
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        filterRules();
+        searchInput.focus();
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            clearSearchBtn.click();
+        }
+    });
+
+    // Keyboard shortcut: Ctrl+F to focus search
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+    });
+
+    // ============================================================
+    // RULE MODAL
+    // ============================================================
+    const ruleModal = document.getElementById('ruleModal');
+    const ruleContent = ruleModal.querySelector('.modal-body');
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    ruleModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const action = button.getAttribute('data-action');
+        const url = button.getAttribute('data-url');
+
+        ruleContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            ruleContent.innerHTML = html;
+            bindRuleFormSubmit();
+        })
+        .catch(err => {
+            console.error('Error loading form:', err);
+            ruleContent.innerHTML = `
+                <div class="p-4 text-center">
+                    <div class="alert alert-danger border-0 rounded-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error loading form. Please try again.
+                    </div>
+                    <button type="button" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        });
+    });
+
+    function bindRuleFormSubmit() {
+        const form = ruleContent.querySelector('form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+            submitBtn.disabled = true;
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(ruleModal);
+                    modalInstance.hide();
+                    window.location.reload();
+                } else {
+                    showError(data.error || 'An error occurred while saving.');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                showError(err.message || 'An unexpected error occurred.');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    ruleModal.addEventListener('hidden.bs.modal', function () {
+        ruleContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+    });
+
+    // ============================================================
+    // DELETE CONFIRMATION MODAL
+    // ============================================================
+    const deleteModal = document.getElementById('confirmDeleteModal');
+    const deleteBtn = document.getElementById('confirmDeleteBtn');
+    const deleteForm = document.getElementById('deleteForm');
+    const deleteRuleName = document.getElementById('deleteRuleName');
+
+    deleteModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const ruleId = button.getAttribute('data-rule-id');
+        const ruleName = button.getAttribute('data-rule-name');
+        const url = button.getAttribute('data-url');
+
+        deleteRuleName.textContent = ruleName || 'Unnamed Rule';
+        deleteForm.action = url;
+    });
+
+    deleteBtn.addEventListener('click', function() {
+        deleteForm.submit();
+    });
+
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% include "partials/pagination.html" with page_obj=rules %}
+
+{% endblock %}

@@ -1,0 +1,276 @@
+<!-- accounts/templates/accounts/profile_settings.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Settings{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Theme radio buttons - immediate update
+    const themeRadios = document.querySelectorAll('input[name="theme"]');
+    themeRadios.forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                // Apply theme immediately
+                const theme = this.value;
+                document.documentElement.setAttribute('data-bs-theme', theme);
+                localStorage.setItem('eduai-theme', theme);
+
+                // Update theme icon
+                const icon = document.querySelector('[data-theme-icon]');
+                if (icon) {
+                    icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+                }
+
+                // Show feedback
+                showToast('Theme updated to ' + theme.charAt(0).toUpperCase() + theme.slice(1));
+            }
+        });
+    });
+
+    // Toast notification
+    function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'position-fixed bottom-0 end-0 p-3';
+        toast.style.zIndex = '9999';
+        toast.innerHTML = `
+            <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header bg-teal text-white">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <strong class="me-auto">Success</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(function() {
+            toast.remove();
+        }, 3000);
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Settings
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {{ request.user.get_role_display|default:"User" }}
+                    </span>
+                </div>
+                <p class="text">
+                    Manage your preferences here. You can change the <strong>theme</strong> (Light/Dark mode)
+                    which applies immediately across the entire application. Configure <strong>notification
+                    preferences</strong> to control how you receive updates. Changes are saved automatically
+                    when you click <strong>"Save Settings"</strong>.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4" style="max-width: 700px; margin: auto;">
+        <div class="card-header bg-transparent border-0 p-4 pb-0">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold mb-0"><i class="bi bi-gear text-gold me-2"></i>Settings</h5>
+                    <p class="text-muted small">Manage your preferences</p>
+                </div>
+                <div>
+                    <span class="badge bg-{% if theme == 'dark' %}dark{% else %}light{% endif %} text-{% if theme == 'dark' %}white{% else %}dark{% endif %} border px-3 py-2">
+                        <i class="bi bi-{% if theme == 'dark' %}moon{% else %}sun{% endif %}-fill me-1"></i>
+                        {{ theme|title }} Mode
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            <form method="post" id="settingsForm">
+                {% csrf_token %}
+
+                <!-- Theme -->
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-3">Theme Preference</h6>
+                    <div class="d-flex gap-4 flex-wrap">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="theme" id="themeLight" value="light"
+                                   {% if theme == 'light' %}checked{% endif %}>
+                            <label class="form-check-label" for="themeLight">
+                                <div class="border rounded-3 p-3 text-center" style="width: 100px; {% if theme == 'light' %}border-color: var(--eduai-gold) !important; background: #f8f9fa;{% endif %}">
+                                    <i class="bi bi-sun-fill text-warning fs-2 d-block mb-2"></i>
+                                    <span class="small fw-semibold">Light</span>
+                                    {% if theme == 'light' %}
+                                    <i class="bi bi-check-circle-fill text-teal d-block mt-1"></i>
+                                    {% endif %}
+                                </div>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="theme" id="themeDark" value="dark"
+                                   {% if theme == 'dark' %}checked{% endif %}>
+                            <label class="form-check-label" for="themeDark">
+                                <div class="border rounded-3 p-3 text-center" style="width: 100px; {% if theme == 'dark' %}border-color: var(--eduai-gold) !important; background: #2d2d2d;{% endif %}">
+                                    <i class="bi bi-moon-fill text-primary fs-2 d-block mb-2"></i>
+                                    <span class="small fw-semibold {% if theme == 'dark' %}text-white{% endif %}">Dark</span>
+                                    {% if theme == 'dark' %}
+                                    <i class="bi bi-check-circle-fill text-teal d-block mt-1"></i>
+                                    {% endif %}
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Changes take effect immediately.
+                    </small>
+                </div>
+
+                <hr>
+
+                <!-- Notifications -->
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-3">Notification Preferences</h6>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" name="email_notifications" id="emailNotifications"
+                               {% if email_notifications %}checked{% endif %}>
+                        <label class="form-check-label fw-semibold" for="emailNotifications">
+                            <i class="bi bi-envelope me-2"></i>Email Notifications
+                        </label>
+                        <div class="text-muted small ms-4">Receive updates via email</div>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" name="sms_notifications" id="smsNotifications"
+                               {% if sms_notifications %}checked{% endif %}>
+                        <label class="form-check-label fw-semibold" for="smsNotifications">
+                            <i class="bi bi-phone me-2"></i>SMS Notifications
+                        </label>
+                        <div class="text-muted small ms-4">Receive updates via SMS</div>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" name="ai_insights" id="aiInsights"
+                               {% if ai_insights %}checked{% endif %}>
+                        <label class="form-check-label fw-semibold" for="aiInsights">
+                            <i class="bi bi-robot me-2"></i>AI Insights & Recommendations
+                        </label>
+                        <div class="text-muted small ms-4">Receive AI-powered insights and recommendations</div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Save Button -->
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-gold">
+                        <i class="bi bi-check-circle me-1"></i> Save Settings
+                    </button>
+                    <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary">Back to Profile</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Theme Preview Styles -->
+<style>
+    /* Preview for theme selection */
+    .form-check-input:checked + .form-check-label .border {
+        border-color: var(--eduai-gold) !important;
+        box-shadow: 0 0 0 2px var(--eduai-gold-soft);
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

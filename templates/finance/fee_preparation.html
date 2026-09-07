@@ -1,0 +1,627 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block page_title %}Fee Preparation{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .progress-bar-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+
+</style>
+
+<!-- How Fee Preparation Works -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How Fee Preparation Works</div>
+            <p class="text">
+                This page allows you to prepare fees for students before they are invoiced.
+                Select an <strong>Academic Term</strong> and a <strong>School Class</strong>,
+                then click <strong>"Prepare Class Fees"</strong> to generate fee records for all
+                students in that class. The <strong>Class Status Cards</strong> show preparation
+                progress for each class. Use the search box below to filter the fee preparation
+                list by student name or status. Once fees are <strong>Prepared</strong>, they can
+                be <strong>Approved</strong> and then <strong>Invoiced</strong>.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3"
+         role="alert">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+            <span>{{ message }}</span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Fee Preparation</h2>
+            <p class="text-muted mb-0">Prepare and approve student fees before invoicing.</p>
+        </div>
+    </div>
+
+    <!-- Preparation Form -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Academic Term</label>
+                    <select id="term" class="form-select">
+                        <option value="">Select Academic Term</option>
+                        {% for term in terms %}
+                        <option value="{{ term.id }}" {% if active_term and active_term.id == term.id %}selected{% endif %}>
+                            {{ term.name }} — {{ term.academic_year.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">School Class</label>
+                    <select id="school-class" class="form-select">
+                        <option value="">Select School Class</option>
+                        {% for class_status in class_status %}
+                        <option value="{{ class_status.class.id }}">
+                            {{ class_status.class.name }} ({{ class_status.class.grade_level.name }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="button" id="prepare-class-btn" class="btn btn-gold w-100">
+                        <i class="bi bi-magic me-1"></i> Prepare Class Fees
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result Message -->
+    <div id="result-message" class="mt-3"></div>
+
+    <!-- Class Status Cards -->
+    <div class="row g-4 mb-4">
+        {% for class_status in class_status %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h6 class="fw-bold mb-1">{{ class_status.class.name }}</h6>
+                            <small class="text-muted">{{ class_status.class.grade_level.name }}</small>
+                        </div>
+                        {% if class_status.has_fee_structure %}
+                        <span class="badge badge-teal">Fee Structure Ready</span>
+                        {% else %}
+                        <span class="badge bg-warning-subtle text-warning">No Fee Structure</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="row g-2 text-center">
+                        <div class="col-6">
+                            <div class="border rounded-3 p-2">
+                                <small class="text-muted d-block">Students</small>
+                                <span class="fw-bold">{{ class_status.students }}</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded-3 p-2">
+                                <small class="text-muted d-block">Prepared</small>
+                                <span class="fw-bold text-teal">{{ class_status.status_counts.prepared }}</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded-3 p-2">
+                                <small class="text-muted d-block">Approved</small>
+                                <span class="fw-bold text-gold">{{ class_status.status_counts.approved }}</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded-3 p-2">
+                                <small class="text-muted d-block">Invoiced</small>
+                                <span class="fw-bold text-info">{{ class_status.status_counts.invoiced }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <div class="progress" style="height: 8px;">
+                            {% with total=class_status.students %}
+                            {% if total > 0 %}
+                            <div class="progress-bar bg-teal"
+                                 style="width: {% widthratio class_status.status_counts.approved total 100 %}%;"></div>
+                            <div class="progress-bar bg-warning"
+                                 style="width: {% widthratio class_status.status_counts.prepared total 100 %}%;"></div>
+                            <div class="progress-bar bg-info"
+                                 style="width: {% widthratio class_status.status_counts.invoiced total 100 %}%;"></div>
+                            {% endif %}
+                            {% endwith %}
+                        </div>
+                        <small class="text-muted">Preparation progress</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 text-center p-5">
+                <i class="bi bi-inbox fs-1 text-muted"></i>
+                <p class="text-muted mt-3">No school classes available. Please create classes first.</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Recent Fee Preparations -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-transparent border-0 p-4 pb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="fw-bold mb-0"><i class="bi bi-clock-history text-gold me-2"></i>Recent Fee Preparations</h5>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="text-muted small" id="filterStatus"></span>
+                <input type="text" id="feePrepSearchInput" class="form-control form-control-sm"
+                       placeholder="Search by student..." style="max-width: 220px;">
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="feePrepTable">
+                <thead>
+                <tr>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Student</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Class</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Term</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">
+                        Base
+                    </th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">
+                        Discount
+                    </th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">
+                        Arrears
+                    </th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">
+                        Total
+                    </th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">
+                        Status
+                    </th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">
+                        Action
+                    </th>
+                </tr>
+                </thead>
+                <tbody class="border-top-0" id="feePrepTableBody">
+                {% for fee in student_fees %}
+                <tr class="border-bottom fee-prep-row" data-student="{{ fee.student.user.get_full_name|lower }}">
+                    <td class="py-3 ps-0">
+                        <span class="fw-bold d-block">{{ fee.student.user.get_full_name }}</span>
+                        <small class="text-muted">{{ fee.student.admission_number }}</small>
+                    </td>
+                    <td class="py-3">
+                        {% if fee.student.school_class %}
+                        {{ fee.student.school_class.name }}
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3">{{ fee.academic_term.name }}</td>
+                    <td class="py-3 text-end">₵{{ fee.base_amount|floatformat:2 }}</td>
+                    <td class="py-3 text-end">₵{{ fee.discount_amount|floatformat:2 }}</td>
+                    <td class="py-3 text-end">₵{{ fee.arrears_amount|floatformat:2 }}</td>
+                    <td class="py-3 text-end fw-bold">₵{{ fee.final_amount|floatformat:2 }}</td>
+                    <td class="py-3 text-center">
+                        {% if fee.status == 'APPROVED' %}
+                        <span class="badge badge-teal rounded-pill px-3 py-2">
+                                    <i class="bi bi-check-circle me-1"></i> Approved
+                                </span>
+                        {% elif fee.status == 'INVOICED' %}
+                        <span class="badge badge-gold rounded-pill px-3 py-2">
+                                    <i class="bi bi-file-earmark me-1"></i> Invoiced
+                                </span>
+                        {% elif fee.status == 'PREPARED' %}
+                        <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2">
+                                    <i class="bi bi-clock me-1"></i> Prepared
+                                </span>
+                        {% elif fee.status == 'DRAFT' %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">Draft</span>
+                        {% elif fee.status == 'CANCELLED' %}
+                        <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-2">Cancelled</span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">{{ fee.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3 text-center">
+                        {% if fee.status == 'PREPARED' and can_manage %}
+                        <button type="button" class="btn btn-sm btn-success"
+                                onclick="approveStudentFee('{{ fee.id }}')">
+                            <i class="bi bi-check2 me-1"></i> Approve
+                        </button>
+                        {% endif %}
+                        <button type="button" class="btn btn-sm btn-outline-gold"
+                                onclick="viewStudentFee('{{ fee.id }}')">
+                            <i class="bi bi-eye me-1"></i> View
+                        </button>
+                        {% if can_manage and fee.status != 'INVOICED' and fee.status != 'CANCELLED' %}
+                        <a href="{% url 'finance:student_fee_adjustments' fee.id %}"
+                           class="btn btn-sm btn-outline-secondary" title="Manage Adjustments">
+                            <i class="bi bi-sliders"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                        No fee preparations yet. Click "Prepare Class Fees" to start.
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Student Fee Detail Modal -->
+<div class="modal fade" id="studentFeeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="studentFeeModalTitle">Student Fee Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="studentFeeModalContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCSRFToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER
+    // ============================================================
+    const feePrepSearchInput = document.getElementById('feePrepSearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const allRows = document.querySelectorAll('.fee-prep-row');
+
+    if (feePrepSearchInput && allRows.length > 0) {
+        feePrepSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const text = row.textContent.toLowerCase();
+                const isVisible = text.includes(query);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (filterStatus) {
+                if (query) {
+                    filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                } else {
+                    filterStatus.textContent = '';
+                }
+            }
+        });
+    }
+
+    const prepareButton = document.getElementById('prepare-class-btn');
+    const resultDiv = document.getElementById('result-message');
+
+    if (prepareButton) {
+        prepareButton.addEventListener('click', function() {
+            const term = document.getElementById('term').value;
+            const schoolClass = document.getElementById('school-class').value;
+
+            if (!term || !schoolClass) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-warning border-0 shadow-sm rounded-4">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Please select both Academic Term and School Class.
+                    </div>
+                `;
+                return;
+            }
+
+            prepareButton.disabled = true;
+            prepareButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Preparing...';
+
+            fetch("{% url 'finance:api_prepare_class_fees' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({
+                    term_id: term,
+                    class_id: schoolClass,
+                    force_rebuild: false
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success border-0 shadow-sm rounded-4">
+                            <i class="bi bi-check-circle me-2"></i>
+                            ${data.message}
+                            <br><small>Prepared: ${data.prepared} / ${data.total}</small>
+                        </div>
+                    `;
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger border-0 shadow-sm rounded-4">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            ${data.error || 'An error occurred.'}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger border-0 shadow-sm rounded-4">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        An unexpected error occurred. Please try again.
+                    </div>
+                `;
+                console.error(error);
+            })
+            .finally(() => {
+                prepareButton.disabled = false;
+                prepareButton.innerHTML = '<i class="bi bi-magic me-1"></i> Prepare Class Fees';
+            });
+        });
+    }
+});
+
+function viewStudentFee(feeId) {
+    const modal = new bootstrap.Modal(document.getElementById('studentFeeModal'));
+    const modalContent = document.getElementById('studentFeeModalContent');
+
+    modalContent.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border spinner-gold" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+    modal.show();
+
+    fetch(`{% url "finance:api_student_fee_detail" "00000000-0000-0000-0000-000000000000" %}`.replace('00000000-0000-0000-0000-000000000000', feeId), {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let itemsHtml = '';
+            data.items.forEach(function(item) {
+                itemsHtml += `
+                    <div class="d-flex justify-content-between border-bottom py-2">
+                        <div>
+                            <span class="fw-medium">${item.category}</span>
+                            <div class="text-muted small">${item.description}</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="small">
+                                <span class="text-muted">Base: ₵${item.standard_amount}</span>
+                                ${item.discount_amount > 0 ? `<span class="text-success"> Discount: -₵${item.discount_amount}</span>` : ''}
+                            </div>
+                            <span class="fw-bold">₵${item.final_amount}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            modalContent.innerHTML = `
+                <div class="mb-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <small class="text-muted">Student</small>
+                            <div class="fw-bold">${data.student_name}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">Status</small>
+                            <div>
+                                <span class="badge bg-${data.status === 'APPROVED' ? 'teal' : data.status === 'PREPARED' ? 'warning' : 'secondary'}">
+                                    ${data.status}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <h6 class="fw-bold">Fee Items</h6>
+                    ${itemsHtml}
+                </div>
+                <hr>
+                <div class="row g-3 text-end">
+                    <div class="col-3">
+                        <small class="text-muted">Base</small>
+                        <div>₵${data.base_amount}</div>
+                    </div>
+                    <div class="col-3">
+                        <small class="text-muted text-success">Discount</small>
+                        <div class="text-success">₵${data.discount_amount}</div>
+                    </div>
+                    <div class="col-3">
+                        <small class="text-muted">Arrears</small>
+                        <div>₵${data.arrears_amount}</div>
+                    </div>
+                    <div class="col-3">
+                        <small class="text-muted fw-bold">Total</small>
+                        <div class="fw-bold">₵${data.final_amount}</div>
+                    </div>
+                </div>
+                <div class="mt-3 text-end">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        } else {
+            modalContent.innerHTML = `
+                <div class="alert alert-danger border-0 shadow-sm rounded-4">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    ${data.error || 'Error loading fee details.'}
+                </div>
+                <div class="mt-3 text-end">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        modalContent.innerHTML = `
+            <div class="alert alert-danger border-0 shadow-sm rounded-4">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                An error occurred while loading fee details.
+            </div>
+            <div class="mt-3 text-end">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        `;
+        console.error(error);
+    });
+}
+
+function approveStudentFee(feeId) {
+    if (!confirm('Are you sure you want to approve this student fee?')) {
+        return;
+    }
+
+    const url = `{% url "finance:api_student_fee_approve" "00000000-0000-0000-0000-000000000000" %}`.replace('00000000-0000-0000-0000-000000000000', feeId);
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert(data.error || 'Failed to approve student fee.');
+        }
+    })
+    .catch(error => {
+        alert('An unexpected error occurred.');
+        console.error(error);
+    });
+}
+
+</script>
+{% endblock %}

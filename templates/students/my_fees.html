@@ -1,0 +1,220 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}My Fees{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Header Card -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="bi bi-wallet2 text-gold me-2"></i>My Fees</h5>
+                <p class="text-muted mb-0 small">{{ student.user.get_full_name }} &middot; {{ student.grade_level.name }}</p>
+            </div>
+            <a href="{% url 'dashboard:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- How Fees Work -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle-fill icon"></i>
+            <div>
+                <div class="title">How Fees Work</div>
+                <p class="text">
+                    This page shows your complete fee history. The summary cards at the top display your
+                    <strong>Total Billed</strong>, <strong>Total Paid</strong>, and <strong>Outstanding Balance</strong>.
+                    Each invoice shows the <strong>invoice number</strong>, <strong>term</strong>, <strong>due date</strong>,
+                    amounts, and current <strong>status</strong> (Paid, Partial, or Unpaid). Use the search box
+                    below to filter your invoices by number, term, or status.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <small class="text-muted d-block">Total Billed</small>
+                    <h4 class="fw-bold mb-0">GHS {{ total_billed|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <small class="text-muted d-block">Total Paid</small>
+                    <h4 class="fw-bold text-teal mb-0">GHS {{ total_paid|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <small class="text-muted d-block">Outstanding Balance</small>
+                    <h4 class="fw-bold {% if outstanding > 0 %}text-danger{% else %}text-teal{% endif %} mb-0">
+                        GHS {{ outstanding|floatformat:2 }}
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoices Table -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h6 class="fw-bold mb-0">
+                    <i class="bi bi-table text-gold me-2"></i>Invoices
+                    <span class="badge bg-light text-muted ms-2" id="invoiceCount">{{ invoices|length }}</span>
+                </h6>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="text-muted small" id="filterStatus"></span>
+                    <input type="text" id="invoiceSearchInput" class="form-control form-control-sm" placeholder="Search invoices..." style="max-width: 220px;">
+                </div>
+            </div>
+            {% if invoices %}
+            <div class="table-responsive">
+                <table class="table align-middle" id="invoicesTable">
+                    <thead>
+                        <tr class="text-muted small text-uppercase">
+                            <th>Invoice</th>
+                            <th>Term</th>
+                            <th>Due Date</th>
+                            <th>Total</th>
+                            <th>Paid</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoicesTableBody">
+                        {% for invoice in invoices %}
+                        <tr class="invoice-row" data-id="{{ invoice.id }}">
+                            <td class="fw-semibold">{{ invoice.invoice_number }}</td>
+                            <td>{{ invoice.academic_term|default:"—" }}</td>
+                            <td>{{ invoice.due_date|date:"M j, Y" }}</td>
+                            <td>GHS {{ invoice.total_amount|floatformat:2 }}</td>
+                            <td>GHS {{ invoice.amount_paid|floatformat:2 }}</td>
+                            <td>GHS {{ invoice.balance_due|floatformat:2 }}</td>
+                            <td>
+                                <span class="badge bg-{% if invoice.status == 'PAID' %}teal-soft text-teal{% elif invoice.status == 'PARTIAL' %}warning-subtle text-warning{% elif invoice.status == 'VOID' %}secondary-subtle text-secondary{% else %}danger-subtle text-danger{% endif %}">
+                                    {{ invoice.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox fs-1 text-muted"></i>
+                <p class="text-muted mt-2 mb-0">No invoices yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+</style>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER
+    // ============================================================
+    const invoiceSearchInput = document.getElementById('invoiceSearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const invoiceCount = document.getElementById('invoiceCount');
+    const allRows = document.querySelectorAll('.invoice-row');
+
+    if (invoiceSearchInput && allRows.length > 0) {
+        invoiceSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const text = row.textContent.toLowerCase();
+                const isVisible = text.includes(query);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            // Update count
+            if (invoiceCount) {
+                if (query) {
+                    invoiceCount.textContent = visibleCount;
+                    if (filterStatus) {
+                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                    }
+                } else {
+                    invoiceCount.textContent = allRows.length;
+                    if (filterStatus) {
+                        filterStatus.textContent = '';
+                    }
+                }
+            }
+        });
+
+        // Clear filter status on blur if empty
+        invoiceSearchInput.addEventListener('blur', function() {
+            if (!this.value && filterStatus) {
+                filterStatus.textContent = '';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+{% include "partials/pagination.html" with page_obj=invoices %}
+
+{% endblock %}

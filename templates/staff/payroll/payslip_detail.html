@@ -1,0 +1,209 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Payslip - {{ payslip.payroll_run.staff.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+</style>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1">
+                    <i class="bi bi-file-earmark-text text-gold me-2"></i>
+                    Payslip - {{ payslip.payroll_run.staff.user.get_full_name }}
+                </h5>
+                <small class="text-muted">
+                    {{ payslip.payroll_run.payroll_period.name }}
+                    &middot; Generated: {{ payslip.generated_at|date:"M d, Y H:i" }}
+                </small>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'staff:download_payslip' payslip.id %}" target="_blank" class="btn btn-gold">
+                    <i class="bi bi-download me-1"></i>Download PDF
+                </a>
+                <button class="btn btn-outline-secondary" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i>Print
+                </button>
+                <a href="{% url 'staff:payslip_list' %}" class="btn btn-outline-secondary">Back</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Payslip Details -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="text-center border-bottom pb-4 mb-4">
+                    <h4 class="fw-bold">{{ payslip.school.name }}</h4>
+                    <h6 class="text-muted">PAYSLIP</h6>
+                    <p class="text-muted small mb-0">
+                        {{ payslip.payroll_run.payroll_period.name }}
+                        &middot; {{ payslip.generated_at|date:"F d, Y" }}
+                    </p>
+                </div>
+
+                <!-- Staff Info -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Staff Name</small>
+                        <strong>{{ payslip.payroll_run.staff.user.get_full_name }}</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Staff ID</small>
+                        <strong>{{ payslip.payroll_run.staff.staff_id }}</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Position</small>
+                        <strong>{{ payslip.payroll_run.staff.get_staff_position_display }}</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Department</small>
+                        <strong>{{ payslip.payroll_run.staff.department|default:"N/A" }}</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Days Worked</small>
+                        <strong>{{ payslip.payroll_run.days_worked }}</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Days Absent</small>
+                        <strong>{{ payslip.payroll_run.days_absent }}</strong>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Earnings -->
+                <div class="mb-4">
+                    <h6 class="fw-bold text-teal">Earnings</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <td>Basic Salary</td>
+                                    <td class="text-end fw-bold">₵{{ payslip.payroll_run.basic_salary|floatformat:2 }}</td>
+                                </tr>
+                                {% for name, amount in payslip.earnings.items %}
+                                <tr>
+                                    <td>{{ name }}</td>
+                                    <td class="text-end">₵{{ amount|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="border-top fw-bold">
+                                    <td>Total Earnings</td>
+                                    <td class="text-end text-teal">₵{{ payslip.payroll_run.gross_pay|floatformat:2 }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Deductions -->
+                <div class="mb-4">
+                    <h6 class="fw-bold text-danger">Deductions</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                                {% for name, amount in payslip.deductions.items %}
+                                <tr>
+                                    <td>{{ name }}</td>
+                                    <td class="text-end">₵{{ amount|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2" class="text-muted text-center">No deductions</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="border-top fw-bold">
+                                    <td>Total Deductions</td>
+                                    <td class="text-end text-danger">₵{{ payslip.payroll_run.total_deductions|floatformat:2 }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Net Pay -->
+                <div class="bg-light rounded-3 p-4 text-center">
+                    <h6 class="text-muted text-uppercase small fw-bold">Net Pay</h6>
+                    <h2 class="fw-bold text-teal mb-0">₵{{ payslip.payroll_run.net_pay|floatformat:2 }}</h2>
+                    <small class="text-muted">Amount payable to staff</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-info-circle text-gold me-2"></i>Payment Details</h6>
+                <div class="mb-2">
+                    <small class="text-muted d-block">Status</small>
+                    <span class="badge
+                        {% if payslip.payroll_run.status == 'PENDING' %}bg-secondary-subtle text-secondary
+                        {% elif payslip.payroll_run.status == 'CALCULATED' %}bg-info-subtle text-info
+                        {% elif payslip.payroll_run.status == 'APPROVED' %}bg-teal-soft text-teal
+                        {% elif payslip.payroll_run.status == 'PAID' %}bg-gold-soft text-gold{% endif %}
+                    ">{{ payslip.payroll_run.get_status_display }}</span>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted d-block">Payment Date</small>
+                    <span>{{ payslip.payroll_run.payroll_period.payment_date|date:"M d, Y" }}</span>
+                </div>
+                <div>
+                    <small class="text-muted d-block">Generated By</small>
+                    <span>{{ payslip.generated_by.get_full_name|default:"System" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-quick-actions text-gold me-2"></i>Quick Actions</h6>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'staff:download_payslip' payslip.id %}" target="_blank" class="btn btn-gold">
+                        <i class="bi bi-download me-1"></i>Download PDF
+                    </a>
+                    <button class="btn btn-outline-secondary" onclick="window.print()">
+                        <i class="bi bi-printer me-1"></i>Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style media="print">
+    .no-print { display: none !important; }
+    .card { border: none !important; box-shadow: none !important; }
+    .card-body { padding: 20px !important; }
+    .bg-light { background: #f8f9fa !important; }
+</style>
+{% endblock %}

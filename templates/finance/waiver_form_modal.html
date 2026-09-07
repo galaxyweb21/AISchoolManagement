@@ -1,0 +1,99 @@
+<!-- finance/templates/finance/waiver_form_modal.html -->
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+</style>
+
+<form method="post"
+      action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url waiver.id %}{% endif %}"
+      class="waiver-form"
+      data-mode="{{ mode }}">
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Student <span class="text-danger">*</span></label>
+        <select name="student" class="form-select" required>
+            <option value="">Select Student</option>
+            {% for student in students %}
+            <option value="{{ student.id }}" {% if mode == 'edit' and waiver.student.id == student.id %}selected{% endif %}>
+                {{ student.user.get_full_name }} ({{ student.admission_number }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
+        <input type="text" name="reason" class="form-control"
+               value="{% if mode == 'edit' %}{{ waiver.reason }}{% endif %}"
+               placeholder="e.g., Sibling discount, Headmaster's scholarship" required>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Waiver Type <span class="text-danger">*</span></label>
+            <select name="waiver_type" class="form-select" required>
+                <option value="PERCENTAGE" {% if mode == 'edit' and waiver.waiver_type == 'PERCENTAGE' %}selected{% endif %}>Percentage</option>
+                <option value="FIXED" {% if mode == 'edit' and waiver.waiver_type == 'FIXED' %}selected{% endif %}>Fixed Amount</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Value <span class="text-danger">*</span></label>
+            <input type="number" step="0.01" name="value" class="form-control"
+                   value="{% if mode == 'edit' %}{{ waiver.value }}{% endif %}"
+                   placeholder="e.g., 15.00" required>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Fee Category</label>
+            <select name="fee_category" class="form-select">
+                <option value="">All Categories (Whole Invoice)</option>
+                {% for category in fee_categories %}
+                <option value="{{ category.id }}" {% if mode == 'edit' and waiver.fee_category.id == category.id %}selected{% endif %}>
+                    {{ category.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Academic Term</label>
+            <select name="academic_term" class="form-select">
+                <option value="">Standing (All Terms)</option>
+                {% for term in terms %}
+                <option value="{{ term.id }}" {% if mode == 'edit' and waiver.academic_term.id == term.id %}selected{% endif %}>
+                    {{ term.name }} — {{ term.academic_year.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="is_active" id="is_active"
+                   {% if mode == 'edit' and waiver.is_active %}checked{% endif %}>
+            <label class="form-check-label" for="is_active">Active</label>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end border-top pt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-gold">
+            <i class="bi {% if mode == 'create' %}bi-check2-circle{% else %}bi-pencil-square{% endif %} me-1"></i>
+            {% if mode == 'create' %}Create Waiver{% else %}Save Changes{% endif %}
+        </button>
+    </div>
+</form>

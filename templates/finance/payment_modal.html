@@ -1,0 +1,697 @@
+<!-- finance/templates/finance/payment_modal.html -->
+{% load static %}
+
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .invoice-checkbox:disabled + label {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .invoice-checkbox:disabled + label .text-danger {
+        color: #6c757d !important;
+    }
+    .no-invoices-message {
+        padding: 20px;
+        text-align: center;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    .no-invoices-message i {
+        font-size: 2rem;
+        color: #6c757d;
+        display: block;
+        margin-bottom: 10px;
+    }
+</style>
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold">
+        <i class="bi bi-cash-coin text-teal me-2"></i>
+        Record Payment
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body p-4" id="paymentModalBody">
+    <form id="paymentForm" class="needs-validation" novalidate>
+        {% csrf_token %}
+
+        <!-- Invoice Selection - Multi-Select -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">
+                Select Invoices <span class="text-danger">*</span>
+                <span class="text-muted fw-normal small">(Select one or more)</span>
+            </label>
+            <div class="border rounded-3 p-3 bg-light" id="invoiceSelectionContainer">
+                <div class="mb-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="selectAllInvoices">
+                        <label class="form-check-label fw-semibold" for="selectAllInvoices">
+                            <i class="bi bi-check-all me-1"></i> Select All Unpaid Invoices
+                        </label>
+                    </div>
+                </div>
+                <hr class="my-2">
+                <div id="invoiceList" style="max-height: 250px; overflow-y: auto;">
+                    {% if invoices %}
+                        {% for invoice in invoices %}
+                        <div class="form-check mb-1">
+                            <input class="form-check-input invoice-checkbox" type="checkbox"
+                                   name="invoice_ids" value="{{ invoice.id }}"
+                                   data-balance="{{ invoice.balance_due }}"
+                                   data-invoice-number="{{ invoice.invoice_number }}"
+                                   data-student="{{ invoice.student.user.get_full_name }}"
+                                   id="invoice_{{ invoice.id }}">
+                            <label class="form-check-label" for="invoice_{{ invoice.id }}">
+                                <span class="fw-semibold">{{ invoice.invoice_number }}</span>
+                                <span class="text-muted">— {{ invoice.student.user.get_full_name }}</span>
+                                <br>
+                                <small class="text-danger">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                    Balance: GH¢ {{ invoice.balance_due|floatformat:2 }}
+                                </small>
+                                <span class="badge bg-light text-dark border ms-2">
+                                    Due: {{ invoice.due_date|date:"M d, Y" }}
+                                </span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-invoices-message">
+                            <i class="bi bi-inbox"></i>
+                            <p class="mb-0 text-muted">No unpaid invoices available.</p>
+                            <small class="text-muted">Invoices will appear here once they are generated.</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div id="invoiceSelectionError" class="text-danger small mt-1" style="display:none;">
+                <i class="bi bi-exclamation-circle me-1"></i>
+                Please select at least one invoice.
+            </div>
+        </div>
+
+        <!-- Selected Invoices Summary -->
+        <div class="mb-3" id="selectedInvoicesSummary" style="display:none;">
+            <div class="border rounded-3 p-3 bg-gold-soft">
+                <h6 class="fw-bold mb-2">
+                    <i class="bi bi-list-check text-gold me-1"></i>
+                    Selected Invoices
+                </h6>
+                <div id="selectedInvoicesList" class="small">
+                    <span class="text-muted">No invoices selected</span>
+                </div>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between">
+                    <span class="fw-semibold">Total Outstanding:</span>
+                    <span class="fw-bold text-danger" id="selectedTotalBalance">GH¢ 0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Amount -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Payment Amount <span class="text-danger">*</span></label>
+            <div class="input-group">
+                <span class="input-group-text bg-light">GH¢</span>
+                <input type="number" name="amount" id="paymentAmount" class="form-control"
+                       placeholder="0.00" step="0.01" min="0.01" required>
+            </div>
+            <div class="d-flex justify-content-between mt-1">
+                <small class="text-muted" id="maxPaymentHint">Maximum: GH¢ 0.00</small>
+                <button type="button" class="btn btn-sm btn-link p-0 text-gold" id="payFullBtn">
+                    <i class="bi bi-cash me-1"></i> Pay Full Amount
+                </button>
+            </div>
+            <div class="invalid-feedback">Please enter a valid amount.</div>
+        </div>
+
+        <!-- Payment Allocation -->
+        <div class="mb-3" id="allocationSection" style="display:none;">
+            <label class="form-label fw-semibold">Allocate Payment</label>
+            <div class="border rounded-3 p-3 bg-light" id="allocationContainer">
+                <div class="text-muted small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Payment will be distributed across selected invoices in order of due date (oldest first).
+                </div>
+                <div id="allocationPreview" class="mt-2">
+                    <span class="text-muted">Select invoices and enter amount to see allocation.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Method -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Payment Method <span class="text-danger">*</span></label>
+            <select name="method" id="paymentMethod" class="form-select" required>
+                <option value="">Select Method</option>
+                <option value="CASH">Cash</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="MOBILE_MONEY">Mobile Money</option>
+                <option value="CARD">Card</option>
+                <option value="CHEQUE">Cheque</option>
+                <option value="ONLINE_GATEWAY">Online Gateway</option>
+            </select>
+            <div class="invalid-feedback">Please select a payment method.</div>
+        </div>
+
+        <!-- Reference Number -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Reference Number</label>
+            <input type="text" name="reference_number" id="paymentReference" class="form-control"
+                   placeholder="e.g., Transaction ID, Cheque Number">
+            <small class="text-muted">Optional reference for tracking.</small>
+        </div>
+
+        <!-- Notes -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Notes</label>
+            <textarea name="notes" id="paymentNotes" class="form-control" rows="2"
+                      placeholder="Additional notes about this payment..."></textarea>
+        </div>
+
+        <!-- Payment Summary -->
+        <div class="border rounded-3 p-3 bg-light">
+            <h6 class="fw-bold mb-2">Payment Summary</h6>
+            <div class="d-flex justify-content-between">
+                <span class="text-muted">Invoices:</span>
+                <span id="summaryInvoiceCount" class="fw-semibold">0 selected</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="text-muted">Total Outstanding:</span>
+                <span id="summaryTotalBalance" class="fw-semibold text-danger">GH¢ 0.00</span>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between">
+                <span class="fw-bold">Payment Amount:</span>
+                <span id="summaryAmount" class="fw-bold text-teal">GH¢ 0.00</span>
+            </div>
+        </div>
+
+        <div class="modal-footer border-0 px-0 pb-0 pt-3">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <i class="bi bi-x-circle me-1"></i>Cancel
+            </button>
+            <button type="button" class="btn btn-gold" id="paymentSubmitBtn">
+                <i class="bi bi-check2-circle me-1"></i>Record Payment
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function() {
+    console.log('[payment_modal] Script loaded');
+
+    const form = document.getElementById('paymentForm');
+    const invoiceCheckboxes = document.querySelectorAll('.invoice-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAllInvoices');
+    const amountInput = document.getElementById('paymentAmount');
+    const submitBtn = document.getElementById('paymentSubmitBtn');
+    const selectedInvoicesSummary = document.getElementById('selectedInvoicesSummary');
+    const selectedInvoicesList = document.getElementById('selectedInvoicesList');
+    const selectedTotalBalance = document.getElementById('selectedTotalBalance');
+    const summaryInvoiceCount = document.getElementById('summaryInvoiceCount');
+    const summaryTotalBalance = document.getElementById('summaryTotalBalance');
+    const summaryAmount = document.getElementById('summaryAmount');
+    const maxPaymentHint = document.getElementById('maxPaymentHint');
+    const allocationSection = document.getElementById('allocationSection');
+    const allocationPreview = document.getElementById('allocationPreview');
+    const payFullBtn = document.getElementById('payFullBtn');
+
+    // ============================================================
+    // GET CSRF TOKEN
+    // ============================================================
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    // ============================================================
+    // SHOW ERROR
+    // ============================================================
+    function showError(message) {
+        const existingErrors = form.querySelectorAll('.alert-danger');
+        existingErrors.forEach(el => el.remove());
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+        errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+        form.insertBefore(errorDiv, form.firstChild);
+    }
+
+    // ============================================================
+    // SHOW TOAST
+    // ============================================================
+    function showToast(message, type) {
+        // Try to find existing toast
+        let toast = document.getElementById('liveToast');
+        let toastBody = document.getElementById('toastBody');
+
+        if (!toast) {
+            // Create a temporary toast
+            const tempToast = document.createElement('div');
+            tempToast.className = 'position-fixed top-0 end-0 p-3';
+            tempToast.style.zIndex = '9999';
+            tempToast.innerHTML = `
+                <div class="toast align-items-center border-0 shadow-sm rounded-4 bg-${type === 'success' ? 'success' : 'danger'}-subtle show" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="bi ${type === 'success' ? 'bi-check-circle-fill text-success' : 'bi-exclamation-circle-fill text-danger'} me-2"></i>
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(tempToast);
+            setTimeout(() => tempToast.remove(), 5000);
+            return;
+        }
+
+        if (type === 'success') {
+            toastBody.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-success-subtle';
+        } else {
+            toastBody.innerHTML = `<i class="bi bi-exclamation-circle-fill text-danger me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-danger-subtle';
+        }
+
+        const toastInstance = new bootstrap.Toast(toast, {
+            autohide: true,
+            delay: 4000
+        });
+        toastInstance.show();
+    }
+
+    // ============================================================
+    // TOGGLE ALL INVOICES
+    // ============================================================
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            invoiceCheckboxes.forEach(cb => cb.checked = this.checked);
+            updatePaymentSummary();
+        });
+    }
+
+    // ============================================================
+    // UPDATE PAYMENT SUMMARY
+    // ============================================================
+    function updatePaymentSummary() {
+        const selected = document.querySelectorAll('.invoice-checkbox:checked');
+        const count = selected.length;
+        let totalBalance = 0;
+        let selectedHtml = '';
+
+        if (count > 0) {
+            selectedInvoicesSummary.style.display = 'block';
+            allocationSection.style.display = 'block';
+
+            selected.forEach((cb) => {
+                const balance = parseFloat(cb.dataset.balance) || 0;
+                totalBalance += balance;
+                const invoiceNumber = cb.dataset.invoiceNumber || 'INV-XXXX';
+                const studentName = cb.dataset.student || 'Student';
+
+                selectedHtml += `
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-1">
+                        <span>
+                            <span class="fw-semibold">${invoiceNumber}</span>
+                            <span class="text-muted"> — ${studentName}</span>
+                        </span>
+                        <span class="text-danger">GH¢ ${balance.toFixed(2)}</span>
+                    </div>
+                `;
+            });
+
+            selectedInvoicesList.innerHTML = selectedHtml;
+            selectedTotalBalance.textContent = `GH¢ ${totalBalance.toFixed(2)}`;
+            summaryInvoiceCount.textContent = `${count} selected`;
+            summaryTotalBalance.textContent = `GH¢ ${totalBalance.toFixed(2)}`;
+            maxPaymentHint.textContent = `Maximum: GH¢ ${totalBalance.toFixed(2)}`;
+
+            amountInput.max = totalBalance.toFixed(2);
+            amountInput.placeholder = `0.00 (Max: ${totalBalance.toFixed(2)})`;
+        } else {
+            selectedInvoicesSummary.style.display = 'none';
+            allocationSection.style.display = 'none';
+            summaryInvoiceCount.textContent = '0 selected';
+            summaryTotalBalance.textContent = 'GH¢ 0.00';
+            maxPaymentHint.textContent = 'Maximum: GH¢ 0.00';
+            amountInput.max = '';
+            amountInput.placeholder = '0.00';
+            selectedInvoicesList.innerHTML = '<span class="text-muted">No invoices selected</span>';
+            selectedTotalBalance.textContent = 'GH¢ 0.00';
+        }
+        updateSummaryAmount();
+    }
+
+    // ============================================================
+    // UPDATE ALLOCATION PREVIEW
+    // ============================================================
+    function updateAllocationPreview() {
+        const selected = document.querySelectorAll('.invoice-checkbox:checked');
+        const amount = parseFloat(amountInput.value) || 0;
+
+        if (selected.length === 0 || amount <= 0) {
+            allocationPreview.innerHTML = `
+                <span class="text-muted">
+                    ${selected.length === 0 ? 'Select invoices and enter amount to see allocation.' : 'Enter amount to see allocation.'}
+                </span>
+            `;
+            return;
+        }
+
+        let totalBalance = 0;
+        const allocations = [];
+        selected.forEach(cb => {
+            const balance = parseFloat(cb.dataset.balance) || 0;
+            totalBalance += balance;
+            allocations.push({
+                invoice: cb.dataset.invoiceNumber || 'INV-XXXX',
+                student: cb.dataset.student || 'Student',
+                balance: balance,
+                id: cb.value
+            });
+        });
+
+        let remaining = amount;
+        let html = '<div class="small">';
+
+        allocations.forEach((item) => {
+            let allocated = Math.min(remaining, item.balance);
+            allocated = Math.round(allocated * 100) / 100;
+            remaining = Math.max(0, remaining - allocated);
+
+            const status = allocated > 0 ? 'text-success' : 'text-muted';
+            const isFullyPaid = allocated >= item.balance && item.balance > 0;
+            html += `
+                <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                    <span>
+                        <span class="fw-semibold">${item.invoice}</span>
+                        <span class="text-muted"> — ${item.student}</span>
+                        ${isFullyPaid ? ' <span class="badge badge-teal small">Paid</span>' : ''}
+                    </span>
+                    <span class="${status}">
+                        ${allocated > 0 ? `GH¢ ${allocated.toFixed(2)}` : '—'}
+                        <small class="text-muted">(of GH¢ ${item.balance.toFixed(2)})</small>
+                    </span>
+                </div>
+            `;
+        });
+
+        if (remaining > 0.01) {
+            html += `
+                <div class="d-flex justify-content-between align-items-center py-1 text-warning">
+                    <span><i class="bi bi-exclamation-triangle me-1"></i> Unallocated</span>
+                    <span>GH¢ ${remaining.toFixed(2)}</span>
+                </div>
+            `;
+        }
+
+        html += '</div>';
+        allocationPreview.innerHTML = html;
+    }
+
+    // ============================================================
+    // UPDATE SUMMARY AMOUNT
+    // ============================================================
+    function updateSummaryAmount() {
+        const amount = parseFloat(amountInput.value) || 0;
+        summaryAmount.textContent = `GH¢ ${amount.toFixed(2)}`;
+        updateAllocationPreview();
+    }
+
+    // ============================================================
+    // SET FULL PAYMENT
+    // ============================================================
+    if (payFullBtn) {
+        payFullBtn.addEventListener('click', function() {
+            let selected = document.querySelectorAll('.invoice-checkbox:checked');
+
+            if (selected.length === 0 && invoiceCheckboxes.length > 0) {
+                invoiceCheckboxes.forEach(cb => { cb.checked = true; });
+                if (selectAllCheckbox) selectAllCheckbox.checked = true;
+                updatePaymentSummary();
+                selected = document.querySelectorAll('.invoice-checkbox:checked');
+            }
+
+            if (selected.length === 0) {
+                showError('There are no invoices available to pay right now.');
+                return;
+            }
+
+            let totalBalance = 0;
+            selected.forEach(cb => {
+                totalBalance += parseFloat(cb.dataset.balance) || 0;
+            });
+
+            if (totalBalance > 0) {
+                amountInput.value = totalBalance.toFixed(2);
+                amountInput.classList.remove('is-invalid');
+                updateSummaryAmount();
+                updateAllocationPreview();
+            } else {
+                showError('Selected invoice(s) have no outstanding balance.');
+            }
+        });
+    }
+
+    // ============================================================
+    // EVENT LISTENERS
+    // ============================================================
+    invoiceCheckboxes.forEach(cb => {
+        cb.addEventListener('change', updatePaymentSummary);
+    });
+
+    if (amountInput) {
+        amountInput.addEventListener('input', function() {
+            updateSummaryAmount();
+            const amount = parseFloat(this.value) || 0;
+            const maxAmount = parseFloat(this.max) || 0;
+            if (amount > maxAmount && maxAmount > 0) {
+                this.classList.add('is-invalid');
+                const feedback = this.parentElement.parentElement.querySelector('.invalid-feedback');
+                if (feedback) {
+                    feedback.textContent = `Amount (GH¢ ${amount.toFixed(2)}) exceeds total outstanding (GH¢ ${maxAmount.toFixed(2)})`;
+                }
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+    }
+
+    // ============================================================
+    // RELOAD PAGE SAFELY
+    // ============================================================
+    function reloadPage() {
+        setTimeout(function() {
+            window.location.reload();
+        }, 500);
+    }
+
+    // ============================================================
+    // FORM SUBMISSION - FIXED
+    // ============================================================
+    if (submitBtn) {
+        console.log('[payment_modal] Submit button found, attaching click handler');
+
+        submitBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[payment_modal] Submit button clicked');
+
+            // Reset validation
+            form.classList.remove('was-validated');
+
+            // Check if form is valid
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                const missing = [];
+                if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
+                    missing.push('a payment amount');
+                }
+                if (!document.getElementById('paymentMethod').value) {
+                    missing.push('a payment method');
+                }
+                showError(
+                    missing.length
+                        ? `Please provide ${missing.join(' and ')} before recording the payment.`
+                        : 'Please fill in all required fields.'
+                );
+                return;
+            }
+
+            const selectedInvoices = document.querySelectorAll('.invoice-checkbox:checked');
+            if (selectedInvoices.length === 0) {
+                document.getElementById('invoiceSelectionError').style.display = 'block';
+                showError('Please select at least one invoice to pay.');
+                return;
+            }
+            document.getElementById('invoiceSelectionError').style.display = 'none';
+
+            const amount = parseFloat(amountInput.value) || 0;
+            const maxAmount = parseFloat(amountInput.max) || 0;
+            if (amount > maxAmount && maxAmount > 0) {
+                amountInput.classList.add('is-invalid');
+                showError(`Amount (GH¢ ${amount.toFixed(2)}) exceeds the total outstanding balance (GH¢ ${maxAmount.toFixed(2)}).`);
+                return;
+            }
+
+            if (amount <= 0) {
+                showError('Please enter a valid payment amount.');
+                return;
+            }
+
+            const method = document.getElementById('paymentMethod').value;
+            if (!method) {
+                document.getElementById('paymentMethod').classList.add('is-invalid');
+                showError('Please select a payment method.');
+                return;
+            }
+
+            const invoiceIds = Array.from(selectedInvoices).map(cb => cb.value);
+
+            const data = {
+                invoice_ids: invoiceIds,
+                amount: amount,
+                method: method,
+                reference_number: document.getElementById('paymentReference').value || '',
+                notes: document.getElementById('paymentNotes').value || ''
+            };
+
+            console.log('[payment_modal] Sending payment data:', data);
+
+            // Show loading
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
+
+            const modalElement = document.getElementById('paymentModal');
+
+            // Use the full URL with the correct namespace
+            const url = '/finance/api/pay/';
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                console.log('[payment_modal] Response status:', response.status);
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Server error');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('[payment_modal] Response data:', data);
+                if (data.success) {
+                    showToast(data.message || 'Payment recorded successfully!', 'success');
+
+                    if (data.receipt_url) {
+                        window.open(data.receipt_url, '_blank');
+                    }
+
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+
+                    // Set a flag to reload after modal hides
+                    window._paymentSuccess = true;
+                    reloadPage();
+                } else {
+                    showError(data.error || 'Error recording payment.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            })
+            .catch(err => {
+                console.error('[payment_modal] Fetch error:', err);
+                showError(err.message || 'An unexpected error occurred. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            });
+        });
+    } else {
+        console.error('[payment_modal] Submit button not found!');
+    }
+
+    // ============================================================
+    // MODAL HIDDEN EVENT
+    // ============================================================
+    const modalElement = document.getElementById('paymentModal');
+    if (modalElement) {
+        modalElement.addEventListener('hidden.bs.modal', function() {
+            if (window._paymentSuccess) {
+                window._paymentSuccess = false;
+            }
+        });
+    }
+
+    // ============================================================
+    // INITIALIZE
+    // ============================================================
+    updatePaymentSummary();
+
+    // ============================================================
+    // KEYBOARD SHORTCUT: Enter to submit
+    // ============================================================
+    form.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            submitBtn.click();
+        }
+    });
+
+    console.log('[payment_modal] Initialization complete');
+})();
+</script>

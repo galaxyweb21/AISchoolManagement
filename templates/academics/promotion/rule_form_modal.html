@@ -1,0 +1,201 @@
+<!-- academics/templates/academics/promotion/rule_form_modal.html -->
+{% load static %}
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold">
+        <i class="bi bi-gear text-primary me-2" style="color: var(--primary-color, #946B1C) !important;"></i>
+        {% if mode == 'edit' %}Edit{% else %}New{% endif %} Promotion Rule
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form method="post" action="{% if mode == 'edit' %}{% url action_url rule.id %}{% else %}{% url action_url %}{% endif %}"
+      id="ruleForm" class="needs-validation" novalidate>
+    {% csrf_token %}
+
+    <div class="modal-body p-4">
+        <!-- Grade Levels -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="fromGradeLevel">
+                    From Grade Level <span class="text-danger">*</span>
+                </label>
+                <select name="from_grade_level" id="fromGradeLevel" class="form-select" required>
+                    <option value="">Select Grade</option>
+                    {% for grade in grade_levels %}
+                        <option value="{{ grade.id }}" {% if mode == 'edit' and rule.from_grade_level.id == grade.id %}selected{% endif %}>
+                            {{ grade.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <div class="invalid-feedback">Please select the starting grade level.</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="toGradeLevel">
+                    To Grade Level <span class="text-danger">*</span>
+                </label>
+                <select name="to_grade_level" id="toGradeLevel" class="form-select" required>
+                    <option value="">Select Grade</option>
+                    {% for grade in grade_levels %}
+                        <option value="{{ grade.id }}" {% if mode == 'edit' and rule.to_grade_level.id == grade.id %}selected{% endif %}>
+                            {{ grade.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <div class="invalid-feedback">Please select the target grade level.</div>
+            </div>
+        </div>
+
+        <!-- Promotion Mode -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="promotionMode">
+                Promotion Mode <span class="text-danger">*</span>
+            </label>
+            <select name="promotion_mode" id="promotionMode" class="form-select" required>
+                <option value="AUTO" {% if mode == 'edit' and rule.promotion_mode == 'AUTO' %}selected{% endif %}>Automatic</option>
+                <option value="MANUAL" {% if mode == 'edit' and rule.promotion_mode == 'MANUAL' %}selected{% endif %}>Manual</option>
+                <option value="HYBRID" {% if mode == 'edit' and rule.promotion_mode == 'HYBRID' %}selected{% endif %}>Hybrid</option>
+            </select>
+            <small class="text-muted">Automatic: Students are auto-promoted based on criteria. Manual: Only recommendations are generated.</small>
+        </div>
+
+        <!-- Academic Criteria -->
+        <h6 class="fw-bold mb-3">Academic Criteria</h6>
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold" for="minPass">
+                    Min Passing Grade <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                    <input type="number" name="minimum_passing_grade" id="minPass" class="form-control"
+                           value="{% if mode == 'edit' %}{{ rule.minimum_passing_grade }}{% else %}50{% endif %}"
+                           min="0" max="100" required>
+                    <span class="input-group-text">%</span>
+                </div>
+                <div class="invalid-feedback">Please enter a valid grade.</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold" for="minAvg">
+                    Min Overall Average <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                    <input type="number" name="minimum_overall_average" id="minAvg" class="form-control"
+                           value="{% if mode == 'edit' %}{{ rule.minimum_overall_average }}{% else %}50{% endif %}"
+                           min="0" max="100" required>
+                    <span class="input-group-text">%</span>
+                </div>
+                <div class="invalid-feedback">Please enter a valid average.</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold" for="minSubjects">
+                    Min Subjects to Pass
+                </label>
+                <input type="number" name="minimum_subjects_to_pass" id="minSubjects" class="form-control"
+                       value="{% if mode == 'edit' %}{{ rule.minimum_subjects_to_pass }}{% else %}0{% endif %}"
+                       min="0">
+                <small class="text-muted">0 = all subjects must be passed</small>
+            </div>
+        </div>
+
+        <!-- Attendance Criteria -->
+        <h6 class="fw-bold mb-3">Attendance Criteria</h6>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="minAttendance">
+                    Min Attendance Percentage <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                    <input type="number" name="minimum_attendance_percentage" id="minAttendance" class="form-control"
+                           value="{% if mode == 'edit' %}{{ rule.minimum_attendance_percentage }}{% else %}75{% endif %}"
+                           min="0" max="100" required>
+                    <span class="input-group-text">%</span>
+                </div>
+                <div class="invalid-feedback">Please enter a valid attendance percentage.</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="evalTerm">
+                    Evaluation Term <span class="text-danger">*</span>
+                </label>
+                <input type="number" name="evaluation_term_sequence" id="evalTerm" class="form-control"
+                       value="{% if mode == 'edit' %}{{ rule.evaluation_term_sequence }}{% else %}3{% endif %}"
+                       min="1" max="3" required>
+                <small class="text-muted">Which term's results to evaluate (1, 2, or 3)</small>
+            </div>
+        </div>
+
+        <!-- Conditional Promotion -->
+        <h6 class="fw-bold mb-3">Conditional Promotion</h6>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="allow_conditional_promotion" id="allowConditional"
+                           {% if mode == 'edit' and rule.allow_conditional_promotion %}checked{% endif %}>
+                    <label class="form-check-label fw-semibold" for="allowConditional">
+                        Allow Conditional Promotion
+                    </label>
+                    <small class="d-block text-muted">Students who narrowly miss requirements can be conditionally promoted.</small>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="maxConditional">
+                    Max Conditional Subjects
+                </label>
+                <input type="number" name="max_conditional_subjects" id="maxConditional" class="form-control"
+                       value="{% if mode == 'edit' %}{{ rule.max_conditional_subjects }}{% else %}2{% endif %}"
+                       min="0" max="10">
+                <small class="text-muted">Maximum number of subjects a student can fail and still be conditionally promoted.</small>
+            </div>
+        </div>
+
+        <!-- Active Status (Edit mode only) -->
+        {% if mode == 'edit' %}
+        <div class="mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_active" id="isActive"
+                       {% if rule.is_active %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="isActive">
+                    Active
+                </label>
+                <small class="d-block text-muted">Inactive rules will not be used for automatic promotion.</small>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn" id="ruleSubmitBtn" style="background: var(--primary-color, #946B1C); color: #fff; border-color: var(--primary-color, #946B1C);">
+            <i class="bi {% if mode == 'edit' %}bi-save{% else %}bi-plus-circle{% endif %} me-1"></i>
+            {% if mode == 'edit' %}Update{% else %}Create{% endif %} Rule
+        </button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('ruleForm');
+
+    form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    const allowConditional = document.getElementById('allowConditional');
+    const maxConditional = document.getElementById('maxConditional');
+
+    if (allowConditional && maxConditional) {
+        allowConditional.addEventListener('change', function() {
+            maxConditional.disabled = !this.checked;
+            if (!this.checked) {
+                maxConditional.value = 0;
+            }
+        });
+        maxConditional.disabled = !allowConditional.checked;
+    }
+});
+</script>

@@ -1,0 +1,164 @@
+<!-- accounts/templates/accounts/role_form.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}{% if form.instance.pk %}Edit Role{% else %}Create Role{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    {% if form.instance.pk %}Edit Role{% else %}Create New Role{% endif %}
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        Admin View
+                    </span>
+                </div>
+                <p class="text">
+                    {% if form.instance.pk %}
+                        Edit the role <strong>{{ form.instance.name }}</strong>. Update the <strong>name</strong>,
+                        <strong>description</strong>, and <strong>permissions</strong> assigned to this role.
+                        Changes will affect all users assigned to this role.
+                    {% else %}
+                        Create a new role by providing a <strong>name</strong>, <strong>description</strong>,
+                        and selecting <strong>permissions</strong>. Roles control what users can see and do
+                        in the system. Assign permissions carefully to ensure proper access control.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="p-4">
+                    <h5 class="fw-bold mb-1">
+                        {% if form.instance.pk %}
+                            <i class="bi bi-pencil-square text-gold me-2"></i>Edit Role
+                        {% else %}
+                            <i class="bi bi-plus-circle text-gold me-2"></i>Create New Role
+                        {% endif %}
+                    </h5>
+                    <p class="text-muted mb-4">Define the name, description, and permissions for this role.</p>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label fw-semibold">Role Name</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label fw-semibold">Description</label>
+                            {{ form.description }}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.permissions.id_for_label }}" class="form-label fw-semibold">Permissions</label>
+                            <div class="border rounded-3 p-3" style="background-color: var(--app-bg);">
+                                {{ form.permissions }}
+                            </div>
+                            <small class="text-muted">Hold Ctrl (or Cmd) to select multiple permissions.</small>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-gold">
+                                <i class="bi bi-check2-circle me-1"></i>Save Role
+                            </button>
+                            <a href="{% url 'role_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,1804 @@
+<!-- finance/templates/finance/class_addon_form_modal.html -->
+
+<style>
+/* ============================================================
+   ENTERPRISE CLASS FEE ADD-ON MODAL
+   Fully themed for light / dark mode
+   ============================================================ */
+
+.class-addon-modal {
+    --ea-gold: var(--eduai-gold, #946B1C);
+    --ea-gold-light: var(--eduai-gold-soft, rgba(148, 107, 28, 0.12));
+    --ea-gold-border: rgba(148, 107, 28, 0.25);
+
+    --ea-border: var(--surface-border, #E7E1D3);
+    --ea-muted: var(--text-muted, #6B7570);
+    --ea-text: var(--text-primary, #1F2A28);
+    --ea-bg: var(--surface-bg, #FFFFFF);
+    --ea-soft: var(--app-bg, #F7F4EC);
+    --ea-input-bg: var(--surface-bg, #FFFFFF);
+    --ea-input-border: var(--surface-border, #E7E1D3);
+    --ea-card-bg: var(--surface-bg, #FFFFFF);
+}
+
+/* ============================================================
+   DARK MODE OVERRIDES
+   ============================================================ */
+
+[data-bs-theme="dark"] .class-addon-modal {
+    --ea-border: var(--surface-border, #223330);
+    --ea-muted: #9aa8a3;
+    --ea-text: var(--text-primary, #ECE8DD);
+    --ea-bg: var(--surface-bg, #142320);
+    --ea-soft: var(--app-bg, #0E1715);
+    --ea-input-bg: var(--surface-bg, #142320);
+    --ea-input-border: var(--surface-border, #223330);
+    --ea-card-bg: var(--surface-bg, #142320);
+}
+
+[data-bs-theme="dark"] .class-addon-modal .modal-content {
+    background: var(--surface-bg, #142320) !important;
+    border-color: var(--surface-border, #223330) !important;
+}
+
+[data-bs-theme="dark"] .class-addon-modal .modal-header,
+[data-bs-theme="dark"] .class-addon-modal .modal-footer {
+    background: var(--surface-bg, #142320) !important;
+    border-color: var(--surface-border, #223330) !important;
+}
+
+[data-bs-theme="dark"] .class-addon-modal .modal-body {
+    background: var(--app-bg, #0E1715) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-section {
+    background: var(--surface-bg, #142320) !important;
+    border-color: var(--surface-border, #223330) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-section-header {
+    border-color: var(--surface-border, #223330) !important;
+}
+
+[data-bs-theme="dark"] .class-addon-modal .form-control,
+[data-bs-theme="dark"] .class-addon-modal .form-select {
+    background: var(--surface-bg, #142320) !important;
+    border-color: var(--surface-border, #223330) !important;
+    color: var(--text-primary, #ECE8DD) !important;
+}
+
+[data-bs-theme="dark"] .class-addon-modal .form-control::placeholder {
+    color: #6b7a75 !important;
+}
+
+[data-bs-theme="dark"] .class-addon-modal .form-control:focus,
+[data-bs-theme="dark"] .class-addon-modal .form-select:focus {
+    border-color: var(--eduai-gold, #946B1C) !important;
+    box-shadow: 0 0 0 3px rgba(148, 107, 28, 0.15) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-addon-item {
+    background: var(--surface-bg, #142320) !important;
+    border-color: var(--surface-border, #223330) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-addon-item:hover {
+    border-color: rgba(148, 107, 28, 0.3) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-items-container {
+    background: var(--app-bg, #0E1715) !important;
+    border-color: var(--surface-border, #223330) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-term label {
+    background: var(--surface-bg, #142320) !important;
+    border-color: var(--surface-border, #223330) !important;
+    color: var(--text-muted, #9aa8a3) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-term input:checked + label {
+    border-color: var(--eduai-gold, #946B1C) !important;
+    background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.12)) !important;
+    color: var(--eduai-gold, #946B1C) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-option label {
+    background: var(--surface-bg, #142320) !important;
+    border-color: var(--surface-border, #223330) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-option-icon {
+    background: var(--app-bg, #0E1715) !important;
+    color: var(--text-muted, #9aa8a3) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-option input:checked + label {
+    border-color: var(--eduai-gold, #946B1C) !important;
+    background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.12)) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-option input:checked + label .enterprise-option-icon {
+    background: var(--eduai-gold, #946B1C) !important;
+    color: #fff !important;
+}
+
+[data-bs-theme="dark"] .enterprise-option-check {
+    background: var(--surface-bg, #142320) !important;
+    border-color: var(--surface-border, #223330) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-option input:checked + label .enterprise-option-check {
+    border-color: var(--eduai-gold, #946B1C) !important;
+    background: var(--eduai-gold, #946B1C) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-cancel-btn {
+    background: var(--surface-bg, #142320) !important;
+    border-color: var(--surface-border, #223330) !important;
+    color: var(--text-primary, #ECE8DD) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-cancel-btn:hover {
+    background: var(--app-bg, #0E1715) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-add-btn {
+    background: var(--surface-bg, #142320) !important;
+    border-color: var(--surface-border, #223330) !important;
+    color: var(--eduai-gold, #946B1C) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-add-btn:hover {
+    background: var(--eduai-gold, #946B1C) !important;
+    color: #fff !important;
+}
+
+[data-bs-theme="dark"] .enterprise-remove-btn {
+    background: var(--surface-bg, #142320) !important;
+    border-color: #553333 !important;
+    color: #dc3545 !important;
+}
+
+[data-bs-theme="dark"] .enterprise-remove-btn:hover {
+    background: #2a1a1a !important;
+    border-color: #dc3545 !important;
+}
+
+[data-bs-theme="dark"] .enterprise-custom-terms {
+    background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.08)) !important;
+    border-color: var(--eduai-gold, #946B1C) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-custom-label {
+    color: var(--text-muted, #9aa8a3) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-amount .input-group-text {
+    background: var(--app-bg, #0E1715) !important;
+    border-color: var(--surface-border, #223330) !important;
+    color: var(--eduai-gold, #946B1C) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-items-error {
+    background: rgba(220, 53, 69, 0.1) !important;
+    border-color: rgba(220, 53, 69, 0.3) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-section-number {
+    background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.15)) !important;
+}
+
+[data-bs-theme="dark"] .enterprise-item-number {
+    background: var(--app-bg, #0E1715) !important;
+    color: var(--text-muted, #9aa8a3) !important;
+}
+
+
+/* ============================================================
+   MODAL CONTAINER
+   ============================================================ */
+
+.class-addon-modal .modal-content {
+    border: 1px solid var(--ea-border);
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--ea-bg);
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.16), 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+
+.class-addon-modal .modal-header {
+    min-height: 72px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--ea-border) !important;
+    background: var(--ea-bg);
+}
+
+.enterprise-modal-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.enterprise-modal-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ea-gold-light);
+    border: 1px solid var(--ea-gold-border);
+    color: var(--ea-gold);
+    font-size: 17px;
+}
+
+.enterprise-modal-title {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.2;
+    font-weight: 700;
+    color: var(--ea-text);
+}
+
+.enterprise-modal-subtitle {
+    display: block;
+    margin-top: 3px;
+    color: var(--ea-muted);
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+.enterprise-modal-close {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    margin: 0;
+    border-radius: 7px;
+    opacity: 0.65;
+    transition: 0.15s ease;
+}
+
+
+/* ============================================================
+   SCROLLABLE BODY
+   ============================================================ */
+
+.class-addon-modal .modal-body {
+    padding: 18px 20px;
+    max-height: min(68vh, 620px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--ea-soft);
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.class-addon-modal .modal-body::-webkit-scrollbar {
+    width: 7px;
+}
+
+.class-addon-modal .modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.class-addon-modal .modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 20px;
+}
+
+.class-addon-modal .modal-body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+
+/* ============================================================
+   FORM SECTIONS
+   ============================================================ */
+
+.enterprise-section {
+    background: var(--ea-card-bg);
+    border: 1px solid var(--ea-border);
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+
+.enterprise-section:last-child {
+    margin-bottom: 0;
+}
+
+.enterprise-section-header {
+    min-height: 45px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--ea-border);
+}
+
+.enterprise-section-heading {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.enterprise-section-number {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ea-gold-light);
+    color: var(--ea-gold);
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.enterprise-section-title {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ea-text);
+}
+
+.enterprise-section-help {
+    margin: 1px 0 0;
+    color: var(--ea-muted);
+    font-size: 10px;
+}
+
+.enterprise-section-body {
+    padding: 14px;
+}
+
+
+/* ============================================================
+   FORM CONTROLS
+   ============================================================ */
+
+.class-addon-modal .form-label {
+    margin-bottom: 5px;
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--ea-text);
+}
+
+.class-addon-modal .form-control,
+.class-addon-modal .form-select {
+    height: 38px;
+    min-height: 38px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--ea-input-border);
+    background: var(--ea-input-bg);
+    color: var(--ea-text);
+    font-size: 12px;
+    box-shadow: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.class-addon-modal .form-control:focus,
+.class-addon-modal .form-select:focus {
+    border-color: var(--ea-gold);
+    box-shadow: 0 0 0 3px var(--ea-gold-light);
+}
+
+.class-addon-modal .form-control::placeholder {
+    color: var(--ea-muted);
+}
+
+
+/* ============================================================
+   CLASS SELECT
+   ============================================================ */
+
+.enterprise-select-wrap {
+    position: relative;
+}
+
+.enterprise-select-wrap .enterprise-select-icon {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ea-gold);
+    font-size: 13px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.enterprise-select-wrap select {
+    padding-left: 31px !important;
+}
+
+
+/* ============================================================
+   BILLING SCHEDULE
+   ============================================================ */
+
+.enterprise-term-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 7px;
+}
+
+.enterprise-term {
+    position: relative;
+}
+
+.enterprise-term input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.enterprise-term label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 8px;
+    border: 1px solid var(--ea-border);
+    border-radius: 8px;
+    background: var(--ea-bg);
+    color: var(--ea-muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.enterprise-term label i {
+    font-size: 12px;
+}
+
+.enterprise-term input:checked + label {
+    border-color: var(--ea-gold);
+    background: var(--ea-gold-light);
+    color: var(--ea-gold);
+    box-shadow: inset 0 0 0 1px var(--ea-gold);
+}
+
+.enterprise-term input:checked + label i {
+    color: var(--ea-gold);
+}
+
+
+/* ============================================================
+   CUSTOM TERMS
+   ============================================================ */
+
+.enterprise-custom-terms {
+    margin-top: 10px;
+    padding: 9px 11px;
+    border: 1px solid var(--ea-gold-border);
+    border-radius: 8px;
+    background: var(--ea-gold-light);
+}
+
+.enterprise-custom-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-right: 16px;
+    color: var(--ea-text);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.enterprise-custom-label input {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--ea-gold);
+}
+
+
+/* ============================================================
+   ADD-ON ITEMS HEADER
+   ============================================================ */
+
+.enterprise-items-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.enterprise-items-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.enterprise-items-label i {
+    color: var(--ea-gold);
+}
+
+.enterprise-items-label strong {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ea-text);
+}
+
+.enterprise-item-count {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--ea-gold-light);
+    color: var(--ea-gold);
+    font-size: 10px;
+    font-weight: 800;
+}
+
+
+/* ============================================================
+   ADD ITEM BUTTON
+   ============================================================ */
+
+.enterprise-add-btn {
+    height: 31px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--ea-gold-border);
+    border-radius: 6px;
+    background: var(--ea-bg);
+    color: var(--ea-gold);
+    font-size: 10px;
+    font-weight: 700;
+    transition: all 0.15s ease;
+}
+
+.enterprise-add-btn:hover {
+    background: var(--ea-gold);
+    color: #fff;
+    border-color: var(--ea-gold);
+}
+
+
+/* ============================================================
+   ADD-ON ITEMS CONTAINER
+   ============================================================ */
+
+.enterprise-items-container {
+    padding: 8px;
+    border: 1px solid var(--ea-border);
+    border-radius: 8px;
+    background: var(--ea-soft);
+}
+
+
+/* ============================================================
+   INDIVIDUAL ITEM
+   ============================================================ */
+
+.enterprise-addon-item {
+    padding: 12px;
+    margin-bottom: 7px;
+    border: 1px solid var(--ea-border);
+    border-radius: 8px;
+    background: var(--ea-bg);
+}
+
+.enterprise-addon-item:last-child {
+    margin-bottom: 0;
+}
+
+.enterprise-addon-item:hover {
+    border-color: var(--ea-gold-border);
+}
+
+
+/* ============================================================
+   ITEM NUMBER
+   ============================================================ */
+
+.enterprise-item-number {
+    width: 22px;
+    height: 22px;
+    margin-bottom: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    background: var(--ea-soft);
+    color: var(--ea-muted);
+    font-size: 9px;
+    font-weight: 800;
+}
+
+
+/* ============================================================
+   AMOUNT
+   ============================================================ */
+
+.enterprise-amount .input-group-text {
+    height: 38px;
+    border: 1px solid var(--ea-input-border);
+    border-right: 0;
+    border-radius: 8px 0 0 8px;
+    background: var(--ea-soft);
+    color: var(--ea-gold);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.enterprise-amount .form-control {
+    border-radius: 0 8px 8px 0;
+    font-weight: 700;
+}
+
+
+/* ============================================================
+   REMOVE BUTTON
+   ============================================================ */
+
+.enterprise-remove-btn {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #f3c7c2;
+    border-radius: 8px;
+    background: #fff;
+    color: #dc3545;
+    transition: all 0.15s ease;
+}
+
+.enterprise-remove-btn:hover {
+    background: #fdf2f1;
+    border-color: #dc3545;
+}
+
+
+/* ============================================================
+   DESCRIPTION
+   ============================================================ */
+
+.enterprise-description {
+    margin-top: 8px;
+}
+
+.enterprise-description .form-control {
+    height: 34px;
+    min-height: 34px;
+    font-size: 11px;
+}
+
+
+/* ============================================================
+   OPTIONS
+   ============================================================ */
+
+.enterprise-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.enterprise-option {
+    position: relative;
+}
+
+.enterprise-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.enterprise-option label {
+    min-height: 49px;
+    padding: 8px 9px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--ea-border);
+    border-radius: 8px;
+    background: var(--ea-bg);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.enterprise-option-icon {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: var(--ea-soft);
+    color: var(--ea-muted);
+    font-size: 12px;
+}
+
+.enterprise-option-text {
+    min-width: 0;
+}
+
+.enterprise-option-text strong {
+    display: block;
+    color: var(--ea-text);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.enterprise-option-text small {
+    display: block;
+    margin-top: 2px;
+    color: var(--ea-muted);
+    font-size: 9px;
+    white-space: nowrap;
+}
+
+.enterprise-option-check {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    margin-left: auto;
+    border: 1px solid var(--ea-border);
+    border-radius: 4px;
+    background: var(--ea-bg);
+    position: relative;
+}
+
+.enterprise-option input:checked + label {
+    border-color: var(--ea-gold-border);
+    background: var(--ea-gold-light);
+}
+
+.enterprise-option input:checked + label .enterprise-option-icon {
+    background: var(--ea-gold);
+    color: #fff;
+}
+
+.enterprise-option input:checked + label .enterprise-option-check {
+    border-color: var(--ea-gold);
+    background: var(--ea-gold);
+}
+
+.enterprise-option input:checked + label .enterprise-option-check::after {
+    content: "";
+    position: absolute;
+    width: 7px;
+    height: 4px;
+    left: 4px;
+    top: 4px;
+    border-left: 1.5px solid #fff;
+    border-bottom: 1.5px solid #fff;
+    transform: rotate(-45deg);
+}
+
+
+/* ============================================================
+   ERROR
+   ============================================================ */
+
+.enterprise-items-error {
+    margin-top: 8px;
+    padding: 7px 9px;
+    border-radius: 6px;
+    background: #fff5f5;
+    border: 1px solid #f1c4c8;
+    font-size: 10px;
+}
+
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+
+.class-addon-modal .modal-footer {
+    min-height: 62px;
+    padding: 10px 20px;
+    border-top: 1px solid var(--ea-border) !important;
+    background: var(--ea-bg);
+}
+
+.enterprise-footer-info {
+    margin-right: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ea-muted);
+    font-size: 10px;
+}
+
+.enterprise-footer-info i {
+    color: var(--ea-gold);
+}
+
+.enterprise-cancel-btn,
+.enterprise-save-btn {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.enterprise-cancel-btn {
+    border: 1px solid var(--ea-border);
+    background: var(--ea-bg);
+    color: var(--ea-text);
+}
+
+.enterprise-cancel-btn:hover {
+    background: var(--ea-soft);
+}
+
+.enterprise-save-btn {
+    border: 1px solid var(--ea-gold) !important;
+    background: var(--ea-gold) !important;
+    color: #fff !important;
+    box-shadow: 0 2px 5px rgba(148, 107, 28, 0.16);
+}
+
+.enterprise-save-btn:hover {
+    filter: brightness(0.94);
+}
+
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 767px) {
+    .class-addon-modal .modal-body {
+        max-height: 70vh;
+        padding: 12px;
+    }
+    .class-addon-modal .modal-header {
+        padding: 12px 14px;
+    }
+    .class-addon-modal .modal-footer {
+        padding: 10px 14px;
+    }
+    .enterprise-term-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .enterprise-term:last-child {
+        grid-column: span 2;
+    }
+    .enterprise-options {
+        grid-template-columns: 1fr;
+    }
+    .enterprise-footer-info {
+        display: none;
+    }
+    .enterprise-cancel-btn,
+    .enterprise-save-btn {
+        flex: 1;
+    }
+}
+</style>
+
+<!-- ========================================================
+     HEADER
+     ======================================================== -->
+
+<div class="modal-header">
+
+    <div class="enterprise-modal-brand">
+
+        <div class="enterprise-modal-icon">
+            <i class="bi bi-plus-square"></i>
+        </div>
+
+        <div>
+            <h5 class="enterprise-modal-title">
+                {% if mode == 'create' %}
+                    Add Class Fee Add-ons
+                {% else %}
+                    Edit Class Fee Add-on
+                {% endif %}
+            </h5>
+
+            <small class="enterprise-modal-subtitle">
+                {% if mode == 'create' %}
+                    Configure additional fees and billing rules for a class.
+                {% else %}
+                    Update the class fee add-on configuration.
+                {% endif %}
+            </small>
+        </div>
+
+    </div>
+
+    <button
+        type="button"
+        class="btn-close"
+        data-bs-dismiss="modal"
+        aria-label="Close">
+    </button>
+
+</div>
+
+
+<!-- ========================================================
+     FORM
+     ======================================================== -->
+
+<form
+    method="post"
+    id="classAddonForm"
+    action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url class_id %}{% endif %}">
+
+    {% csrf_token %}
+
+
+    <!-- ====================================================
+         SCROLLABLE BODY
+         ==================================================== -->
+
+    <div class="modal-body">
+
+
+        <!-- ==================================================
+             SECTION 01 — CLASS
+             ================================================== -->
+
+        <div class="enterprise-section">
+
+            <div class="enterprise-section-header">
+
+                <div class="enterprise-section-heading">
+
+                    <span class="enterprise-section-number">
+                        01
+                    </span>
+
+                    <div>
+
+                        <h6 class="enterprise-section-title">
+                            Class
+                        </h6>
+
+                        <p class="enterprise-section-help">
+                            Select the class this fee applies to.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="enterprise-section-body">
+
+                <label class="form-label">
+                    School Class
+                    <span class="text-danger">*</span>
+                </label>
+
+                <div class="enterprise-select-wrap">
+
+                    <i class="bi bi-mortarboard enterprise-select-icon"></i>
+
+                    <select
+                        class="form-select"
+                        name="school_class"
+                        required>
+
+                        <option value="">
+                            Select school class
+                        </option>
+
+                        {% for cls in school_classes %}
+
+                        <option
+                            value="{{ cls.id }}"
+                            {% if mode == 'edit' and selected_school_class == cls.id %}
+                                selected
+                            {% endif %}>
+
+                            {{ cls.name }}
+
+                            {% if cls.grade_level %}
+                                ({{ cls.grade_level.name }})
+                            {% endif %}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ==================================================
+             SECTION 02 — BILLING
+             ================================================== -->
+
+        <div class="enterprise-section">
+
+            <div class="enterprise-section-header">
+
+                <div class="enterprise-section-heading">
+
+                    <span class="enterprise-section-number">
+                        02
+                    </span>
+
+                    <div>
+
+                        <h6 class="enterprise-section-title">
+                            Billing Schedule
+                        </h6>
+
+                        <p class="enterprise-section-help">
+                            Determine when the add-on is billed.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="enterprise-section-body">
+
+                <div class="enterprise-term-grid">
+
+                    <!-- ALL -->
+
+                    <div class="enterprise-term">
+
+                        <input
+                            type="radio"
+                            id="addonTermAll"
+                            name="term_type"
+                            value="ALL"
+                            {% if mode != 'edit' or addon.term_type == 'ALL' %}checked{% endif %}>
+
+                        <label for="addonTermAll">
+                            <i class="bi bi-calendar-range"></i>
+                            All Terms
+                        </label>
+
+                    </div>
+
+
+                    <!-- FIRST -->
+
+                    <div class="enterprise-term">
+
+                        <input
+                            type="radio"
+                            id="addonTermFirst"
+                            name="term_type"
+                            value="FIRST"
+                            {% if mode == 'edit' and addon.term_type == 'FIRST' %}checked{% endif %}>
+
+                        <label for="addonTermFirst">
+                            <i class="bi bi-1-circle"></i>
+                            Term 1
+                        </label>
+
+                    </div>
+
+
+                    <!-- SECOND -->
+
+                    <div class="enterprise-term">
+
+                        <input
+                            type="radio"
+                            id="addonTermSecond"
+                            name="term_type"
+                            value="SECOND"
+                            {% if mode == 'edit' and addon.term_type == 'SECOND' %}checked{% endif %}>
+
+                        <label for="addonTermSecond">
+                            <i class="bi bi-2-circle"></i>
+                            Term 2
+                        </label>
+
+                    </div>
+
+
+                    <!-- THIRD -->
+
+                    <div class="enterprise-term">
+
+                        <input
+                            type="radio"
+                            id="addonTermThird"
+                            name="term_type"
+                            value="THIRD"
+                            {% if mode == 'edit' and addon.term_type == 'THIRD' %}checked{% endif %}>
+
+                        <label for="addonTermThird">
+                            <i class="bi bi-3-circle"></i>
+                            Term 3
+                        </label>
+
+                    </div>
+
+
+                    <!-- CUSTOM -->
+
+                    <div class="enterprise-term">
+
+                        <input
+                            type="radio"
+                            id="addonTermCustom"
+                            name="term_type"
+                            value="CUSTOM"
+                            {% if mode == 'edit' and addon.term_type == 'CUSTOM' %}checked{% endif %}>
+
+                        <label for="addonTermCustom">
+                            <i class="bi bi-sliders"></i>
+                            Custom
+                        </label>
+
+                    </div>
+
+                </div>
+
+
+                <!-- CUSTOM TERM SELECTION -->
+
+                <div
+                    id="customTerms"
+                    class="enterprise-custom-terms
+                    {% if mode == 'edit' and addon.term_type != 'CUSTOM' %}
+                        d-none
+                    {% elif mode != 'edit' %}
+                        d-none
+                    {% endif %}">
+
+                    <div class="mb-1">
+
+                        <span
+                            class="fw-semibold"
+                            style="font-size:10px;">
+
+                            Select applicable terms
+
+                        </span>
+
+                    </div>
+
+
+                    <label class="enterprise-custom-label">
+
+                        <input
+                            type="checkbox"
+                            name="custom_terms"
+                            value="1"
+                            {% if mode == 'edit' and 1 in addon.custom_terms %}checked{% endif %}>
+
+                        Term 1
+
+                    </label>
+
+
+                    <label class="enterprise-custom-label">
+
+                        <input
+                            type="checkbox"
+                            name="custom_terms"
+                            value="2"
+                            {% if mode == 'edit' and 2 in addon.custom_terms %}checked{% endif %}>
+
+                        Term 2
+
+                    </label>
+
+
+                    <label class="enterprise-custom-label">
+
+                        <input
+                            type="checkbox"
+                            name="custom_terms"
+                            value="3"
+                            {% if mode == 'edit' and 3 in addon.custom_terms %}checked{% endif %}>
+
+                        Term 3
+
+                    </label>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ==================================================
+             SECTION 03 — ADD-ON ITEMS
+             ================================================== -->
+
+        <div class="enterprise-section">
+
+            <div class="enterprise-section-header">
+
+                <div class="enterprise-section-heading">
+
+                    <span class="enterprise-section-number">
+                        03
+                    </span>
+
+                    <div>
+
+                        <h6 class="enterprise-section-title">
+                            Add-on Items
+                        </h6>
+
+                        <p class="enterprise-section-help">
+                            Define the additional charges for this class.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="enterprise-section-body">
+
+
+                <div class="enterprise-items-toolbar">
+
+                    <div class="enterprise-items-label">
+
+                        <i class="bi bi-list-check"></i>
+
+                        <strong>
+                            Fee items
+                        </strong>
+
+                        <span
+                            class="enterprise-item-count"
+                            id="addonItemCount">
+
+                            {% if existing_items %}
+                                {{ existing_items|length }}
+                            {% else %}
+                                1
+                            {% endif %}
+
+                        </span>
+
+                    </div>
+
+
+                    <button
+                        type="button"
+                        class="enterprise-add-btn"
+                        id="addAddonItemBtn">
+
+                        <i class="bi bi-plus-lg"></i>
+
+                        Add item
+
+                    </button>
+
+                </div>
+
+
+                <div
+                    class="enterprise-items-container"
+                    id="addonItemsContainer">
+
+                    {% if existing_items %}
+                        <!-- EDIT MODE: Show all existing items -->
+                        {% for item in existing_items %}
+                            <div class="enterprise-addon-item js-addon-item-row" data-item-id="{{ item.id }}">
+                                <div class="row g-2 align-items-end">
+
+                                    <!-- Hidden field for item ID -->
+                                    <input type="hidden" name="item_ids" value="{{ item.id }}">
+
+                                    <!-- NAME -->
+                                    <div class="col-md-4">
+                                        <div class="enterprise-item-number">
+                                            {{ forloop.counter|stringformat:"02d" }}
+                                        </div>
+                                        <label class="form-label">
+                                            Add-on Name
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            class="form-control"
+                                            name="item_names"
+                                            value="{{ item.addon_structure.name }}"
+                                            placeholder="e.g. ICT Levy"
+                                            required>
+                                    </div>
+
+                                    <!-- CATEGORY -->
+                                    <div class="col-md-4">
+                                        <label class="form-label">
+                                            Fee Category
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <select
+                                            class="form-select"
+                                            name="item_categories"
+                                            required>
+                                            <option value="">
+                                                Select category
+                                            </option>
+                                            {% for category in fee_categories %}
+                                                <option
+                                                    value="{{ category.id }}"
+                                                    {% if item.addon_structure.fee_category_id == category.id %}selected{% endif %}>
+                                                    {{ category.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <!-- AMOUNT -->
+                                    <div class="col-md-3">
+                                        <label class="form-label">
+                                            Amount
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="input-group enterprise-amount">
+                                            <span class="input-group-text">
+                                                GH¢
+                                            </span>
+                                            <input
+                                                type="number"
+                                                min="0.01"
+                                                step="0.01"
+                                                class="form-control"
+                                                name="item_amounts"
+                                                value="{{ item.amount }}"
+                                                placeholder="0.00"
+                                                required>
+                                        </div>
+                                    </div>
+
+                                    <!-- REMOVE -->
+                                    <div class="col-md-1">
+                                        <button
+                                            type="button"
+                                            class="enterprise-remove-btn w-100 js-remove-addon-item"
+                                            title="Remove item">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </div>
+
+                                    <!-- DESCRIPTION -->
+                                    <div class="col-12 enterprise-description">
+                                        <input
+                                            type="text"
+                                            class="form-control"
+                                            name="item_descriptions"
+                                            value="{{ item.addon_structure.description|default:'' }}"
+                                            placeholder="Optional description">
+                                    </div>
+
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <!-- CREATE MODE: Show one empty row -->
+                        <div class="enterprise-addon-item js-addon-item-row">
+                            <div class="row g-2 align-items-end">
+
+                                <!-- Hidden field for item ID (empty for new items) -->
+                                <input type="hidden" name="item_ids" value="">
+
+                                <!-- NAME -->
+                                <div class="col-md-4">
+                                    <div class="enterprise-item-number">
+                                        01
+                                    </div>
+                                    <label class="form-label">
+                                        Add-on Name
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        name="item_names"
+                                        placeholder="e.g. ICT Levy"
+                                        required>
+                                </div>
+
+                                <!-- CATEGORY -->
+                                <div class="col-md-4">
+                                    <label class="form-label">
+                                        Fee Category
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <select
+                                        class="form-select"
+                                        name="item_categories"
+                                        required>
+                                        <option value="">
+                                            Select category
+                                        </option>
+                                        {% for category in fee_categories %}
+                                            <option value="{{ category.id }}">
+                                                {{ category.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- AMOUNT -->
+                                <div class="col-md-3">
+                                    <label class="form-label">
+                                        Amount
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group enterprise-amount">
+                                        <span class="input-group-text">
+                                            GH¢
+                                        </span>
+                                        <input
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            class="form-control"
+                                            name="item_amounts"
+                                            placeholder="0.00"
+                                            required>
+                                    </div>
+                                </div>
+
+                                <!-- REMOVE -->
+                                <div class="col-md-1">
+                                    <button
+                                        type="button"
+                                        class="enterprise-remove-btn w-100 js-remove-addon-item"
+                                        title="Remove item">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </div>
+
+                                <!-- DESCRIPTION -->
+                                <div class="col-12 enterprise-description">
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        name="item_descriptions"
+                                        placeholder="Optional description">
+                                </div>
+
+                            </div>
+                        </div>
+                    {% endif %}
+
+                </div>
+
+
+                <div
+                    id="addonItemsError"
+                    class="enterprise-items-error text-danger d-none">
+
+                    <i class="bi bi-exclamation-circle me-1"></i>
+
+                    Please keep at least one complete add-on item.
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ==================================================
+             SECTION 04 — OPTIONS
+             ================================================== -->
+
+        <div class="enterprise-section">
+
+            <div class="enterprise-section-header">
+
+                <div class="enterprise-section-heading">
+
+                    <span class="enterprise-section-number">
+                        04
+                    </span>
+
+                    <div>
+
+                        <h6 class="enterprise-section-title">
+                            Options
+                        </h6>
+
+                        <p class="enterprise-section-help">
+                            Configure how this fee behaves.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="enterprise-section-body">
+
+                <div class="enterprise-options">
+
+
+                    <!-- NEW STUDENTS -->
+
+                    <div class="enterprise-option">
+
+                        <input
+                            type="checkbox"
+                            id="addonNewStudents"
+                            name="apply_to_new_students_only"
+                            {% if mode == 'edit' and addon.apply_to_new_students_only %}checked{% endif %}>
+
+                        <label for="addonNewStudents">
+
+                            <span class="enterprise-option-icon">
+                                <i class="bi bi-person-plus"></i>
+                            </span>
+
+                            <span class="enterprise-option-text">
+
+                                <strong>
+                                    New students only
+                                </strong>
+
+                                <small>
+                                    Apply to new enrolments
+                                </small>
+
+                            </span>
+
+                            <span class="enterprise-option-check"></span>
+
+                        </label>
+
+                    </div>
+
+
+                    <!-- REQUIRED -->
+
+                    <div class="enterprise-option">
+
+                        <input
+                            type="checkbox"
+                            id="addonRequired"
+                            name="is_required"
+                            {% if mode == 'edit' and addon.is_required %}checked{% endif %}>
+
+                        <label for="addonRequired">
+
+                            <span class="enterprise-option-icon">
+                                <i class="bi bi-shield-check"></i>
+                            </span>
+
+                            <span class="enterprise-option-text">
+
+                                <strong>
+                                    Required
+                                </strong>
+
+                                <small>
+                                    Cannot be opted out
+                                </small>
+
+                            </span>
+
+                            <span class="enterprise-option-check"></span>
+
+                        </label>
+
+                    </div>
+
+
+                    <!-- ACTIVE -->
+
+                    <div class="enterprise-option">
+
+                        <input
+                            type="checkbox"
+                            id="addonActive"
+                            name="is_active"
+                            {% if mode != 'edit' or addon.is_active %}checked{% endif %}>
+
+                        <label for="addonActive">
+
+                            <span class="enterprise-option-icon">
+                                <i class="bi bi-check-circle"></i>
+                            </span>
+
+                            <span class="enterprise-option-text">
+
+                                <strong>
+                                    Active
+                                </strong>
+
+                                <small>
+                                    Include in billing
+                                </small>
+
+                            </span>
+
+                            <span class="enterprise-option-check"></span>
+
+                        </label>
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+
+    <!-- ====================================================
+         FOOTER
+         ==================================================== -->
+
+    <div class="modal-footer">
+
+        <div class="enterprise-footer-info">
+
+            <i class="bi bi-info-circle"></i>
+
+            <span>
+                Required fields are marked with
+                <span class="text-danger">*</span>
+            </span>
+
+        </div>
+
+
+        <button
+            type="button"
+            class="btn enterprise-cancel-btn"
+            data-bs-dismiss="modal">
+
+            Cancel
+
+        </button>
+
+
+        <button
+            type="submit"
+            class="btn enterprise-save-btn">
+
+            <i class="bi bi-check2 me-1"></i>
+
+            {% if mode == 'create' %}
+                Create Add-ons
+            {% else %}
+                Save Changes
+            {% endif %}
+
+        </button>
+
+    </div>
+
+</form>
+
+
+<!-- ========================================================
+     DYNAMIC ADD-ON ITEM TEMPLATE
+     ======================================================== -->
+
+<template id="addonItemTemplate">
+
+    <div class="enterprise-addon-item js-addon-item-row">
+
+        <div class="row g-2 align-items-end">
+
+            <!-- Hidden field for item ID (empty for new items) -->
+            <input type="hidden" name="item_ids" value="">
+
+            <!-- NAME -->
+            <div class="col-md-4">
+                <div class="enterprise-item-number">
+                    01
+                </div>
+                <label class="form-label">
+                    Add-on Name
+                    <span class="text-danger">*</span>
+                </label>
+                <input
+                    type="text"
+                    class="form-control"
+                    name="item_names"
+                    placeholder="e.g. ICT Levy"
+                    required>
+            </div>
+
+            <!-- CATEGORY -->
+            <div class="col-md-4">
+                <label class="form-label">
+                    Fee Category
+                    <span class="text-danger">*</span>
+                </label>
+                <select
+                    class="form-select"
+                    name="item_categories"
+                    required>
+                    <option value="">
+                        Select category
+                    </option>
+                    {% for category in fee_categories %}
+                        <option value="{{ category.id }}">
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- AMOUNT -->
+            <div class="col-md-3">
+                <label class="form-label">
+                    Amount
+                    <span class="text-danger">*</span>
+                </label>
+                <div class="input-group enterprise-amount">
+                    <span class="input-group-text">
+                        GH¢
+                    </span>
+                    <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        class="form-control"
+                        name="item_amounts"
+                        placeholder="0.00"
+                        required>
+                </div>
+            </div>
+
+            <!-- REMOVE -->
+            <div class="col-md-1">
+                <button
+                    type="button"
+                    class="enterprise-remove-btn w-100 js-remove-addon-item"
+                    title="Remove item">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>
+
+            <!-- DESCRIPTION -->
+            <div class="col-12 enterprise-description">
+                <input
+                    type="text"
+                    class="form-control"
+                    name="item_descriptions"
+                    placeholder="Optional description">
+            </div>
+
+        </div>
+
+    </div>
+
+</template>

@@ -1,0 +1,1380 @@
+<!-- templates/includes/sidebar.html -->
+{% load static %}
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+    /* ============================================= */
+    /* SIDEBAR THEME TOKENS                          */
+    /* ============================================= */
+    :root {
+        --eduai-gold-rgb: 148, 107, 28;
+        --eduai-gold-deep: #7A5817;
+        --eduai-signal-rgb: 44, 122, 109;
+        --eduai-accent: #9C4221;
+        --eduai-accent-rgb: 156, 66, 33;
+        --eduai-accent-soft: rgba(156, 66, 33, 0.10);
+    }
+
+    /* ============================================= */
+    /* SIDEBAR BASE STYLES                           */
+    /* ============================================= */
+    #sidebar {
+        font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+        background: var(--sidebar-bg, #ffffff);
+        border-right: 1px solid var(--sidebar-border, rgba(0,0,0,0.06));
+    }
+
+    .eduai-sidebar-header { flex-shrink: 0; }
+    .eduai-sidebar-footer { flex-shrink: 0; border-top: 1px solid var(--sidebar-border, rgba(0,0,0,0.06)); }
+
+    .eduai-nav-scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        padding-bottom: 8px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--sidebar-border, rgba(0,0,0,0.1)) transparent;
+    }
+    .eduai-nav-scroll::-webkit-scrollbar { width: 4px; }
+    .eduai-nav-scroll::-webkit-scrollbar-track { background: transparent; }
+    .eduai-nav-scroll::-webkit-scrollbar-thumb { background-color: var(--sidebar-border, rgba(0,0,0,0.1)); border-radius: 10px; }
+
+    /* ============================================= */
+    /* BRAND                                        */
+    /* ============================================= */
+    .eduai-brand {
+        padding: 20px 20px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--sidebar-border, rgba(0,0,0,0.06));
+    }
+    .eduai-brand .mark {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary-color), var(--eduai-gold-deep));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 14px;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(var(--eduai-gold-rgb), 0.25);
+    }
+    .eduai-brand .wordmark {
+        font-weight: 800;
+        font-size: 1.1rem;
+        letter-spacing: -0.02em;
+        color: var(--sidebar-text-active, var(--text-primary));
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    .eduai-brand .wordmark span {
+        color: var(--primary-color);
+    }
+
+    /* ============================================= */
+    /* SEARCH                                       */
+    /* ============================================= */
+    .eduai-search-wrap { padding: 0 14px 12px; }
+    .eduai-search { position: relative; }
+    .eduai-search i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: .8rem;
+        color: var(--text-muted, var(--text-muted));
+    }
+    .eduai-search input {
+        width: 100%;
+        padding: 7px 10px 7px 32px;
+        font-size: .8rem;
+        background: var(--app-bg, var(--app-bg));
+        border: 1px solid var(--sidebar-border, rgba(0,0,0,0.06));
+        border-radius: 8px;
+        color: var(--sidebar-text-active, var(--text-primary));
+        outline: none;
+        transition: all 0.2s ease;
+    }
+    .eduai-search input:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--eduai-gold-rgb), 0.12);
+        background: #ffffff;
+    }
+    .eduai-search input::placeholder {
+        color: var(--text-muted, var(--text-muted));
+        font-weight: 400;
+    }
+
+    /* ============================================= */
+    /* NAVIGATION                                   */
+    /* ============================================= */
+    .eduai-eyebrow {
+        font-size: .65rem;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: var(--text-muted, var(--text-muted));
+        padding: 12px 18px 4px;
+    }
+    .eduai-nav-scroll ul { list-style: none; padding: 0 10px; margin: 0; }
+    .eduai-nav-scroll .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        margin: 1px 0;
+        border-radius: 8px;
+        color: var(--sidebar-text, var(--sidebar-text));
+        font-weight: 500;
+        font-size: .85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-decoration: none;
+        transition: all 0.15s ease;
+        position: relative;
+        background: none;
+        border: none;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+    }
+    .eduai-nav-scroll .nav-link i.bi {
+        font-size: 1rem;
+        width: 18px;
+        text-align: center;
+        flex-shrink: 0;
+        color: var(--text-muted, var(--text-muted));
+        transition: color 0.15s ease;
+    }
+    .eduai-nav-scroll .nav-link:hover {
+        background: rgba(var(--eduai-gold-rgb), 0.06);
+        color: var(--sidebar-text-active, var(--text-primary));
+    }
+    .eduai-nav-scroll .nav-link:hover i.bi {
+        color: var(--primary-color);
+    }
+    .eduai-nav-scroll .nav-link.active {
+        background: rgba(var(--eduai-gold-rgb), 0.08);
+        color: var(--primary-color);
+    }
+    .eduai-nav-scroll .nav-link.active i.bi {
+        color: var(--primary-color);
+    }
+
+    .eduai-nav-scroll .nav-sub {
+        padding-left: 36px;
+        font-size: .8rem;
+    }
+    .eduai-nav-scroll .nav-sub .nav-link {
+        padding: 5px 12px;
+        font-weight: 450;
+    }
+
+    .eduai-badge {
+        margin-left: auto;
+        font-size: .55rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        background: rgba(var(--eduai-gold-rgb), 0.1);
+        padding: 2px 8px;
+        border-radius: 12px;
+        flex-shrink: 0;
+        letter-spacing: 0.02em;
+        border: 1px solid rgba(var(--eduai-gold-rgb), 0.08);
+    }
+    .eduai-badge-ai {
+        color: var(--eduai-accent);
+        background: rgba(var(--eduai-accent-rgb), 0.1);
+        border-color: rgba(var(--eduai-accent-rgb), 0.08);
+    }
+    .eduai-badge-hr {
+        color: var(--primary-color);
+        background: rgba(var(--eduai-gold-rgb), 0.08);
+        border-color: rgba(var(--eduai-gold-rgb), 0.06);
+    }
+    .eduai-badge-payroll {
+        color: var(--eduai-signal);
+        background: rgba(var(--eduai-signal-rgb), 0.1);
+        border-color: rgba(var(--eduai-signal-rgb), 0.08);
+    }
+    .eduai-badge-dept {
+        color: var(--eduai-accent);
+        background: rgba(var(--eduai-accent-rgb), 0.08);
+        border-color: rgba(var(--eduai-accent-rgb), 0.06);
+    }
+    .eduai-badge-comm {
+        color: var(--eduai-accent);
+        background: rgba(var(--eduai-accent-rgb), 0.1);
+        border-color: rgba(var(--eduai-accent-rgb), 0.08);
+    }
+
+    /* ============================================= */
+    /* COLLAPSE BUTTON                              */
+    /* ============================================= */
+    .eduai-collapse-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        background: none;
+        border: none;
+        padding: 10px 18px;
+        font-size: .75rem;
+        font-weight: 600;
+        color: var(--text-muted, var(--text-muted));
+        cursor: pointer;
+        transition: color 0.15s ease;
+        border-top: 1px solid var(--sidebar-border, rgba(0,0,0,0.06));
+    }
+    .eduai-collapse-btn:hover { color: var(--sidebar-text-active, var(--text-primary)); }
+    #sidebar.collapsed .eduai-collapse-btn i { transform: rotate(180deg); }
+
+    /* ============================================= */
+    /* PROFILE                                      */
+    /* ============================================= */
+    .eduai-profile {
+        padding: 12px 16px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-top: 1px solid var(--sidebar-border, rgba(0,0,0,0.06));
+    }
+    .eduai-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: .75rem;
+        box-shadow: 0 2px 8px rgba(var(--eduai-gold-rgb), 0.2);
+        background: linear-gradient(135deg, var(--primary-color), var(--eduai-gold-deep));
+        color: #ffffff;
+        overflow: hidden;
+    }
+    .eduai-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .profile-meta { overflow: hidden; }
+    .profile-meta .name {
+        font-size: .82rem;
+        font-weight: 600;
+        color: var(--sidebar-text-active, var(--text-primary));
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .profile-meta .school {
+        font-size: .7rem;
+        color: var(--text-muted, var(--text-muted));
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ============================================= */
+    /* TREE TOGGLES                                 */
+    /* ============================================= */
+    .nav-tree-toggle {
+        cursor: pointer;
+        transition: transform 0.25s ease;
+        display: inline-block;
+        margin-left: auto;
+        font-size: 0.55rem;
+        color: var(--text-muted, var(--text-muted));
+        opacity: 0.6;
+        padding: 0 4px;
+    }
+    .nav-tree-toggle:hover { opacity: 1; }
+    .nav-tree-toggle.open { transform: rotate(90deg); }
+    .nav-tree-toggle.closed { transform: rotate(0deg); }
+
+    .nav-tree-children {
+        overflow: hidden;
+        max-height: 0;
+        transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .nav-tree-children.open { max-height: 800px; }
+
+    /* ============================================= */
+    /* COLLAPSED STATE                              */
+    /* ============================================= */
+    #sidebar.collapsed .wordmark,
+    #sidebar.collapsed .eduai-search,
+    #sidebar.collapsed .eduai-eyebrow,
+    #sidebar.collapsed .eduai-label,
+    #sidebar.collapsed .eduai-badge,
+    #sidebar.collapsed .profile-meta,
+    #sidebar.collapsed .collapse-label { display: none !important; }
+
+    #sidebar.collapsed {
+        width: 64px !important;
+        min-width: 64px !important;
+        max-width: 64px !important;
+    }
+
+    #sidebar.collapsed .eduai-nav-scroll .nav-link {
+        justify-content: center !important;
+        padding: 10px !important;
+    }
+    #sidebar.collapsed .eduai-nav-scroll .nav-link i.bi {
+        font-size: 1.15rem;
+        width: auto;
+    }
+    #sidebar.collapsed .eduai-nav-scroll li[data-hidden-by-search] { display: list-item !important; }
+    #sidebar.collapsed .eduai-profile { justify-content: center !important; padding: 12px 0 !important; }
+    #sidebar.collapsed .eduai-avatar { width: 30px !important; height: 30px !important; font-size: .65rem !important; }
+    #sidebar.collapsed .eduai-collapse-btn { justify-content: center !important; padding: 10px 0 !important; }
+    #sidebar.collapsed .eduai-collapse-btn i { transform: rotate(180deg); }
+    #sidebar.collapsed .eduai-brand { justify-content: center !important; padding: 18px 0 14px !important; }
+    #sidebar.collapsed .eduai-brand .mark { width: 30px; height: 30px; font-size: 12px; }
+
+    /* ============================================= */
+    /* GHANA EDUCATION SECTION                      */
+    /* ============================================= */
+    .ghana-education-section {
+        background: linear-gradient(145deg, rgba(var(--eduai-gold-rgb), 0.04), rgba(var(--eduai-gold-rgb), 0.01));
+        border-radius: 12px;
+        margin: 6px 8px 4px;
+        padding: 4px 0;
+        border: 1px solid rgba(var(--eduai-gold-rgb), 0.06);
+    }
+    .ghana-education-section .eduai-eyebrow {
+        padding: 10px 14px 2px 14px;
+        color: var(--primary-color);
+        font-size: .6rem;
+    }
+    .ghana-education-section .nav-link {
+        padding: 7px 12px 7px 14px;
+    }
+    .ghana-education-section .nav-link i.bi {
+        color: var(--primary-color);
+    }
+    .ghana-education-section .nav-link:hover {
+        background: rgba(var(--eduai-gold-rgb), 0.06);
+    }
+    .ghana-education-section .nav-link.active {
+        background: rgba(var(--eduai-gold-rgb), 0.1);
+        color: var(--primary-color);
+    }
+    .ghana-education-section .nav-link.active i.bi {
+        color: var(--primary-color);
+    }
+    .ghana-education-section .nav-sub .nav-link {
+        padding: 4px 12px 4px 36px;
+        font-size: 0.78rem;
+    }
+    .ghana-education-section .nav-sub .nav-link i.bi {
+        font-size: 0.8rem;
+    }
+
+    .ghana-main-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        margin: 2px 0;
+        border-radius: 8px;
+        color: var(--sidebar-text, var(--sidebar-text));
+        font-weight: 600;
+        font-size: .85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        position: relative;
+        background: none;
+        border: none;
+        width: 100%;
+        text-align: left;
+    }
+    .ghana-main-toggle:hover {
+        background: rgba(var(--eduai-gold-rgb), 0.06);
+        color: var(--sidebar-text-active, var(--text-primary));
+    }
+    .ghana-main-toggle i.bi {
+        font-size: 1rem;
+        width: 18px;
+        text-align: center;
+        flex-shrink: 0;
+        color: var(--primary-color);
+    }
+    .ghana-main-toggle .badge {
+        margin-left: auto;
+        font-size: .55rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        background: rgba(var(--eduai-gold-rgb), 0.08);
+        padding: 2px 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(var(--eduai-gold-rgb), 0.06);
+    }
+    .ghana-main-toggle .toggle-icon {
+        transition: transform 0.3s ease;
+        font-size: 0.55rem;
+        color: var(--text-muted, var(--text-muted));
+        opacity: 0.6;
+    }
+    .ghana-main-toggle .toggle-icon.open {
+        transform: rotate(90deg);
+        opacity: 1;
+    }
+    .ghana-main-toggle .toggle-icon.closed {
+        transform: rotate(0deg);
+    }
+
+    .ghana-menu-wrapper {
+        overflow: hidden;
+        max-height: 0;
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .ghana-menu-wrapper.open {
+        max-height: 1800px;
+    }
+
+    /* ============================================= */
+    /* HR & PAYROLL SECTION                         */
+    /* ============================================= */
+    .hr-payroll-section {
+        background: linear-gradient(145deg, rgba(var(--eduai-signal-rgb), 0.04), rgba(var(--eduai-signal-rgb), 0.01));
+        border-radius: 12px;
+        margin: 6px 8px 4px;
+        padding: 4px 0;
+        border: 1px solid rgba(var(--eduai-signal-rgb), 0.06);
+    }
+    .hr-payroll-section .eduai-eyebrow {
+        padding: 10px 14px 2px 14px;
+        color: var(--eduai-signal);
+        font-size: .6rem;
+    }
+    .hr-payroll-section .nav-link {
+        padding: 7px 12px 7px 14px;
+    }
+    .hr-payroll-section .nav-link i.bi {
+        color: var(--eduai-signal);
+    }
+    .hr-payroll-section .nav-link:hover {
+        background: rgba(var(--eduai-signal-rgb), 0.06);
+    }
+    .hr-payroll-section .nav-link.active {
+        background: rgba(var(--eduai-signal-rgb), 0.1);
+        color: var(--eduai-signal);
+    }
+    .hr-payroll-section .nav-link.active i.bi {
+        color: var(--eduai-signal);
+    }
+
+    .hr-main-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        margin: 2px 0;
+        border-radius: 8px;
+        color: var(--sidebar-text, var(--sidebar-text));
+        font-weight: 600;
+        font-size: .85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        position: relative;
+        background: none;
+        border: none;
+        width: 100%;
+        text-align: left;
+    }
+    .hr-main-toggle:hover {
+        background: rgba(var(--eduai-signal-rgb), 0.06);
+        color: var(--sidebar-text-active, var(--text-primary));
+    }
+    .hr-main-toggle i.bi {
+        font-size: 1rem;
+        width: 18px;
+        text-align: center;
+        flex-shrink: 0;
+        color: var(--eduai-signal);
+    }
+    .hr-main-toggle .badge {
+        margin-left: auto;
+        font-size: .55rem;
+        font-weight: 700;
+        color: var(--eduai-signal);
+        background: rgba(var(--eduai-signal-rgb), 0.08);
+        padding: 2px 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(var(--eduai-signal-rgb), 0.06);
+    }
+    .hr-main-toggle .toggle-icon {
+        transition: transform 0.3s ease;
+        font-size: 0.55rem;
+        color: var(--text-muted, var(--text-muted));
+        opacity: 0.6;
+    }
+    .hr-main-toggle .toggle-icon.open {
+        transform: rotate(90deg);
+        opacity: 1;
+    }
+    .hr-main-toggle .toggle-icon.closed {
+        transform: rotate(0deg);
+    }
+
+    .hr-menu-wrapper {
+        overflow: hidden;
+        max-height: 0;
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .hr-menu-wrapper.open {
+        max-height: 1800px;
+    }
+
+    /* ============================================= */
+    /* DIVIDERS                                     */
+    /* ============================================= */
+    .sidebar-divider {
+        height: 1px;
+        background: var(--sidebar-border, rgba(0,0,0,0.06));
+        margin: 4px 16px;
+    }
+
+    /* ============================================= */
+    /* MOBILE RESPONSIVENESS                        */
+    /* ============================================= */
+    @media (max-width: 991.98px) {
+        #sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 280px;
+            z-index: 1050;
+            background: var(--sidebar-bg, #ffffff);
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 40px rgba(0,0,0,0.12);
+        }
+        #sidebar.mobile-open { transform: translateX(0); }
+        #sidebar.collapsed { width: 280px !important; min-width: 280px !important; max-width: 280px !important; }
+        #sidebar.collapsed .wordmark,
+        #sidebar.collapsed .eduai-search,
+        #sidebar.collapsed .eduai-eyebrow,
+        #sidebar.collapsed .eduai-label,
+        #sidebar.collapsed .eduai-badge,
+        #sidebar.collapsed .profile-meta,
+        #sidebar.collapsed .collapse-label { display: block !important; }
+        #sidebar.collapsed .eduai-nav-scroll .nav-link { justify-content: flex-start !important; padding: 8px 12px !important; }
+        #sidebar.collapsed .eduai-nav-scroll .nav-link i.bi { font-size: 1rem; width: 18px; }
+        #sidebar.collapsed .eduai-profile { justify-content: flex-start !important; padding: 12px 16px 14px !important; }
+        #sidebar.collapsed .eduai-avatar { width: 34px !important; height: 34px !important; font-size: .75rem !important; }
+        #sidebar.collapsed .eduai-collapse-btn { justify-content: flex-start !important; padding: 10px 18px !important; }
+        #sidebar.collapsed .eduai-collapse-btn i { transform: none !important; }
+        #sidebar.collapsed .eduai-brand { justify-content: flex-start !important; padding: 20px 20px 16px !important; }
+        #sidebar.collapsed .eduai-brand .mark { width: 34px; height: 34px; font-size: 14px; }
+
+        .eduai-scrim {
+            position: fixed;
+            inset: 0;
+            z-index: 1040;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            backdrop-filter: blur(2px);
+        }
+        .eduai-scrim.show { display: block; }
+    }
+
+    /* ============================================= */
+    /* DARK MODE SUPPORT                            */
+    /* ============================================= */
+    [data-bs-theme="dark"] .ghana-education-section {
+        background: rgba(var(--eduai-gold-rgb), 0.06);
+        border-color: rgba(var(--eduai-gold-rgb), 0.1);
+    }
+    [data-bs-theme="dark"] .hr-payroll-section {
+        background: rgba(var(--eduai-signal-rgb), 0.06);
+        border-color: rgba(var(--eduai-signal-rgb), 0.1);
+    }
+    [data-bs-theme="dark"] .eduai-search input {
+        background: var(--surface-bg);
+        color: var(--text-primary);
+    }
+    [data-bs-theme="dark"] .eduai-search input:focus {
+        background: var(--surface-bg);
+    }
+    [data-bs-theme="dark"] .eduai-brand .mark {
+        background: linear-gradient(135deg, #C9962B, var(--primary-color));
+    }
+    [data-bs-theme="dark"] .eduai-avatar {
+        background: linear-gradient(135deg, #C9962B, var(--primary-color));
+    }
+</style>
+
+<div id="sidebar">
+    <div class="eduai-sidebar-header">
+        <div class="eduai-brand">
+            <div class="mark">EA</div>
+            <span class="wordmark">Edu<span>AI</span></span>
+        </div>
+        <div class="eduai-search-wrap">
+            <div class="eduai-search">
+                <i class="bi bi-search"></i>
+                <input type="text" id="eduaiNavFilter" placeholder="Search menu..." autocomplete="off">
+            </div>
+        </div>
+    </div>
+
+    <nav class="eduai-nav-scroll" id="eduaiNavScroll">
+        <!-- ============================================= -->
+        <!-- OVERVIEW - All Roles                         -->
+        <!-- ============================================= -->
+        <div class="eduai-eyebrow">Overview</div>
+        <ul>
+            <li><a href="{% url 'dashboard:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'admin_dashboard' or request.resolver_match.url_name == 'teacher_dashboard' or request.resolver_match.url_name == 'parent_dashboard' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span class="eduai-label">Dashboard</span></a></li>
+        </ul>
+
+        <!-- ============================================= -->
+        <!-- GHANA EDUCATION - All Roles                  -->
+        <!-- ============================================= -->
+        <div class="ghana-education-section">
+            <div class="eduai-eyebrow">
+                <i class="bi bi-book me-1"></i> Knowledge Base
+            </div>
+
+            <div class="ghana-main-toggle" onclick="toggleGhanaMenu()">
+                <i class="bi bi-mortarboard"></i>
+                <span class="eduai-label">Ghana Education</span>
+                <span class="badge">30+ Topics</span>
+                <span class="toggle-icon open" id="ghanaToggleIcon">▶</span>
+            </div>
+
+            <div class="ghana-menu-wrapper open" id="ghanaMenuWrapper">
+                <ul>
+                    <li>
+                        <a href="#" class="nav-link" onclick="toggleNavTree('edu-system')">
+                            <i class="bi bi-diagram-3"></i>
+                            <span class="eduai-label">Education System</span>
+                            <span class="nav-tree-toggle open" id="toggle-edu-system">▶</span>
+                        </a>
+                        <div class="nav-tree-children open" id="nav-edu-system">
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'basic_education' %}" class="nav-link nav-sub"><i class="bi bi-book"></i><span class="eduai-label">Basic Education</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'kg' %}" class="nav-link nav-sub"><i class="bi bi-child"></i><span class="eduai-label">Kindergarten</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'primary' %}" class="nav-link nav-sub"><i class="bi bi-journal"></i><span class="eduai-label">Primary (Basic 1-6)</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'jhs' %}" class="nav-link nav-sub"><i class="bi bi-mortarboard"></i><span class="eduai-label">Junior High (Basic 7-9)</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'secondary_education' %}" class="nav-link nav-sub"><i class="bi bi-building"></i><span class="eduai-label">Secondary Education</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'shs' %}" class="nav-link nav-sub"><i class="bi bi-mortarboard-fill"></i><span class="eduai-label">Senior High (SHS)</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'tvet' %}" class="nav-link nav-sub"><i class="bi bi-tools"></i><span class="eduai-label">TVET</span></a>
+                        </div>
+                    </li>
+                    <li>
+                        <a href="#" class="nav-link" onclick="toggleNavTree('edu-curriculum')">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span class="eduai-label">Curriculum & Assessment</span>
+                            <span class="nav-tree-toggle open" id="toggle-edu-curriculum">▶</span>
+                        </a>
+                        <div class="nav-tree-children open" id="nav-edu-curriculum">
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'nacca' %}" class="nav-link nav-sub"><i class="bi bi-list-check"></i><span class="eduai-label">NaCCA Standards</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'assessment' %}" class="nav-link nav-sub"><i class="bi bi-pencil-square"></i><span class="eduai-label">Assessment & Exams</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'bece' %}" class="nav-link nav-sub"><i class="bi bi-award"></i><span class="eduai-label">BECE</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'wassce' %}" class="nav-link nav-sub"><i class="bi bi-trophy"></i><span class="eduai-label">WASSCE</span></a>
+                        </div>
+                    </li>
+                    <li>
+                        <a href="#" class="nav-link" onclick="toggleNavTree('edu-teaching')">
+                            <i class="bi bi-chalkboard"></i>
+                            <span class="eduai-label">Teaching & Learning</span>
+                            <span class="nav-tree-toggle open" id="toggle-edu-teaching">▶</span>
+                        </a>
+                        <div class="nav-tree-children open" id="nav-edu-teaching">
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'classroom_management' %}" class="nav-link nav-sub"><i class="bi bi-people"></i><span class="eduai-label">Classroom Management</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'teacher_development' %}" class="nav-link nav-sub"><i class="bi bi-person-up"></i><span class="eduai-label">Teacher Development</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'ict_in_education' %}" class="nav-link nav-sub"><i class="bi bi-laptop"></i><span class="eduai-label">ICT in Education</span></a>
+                        </div>
+                    </li>
+                    <li>
+                        <a href="#" class="nav-link" onclick="toggleNavTree('edu-admin')">
+                            <i class="bi bi-building-gear"></i>
+                            <span class="eduai-label">School Administration</span>
+                            <span class="nav-tree-toggle open" id="toggle-edu-admin">▶</span>
+                        </a>
+                        <div class="nav-tree-children open" id="nav-edu-admin">
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'school_leadership' %}" class="nav-link nav-sub"><i class="bi bi-person-badge"></i><span class="eduai-label">School Leadership</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'school_health' %}" class="nav-link nav-sub"><i class="bi bi-heart-pulse"></i><span class="eduai-label">School Health</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'educational_planning' %}" class="nav-link nav-sub"><i class="bi bi-bar-chart"></i><span class="eduai-label">Educational Planning</span></a>
+                        </div>
+                    </li>
+                    <li>
+                        <a href="#" class="nav-link" onclick="toggleNavTree('edu-support')">
+                            <i class="bi bi-hand-heart"></i>
+                            <span class="eduai-label">Student Support & Welfare</span>
+                            <span class="nav-tree-toggle open" id="toggle-edu-support">▶</span>
+                        </a>
+                        <div class="nav-tree-children open" id="nav-edu-support">
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'guidance_counselling' %}" class="nav-link nav-sub"><i class="bi bi-chat-dots"></i><span class="eduai-label">Guidance & Counselling</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'inclusive_education' %}" class="nav-link nav-sub"><i class="bi bi-universal-access"></i><span class="eduai-label">Inclusive Education</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'child_protection' %}" class="nav-link nav-sub"><i class="bi bi-shield-check"></i><span class="eduai-label">Child Protection</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'career_guidance' %}" class="nav-link nav-sub"><i class="bi bi-compass"></i><span class="eduai-label">Career Guidance</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'scholarships' %}" class="nav-link nav-sub"><i class="bi bi-coin"></i><span class="eduai-label">Scholarships</span></a>
+                        </div>
+                    </li>
+                    <li>
+                        <a href="#" class="nav-link" onclick="toggleNavTree('edu-policy')">
+                            <i class="bi bi-newspaper"></i>
+                            <span class="eduai-label">Policy & Research</span>
+                            <span class="nav-tree-toggle open" id="toggle-edu-policy">▶</span>
+                        </a>
+                        <div class="nav-tree-children open" id="nav-edu-policy">
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'current_policies' %}" class="nav-link nav-sub"><i class="bi bi-file-earmark-lock"></i><span class="eduai-label">Current Policies</span></a>
+                            <a href="{% url 'ai_engine:ghana_education_topic_detail' 'education_statistics' %}" class="nav-link nav-sub"><i class="bi bi-graph-up"></i><span class="eduai-label">Education Statistics</span></a>
+                        </div>
+                    </li>
+                    <li style="margin-top: 4px; border-top: 1px solid var(--sidebar-border, rgba(0,0,0,0.06)); padding-top: 4px;">
+                        <a href="{% url 'ai_engine:ghana_education_home' %}" class="nav-link">
+                            <i class="bi bi-grid-3x3-gap-fill"></i>
+                            <span class="eduai-label">Browse All Topics</span>
+                            <span class="eduai-badge">Browse</span>
+                        </a>
+                        <a href="{% url 'ai_engine:ghana_education_search' %}" class="nav-link">
+                            <i class="bi bi-search"></i>
+                            <span class="eduai-label">Search Knowledge</span>
+                            <span class="eduai-badge">Search</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ============================================= -->
+        <!-- AI COMMAND CENTER - All Staff Roles          -->
+        <!-- ============================================= -->
+        {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,TEACHER,HOD,SECRETARY,BURSAR,REGISTRAR' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow">
+            <i class="bi bi-cpu me-1"></i> AI Tools
+        </div>
+        <ul>
+            <li><a href="{% url 'ai_engine:ai_command_center' %}" class="nav-link {% if request.resolver_match.url_name == 'ai_command_center' %}active{% endif %}"><i class="bi bi-cpu"></i><span class="eduai-label">Command Center</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            <li><a href="{% url 'ai_engine:ai_copilot' %}" class="nav-link {% if request.resolver_match.url_name == 'ai_copilot' %}active{% endif %}"><i class="bi bi-chat-dots"></i><span class="eduai-label">AI Copilot</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,TEACHER,HOD' %}
+            <li><a href="{% url 'ai_engine:intervention_center' %}" class="nav-link {% if request.resolver_match.url_name == 'intervention_center' %}active{% endif %}"><i class="bi bi-shield-exclamation"></i><span class="eduai-label">Intervention Center</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            <li><a href="{% url 'ai_engine:risk_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'risk_dashboard' %}active{% endif %}"><i class="bi bi-graph-up-arrow"></i><span class="eduai-label">Risk Engine</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            <li><a href="{% url 'ai_engine:report_card_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'report_card_dashboard' %}active{% endif %}"><i class="bi bi-file-earmark-text"></i><span class="eduai-label">Report Cards</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            <li><a href="{% url 'ai_engine:exam_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'exam_dashboard' %}active{% endif %}"><i class="bi bi-patch-question"></i><span class="eduai-label">Exam Generator</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            <li><a href="{% url 'ai_engine:absence_list' %}" class="nav-link {% if request.resolver_match.url_name == 'absence_list' %}active{% endif %}"><i class="bi bi-person-check"></i><span class="eduai-label">Substitute Cover</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            {% endif %}
+            {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,BURSAR' %}
+            <li><a href="{% url 'ai_engine:finance_insights_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'finance_insights_dashboard' %}active{% endif %}"><i class="bi bi-cash-coin"></i><span class="eduai-label">Finance Insights</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            {% endif %}
+        </ul>
+        {% endif %}
+
+        <!-- ============================================= -->
+        <!-- HR & PAYROLL - Admin, Bursar only            -->
+        <!-- ============================================= -->
+        {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,BURSAR' %}
+        <div class="sidebar-divider"></div>
+        <div class="hr-payroll-section">
+            <div class="eduai-eyebrow">
+                <i class="bi bi-people me-1"></i> HR & Payroll
+            </div>
+
+            <!-- Staff Management Menu -->
+<div class="hr-main-toggle" onclick="toggleHRMenu()">
+    <i class="bi bi-person-badge"></i>
+    <span class="eduai-label">Staff Management</span>
+    <span class="badge">HR</span>
+    <span class="toggle-icon open" id="hrToggleIcon">▶</span>
+</div>
+
+<div class="hr-menu-wrapper open" id="hrMenuWrapper">
+    <ul>
+        <li>
+            <a href="{% url 'staff:staff_list' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_list' %}active{% endif %}">
+                <i class="bi bi-people-fill"></i>
+                <span class="eduai-label">Staff Directory</span>
+                <span class="eduai-badge eduai-badge-hr">
+                    {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}Manage{% else %}View{% endif %}
+                </span>
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'staff:staff_grade_list' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_grade_list' %}active{% endif %}">
+                <i class="bi bi-layers"></i>
+                <span class="eduai-label">Staff Grades</span>
+                <span class="eduai-badge eduai-badge-hr">
+                    {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}Manage{% else %}View{% endif %}
+                </span>
+            </a>
+        </li>
+        <!-- In the Staff Management menu, add this link -->
+<li>
+    <a href="{% url 'staff:staff_allowance_list' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_allowance_list' %}active{% endif %}">
+        <i class="bi bi-person-plus"></i>
+        <span class="eduai-label">Staff Allowances</span>
+        <span class="eduai-badge eduai-badge-hr">Individual</span>
+    </a>
+</li>
+        <li>
+            <a href="{% url 'staff:department_list' %}" class="nav-link {% if request.resolver_match.url_name == 'department_list' %}active{% endif %}">
+                <i class="bi bi-building"></i>
+                <span class="eduai-label">Departments</span>
+                <span class="eduai-badge eduai-badge-dept">
+                    {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}Manage{% else %}View{% endif %}
+                </span>
+            </a>
+        </li>
+        <!-- Only show these management links to SUPER_ADMIN and SCHOOL_ADMIN -->
+        {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}
+        <li>
+            <a href="{% url 'staff:salary_structure_list' %}" class="nav-link {% if request.resolver_match.url_name == 'salary_structure_list' %}active{% endif %}">
+                <i class="bi bi-cash-stack"></i>
+                <span class="eduai-label">Salary Structures</span>
+                <span class="eduai-badge eduai-badge-payroll">Pay</span>
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'staff:allowance_list' %}" class="nav-link {% if request.resolver_match.url_name == 'allowance_list' %}active{% endif %}">
+                <i class="bi bi-plus-circle"></i>
+                <span class="eduai-label">Grade Allowances</span>
+                <span class="eduai-badge eduai-badge-hr">Benefits</span>
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'staff:deduction_list' %}" class="nav-link {% if request.resolver_match.url_name == 'deduction_list' %}active{% endif %}">
+                <i class="bi bi-dash-circle"></i>
+                <span class="eduai-label">Deductions</span>
+                <span class="eduai-badge eduai-badge-hr">Deductions</span>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</div>
+
+            <!-- Payroll Menu -->
+            <div class="hr-main-toggle" onclick="togglePayrollMenu()">
+                <i class="bi bi-wallet2"></i>
+                <span class="eduai-label">Payroll</span>
+                <span class="badge">Pay</span>
+                <span class="toggle-icon open" id="payrollToggleIcon">▶</span>
+            </div>
+
+            <div class="hr-menu-wrapper open" id="payrollMenuWrapper">
+                <ul>
+                    <li>
+                        <a href="{% url 'staff:payroll_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'payroll_dashboard' %}active{% endif %}">
+                            <i class="bi bi-speedometer2"></i>
+                            <span class="eduai-label">Payroll Dashboard</span>
+                            <span class="eduai-badge eduai-badge-payroll">Overview</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'staff:payroll_period_list' %}" class="nav-link {% if request.resolver_match.url_name == 'payroll_period_list' %}active{% endif %}">
+                            <i class="bi bi-calendar3"></i>
+                            <span class="eduai-label">Payroll Periods</span>
+                            <span class="eduai-badge eduai-badge-payroll">Periods</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'staff:payslip_list' %}" class="nav-link {% if request.resolver_match.url_name == 'payslip_list' %}active{% endif %}">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span class="eduai-label">Payslips</span>
+                            <span class="eduai-badge eduai-badge-payroll">Slips</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Leave Management -->
+            <div class="hr-main-toggle" onclick="toggleLeaveMenu()">
+                <i class="bi bi-calendar-heart"></i>
+                <span class="eduai-label">Leave Management</span>
+                <span class="badge">Leave</span>
+                <span class="toggle-icon open" id="leaveToggleIcon">▶</span>
+            </div>
+
+            <div class="hr-menu-wrapper open" id="leaveMenuWrapper">
+                <ul>
+                    <li>
+                        <a href="{% url 'staff:leave_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'leave_dashboard' %}active{% endif %}">
+                            <i class="bi bi-speedometer2"></i>
+                            <span class="eduai-label">Leave Dashboard</span>
+                            <span class="eduai-badge eduai-badge-hr">Overview</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'staff:leave_list' %}" class="nav-link {% if request.resolver_match.url_name == 'leave_list' %}active{% endif %}">
+                            <i class="bi bi-list-check"></i>
+                            <span class="eduai-label">All Requests</span>
+                            <span class="eduai-badge eduai-badge-hr">View All</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'staff:leave_balance' %}" class="nav-link {% if request.resolver_match.url_name == 'leave_balance' %}active{% endif %}">
+                            <i class="bi bi-wallet2"></i>
+                            <span class="eduai-label">My Balance</span>
+                            <span class="eduai-badge eduai-badge-hr">Balance</span>
+                        </a>
+                    </li>
+                    {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}
+                    <li>
+                        <a href="{% url 'staff:leave_type_list' %}" class="nav-link {% if request.resolver_match.url_name == 'leave_type_list' %}active{% endif %}">
+                            <i class="bi bi-tags"></i>
+                            <span class="eduai-label">Leave Types</span>
+                            <span class="eduai-badge eduai-badge-hr">Settings</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ============================================= -->
+        <!-- COMMUNICATION - Admin & Super Admin           -->
+        <!-- ============================================= -->
+        {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow">
+            <i class="bi bi-bell me-1"></i> Communication
+        </div>
+        <ul>
+            <li><a href="{% url 'communication:inbox' %}" class="nav-link {% if request.resolver_match.url_name == 'inbox' %}active{% endif %}">
+                <i class="bi bi-chat-left-text"></i><span class="eduai-label">Announcements</span>
+                <span class="eduai-badge eduai-badge-ai">Broadcast</span>
+            </a></li>
+            <li><a href="{% url 'communication:notification_preferences' %}" class="nav-link {% if request.resolver_match.url_name == 'notification_preferences' %}active{% endif %}">
+                <i class="bi bi-bell-slash"></i><span class="eduai-label">Notification Preferences</span>
+            </a></li>
+            <li><a href="{% url 'communication:notification_log_list' %}" class="nav-link {% if request.resolver_match.url_name == 'notification_log_list' %}active{% endif %}">
+                <i class="bi bi-clipboard-data"></i><span class="eduai-label">Notification Logs</span>
+                <span class="eduai-badge eduai-badge-hr">Monitor</span>
+            </a></li>
+        </ul>
+        {% endif %}
+
+        <!-- ============================================= -->
+        <!-- SCHOOL - SUPER ADMIN & SCHOOL ADMIN           -->
+        <!-- ============================================= -->
+        {% if user.role == 'SUPER_ADMIN' or user.role == 'SCHOOL_ADMIN' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow">
+            <i class="bi bi-building me-1"></i> School
+        </div>
+        <ul>
+            <li><a href="{% url 'school:school_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'school_dashboard' %}active{% endif %}"><i class="bi bi-building"></i><span class="eduai-label">School Settings</span></a></li>
+        </ul>
+        {% endif %}
+
+        <!-- ============================================= -->
+        <!-- PEOPLE & ACADEMICS - Admin, Registrar, HOD    -->
+        <!-- ============================================= -->
+        {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,REGISTRAR,HOD' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow">
+            <i class="bi bi-people me-1"></i> Student &amp; Academics
+        </div>
+        <ul>
+            <li><a href="{% url 'students:student_list' %}" class="nav-link {% if request.resolver_match.url_name == 'student_list' %}active{% endif %}"><i class="bi bi-people"></i><span class="eduai-label">Students</span></a></li>
+            {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}
+            <li><a href="{% url 'students:bulk_face_registration' %}" class="nav-link {% if request.resolver_match.url_name == 'bulk_face_registration' %}active{% endif %}"><i class="bi bi-person-bounding-box"></i><span class="eduai-label">Bulk Face Registration</span></a></li>
+            {% endif %}
+            <li><a href="{% url 'students:grade_level_list' %}" class="nav-link {% if request.resolver_match.url_name == 'grade_level_list' %}active{% endif %}"><i class="bi bi-layers"></i><span class="eduai-label">Grade Levels</span></a></li>
+            {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}
+            <li><a href="{% url 'academics:promotion_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'promotion_dashboard' or request.resolver_match.url_name == 'promotion_batch_list' or request.resolver_match.url_name == 'promotion_batch_detail' or request.resolver_match.url_name == 'promotion_rule_list' %}active{% endif %}"><i class="bi bi-arrow-up-circle"></i><span class="eduai-label">Promotions</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            {% endif %}
+            <li><a href="{% url 'attendance:attendance_tracker' %}" class="nav-link {% if request.resolver_match.url_name == 'attendance_tracker' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">Attendance</span></a></li>
+            {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,HOD' %}
+            <li><a href="{% url 'assessments:grading_portal' %}" class="nav-link {% if request.resolver_match.url_name == 'grading_portal' %}active{% endif %}"><i class="bi bi-pencil-square"></i><span class="eduai-label">Grade Entry</span></a></li>
+            <li><a href="{% url 'assessments:terminal_results_register' %}" class="nav-link {% if request.resolver_match.url_name == 'terminal_results_register' or request.resolver_match.url_name == 'terminal_student_report' %}active{% endif %}"><i class="bi bi-table"></i><span class="eduai-label">Terminal Results</span></a></li>
+            {% endif %}
+        </ul>
+        {% endif %}
+
+        <!-- ============================================= -->
+        <!-- ACADEMICS - Admin & HOD                        -->
+        <!-- ============================================= -->
+        {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,HOD' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow">
+            <i class="bi bi-journal me-1"></i> Academics
+        </div>
+        <ul>
+            <li><a href="{% url 'academics:subject_list' %}" class="nav-link {% if request.resolver_match.url_name == 'subject_list' %}active{% endif %}"><i class="bi bi-book"></i><span class="eduai-label">Subjects</span></a></li>
+            <li><a href="{% url 'academics:school_class_list' %}" class="nav-link {% if request.resolver_match.url_name == 'school_class_list' %}active{% endif %}"><i class="bi bi-people-fill"></i><span class="eduai-label">Classes</span></a></li>
+            <li><a href="{% url 'staff:teacher_assignment_list' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_assignment_list' %}active{% endif %}"><i class="bi bi-person-check"></i><span class="eduai-label">Teacher Assignments</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            <li><a href="{% url 'academics:room_list' %}" class="nav-link {% if request.resolver_match.url_name == 'room_list' %}active{% endif %}"><i class="bi bi-door-open"></i><span class="eduai-label">Rooms</span></a></li>
+            <li><a href="{% url 'academics:timeslot_list' %}" class="nav-link {% if request.resolver_match.url_name == 'timeslot_list' %}active{% endif %}"><i class="bi bi-clock"></i><span class="eduai-label">Time Slots</span></a></li>
+            <li><a href="{% url 'academics:timetable_workspace' %}" class="nav-link {% if request.resolver_match.url_name == 'timetable_workspace' %}active{% endif %}"><i class="bi bi-magic"></i><span class="eduai-label">Timetabler</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+        </ul>
+        {% endif %}
+
+        <!-- ============================================= -->
+        <!-- FINANCE - Admin & BURSAR                      -->
+        <!-- ============================================= -->
+        {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,BURSAR' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow">
+            <i class="bi bi-wallet me-1"></i> Finance
+        </div>
+        <ul>
+            <li><a href="{% url 'finance:billing_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'billing_dashboard' %}active{% endif %}"><i class="bi bi-wallet2"></i><span class="eduai-label">Billing Dashboard</span></a></li>
+            <li><a href="{% url 'finance:fee_preparation' %}" class="nav-link {% if request.resolver_match.url_name == 'fee_preparation' %}active{% endif %}"><i class="bi bi-clipboard-check"></i><span class="eduai-label">Fee Preparation</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            <li><a href="{% url 'finance:student_fees_list' %}" class="nav-link {% if request.resolver_match.url_name == 'student_fees_list' %}active{% endif %}"><i class="bi bi-file-earmark-text"></i><span class="eduai-label">Student Fees</span></a></li>
+            <li><a href="{% url 'finance:invoice_list' %}" class="nav-link {% if request.resolver_match.url_name == 'invoice_list' %}active{% endif %}"><i class="bi bi-file-earmark-text"></i><span class="eduai-label">Invoices</span></a></li>
+            <li><a href="{% url 'finance:fee_category_list' %}" class="nav-link {% if request.resolver_match.url_name == 'fee_category_list' %}active{% endif %}"><i class="bi bi-tags"></i><span class="eduai-label">Fee Categories</span></a></li>
+            <li><a href="{% url 'finance:fee_structure_list' %}" class="nav-link {% if request.resolver_match.url_name == 'fee_structure_list' %}active{% endif %}"><i class="bi bi-list-ul"></i><span class="eduai-label">Fee Structures</span></a></li>
+            <li><a href="{% url 'finance:waiver_list' %}" class="nav-link {% if request.resolver_match.url_name == 'waiver_list' %}active{% endif %}"><i class="bi bi-percent"></i><span class="eduai-label">Fee Waivers</span></a></li>
+        </ul>
+        {% endif %}
+
+        <!-- ============================================= -->
+        <!-- LIBRARY - Admin, Secretary                    -->
+        <!-- ============================================= -->
+        {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,SECRETARY' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow">
+            <i class="bi bi-book me-1"></i> Library
+        </div>
+        <ul>
+            <li><a href="{% url 'library:book_category_list' %}" class="nav-link {% if request.resolver_match.url_name == 'book_category_list' %}active{% endif %}"><i class="bi bi-tags"></i><span class="eduai-label">Book Categories</span></a></li>
+            <li><a href="{% url 'library:library_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'library_dashboard' %}active{% endif %}"><i class="bi bi-book"></i><span class="eduai-label">Library</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            <li><a href="{% url 'library:book_list' %}" class="nav-link {% if request.resolver_match.url_name == 'book_list' %}active{% endif %}"><i class="bi bi-book"></i><span class="eduai-label">Book List</span></a></li>
+            <li><a href="{% url 'library:borrowing_list' %}" class="nav-link {% if request.resolver_match.url_name == 'borrowing_list' %}active{% endif %}"><i class="bi bi-arrow-repeat"></i><span class="eduai-label">Borrowings</span></a></li>
+        </ul>
+        {% endif %}
+
+        <!-- ============================================= -->
+        <!-- TEACHER ONLY                                 -->
+        <!-- ============================================= -->
+        {% if user.role == 'TEACHER' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow">
+            <i class="bi bi-chalkboard me-1"></i> Teaching
+        </div>
+        <ul>
+            <li><a href="{% url 'students:student_list' %}" class="nav-link {% if request.resolver_match.url_name == 'student_list' %}active{% endif %}"><i class="bi bi-people"></i><span class="eduai-label">Students</span></a></li>
+            <li><a href="{% url 'assessments:grading_portal' %}" class="nav-link {% if request.resolver_match.url_name == 'grading_portal' %}active{% endif %}"><i class="bi bi-pencil-square"></i><span class="eduai-label">Grade Entry</span></a></li>
+            <li><a href="{% url 'assessments:terminal_results_register' %}" class="nav-link {% if request.resolver_match.url_name == 'terminal_results_register' or request.resolver_match.url_name == 'terminal_student_report' %}active{% endif %}"><i class="bi bi-table"></i><span class="eduai-label">Terminal Results</span></a></li>
+            <li><a href="{% url 'attendance:attendance_tracker' %}" class="nav-link {% if request.resolver_match.url_name == 'attendance_tracker' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">Attendance</span></a></li>
+            <li><a href="{% url 'academics:timetable_workspace' %}" class="nav-link {% if request.resolver_match.url_name == 'timetable_workspace' %}active{% endif %}"><i class="bi bi-magic"></i><span class="eduai-label">Timetabler</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+        </ul>
+        {% endif %}
+
+        <!-- ============================================= -->
+        <!-- PARENT ONLY                                 -->
+        <!-- ============================================= -->
+        {% if user.role == 'PARENT' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow">
+            <i class="bi bi-heart me-1"></i> Parent Portal
+        </div>
+        <ul>
+            <li><a href="{% url 'ai_engine:parent_children_list' %}" class="nav-link {% if request.resolver_match.url_name == 'parent_children_list' %}active{% endif %}"><i class="bi bi-chat-heart"></i><span class="eduai-label">Family Assistant</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+        </ul>
+        {% endif %}
+
+        <!-- ============================================= -->
+        <!-- STUDENT ONLY                                 -->
+        <!-- ============================================= -->
+        {% if user.role == 'STUDENT' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow">
+            <i class="bi bi-person me-1"></i> Student Portal
+        </div>
+        <ul>
+            <li><a href="{% url 'students:my_grades' %}" class="nav-link {% if request.resolver_match.url_name == 'my_grades' %}active{% endif %}"><i class="bi bi-journal-check"></i><span class="eduai-label">My Grades</span></a></li>
+            <li><a href="{% url 'students:my_attendance' %}" class="nav-link {% if request.resolver_match.url_name == 'my_attendance' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">My Attendance</span></a></li>
+            <li><a href="{% url 'students:my_fees' %}" class="nav-link {% if request.resolver_match.url_name == 'my_fees' %}active{% endif %}"><i class="bi bi-wallet2"></i><span class="eduai-label">My Fees</span></a></li>
+        </ul>
+        {% endif %}
+    </nav>
+
+    <div class="eduai-sidebar-footer">
+        <button type="button" class="eduai-collapse-btn" id="eduaiCollapseBtn" title="Collapse sidebar">
+            <i class="bi bi-chevron-left" id="collapseIcon"></i><span class="collapse-label">Collapse</span>
+        </button>
+        <div class="eduai-profile">
+            <div class="eduai-avatar" id="sidebarAvatar">
+                {% if user.profile_picture %}
+                <img src="{{ user.profile_picture.url }}" alt="{{ user.get_full_name }}">
+                {% else %}
+                {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+                {% endif %}
+            </div>
+            <div class="profile-meta">
+                <div class="name">{{ user.get_full_name|default:user.username }}</div>
+                <div class="school">{{ user.get_role_display }}{% if user.school %} · {{ user.school.name }}{% endif %}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="eduai-scrim" id="eduaiScrim"></div>
+
+<script>
+(function() {
+    'use strict';
+
+    // Only initialize if DOM is ready
+    function init() {
+        var sidebar = document.getElementById('sidebar');
+        var collapseBtn = document.getElementById('eduaiCollapseBtn');
+        var collapseIcon = document.getElementById('collapseIcon');
+        var scrim = document.getElementById('eduaiScrim');
+        var filterInput = document.getElementById('eduaiNavFilter');
+
+        // =============================================
+        // SIDEBAR COLLAPSE (Desktop)
+        // =============================================
+        var isCollapsed = localStorage.getItem('eduai-sidebar-collapsed') === '1';
+        if (isCollapsed && sidebar) {
+            sidebar.classList.add('collapsed');
+            if (collapseIcon) {
+                collapseIcon.className = 'bi bi-chevron-right';
+            }
+        }
+
+        if (collapseBtn) {
+            collapseBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var currentlyCollapsed = sidebar.classList.contains('collapsed');
+                if (currentlyCollapsed) {
+                    sidebar.classList.remove('collapsed');
+                    localStorage.setItem('eduai-sidebar-collapsed', '0');
+                    if (collapseIcon) {
+                        collapseIcon.className = 'bi bi-chevron-left';
+                    }
+                } else {
+                    sidebar.classList.add('collapsed');
+                    localStorage.setItem('eduai-sidebar-collapsed', '1');
+                    if (collapseIcon) {
+                        collapseIcon.className = 'bi bi-chevron-right';
+                    }
+                }
+            });
+        }
+
+        // =============================================
+        // MOBILE SIDEBAR TOGGLE - FIXED
+        // =============================================
+        window.toggleMobileSidebar = function() {
+            if (!sidebar) return;
+            sidebar.classList.toggle('mobile-open');
+            if (scrim) {
+                scrim.classList.toggle('show');
+            }
+        };
+
+        // Close sidebar when clicking on scrim
+        if (scrim) {
+            scrim.addEventListener('click', function() {
+                if (sidebar) {
+                    sidebar.classList.remove('mobile-open');
+                }
+                scrim.classList.remove('show');
+            });
+        }
+
+        // Close sidebar with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && sidebar && sidebar.classList.contains('mobile-open')) {
+                sidebar.classList.remove('mobile-open');
+                if (scrim) scrim.classList.remove('show');
+            }
+        });
+
+        // =============================================
+        // SEARCH FILTER
+        // =============================================
+        if (filterInput) {
+            filterInput.addEventListener('input', function() {
+                var q = this.value.trim().toLowerCase();
+                var navItems = document.querySelectorAll('#eduaiNavScroll li');
+                navItems.forEach(function(li) {
+                    var label = li.querySelector('.eduai-label');
+                    if (!label) return;
+                    var match = label.textContent.toLowerCase().indexOf(q) !== -1;
+                    li.style.display = (q === '' || match) ? '' : 'none';
+                });
+            });
+        }
+
+        // =============================================
+        // RESTORE MENU STATES
+        // =============================================
+        // Nav tree state
+        var treeState = JSON.parse(localStorage.getItem('eduai-nav-tree-state') || '{}');
+        document.querySelectorAll('.nav-tree-children').forEach(function(el) {
+            var id = el.id;
+            if (id && treeState[id] !== undefined) {
+                if (treeState[id]) {
+                    el.classList.add('open');
+                } else {
+                    el.classList.remove('open');
+                }
+            }
+        });
+
+        // Ghana menu state
+        var ghanaState = localStorage.getItem('eduai-ghana-menu-open');
+        var ghanaWrapper = document.getElementById('ghanaMenuWrapper');
+        var ghanaIcon = document.getElementById('ghanaToggleIcon');
+        if (ghanaState === 'false') {
+            if (ghanaWrapper) { ghanaWrapper.classList.remove('open'); ghanaWrapper.classList.add('closed'); }
+            if (ghanaIcon) { ghanaIcon.classList.remove('open'); ghanaIcon.classList.add('closed'); }
+        } else {
+            if (ghanaWrapper) { ghanaWrapper.classList.add('open'); ghanaWrapper.classList.remove('closed'); }
+            if (ghanaIcon) { ghanaIcon.classList.add('open'); ghanaIcon.classList.remove('closed'); }
+        }
+
+        // HR menu state
+        var hrState = localStorage.getItem('eduai-hr-menu-open');
+        var hrWrapper = document.getElementById('hrMenuWrapper');
+        var hrIcon = document.getElementById('hrToggleIcon');
+        if (hrState === 'false') {
+            if (hrWrapper) { hrWrapper.classList.remove('open'); hrWrapper.classList.add('closed'); }
+            if (hrIcon) { hrIcon.classList.remove('open'); hrIcon.classList.add('closed'); }
+        } else {
+            if (hrWrapper) { hrWrapper.classList.add('open'); hrWrapper.classList.remove('closed'); }
+            if (hrIcon) { hrIcon.classList.add('open'); hrIcon.classList.remove('closed'); }
+        }
+
+        // Payroll menu state
+        var payrollState = localStorage.getItem('eduai-payroll-menu-open');
+        var payrollWrapper = document.getElementById('payrollMenuWrapper');
+        var payrollIcon = document.getElementById('payrollToggleIcon');
+        if (payrollState === 'false') {
+            if (payrollWrapper) { payrollWrapper.classList.remove('open'); payrollWrapper.classList.add('closed'); }
+            if (payrollIcon) { payrollIcon.classList.remove('open'); payrollIcon.classList.add('closed'); }
+        } else {
+            if (payrollWrapper) { payrollWrapper.classList.add('open'); payrollWrapper.classList.remove('closed'); }
+            if (payrollIcon) { payrollIcon.classList.add('open'); payrollIcon.classList.remove('closed'); }
+        }
+
+        // Leave menu state
+        var leaveState = localStorage.getItem('eduai-leave-menu-open');
+        var leaveWrapper = document.getElementById('leaveMenuWrapper');
+        var leaveIcon = document.getElementById('leaveToggleIcon');
+        if (leaveState === 'false') {
+            if (leaveWrapper) { leaveWrapper.classList.remove('open'); leaveWrapper.classList.add('closed'); }
+            if (leaveIcon) { leaveIcon.classList.remove('open'); leaveIcon.classList.add('closed'); }
+        } else {
+            if (leaveWrapper) { leaveWrapper.classList.add('open'); leaveWrapper.classList.remove('closed'); }
+            if (leaveIcon) { leaveIcon.classList.add('open'); leaveIcon.classList.remove('closed'); }
+        }
+
+        // Fix toggle icons after restoration
+        document.querySelectorAll('.nav-tree-toggle').forEach(function(el) {
+            var id = el.id;
+            if (id) {
+                var navId = 'nav-' + id.replace('toggle-', '');
+                var children = document.getElementById(navId);
+                if (children && children.classList.contains('open')) {
+                    el.classList.add('open');
+                    el.classList.remove('closed');
+                } else {
+                    el.classList.remove('open');
+                    el.classList.add('closed');
+                }
+            }
+        });
+    }
+
+    // =============================================
+    // TOGGLE FUNCTIONS - MUST BE GLOBAL
+    // =============================================
+    window.toggleGhanaMenu = function() {
+        var wrapper = document.getElementById('ghanaMenuWrapper');
+        var icon = document.getElementById('ghanaToggleIcon');
+        if (!wrapper) return;
+
+        wrapper.classList.toggle('open');
+        wrapper.classList.toggle('closed');
+        if (icon) {
+            icon.classList.toggle('open');
+            icon.classList.toggle('closed');
+        }
+        localStorage.setItem('eduai-ghana-menu-open', wrapper.classList.contains('open'));
+    };
+
+    window.toggleHRMenu = function() {
+        var wrapper = document.getElementById('hrMenuWrapper');
+        var icon = document.getElementById('hrToggleIcon');
+        if (!wrapper) return;
+
+        wrapper.classList.toggle('open');
+        wrapper.classList.toggle('closed');
+        if (icon) {
+            icon.classList.toggle('open');
+            icon.classList.toggle('closed');
+        }
+        localStorage.setItem('eduai-hr-menu-open', wrapper.classList.contains('open'));
+    };
+
+    window.togglePayrollMenu = function() {
+        var wrapper = document.getElementById('payrollMenuWrapper');
+        var icon = document.getElementById('payrollToggleIcon');
+        if (!wrapper) return;
+
+        wrapper.classList.toggle('open');
+        wrapper.classList.toggle('closed');
+        if (icon) {
+            icon.classList.toggle('open');
+            icon.classList.toggle('closed');
+        }
+        localStorage.setItem('eduai-payroll-menu-open', wrapper.classList.contains('open'));
+    };
+
+    window.toggleLeaveMenu = function() {
+        var wrapper = document.getElementById('leaveMenuWrapper');
+        var icon = document.getElementById('leaveToggleIcon');
+        if (!wrapper) return;
+
+        wrapper.classList.toggle('open');
+        wrapper.classList.toggle('closed');
+        if (icon) {
+            icon.classList.toggle('open');
+            icon.classList.toggle('closed');
+        }
+        localStorage.setItem('eduai-leave-menu-open', wrapper.classList.contains('open'));
+    };
+
+    window.toggleNavTree = function(id) {
+        var children = document.getElementById('nav-' + id);
+        var toggle = document.getElementById('toggle-' + id);
+        if (!children) return false;
+
+        children.classList.toggle('open');
+        if (toggle) {
+            toggle.classList.toggle('open');
+            toggle.classList.toggle('closed');
+        }
+
+        var treeState = JSON.parse(localStorage.getItem('eduai-nav-tree-state') || '{}');
+        treeState['nav-' + id] = children.classList.contains('open');
+        localStorage.setItem('eduai-nav-tree-state', JSON.stringify(treeState));
+
+        return false;
+    };
+
+    // =============================================
+    // INITIALIZE
+    // =============================================
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

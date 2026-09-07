@@ -1,0 +1,794 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}School Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .school-logo-small {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        object-fit: cover;
+        border: 2px solid var(--surface-border, #E7E1D3);
+        background: var(--app-bg, #F7F4EC);
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+</style>
+
+<!-- ============================================================ -->
+<!-- MESSAGES DISPLAY -->
+<!-- ============================================================ -->
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<!-- How School Dashboard Works -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How School Dashboard Works</div>
+            <p class="text">
+                This dashboard manages your school's <strong>academic years</strong> and <strong>terms</strong>.
+                Each academic year can have multiple terms (e.g., Term 1, Term 2, Term 3).
+                Click on a year to expand and view its terms. Use the <strong>"Add Term"</strong> button
+                inside each year to create new terms, or <strong>"Edit"</strong> and <strong>"Delete"</strong>
+                to manage existing ones. The <strong>"School Settings"</strong> button allows you to update
+                your school's profile information.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                {% if school.logo %}
+                    <img src="{{ school.logo.url }}" alt="{{ school.name }}" class="school-logo-small">
+                {% else %}
+                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 48px; height: 48px; background-color: var(--eduai-gold, #946B1C); font-size: 1.2rem; font-weight: 700;">
+                        {{ school.name|slice:":2"|upper }}
+                    </div>
+                {% endif %}
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-building text-gold me-2"></i>{{ school.name }}</h5>
+                    <p class="text-muted mb-0">Manage your institution's academic structure and terms.</p>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-gold" data-bs-toggle="modal" data-bs-target="#schoolSettingsModal">
+                    <i class="bi bi-gear me-1"></i> School Settings
+                </button>
+                <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#academicYearModal" data-action="create" data-url="{% url 'school:academic_year_create' %}">
+                    <i class="bi bi-plus-lg me-1"></i> New Academic Year
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- ENTERPRISE ACADEMIC YEAR & TERM MANAGEMENT -->
+<!-- ============================================================ -->
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card card-custom border-0 shadow-sm rounded-4">
+            <div class="p-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h6 class="fw-bold mb-0"><i class="bi bi-calendar-range text-gold me-2"></i>Academic Years &amp; Terms</h6>
+                        <p class="text-muted small mb-0">Expand each year below to view and manage its associated terms.</p>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <span class="text-muted small" id="filterStatus"></span>
+                        <input type="text" id="yearSearchInput" class="form-control form-control-sm" placeholder="Search years..." style="max-width: 200px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Academic Year Loop -->
+        {% for year in academic_years %}
+        <div class="card card-custom border-0 shadow-sm rounded-4 mb-3 overflow-hidden year-card" data-year-name="{{ year.name|lower }}">
+            <!-- Year Header -->
+            <div class="p-4 bg-opacity-10 d-flex justify-content-between align-items-center flex-wrap gap-2 year-header"
+                 data-bs-toggle="collapse" data-bs-target="#yearCollapse{{ year.id }}"
+                 style="cursor: pointer; transition: background-color 0.2s;"
+                 onmouseover="this.style.backgroundColor='var(--app-bg)'"
+                 onmouseout="this.style.backgroundColor='var(--surface-bg)'">
+
+                <div>
+                    <h6 class="fw-bold mb-1 year-name">
+                        <i class="bi bi-chevron-down text-muted small me-2" id="icon{{ year.id }}"></i>
+                        {{ year.name }}
+                        {% if year.is_active %}
+                            <span class="badge badge-teal rounded-pill px-3 py-1 ms-2">Active Year</span>
+                        {% endif %}
+                    </h6>
+                    <small class="text-muted year-date">{{ year.start_date|date:"M d, Y" }} — {{ year.end_date|date:"M d, Y" }}</small>
+                </div>
+
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-outline-gold px-3"
+                            data-bs-toggle="modal" data-bs-target="#academicYearModal"
+                            data-action="edit" data-url="{% url 'school:academic_year_edit' year.id %}" data-id="{{ year.id }}">
+                        <i class="bi bi-pencil-square me-1"></i> Edit
+                    </button>
+                    <button type="button" class="btn btn-sm btn-gold px-3"
+                            data-bs-toggle="modal" data-bs-target="#academicTermModal"
+                            data-action="create" data-url="{% url 'school:academic_term_create' %}">
+                        <i class="bi bi-plus-lg me-1"></i> Add Term
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger px-3"
+                            data-bs-toggle="modal" data-bs-target="#deleteConfirmModal"
+                            data-action="delete_year" data-name="{{ year.name }}"
+                            data-url="{% url 'school:academic_year_delete' year.id %}">
+                        Delete
+                    </button>
+                </div>
+            </div>
+
+            <!-- Year Collapsible Body -->
+            <div class="collapse {% if year.is_active %}show{% endif %}" id="yearCollapse{{ year.id }}">
+                <div class="p-4 border-top">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                        <h6 class="fw-bold mb-0 small text-muted">
+                            <i class="bi bi-list-ul me-1"></i> Terms
+                            <span class="badge bg-light text-muted ms-1 term-count">{{ year.terms.all|length }}</span>
+                        </h6>
+                        <div class="d-flex gap-2 align-items-center">
+                            <span class="text-muted small term-filter-status"></span>
+                            <input type="text" class="form-control form-control-sm term-search-input" placeholder="Search terms..." style="max-width: 180px;">
+                        </div>
+                    </div>
+                    {% if year.terms.all %}
+                        <div class="row g-3 term-container">
+                            {% for term in year.terms.all %}
+                            <div class="col-md-6 col-lg-4 term-card" data-term-name="{{ term.name|lower }}">
+                                <div class="card card-custom border-0 shadow-sm rounded-4 h-100 bg-light">
+                                    <div class="p-3 d-flex flex-column align-items-start justify-content-between">
+                                        <!-- Top Section: Name & Active Badge -->
+                                        <div class="w-100 mb-2">
+                                            <h6 class="fw-bold mb-1 term-name">
+                                                {{ term.name }}
+                                                {% if term.is_active %}
+                                                    <span class="badge badge-teal rounded-pill px-2 py-1 ms-1 small">Active</span>
+                                                {% endif %}
+                                            </h6>
+                                            <small class="text-muted small term-date">
+                                                {{ term.start_date|date:"M d, Y" }} — {{ term.end_date|date:"M d, Y" }}
+                                            </small>
+                                        </div>
+                                        <!-- Bottom Section: Visible Edit & Delete Buttons -->
+                                        <div class="d-flex gap-2 mt-2 w-100">
+                                            <button type="button" class="btn btn-sm btn-outline-gold flex-grow-1"
+                                                    data-bs-toggle="modal" data-bs-target="#academicTermModal"
+                                                    data-action="edit" data-url="{% url 'school:academic_term_edit' term.id %}" data-id="{{ term.id }}">
+                                                <i class="bi bi-pencil-square me-1"></i> Edit
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger flex-grow-1"
+                                                    data-bs-toggle="modal" data-bs-target="#deleteConfirmModal"
+                                                    data-action="delete_term" data-name="{{ term.name }}"
+                                                    data-url="{% url 'school:academic_term_delete' term.id %}">
+                                                <i class="bi bi-trash me-1"></i> Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted small mb-0 py-2"><i class="bi bi-info-circle me-1"></i> No terms added for this year yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="card card-custom border-0 shadow-sm rounded-4 text-center p-5 text-muted">
+            <i class="bi bi-calendar-x fs-1 d-block mb-2 text-secondary"></i>
+            <h5 class="fw-bold text-secondary">No Academic Years Configured</h5>
+            <p class="mb-3">Get started by creating your first academic year.</p>
+            <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#academicYearModal" data-action="create" data-url="{% url 'school:academic_year_create' %}">
+                <i class="bi bi-plus-lg me-1"></i> Create Academic Year
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- =========================================== -->
+<!-- SCHOOL SETTINGS MODAL -->
+<!-- =========================================== -->
+<div class="modal fade" id="schoolSettingsModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-body p-0">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading settings...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================== -->
+<!-- MASTER MODAL: ACADEMIC YEAR -->
+<!-- =========================================== -->
+<div class="modal fade" id="academicYearModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="academicYearModalTitle">Loading...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="academicYearModalContent">
+                <!-- Injected Content -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================== -->
+<!-- MASTER MODAL: ACADEMIC TERM -->
+<!-- =========================================== -->
+<div class="modal fade" id="academicTermModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="academicTermModalTitle">Loading...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="academicTermModalContent">
+                <!-- Injected Content -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================== -->
+<!-- MASTER MODAL: DELETE CONFIRMATION -->
+<!-- =========================================== -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center" id="deleteConfirmModalContent">
+                <p class="mb-4 fs-5">Are you sure you want to delete <strong id="deleteItemName"></strong>?</p>
+                <p class="text-muted small">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0 pb-4 px-4 justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" id="deleteConfirmForm" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i> Confirm Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ==========================================================
+    // ACCORDION CHEVRON TOGGLE
+    // ==========================================================
+    document.querySelectorAll('.collapse').forEach(function(collapseEl) {
+        collapseEl.addEventListener('show.bs.collapse', function () {
+            const icon = document.getElementById('icon' + this.id.replace('yearCollapse', ''));
+            if(icon) icon.className = 'bi bi-chevron-up text-muted small me-2';
+        });
+        collapseEl.addEventListener('hide.bs.collapse', function () {
+            const icon = document.getElementById('icon' + this.id.replace('yearCollapse', ''));
+            if(icon) icon.className = 'bi bi-chevron-down text-muted small me-2';
+        });
+    });
+
+    // ==========================================================
+    // CSRF HELPER
+    // ==========================================================
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    // ==========================================================
+    // SHOW TOAST NOTIFICATION
+    // ==========================================================
+    function showToast(message, type) {
+        const toastContainer = document.createElement('div');
+        toastContainer.className = 'position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        toastContainer.innerHTML = `
+            <div class="toast align-items-center border-0 shadow-sm rounded-4 text-bg-${type === 'success' ? 'success' : 'danger'} show" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi ${type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(toastContainer);
+        setTimeout(() => {
+            toastContainer.remove();
+        }, 5000);
+    }
+
+    // ==========================================================
+    // SCHOOL SETTINGS MODAL
+    // ==========================================================
+    const settingsModal = document.getElementById('schoolSettingsModal');
+    const settingsModalContent = settingsModal.querySelector('.modal-body');
+
+    const settingsBtn = document.querySelector('[data-bs-target="#schoolSettingsModal"]');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', function(e) {
+            const url = "{% url 'school:school_settings' %}";
+
+            settingsModalContent.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading settings...</p>
+                </div>
+            `;
+
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                settingsModalContent.innerHTML = html;
+                bindSchoolSettingsForm();
+            })
+            .catch(err => {
+                console.error('Error loading settings:', err);
+                settingsModalContent.innerHTML = `
+                    <div class="p-4 text-center">
+                        <div class="alert alert-danger border-0 rounded-4">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            Error loading settings. Please try again.
+                        </div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    function bindSchoolSettingsForm() {
+        const form = document.getElementById('schoolSettingsForm');
+        if (!form) return;
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn ? submitBtn.innerHTML : 'Save';
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+
+            if (submitBtn) {
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+                submitBtn.disabled = true;
+            }
+
+            const existingErrors = this.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(settingsModal);
+                    modalInstance.hide();
+                    if (data.message) {
+                        showToast(data.message, 'success');
+                    }
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    showError(data.error || 'An error occurred while saving.');
+                    if (submitBtn) {
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                showError('An unexpected error occurred. Please try again.');
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = form.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 shadow-sm rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            form.insertBefore(errorDiv, form.firstChild);
+        }
+    }
+
+    // Reset settings modal on hide
+    settingsModal.addEventListener('hidden.bs.modal', function() {
+        settingsModalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading settings...</p>
+            </div>
+        `;
+        // Clean up backdrops
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    });
+
+    // ==========================================================
+    // DYNAMIC FORM MODAL LOGIC (Year & Term)
+    // ==========================================================
+    function setupModal(modalId, contentId, titleId) {
+        const modal = document.getElementById(modalId);
+        const modalTitle = document.getElementById(titleId);
+        const modalContent = document.getElementById(contentId);
+
+        modal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const action = button.getAttribute('data-action');
+            const url = button.getAttribute('data-url');
+
+            if (action === 'create') {
+                modalTitle.innerHTML = '<i class="bi bi-plus-circle text-gold me-2"></i>Add New';
+            } else if (action === 'edit') {
+                modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit';
+            }
+
+            modalContent.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                modalContent.innerHTML = html;
+                bindFormSubmit(modal, modalContent);
+            })
+            .catch(err => {
+                console.error('Error loading form:', err);
+                modalContent.innerHTML = `
+                    <div class="alert alert-danger border-0 shadow-sm rounded-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Error loading form. Please try again.
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    function bindFormSubmit(modal, modalContent) {
+        const form = modalContent.querySelector('form');
+        if (!form) return;
+
+        // Remove existing event listeners by cloning
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+            submitBtn.disabled = true;
+
+            // Remove existing error messages
+            const existingErrors = this.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    if (data.message) {
+                        showToast(data.message, 'success');
+                    }
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    showError(data.error || 'An error occurred while saving.');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                showError('An unexpected error occurred. Please try again.');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 shadow-sm rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    // Initialize Year & Term Modals
+    setupModal('academicYearModal', 'academicYearModalContent', 'academicYearModalTitle');
+    setupModal('academicTermModal', 'academicTermModalContent', 'academicTermModalTitle');
+
+    // ==========================================================
+    // DELETE CONFIRMATION MODAL LOGIC
+    // ==========================================================
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    const deleteName = document.getElementById('deleteItemName');
+    const deleteForm = document.getElementById('deleteConfirmForm');
+
+    deleteModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const name = button.getAttribute('data-name');
+        const url = button.getAttribute('data-url');
+
+        deleteName.innerText = name;
+        deleteForm.action = url;
+    });
+
+    deleteForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+        fetch(this.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const modalInstance = bootstrap.Modal.getInstance(deleteModal);
+                modalInstance.hide();
+                if (data.message) {
+                    showToast(data.message, 'success');
+                }
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                alert('Error: ' + (data.error || 'Deletion failed.'));
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        })
+        .catch(err => {
+            console.error('Delete error:', err);
+            alert('An unexpected error occurred.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    });
+
+    // ==========================================================
+    // YEAR AND TERM SEARCH / FILTER
+    // ==========================================================
+    // Year search
+    const yearSearchInput = document.getElementById('yearSearchInput');
+    const yearCards = document.querySelectorAll('.year-card');
+    const filterStatus = document.getElementById('filterStatus');
+
+    if (yearSearchInput) {
+        yearSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            yearCards.forEach(function(card) {
+                const yearName = card.getAttribute('data-year-name') || '';
+                const isVisible = yearName.includes(query);
+                card.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (filterStatus) {
+                if (query) {
+                    filterStatus.textContent = `(filtered: ${visibleCount} of ${yearCards.length} years shown)`;
+                } else {
+                    filterStatus.textContent = '';
+                }
+            }
+        });
+    }
+
+    // Term search within each year
+    document.querySelectorAll('.term-search-input').forEach(function(searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            const container = this.closest('.p-4.border-top');
+            const termCards = container.querySelectorAll('.term-card');
+            const termCountBadge = container.querySelector('.term-count');
+            const filterStatusEl = container.querySelector('.term-filter-status');
+            let visibleCount = 0;
+
+            termCards.forEach(function(card) {
+                const termName = card.getAttribute('data-term-name') || '';
+                const isVisible = termName.includes(query);
+                card.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (termCountBadge) {
+                if (query) {
+                    termCountBadge.textContent = visibleCount;
+                    if (filterStatusEl) {
+                        filterStatusEl.textContent = `(filtered: ${visibleCount} shown)`;
+                    }
+                } else {
+                    termCountBadge.textContent = termCards.length;
+                    if (filterStatusEl) {
+                        filterStatusEl.textContent = '';
+                    }
+                }
+            }
+        });
+    });
+
+    // Auto-dismiss alerts after 5 seconds
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

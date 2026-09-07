@@ -1,0 +1,101 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}School Settings{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+</style>
+
+<!-- ============================================================ -->
+<!-- MESSAGES DISPLAY -->
+<!-- ============================================================ -->
+
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4" style="max-width: 800px; margin: auto;">
+    <div class="p-4">
+        <h5 class="fw-bold mb-4"><i class="bi bi-gear text-gold me-2"></i>School Settings</h5>
+        <p class="text-muted mb-4">Update the core information for your institution.</p>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Institution Name</label>
+                    <input type="text" name="name" class="form-control" value="{{ school.name }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Subdomain</label>
+                    <input type="text" class="form-control bg-light" value="{{ school.subdomain }}" readonly disabled>
+                    <small class="text-muted">Cannot be changed.</small>
+                </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Contact Email</label>
+                    <input type="email" name="contact_email" class="form-control" value="{{ school.contact_email }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Phone Number</label>
+                    <input type="text" name="phone_number" class="form-control" value="{{ school.phone_number }}" required>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Address</label>
+                <textarea name="address" class="form-control" rows="3" required>{{ school.address }}</textarea>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-gold"><i class="bi bi-check2-circle me-1"></i> Save Changes</button>
+                <a href="{% url 'school:school_dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-dismiss alerts after 5 seconds
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

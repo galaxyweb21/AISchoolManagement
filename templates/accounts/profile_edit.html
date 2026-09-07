@@ -1,0 +1,149 @@
+<!-- accounts/templates/accounts/profile_edit.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Edit Profile{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Edit Profile
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {{ request.user.get_role_display|default:"User" }}
+                    </span>
+                </div>
+                <p class="text">
+                    Update your personal information here. Changes to your <strong>name</strong>, <strong>email</strong>,
+                    and <strong>phone number</strong> will be reflected across the system.
+                    Your <strong>username</strong> cannot be changed here - contact an administrator if you need to change it.
+                    Click <strong>"Save Changes"</strong> to update your profile.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4" style="max-width: 700px; margin: auto;">
+        <div class="card-header bg-transparent border-0 p-4 pb-0">
+            <h5 class="fw-bold mb-0"><i class="bi bi-pencil-square text-gold me-2"></i>Edit Profile</h5>
+            <p class="text-muted small">Update your personal information</p>
+        </div>
+        <div class="card-body p-4">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">First Name</label>
+                        <input type="text" name="first_name" class="form-control" value="{{ user.first_name }}" placeholder="First Name">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Last Name</label>
+                        <input type="text" name="last_name" class="form-control" value="{{ user.last_name }}" placeholder="Last Name">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Email</label>
+                        <input type="email" name="email" class="form-control" value="{{ user.email }}" placeholder="Email Address">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Phone Number</label>
+                        <input type="text" name="phone_number" class="form-control" value="{{ user.phone_number|default:'' }}" placeholder="Phone Number">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Bio <span class="text-muted small">(optional)</span></label>
+                        <textarea name="bio" class="form-control" rows="3" placeholder="Tell us a bit about yourself">{{ user.bio|default:'' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                    <button type="submit" class="btn btn-gold">
+                        <i class="bi bi-check-circle me-1"></i> Save Changes
+                    </button>
+                    <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

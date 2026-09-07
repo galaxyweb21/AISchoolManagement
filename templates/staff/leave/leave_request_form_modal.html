@@ -1,0 +1,269 @@
+{% load static %}
+
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .border-gold {
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .alert-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.10));
+        border-color: var(--eduai-gold, #946B1C);
+        color: var(--eduai-gold, #946B1C);
+    }
+</style>
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <div>
+        <h5 class="modal-title fw-bold mb-1">
+            <i class="bi bi-calendar-plus text-gold me-2"></i>
+            {% if mode == 'edit' %}Edit Leave Request{% elif can_create_leave_for_staff %}Create Leave Request{% else %}Request Leave{% endif %}
+        </h5>
+        <small class="text-muted">
+            {% if can_create_leave_for_staff %}
+                You may submit a request for yourself or on behalf of another staff member.
+            {% else %}
+                Submit your leave request for approval.
+            {% endif %}
+        </small>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form method="post"
+      action="{% if mode == 'edit' %}{% url action_url leave.id %}{% else %}{% url action_url %}{% endif %}"
+      id="leaveRequestForm"
+      class="needs-validation"
+      novalidate
+      enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="modal-body p-4">
+        {% if can_create_leave_for_staff and mode != 'edit' %}
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="leaveStaff">
+                Staff Member <span class="text-danger">*</span>
+            </label>
+            <select name="staff_id" id="leaveStaff" class="form-select" required>
+                <option value="">Select staff member</option>
+                {% for staff_option in staff_options %}
+                    <option value="{{ staff_option.id }}"
+                            {% if staff_option.user_id == request.user.id %}selected{% endif %}>
+                        {{ staff_option.user.get_full_name }} — {{ staff_option.staff_id }}
+                        ({{ staff_option.get_staff_position_display }})
+                    </option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">
+                For another staff member, select their profile here. The audit trail records that you created the request on their behalf.
+            </small>
+        </div>
+        {% endif %}
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="leaveType">
+                Leave Type <span class="text-danger">*</span>
+            </label>
+            <select name="leave_type" id="leaveType" class="form-select" required>
+                <option value="">Select Leave Type</option>
+                {% for type in leave_types %}
+                    <option value="{{ type.id }}"
+                            data-category="{{ type.category }}"
+                            data-document="{{ type.requires_documentation|yesno:'1,0' }}"
+                            {% if mode == 'edit' and leave.leave_type_id == type.id %}selected{% endif %}>
+                        {{ type.name }} — {{ type.default_days }} days
+                    </option>
+                {% endfor %}
+            </select>
+            <div class="invalid-feedback">Please select a leave type.</div>
+            <small class="text-muted" id="leaveTypeInfo"></small>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Start Date <span class="text-danger">*</span></label>
+                <input type="date" name="start_date" class="form-control"
+                       value="{% if mode == 'edit' %}{{ leave.start_date|date:'Y-m-d' }}{% endif %}" required>
+                <div class="invalid-feedback">Please select a start date.</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">End Date <span class="text-danger">*</span></label>
+                <input type="date" name="end_date" class="form-control"
+                       value="{% if mode == 'edit' %}{{ leave.end_date|date:'Y-m-d' }}{% endif %}" required>
+                <div class="invalid-feedback">Please select an end date.</div>
+            </div>
+        </div>
+
+        <div class="alert alert-gold-soft border-0 rounded-3 mb-3">
+            <div class="d-flex align-items-center justify-content-between gap-3">
+                <div>
+                    <small class="text-muted d-block">Working days requested</small>
+                    <strong class="fs-5" id="daysCount" style="color: var(--eduai-gold, #946B1C);">0</strong>
+                </div>
+                <i class="bi bi-calculator fs-3 text-gold"></i>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
+            <textarea name="reason" class="form-control" rows="3"
+                      placeholder="Explain the reason for the leave request."
+                      required>{% if mode == 'edit' %}{{ leave.reason }}{% endif %}</textarea>
+            <div class="invalid-feedback">Please provide a reason.</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Additional Notes</label>
+            <textarea name="notes" class="form-control" rows="2"
+                      placeholder="Any additional information...">{% if mode == 'edit' %}{{ leave.notes }}{% endif %}</textarea>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Contact Number During Leave</label>
+                <input type="tel" name="contact_number" class="form-control"
+                       placeholder="024 XXX XXXX"
+                       value="{% if mode == 'edit' %}{{ leave.contact_number }}{% endif %}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Emergency Contact Name</label>
+                <input type="text" name="emergency_contact" class="form-control"
+                       value="{% if mode == 'edit' %}{{ leave.emergency_contact }}{% endif %}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Emergency Contact Phone</label>
+                <input type="tel" name="emergency_phone" class="form-control"
+                       value="{% if mode == 'edit' %}{{ leave.emergency_phone }}{% endif %}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Supporting Document</label>
+                <input type="file" name="supporting_document" class="form-control" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                {% if mode == 'edit' and leave.supporting_document %}
+                    <small class="text-muted d-block mt-1">Current: {{ leave.supporting_document.name }}</small>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Replacement / Covering Staff</label>
+            <select name="replacement_staff" class="form-select">
+                <option value="">No replacement selected</option>
+                {% for replacement in replacement_staff %}
+                    <option value="{{ replacement.id }}"
+                            {% if mode == 'edit' and leave.replacement_staff_id == replacement.id %}selected{% endif %}>
+                        {{ replacement.user.get_full_name }} — {{ replacement.staff_id }}
+                    </option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Optional. Useful for teaching and operational coverage.</small>
+        </div>
+
+        <div id="documentationNotice" class="alert alert-warning border-0 rounded-3 d-none">
+            <i class="bi bi-file-earmark-text me-1"></i>
+            Supporting documentation is required for the selected leave type.
+        </div>
+
+        <div class="alert alert-info border-0 rounded-3 mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            Leave requests remain <strong>Pending</strong> until an authorized approver reviews them. You cannot approve your own request.
+        </div>
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-gold" id="leaveSubmitBtn">
+            <i class="bi bi-send me-1"></i>
+            {% if mode == 'edit' %}Save Changes{% else %}Submit Request{% endif %}
+        </button>
+    </div>
+</form>
+
+<script>
+(function () {
+    const form = document.getElementById('leaveRequestForm');
+    if (!form) return;
+
+    const start = form.querySelector('input[name="start_date"]');
+    const end = form.querySelector('input[name="end_date"]');
+    const count = form.querySelector('#daysCount');
+    const type = form.querySelector('#leaveType');
+    const info = form.querySelector('#leaveTypeInfo');
+    const docNotice = form.querySelector('#documentationNotice');
+    const submit = form.querySelector('#leaveSubmitBtn');
+
+    function workingDays(a, b) {
+        if (!a || !b) return 0;
+        const startDate = new Date(a + 'T00:00:00');
+        const endDate = new Date(b + 'T00:00:00');
+        if (isNaN(startDate) || isNaN(endDate) || startDate > endDate) return 0;
+        let total = 0;
+        const cursor = new Date(startDate);
+        while (cursor <= endDate) {
+            const day = cursor.getDay();
+            if (day !== 0 && day !== 6) total++;
+            cursor.setDate(cursor.getDate() + 1);
+        }
+        return total;
+    }
+
+    function updateDays() {
+        const days = workingDays(start.value, end.value);
+        count.textContent = days;
+        if (start.value && end.value && days === 0) {
+            count.textContent = '0 — choose at least one weekday';
+        }
+    }
+
+    function updateType() {
+        if (!type) return;
+        const option = type.options[type.selectedIndex];
+        const category = option ? option.dataset.category : '';
+        const documentation = option && option.dataset.document === '1';
+        const descriptions = {
+            ANNUAL: 'Annual leave for rest and recreation.',
+            SICK: 'Leave for illness or medical care.',
+            MATERNITY: 'Maternity leave.',
+            PATERNITY: 'Paternity leave.',
+            CASUAL: 'Short-term personal leave.',
+            STUDY: 'Study, examination or approved professional development leave.',
+            COMPASSIONATE: 'Bereavement or serious family emergency leave.',
+            UNPAID: 'Approved leave without pay.',
+            OTHER: 'Other approved leave.'
+        };
+        info.textContent = descriptions[category] || '';
+        docNotice.classList.toggle('d-none', !documentation);
+    }
+
+    start.addEventListener('change', updateDays);
+    end.addEventListener('change', updateDays);
+    type.addEventListener('change', updateType);
+
+    form.addEventListener('submit', function (event) {
+        if (!form.checkValidity() || workingDays(start.value, end.value) <= 0) {
+            event.preventDefault();
+            event.stopPropagation();
+        } else if (submit) {
+            submit.disabled = true;
+            submit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Submitting...';
+        }
+        form.classList.add('was-validated');
+    });
+
+    updateDays();
+    updateType();
+})();
+</script>

@@ -1,0 +1,129 @@
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .border-gold {
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+</style>
+
+<form method="post" action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url structure.id %}{% endif %}"
+      id="salaryStructureForm" novalidate>
+    {% csrf_token %}
+
+    <div class="modal-header border-0 pt-4 px-4 pb-0">
+        <h5 class="modal-title fw-bold">
+            <i class="bi bi-cash-stack text-gold me-2"></i>
+            {% if mode == 'create' %}Create{% else %}Edit{% endif %} Salary Structure
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+
+    <div class="modal-body p-4">
+        <div class="alert alert-info border-0 rounded-3 bg-gold-soft mb-4">
+            <div class="d-flex align-items-start gap-2">
+                <i class="bi bi-info-circle-fill text-gold mt-1"></i>
+                <div class="small">
+                    <strong>Payroll salary source of truth</strong><br>
+                    This salary structure defines the actual basic salary used for payroll.
+                </div>
+            </div>
+        </div>
+
+        <!-- Staff Grade -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="salaryStaffGrade">
+                Staff Grade <span class="text-danger">*</span>
+            </label>
+            <select name="staff_grade" id="salaryStaffGrade" class="form-select" required>
+                <option value="">Select staff grade</option>
+                {% for grade in grades %}
+                    <option value="{{ grade.id }}" {% if mode == 'edit' and structure.staff_grade_id == grade.id %}selected{% endif %}>
+                        {{ grade.name }}{% if grade.code %} ({{ grade.code }}){% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Basic Salary -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="salaryBasicSalary">
+                Basic Salary <span class="text-danger">*</span>
+            </label>
+            <div class="input-group">
+                <span class="input-group-text">₵</span>
+                <input type="number" name="basic_salary" id="salaryBasicSalary" class="form-control"
+                       min="0" step="0.01" placeholder="0.00"
+                       value="{% if mode == 'edit' %}{{ structure.basic_salary }}{% endif %}" required>
+            </div>
+        </div>
+
+        <!-- Frequency -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="salaryFrequency">
+                Pay Frequency <span class="text-danger">*</span>
+            </label>
+            <select name="frequency" id="salaryFrequency" class="form-select" required>
+                <option value="MONTHLY" {% if mode == 'edit' and structure.frequency == 'MONTHLY' %}selected{% endif %}>Monthly</option>
+                <option value="WEEKLY" {% if mode == 'edit' and structure.frequency == 'WEEKLY' %}selected{% endif %}>Weekly</option>
+                <option value="DAILY" {% if mode == 'edit' and structure.frequency == 'DAILY' %}selected{% endif %}>Daily</option>
+                <option value="ANNUAL" {% if mode == 'edit' and structure.frequency == 'ANNUAL' %}selected{% endif %}>Annual</option>
+            </select>
+        </div>
+
+        <!-- Effective Date -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="salaryEffectiveDate">
+                Effective Date <span class="text-danger">*</span>
+            </label>
+            <input type="date" name="effective_date" id="salaryEffectiveDate" class="form-control"
+                   value="{% if mode == 'edit' %}{{ structure.effective_date|date:'Y-m-d' }}{% endif %}" required>
+        </div>
+
+        <!-- Effective To -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="salaryEffectiveTo">
+                Effective To <span class="text-muted fw-normal">(Optional)</span>
+            </label>
+            <input type="date" name="effective_to" id="salaryEffectiveTo" class="form-control"
+                   value="{% if mode == 'edit' and structure.effective_to %}{{ structure.effective_to|date:'Y-m-d' }}{% endif %}">
+        </div>
+
+        <!-- Active Status -->
+        {% if mode == 'edit' %}
+        <div class="mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_active" id="salaryIsActive"
+                       {% if structure.is_active %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="salaryIsActive">
+                    Active Salary Structure
+                </label>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-gold" id="salarySubmitBtn">
+            <i class="bi {% if mode == 'create' %}bi-plus-circle{% else %}bi-save{% endif %} me-1"></i>
+            {% if mode == 'create' %}Create{% else %}Save{% endif %}
+        </button>
+    </div>
+</form>

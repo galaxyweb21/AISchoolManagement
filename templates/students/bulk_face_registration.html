@@ -1,0 +1,82 @@
+<!-- students/templates/students/bulk_face_registration.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Bulk Face Registration{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+</style>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1">
+                    <i class="bi bi-camera-video text-teal me-2"></i>Bulk Face Registration
+                </h5>
+                <p class="text-muted mb-0">
+                    {{ total_unregistered }} student{{ total_unregistered|pluralize }} without face registration
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'students:student_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Students
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4">
+    <div class="p-4">
+        <!-- Include the modal content directly -->
+        {% include 'students/bulk_face_registration_modal_content.html' %}
+    </div>
+</div>
+
+<!-- Face Capture Modal -->
+{% include 'students/face_capture_modal.html' %}
+
+<!-- CSRF Token for AJAX -->
+{% csrf_token %}
+
+<script>
+// Make sure the modal script can access the CSRF token
+document.addEventListener('DOMContentLoaded', function() {
+    // Store CSRF token for use in modal
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    document.documentElement.dataset.csrfToken = csrfToken;
+});
+</script>
+{% endblock %}

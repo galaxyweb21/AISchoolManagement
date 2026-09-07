@@ -1,0 +1,519 @@
+<!-- staff/leave/leave_calendar.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Leave Calendar{% endblock %}
+
+{% block content %}
+<style>
+    .calendar-day {
+        min-height: 100px;
+        padding: 6px;
+        border: 1px solid var(--bs-border-color);
+        vertical-align: top;
+        background: var(--bs-body-bg);
+        transition: background 0.2s;
+        position: relative;
+    }
+    .calendar-day:hover {
+        background: var(--bs-tertiary-bg);
+    }
+    .calendar-day.today {
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.08));
+        border-color: var(--eduai-gold, #946B1C);
+    }
+    .calendar-day.today .day-number {
+        background: var(--eduai-gold, #946B1C);
+        color: #fff;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .calendar-day.weekend {
+        background: var(--bs-tertiary-bg);
+    }
+    .calendar-day.other-month {
+        opacity: 0.4;
+    }
+    .calendar-day .day-number {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--bs-body-color);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+    }
+    .calendar-event {
+        padding: 2px 6px;
+        margin-top: 2px;
+        border-radius: 4px;
+        font-size: 0.6rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 3px solid transparent;
+        position: relative;
+        z-index: 1;
+    }
+    .calendar-event:hover {
+        transform: scale(1.02);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        z-index: 2;
+    }
+    .calendar-event .event-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        margin-right: 4px;
+        flex-shrink: 0;
+    }
+    .calendar-event .event-name {
+        font-weight: 500;
+    }
+    .calendar-event .event-type {
+        color: var(--bs-secondary-color);
+    }
+
+    .event-count-badge {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        font-size: 0.55rem;
+        padding: 1px 6px;
+        border-radius: 10px;
+        background: var(--eduai-gold, #946B1C);
+        color: #fff;
+        font-weight: 600;
+        z-index: 1;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--bs-body-color);
+    }
+    .legend-item .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 767.98px) {
+        .calendar-day {
+            min-height: 60px;
+            padding: 4px;
+        }
+        .calendar-day .day-number {
+            width: 22px;
+            height: 22px;
+            font-size: 0.75rem;
+        }
+        .calendar-event {
+            font-size: 0.5rem;
+            padding: 1px 4px;
+            margin-top: 1px;
+        }
+        .calendar-event .event-name {
+            display: none;
+        }
+        .event-count-badge {
+            font-size: 0.5rem;
+            padding: 0 4px;
+        }
+    }
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .border-gold {
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Leave Calendar
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% else %}
+                            Staff View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    This calendar shows staff leave schedules at a glance.
+                    <strong>Approved</strong> leaves are shown in green, <strong>Pending</strong> in yellow,
+                    and <strong>Rejected</strong> in red. Click on any day with events to see details.
+                    The <strong>Today</strong> button jumps to the current month.
+                    Use the <strong>navigation arrows</strong> to browse different months.
+                    Click <strong>"Request Leave"</strong> to submit a new leave request.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-calendar3 text-gold me-2"></i>
+                        Leave Calendar
+                    </h5>
+                    <p class="text-muted mb-0">View staff leave schedules at a glance.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'staff:leave_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                    </a>
+                    <button type="button" class="btn btn-gold btn-sm" data-bs-toggle="modal" data-bs-target="#leaveRequestModal">
+                        <i class="bi bi-plus-lg me-1"></i>Request Leave
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Navigation -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <h5 class="fw-bold mb-0">{{ month_name }} {{ year }}</h5>
+                <div class="d-flex gap-2">
+                    <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                    <a href="?year={{ now.year }}&month={{ now.month }}" class="btn btn-sm btn-gold">
+                        Today
+                    </a>
+                    <a href="?year={{ next_year }}&month={{ next_month }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Grid -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered mb-0" style="table-layout: fixed;">
+                    <thead>
+                        <tr>
+                            <th class="text-center py-3 bg-light" style="width: 14.28%;">Sun</th>
+                            <th class="text-center py-3 bg-light" style="width: 14.28%;">Mon</th>
+                            <th class="text-center py-3 bg-light" style="width: 14.28%;">Tue</th>
+                            <th class="text-center py-3 bg-light" style="width: 14.28%;">Wed</th>
+                            <th class="text-center py-3 bg-light" style="width: 14.28%;">Thu</th>
+                            <th class="text-center py-3 bg-light" style="width: 14.28%;">Fri</th>
+                            <th class="text-center py-3 bg-light" style="width: 14.28%;">Sat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for week in calendar_weeks %}
+                        <tr>
+                            {% for day in week %}
+                            <td class="calendar-day {% if day.today %}today{% endif %} {% if day.weekend %}weekend{% endif %} {% if not day.day %}other-month{% endif %}"
+                                {% if day.day %}data-date="{{ year }}-{{ month|stringformat:"02d" }}-{{ day.day|stringformat:"02d" }}"{% endif %}>
+                                {% if day.day %}
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <span class="day-number">{{ day.day }}</span>
+                                    {% if day.has_events %}
+                                    <span class="event-count-badge">{{ day.event_count }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="mt-1">
+                                    {% for event in day.events|slice:":3" %}
+                                    <div class="calendar-event" style="background-color: {{ event.color }}20; border-left-color: {{ event.color }};"
+                                         title="{{ event.staff.user.get_full_name }} - {{ event.title }}">
+                                        <span class="event-dot" style="background-color: {{ event.color }};"></span>
+                                        <span class="event-name">{{ event.staff.user.get_full_name|truncatechars:10 }}</span>
+                                        <span class="event-type">- {{ event.leave_request.leave_type.name }}</span>
+                                    </div>
+                                    {% endfor %}
+                                    {% if day.event_count > 3 %}
+                                    <div class="text-muted small text-center mt-1" style="font-size: 0.55rem;">
+                                        +{{ day.event_count|add:"-3" }} more
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <div style="height: 28px;"></div>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="card border-0 shadow-sm rounded-4 mt-4">
+        <div class="card-body p-3">
+            <div class="d-flex flex-wrap gap-4 align-items-center">
+                <span class="fw-semibold small">Legend:</span>
+                <div class="legend-item">
+                    <span class="dot" style="background: #22c55e;"></span>
+                    <small>Approved</small>
+                </div>
+                <div class="legend-item">
+                    <span class="dot" style="background: #eab308;"></span>
+                    <small>Pending</small>
+                </div>
+                <div class="legend-item">
+                    <span class="dot" style="background: #ef4444;"></span>
+                    <small>Rejected</small>
+                </div>
+                <div class="legend-item">
+                    <span class="dot" style="background: #8b5cf6;"></span>
+                    <small>Taken</small>
+                </div>
+                <div class="legend-item">
+                    <span class="dot" style="background: #6b7280;"></span>
+                    <small>Cancelled</small>
+                </div>
+                <div class="legend-item">
+                    <span class="dot" style="background: var(--eduai-gold, #946B1C); border: 2px solid var(--eduai-gold, #946B1C);"></span>
+                    <small>Today</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leave Request Modal -->
+<div class="modal fade" id="leaveRequestModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-body p-0">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+
+    const modal = document.getElementById('leaveRequestModal');
+    const modalContent = modal.querySelector('.modal-body');
+
+    modal.addEventListener('show.bs.modal', function () {
+        const url = "{% url 'staff:leave_request_create' %}";
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+            bindFormSubmit();
+        })
+        .catch(err => {
+            console.error('Error loading form:', err);
+            modalContent.innerHTML = `
+                <div class="p-4 text-center">
+                    <div class="alert alert-danger border-0 rounded-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error loading form. Please try again.
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        });
+    });
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    function bindFormSubmit() {
+        const form = modalContent.querySelector('form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Submitting...';
+            submitBtn.disabled = true;
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Server returned an invalid response.');
+                }
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    window.location.reload();
+                } else {
+                    showError(data.error || 'An error occurred while submitting.');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                showError(err.message || 'An unexpected error occurred.');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    modal.addEventListener('hidden.bs.modal', function () {
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+    });
+});
+</script>
+{% endblock %}

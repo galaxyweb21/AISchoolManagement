@@ -1,0 +1,527 @@
+<!-- students/templates/students/student_list.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Students{% endblock %}
+
+{% block content %}
+
+<style>
+    .info-card {
+        border-radius: 12px;
+        padding: 1.25rem;
+        background: var(--bs-tertiary-bg);
+        height: 100%;
+    }
+    .info-card .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--bs-secondary-color);
+        font-weight: 600;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+    .info-card .value {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .progress-bar-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+</style>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1">
+                    <i class="bi bi-people text-gold me-2"></i>Students
+                </h5>
+                <p class="text-muted mb-0">
+                    {{ total_students }} student{{ total_students|pluralize }}
+                    <span class="mx-2">•</span>
+                    <span class="text-teal">{{ registered_faces }} faces registered</span>
+                    <span class="mx-2">•</span>
+                    <span class="text-warning">{{ unregistered_faces }} pending</span>
+                </p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                {% if can_edit %}
+                <a href="{% url 'students:create_student' %}" class="btn btn-gold">
+                    <i class="bi bi-plus-lg me-1"></i>Add Student
+                </a>
+                <a href="{% url 'students:bulk_face_registration' %}" class="btn btn-outline-success">
+                    <i class="bi bi-camera me-1"></i>Bulk Face Register
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- How Students Work -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How Students Work</div>
+            <p class="text">
+                This is the master list of every enrolled student, their class, and their
+                <strong>face registration</strong> status used for attendance check-in. Use the search
+                and filters below to narrow by name, class, or grade level. Click <strong>"Add Student"</strong> to
+                enroll a new student, or <strong>"Bulk Face Register"</strong> to register attendance faces for
+                many students at once.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-3">
+        <form method="get" class="d-flex gap-2 flex-wrap align-items-center" id="filterForm">
+            <div class="flex-grow-1" style="min-width: 200px;">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" name="q" class="form-control border-start-0"
+                           placeholder="Search by name or admission number" value="{{ query }}" id="searchInput">
+                </div>
+            </div>
+            {% if user.role != 'TEACHER' %}
+            <select name="grade" class="form-select" style="max-width: 200px;" id="gradeFilter">
+                <option value="">All grade levels</option>
+                {% for g in grade_levels %}
+                <option value="{{ g.id }}" {% if grade_filter == g.id|stringformat:"s" %}selected{% endif %}>
+                    {{ g.name }}
+                </option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            <select name="face" class="form-select" style="max-width: 180px;" id="faceFilter">
+                <option value="">All students</option>
+                <option value="registered" {% if face_filter == 'registered' %}selected{% endif %}>
+                    <i class="bi bi-check-circle"></i> Face Registered
+                </option>
+                <option value="unregistered" {% if face_filter == 'unregistered' %}selected{% endif %}>
+                    <i class="bi bi-x-circle"></i> No Face
+                </option>
+            </select>
+            <button type="submit" class="btn btn-outline-gold">
+                <i class="bi bi-funnel me-1"></i> Filter
+            </button>
+            {% if query or grade_filter or face_filter %}
+            <a href="{% url 'students:student_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle me-1"></i> Clear
+            </a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4" data-table-update>
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-table text-gold me-2"></i>Student List
+                <span class="badge bg-light text-muted ms-2" id="studentCount">{{ students|length }}</span>
+            </h6>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="text-muted small" id="filterStatus"></span>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="studentsTable">
+                <thead>
+                <tr>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Name</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Admission #</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Grade</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Class</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Age</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Face</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Parent</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Status</th>
+                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Actions</th>
+                </tr>
+                </thead>
+                <tbody class="border-top-0" id="studentTableBody">
+                {% for s in students %}
+                <tr class="border-bottom student-row" data-id="{{ s.id }}">
+                    <td class="fw-semibold py-3 ps-0" data-field="full_name">
+                        {{ s.user.get_full_name }}
+                        {% if not s.is_active %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-2 small">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3" data-field="admission_number">
+                        <code class="text-muted small bg-light px-2 py-1 rounded-2 border">{{ s.admission_number }}</code>
+                    </td>
+                    <td class="py-3" data-field="grade">
+                        {% if s.grade_level %}
+                        <span class="badge badge-gold px-3 py-2 rounded-pill">{{ s.grade_level.name }}</span>
+                        {% else %}
+                        <span class="text-muted small">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3" data-field="class">
+                        {% if s.school_class %}
+                        <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill">{{ s.school_class.name }}</span>
+                        {% else %}
+                        <span class="text-muted small">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center py-3" data-field="age">
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">
+                            {{ s.age_in_years }}
+                        </span>
+                    </td>
+                    {% if can_edit %}
+                    <td class="text-center py-3" data-field="face_registered">
+                        {% if s.face_registered %}
+                        <span class="badge badge-teal border-0 px-2.5 py-1.5 rounded-pill">
+                            <i class="bi bi-check-circle-fill me-1"></i>Registered
+                        </span>
+                        {% else %}
+                        <button type="button"
+                                class="btn btn-sm btn-outline-gold register-face-btn"
+                                data-student-id="{{ s.id }}"
+                                data-student-name="{{ s.user.get_full_name|escapejs }}">
+                            <i class="bi bi-camera me-1"></i> Register
+                        </button>
+                        {% endif %}
+                    </td>
+                    {% else %}
+                    <td class="text-center py-3" data-field="face_registered">
+                        {% if s.face_registered %}
+                        <span class="badge badge-teal border-0 px-2.5 py-1.5 rounded-pill">
+                            <i class="bi bi-check-circle-fill me-1"></i>Registered
+                        </span>
+                        {% else %}
+                        <span class="badge bg-warning-subtle text-warning border-0 px-2.5 py-1.5 rounded-pill">
+                            <i class="bi bi-camera me-1"></i>Not Registered
+                        </span>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td class="text-muted py-3" data-field="parent">{{ s.parent.get_full_name|default:"—" }}</td>
+                    <td class="text-center py-3" data-field="is_active">
+                        {% if s.is_active %}
+                        <span class="badge badge-teal rounded-pill px-3 py-2">
+                            <i class="bi bi-check-circle-fill me-1 small"></i> Active
+                        </span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">
+                            <i class="bi bi-circle me-1 small"></i> Inactive
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end py-3 pe-0 text-nowrap">
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'students:student_detail' s.id %}" class="btn btn-sm btn-outline-gold px-3 view-btn">
+                                <i class="bi bi-eye me-1"></i> View
+                            </a>
+                            {% if can_edit %}
+                            <a href="{% url 'students:edit_student' s.id %}" class="btn btn-sm btn-outline-secondary px-3 edit-btn">
+                                <i class="bi bi-pencil me-1"></i> Edit
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr class="empty-state-row">
+                    <td colspan="9" class="text-center text-muted py-5">
+                        <i class="bi bi-people fs-2 d-block mb-2 text-secondary"></i>
+                        No students found matching your criteria.
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Face Capture Modal -->
+{% include 'students/face_capture_modal.html' %}
+
+<!-- Row Template for dynamic updates -->
+<template id="rowTemplate">
+    <tr class="border-bottom" data-id="">
+        <td class="fw-semibold py-3 ps-0" data-field="full_name">Student Name</td>
+        <td class="py-3" data-field="admission_number">
+            <code class="text-muted small bg-light px-2 py-1 rounded-2 border">ADM-XXXX</code>
+        </td>
+        <td class="py-3" data-field="grade">
+            <span class="badge badge-gold px-3 py-2 rounded-pill">Grade</span>
+        </td>
+        <td class="py-3" data-field="class">
+            <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill">Class</span>
+        </td>
+        <td class="text-center py-3" data-field="age">
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">0</span>
+        </td>
+        <td class="text-center py-3" data-field="face_registered">
+            <button type="button" class="btn btn-sm btn-outline-gold register-face-btn">
+                <i class="bi bi-camera me-1"></i> Register
+            </button>
+        </td>
+        <td class="text-muted py-3" data-field="parent">—</td>
+        <td class="text-center py-3" data-field="is_active">
+            <span class="badge badge-teal rounded-pill px-3 py-2">
+                <i class="bi bi-check-circle-fill me-1 small"></i> Active
+            </span>
+        </td>
+        <td class="text-end py-3 pe-0 text-nowrap">
+            <div class="btn-group" role="group">
+                <a href="#" class="btn btn-sm btn-outline-gold px-3 view-btn">
+                    <i class="bi bi-eye me-1"></i> View
+                </a>
+                <a href="#" class="btn btn-sm btn-outline-secondary px-3 edit-btn">
+                    <i class="bi bi-pencil me-1"></i> Edit
+                </a>
+            </div>
+        </td>
+    </tr>
+</template>
+
+<!-- Bulk Face Registration Modal -->
+<div class="modal fade" id="bulkFaceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-camera-video text-teal me-2"></i>Bulk Face Registration
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="bulkStatus" class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Loading students without face registration...</p>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / FILTER WITH COUNT UPDATE
+    // ============================================================
+    const searchInput = document.getElementById('searchInput');
+    const gradeFilter = document.getElementById('gradeFilter');
+    const faceFilter = document.getElementById('faceFilter');
+    const filterStatus = document.getElementById('filterStatus');
+    const studentCount = document.getElementById('studentCount');
+    const allRows = document.querySelectorAll('.student-row');
+    const emptyState = document.querySelector('.empty-state-row');
+
+    function applyFilters() {
+        const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const gradeValue = gradeFilter ? gradeFilter.value : '';
+        const faceValue = faceFilter ? faceFilter.value : '';
+        let visibleCount = 0;
+
+        allRows.forEach(function(row) {
+            const text = row.textContent.toLowerCase();
+            let isVisible = true;
+
+            // Search filter
+            if (searchQuery && !text.includes(searchQuery)) {
+                isVisible = false;
+            }
+
+            // Grade filter - check if row has grade level text
+            if (isVisible && gradeValue) {
+                const gradeCell = row.querySelector('[data-field="grade"]');
+                if (gradeCell) {
+                    const gradeText = gradeCell.textContent.toLowerCase();
+                    // Check if the grade name matches the filter
+                    const gradeOption = gradeFilter.options[gradeFilter.selectedIndex];
+                    if (gradeOption && gradeOption.text !== 'All grade levels') {
+                        if (!gradeText.includes(gradeOption.text.toLowerCase())) {
+                            isVisible = false;
+                        }
+                    }
+                }
+            }
+
+            // Face filter
+            if (isVisible && faceValue) {
+                const faceCell = row.querySelector('[data-field="face_registered"]');
+                if (faceCell) {
+                    const isRegistered = faceCell.textContent.toLowerCase().includes('registered');
+                    if (faceValue === 'registered' && !isRegistered) {
+                        isVisible = false;
+                    } else if (faceValue === 'unregistered' && isRegistered) {
+                        isVisible = false;
+                    }
+                }
+            }
+
+            row.style.display = isVisible ? '' : 'none';
+            if (isVisible) visibleCount++;
+        });
+
+        // Update count
+        if (studentCount) {
+            const hasFilter = searchQuery || gradeValue || faceValue;
+            if (hasFilter) {
+                studentCount.textContent = visibleCount;
+                if (filterStatus) {
+                    let filterText = `(filtered: ${visibleCount} shown)`;
+                    if (searchQuery) filterText += ` • search: "${searchQuery}"`;
+                    filterStatus.textContent = filterText;
+                }
+            } else {
+                studentCount.textContent = allRows.length;
+                if (filterStatus) {
+                    filterStatus.textContent = '';
+                }
+            }
+        }
+
+        // Show empty state if no rows visible
+        if (emptyState) {
+            if (visibleCount === 0 && allRows.length > 0) {
+                emptyState.style.display = '';
+            } else {
+                emptyState.style.display = 'none';
+            }
+        }
+    }
+
+    // Attach event listeners
+    if (searchInput) {
+        searchInput.addEventListener('input', applyFilters);
+    }
+    if (gradeFilter) {
+        gradeFilter.addEventListener('change', applyFilters);
+    }
+    if (faceFilter) {
+        faceFilter.addEventListener('change', applyFilters);
+    }
+
+    // Initial filter application (for existing filter values from page load)
+    if (document.querySelector('#filterForm')) {
+        // Apply filters after a short delay to ensure DOM is ready
+        setTimeout(applyFilters, 100);
+    }
+
+    // ============================================================
+    // FACE REGISTRATION
+    // ============================================================
+    // Delegate face registration button clicks
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.register-face-btn');
+        if (btn) {
+            const studentId = btn.getAttribute('data-student-id');
+            const studentName = btn.getAttribute('data-student-name');
+            if (studentId && studentName) {
+                // Use the global face capture function
+                if (typeof openFaceRegistration === 'function') {
+                    openFaceRegistration(studentId, studentName);
+                }
+            }
+        }
+    });
+
+    // ============================================================
+    // AUTO-DISMISS MESSAGES
+    // ============================================================
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% include "partials/pagination.html" with page_obj=students %}
+
+{% endblock %}

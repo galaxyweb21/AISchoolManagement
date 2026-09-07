@@ -1,0 +1,1315 @@
+<!-- ai_engine/command_center.html -->
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block page_title %}AI Command Center{% endblock %}
+
+{% block content %}
+<style>
+    /* ============================================= */
+    /* ROOT VARIABLES - Inherited from base.html    */
+    /* ============================================= */
+    :root {
+        --cc-primary: var(--eduai-gold, #946B1C);
+        --cc-primary-light: #b88a3a;
+        --cc-primary-dark: #7a5a16;
+        --cc-secondary: var(--eduai-signal, #2C7A6D);
+        --cc-secondary-light: #3a9a8a;
+        --cc-success: #2C7A6D;
+        --cc-warning: #d97706;
+        --cc-danger: #dc2626;
+        --cc-info: #3b82f6;
+        --cc-purple: #8b5cf6;
+        --cc-pink: #ec4899;
+        --cc-radius: 20px;
+        --cc-radius-sm: 14px;
+        --cc-radius-xs: 10px;
+        --cc-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+        --cc-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --cc-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --cc-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        --cc-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ============================================= */
+    /* GENERAL STYLES                              */
+    /* ============================================= */
+    .cc-card {
+        background: var(--surface-bg);
+        border: 1px solid var(--surface-border);
+        border-radius: var(--cc-radius);
+        transition: var(--cc-transition);
+        box-shadow: var(--cc-shadow);
+        overflow: hidden;
+    }
+    .cc-card:hover {
+        box-shadow: var(--cc-shadow-md);
+        transform: translateY(-2px);
+    }
+    .cc-card-header {
+        background: transparent;
+        border-bottom: 1px solid var(--surface-border);
+        padding: 1.25rem 1.5rem 0.75rem;
+        font-weight: 600;
+    }
+
+    /* ============================================= */
+    /* HEALTH CIRCLE GAUGE                         */
+    /* ============================================= */
+    .health-circle {
+        position: relative;
+        width: 170px;
+        height: 170px;
+        margin: auto;
+    }
+    .health-value {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    .mini-health {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        margin: auto;
+    }
+    .mini-value {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-weight: 700;
+        font-size: 1.15rem;
+    }
+    circle { fill: none; }
+    .circle-bg { stroke: var(--surface-border); stroke-width: 10; }
+    .circle-progress { stroke-width: 10; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; stroke-dasharray: 440; stroke-dashoffset: 440; transition: stroke-dashoffset 1.8s cubic-bezier(0.4, 0, 0.2, 1); }
+    .overall-progress { stroke: var(--cc-primary); }
+    .risk-progress { stroke: var(--cc-danger); }
+    .finance-progress { stroke: var(--cc-secondary); }
+    .report-progress { stroke: var(--cc-warning); }
+
+    /* ============================================= */
+    /* METRIC CARDS                                */
+    /* ============================================= */
+    .metric-card {
+        padding: 1.25rem;
+        border-radius: var(--cc-radius-sm);
+        border: 1px solid var(--surface-border);
+        background: var(--app-bg);
+        transition: var(--cc-transition);
+        height: 100%;
+    }
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--cc-shadow-md);
+    }
+    .metric-card .metric-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: var(--cc-radius-xs);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+    .metric-card .metric-icon.blue {
+        background: var(--eduai-gold-soft);
+        color: var(--cc-primary);
+    }
+    .metric-card .metric-icon.green {
+        background: var(--eduai-signal-soft);
+        color: var(--cc-secondary);
+    }
+    .metric-card .metric-icon.red {
+        background: rgba(220, 38, 38, 0.1);
+        color: var(--cc-danger);
+    }
+    .metric-card .metric-icon.yellow {
+        background: rgba(217, 119, 6, 0.1);
+        color: var(--cc-warning);
+    }
+    .metric-card .metric-icon.purple {
+        background: rgba(139, 92, 246, 0.1);
+        color: var(--cc-purple);
+    }
+    .metric-card .metric-icon.pink {
+        background: rgba(236, 72, 153, 0.1);
+        color: var(--cc-pink);
+    }
+    .metric-card .metric-icon.cyan {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--cc-info);
+    }
+    .metric-card .metric-number {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+    .metric-card .metric-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+    }
+
+    /* ============================================= */
+    /* STATUS BADGES                               */
+    /* ============================================= */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 14px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .status-badge .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .status-badge.success {
+        background: var(--eduai-signal-soft);
+        color: var(--cc-secondary);
+    }
+    .status-badge.success .dot { background: var(--cc-secondary); }
+    .status-badge.warning {
+        background: rgba(217, 119, 6, 0.1);
+        color: var(--cc-warning);
+    }
+    .status-badge.warning .dot { background: var(--cc-warning); }
+    .status-badge.danger {
+        background: rgba(220, 38, 38, 0.1);
+        color: var(--cc-danger);
+    }
+    .status-badge.danger .dot { background: var(--cc-danger); }
+    .status-badge.info {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--cc-info);
+    }
+    .status-badge.info .dot { background: var(--cc-info); }
+
+    /* ============================================= */
+    /* INSIGHT ITEMS                               */
+    /* ============================================= */
+    .insight-item {
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--surface-border);
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    .insight-item:last-child {
+        border-bottom: none;
+    }
+    .insight-item .insight-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--cc-radius-xs);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+    .insight-item .insight-icon.critical {
+        background: rgba(220, 38, 38, 0.1);
+        color: var(--cc-danger);
+    }
+    .insight-item .insight-icon.warning {
+        background: rgba(217, 119, 6, 0.1);
+        color: var(--cc-warning);
+    }
+    .insight-item .insight-icon.success {
+        background: var(--eduai-signal-soft);
+        color: var(--cc-secondary);
+    }
+    .insight-item .insight-icon.info {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--cc-info);
+    }
+    .insight-item .insight-content {
+        flex: 1;
+        min-width: 0;
+    }
+    .insight-item .insight-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 2px;
+    }
+    .insight-item .insight-message {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+    }
+    .insight-item .insight-source {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        font-weight: 500;
+        opacity: 0.7;
+    }
+
+    /* ============================================= */
+    /* QUICK ACTION CARDS                          */
+    /* ============================================= */
+    .quick-action-card {
+        padding: 1.5rem 1rem;
+        text-align: center;
+        text-decoration: none;
+        color: inherit;
+        border-radius: var(--cc-radius-sm);
+        border: 1px solid var(--surface-border);
+        background: var(--surface-bg);
+        transition: var(--cc-transition);
+        display: block;
+        height: 100%;
+    }
+    .quick-action-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--cc-shadow-lg);
+        border-color: var(--cc-primary);
+        text-decoration: none;
+        color: inherit;
+    }
+    .quick-action-card .qa-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: var(--cc-radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin: 0 auto 0.75rem;
+    }
+    .quick-action-card .qa-icon.blue {
+        background: var(--eduai-gold-soft);
+        color: var(--cc-primary);
+    }
+    .quick-action-card .qa-icon.red {
+        background: rgba(220, 38, 38, 0.1);
+        color: var(--cc-danger);
+    }
+    .quick-action-card .qa-icon.green {
+        background: var(--eduai-signal-soft);
+        color: var(--cc-secondary);
+    }
+    .quick-action-card .qa-icon.yellow {
+        background: rgba(217, 119, 6, 0.1);
+        color: var(--cc-warning);
+    }
+    .quick-action-card .qa-icon.purple {
+        background: rgba(139, 92, 246, 0.1);
+        color: var(--cc-purple);
+    }
+    .quick-action-card .qa-title {
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+    .quick-action-card .qa-subtitle {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+
+    /* ============================================= */
+    /* TABLE STYLES                                */
+    /* ============================================= */
+    .cc-table th {
+        background: transparent;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--surface-border);
+        padding: 0.75rem 1rem;
+    }
+    .cc-table td {
+        padding: 0.75rem 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--surface-border);
+    }
+    .cc-table tbody tr {
+        transition: var(--cc-transition);
+    }
+    .cc-table tbody tr:hover {
+        background: var(--app-bg);
+    }
+    .cc-table .student-link {
+        color: inherit;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .cc-table .student-link:hover {
+        color: var(--cc-primary);
+    }
+
+    /* ============================================= */
+    /* COpILOT CTA                                 */
+    /* ============================================= */
+    .copilot-cta-section {
+        background: var(--app-bg);
+        border: 1px solid var(--surface-border);
+        border-radius: var(--cc-radius);
+        padding: 2rem 2.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: var(--cc-transition);
+    }
+    .copilot-cta-section:hover {
+        box-shadow: var(--cc-shadow-md);
+        border-color: var(--cc-primary);
+        transform: translateY(-2px);
+    }
+    .copilot-cta-section .cta-content {
+        position: relative;
+        z-index: 1;
+    }
+    .copilot-cta-section .cta-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: var(--cc-radius-sm);
+        background: var(--eduai-gold-soft);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        color: var(--cc-primary);
+        flex-shrink: 0;
+        border: 1px solid rgba(148, 107, 28, 0.1);
+        transition: var(--cc-transition);
+    }
+    .copilot-cta-section:hover .cta-icon {
+        transform: scale(1.05);
+        box-shadow: 0 8px 25px rgba(148, 107, 28, 0.15);
+    }
+    .copilot-cta-section .cta-title {
+        font-weight: 700;
+        font-size: 1.25rem;
+        margin-bottom: 0.25rem;
+        color: var(--text-primary);
+    }
+    .copilot-cta-section .cta-desc {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+    .copilot-cta-section .btn-copilot {
+        background: var(--cc-primary);
+        color: #fff;
+        border: none;
+        padding: 0.6rem 1.75rem;
+        border-radius: var(--cc-radius-xs);
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: var(--cc-transition);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        white-space: nowrap;
+        box-shadow: 0 4px 15px rgba(148, 107, 28, 0.2);
+    }
+    .copilot-cta-section .btn-copilot:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(148, 107, 28, 0.3);
+        color: #fff;
+        background: var(--cc-primary-dark);
+    }
+    .copilot-cta-section .cta-accent-line {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 5px;
+        background: var(--cc-primary);
+        border-radius: 0 3px 3px 0;
+    }
+
+    /* ============================================= */
+    /* SCROLLABLE CONTAINERS                       */
+    /* ============================================= */
+    .scrollable-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .scrollable-container::-webkit-scrollbar {
+        width: 4px;
+    }
+    .scrollable-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .scrollable-container::-webkit-scrollbar-thumb {
+        background: var(--surface-border);
+        border-radius: 10px;
+    }
+
+    /* ============================================= */
+    /* ANIMATIONS                                  */
+    /* ============================================= */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in {
+        animation: fadeInUp 0.5s ease forwards;
+    }
+    .animate-in.delay-1 { animation-delay: 0.1s; }
+    .animate-in.delay-2 { animation-delay: 0.2s; }
+    .animate-in.delay-3 { animation-delay: 0.3s; }
+    .animate-in.delay-4 { animation-delay: 0.4s; }
+    .animate-in.delay-5 { animation-delay: 0.5s; }
+
+    /* ============================================= */
+    /* PAGE DESCRIPTION                            */
+    /* ============================================= */
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+    /* ============================================= */
+    /* SEARCH FILTER                               */
+    /* ============================================= */
+    .prediction-row.hidden-row { display: none !important; }
+    .prediction-row.visible-row { display: table-row !important; }
+    .filter-badge {
+        display: none;
+        background-color: var(--eduai-gold-soft);
+        color: var(--eduai-gold);
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .filter-badge.show { display: inline-block; }
+    @keyframes pulse-badge {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .filter-active { animation: pulse-badge 1.5s ease-in-out 1; }
+
+    /* ============================================= */
+    /* RESPONSIVE                                  */
+    /* ============================================= */
+    @media (max-width: 767.98px) {
+        .copilot-cta-section { padding: 1.5rem; }
+        .copilot-cta-section .cta-icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.25rem;
+        }
+        .copilot-cta-section .cta-title { font-size: 1rem; }
+        .copilot-cta-section .btn-copilot {
+            font-size: 0.8rem;
+            padding: 0.5rem 1.25rem;
+        }
+        .health-circle {
+            width: 140px;
+            height: 140px;
+        }
+        .mini-health {
+            width: 100px;
+            height: 100px;
+        }
+        .metric-card .metric-number { font-size: 1.5rem; }
+        .cc-table { min-width: 900px; }
+    }
+    @media (max-width: 575.98px) {
+        .quick-action-card .qa-icon {
+            width: 44px;
+            height: 44px;
+            font-size: 1.2rem;
+        }
+        .quick-action-card .qa-title { font-size: 0.75rem; }
+        .copilot-cta-section .cta-content {
+            flex-direction: column;
+            text-align: center;
+        }
+        .copilot-cta-section .btn-copilot {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<div class="container-fluid py-4 px-lg-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- ============================================ -->
+    <!-- PAGE DESCRIPTION                            -->
+    <!-- ============================================ -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    AI Command Center
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% else %}
+                            Staff View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    Your AI command center for school intelligence, risk monitoring, and automated insights.
+                    This dashboard provides a comprehensive overview of school health, predictive analytics,
+                    and AI-driven recommendations. Use the <strong>search bar</strong> below to filter
+                    predictive intelligence by student name or risk level.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- HEADER ROW                                  -->
+    <!-- ============================================ -->
+    <div class="row g-4 mb-4 animate-in">
+        <div class="col-lg-8">
+            <div class="cc-card p-4 p-lg-5">
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="status-badge success">
+                                <span class="dot"></span>
+                                AI Active
+                            </span>
+                            <span class="status-badge info">
+                                <span class="dot"></span>
+                                v2.0
+                            </span>
+                        </div>
+                        <h1 class="fw-bold mb-1 display-6" style="font-size: 2rem;">
+                            Welcome back, {{ request.user.get_full_name|default:request.user.username }}
+                        </h1>
+                        <p class="text-secondary mb-0">
+                            Your AI command center for school intelligence, risk monitoring, and automated insights.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="cc-card p-4 h-100 d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted text-uppercase fw-semibold small" style="letter-spacing: 0.05em;">
+                        <i class="bi bi-heart-pulse me-1"></i> Health Score
+                    </div>
+                    <div class="display-3 fw-bold" style="color: var(--cc-primary); line-height: 1;">
+                        {{ health.score }}%
+                    </div>
+                    <div class="mt-1">
+                        {% if health.status == "Excellent" %}
+                            <span class="status-badge success"><span class="dot"></span> Excellent</span>
+                        {% elif health.status == "Very Good" %}
+                            <span class="status-badge success"><span class="dot"></span> Very Good</span>
+                        {% elif health.status == "Good" %}
+                            <span class="status-badge info"><span class="dot"></span> Good</span>
+                        {% elif health.status == "Needs Attention" %}
+                            <span class="status-badge warning"><span class="dot"></span> Needs Attention</span>
+                        {% else %}
+                            <span class="status-badge danger"><span class="dot"></span> Critical</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="text-end">
+                    <div class="bg-primary-subtle text-primary p-3 rounded-circle" style="background: var(--eduai-gold-soft) !important; color: var(--cc-primary) !important;">
+                        <i class="bi bi-cpu fs-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- HEALTH GAUGES + INSIGHTS                    -->
+    <!-- ============================================ -->
+    <div class="row g-4 mb-4">
+        <!-- Health Gauges -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="cc-card p-4 h-100">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <i class="bi bi-speedometer2 text-primary fs-4" style="color: var(--cc-primary) !important;"></i>
+                    <h6 class="fw-bold mb-0">School Health Dashboard</h6>
+                </div>
+                <div class="row g-4 text-center">
+                    <div class="col-md-4">
+                        <div class="health-circle">
+                            <svg width="170" height="170">
+                                <circle cx="85" cy="85" r="70" class="circle-bg"/>
+                                <circle cx="85" cy="85" r="70" class="circle-progress overall-progress"
+                                        data-percent="{{ health.score }}"/>
+                            </svg>
+                            <div class="health-value" style="color: var(--cc-primary);">
+                                {{ health.score }}%
+                            </div>
+                        </div>
+                        <h6 class="mt-3 fw-semibold">Overall Health</h6>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mini-health">
+                            <svg width="120" height="120">
+                                <circle cx="60" cy="60" r="45" class="circle-bg"/>
+                                <circle cx="60" cy="60" r="45" class="circle-progress risk-progress"
+                                        data-percent="{{ health.breakdown.risk }}"/>
+                            </svg>
+                            <div class="mini-value text-danger">{{ health.breakdown.risk }}%</div>
+                        </div>
+                        <h6 class="mt-3 fw-semibold">Student Risk</h6>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mini-health">
+                            <svg width="120" height="120">
+                                <circle cx="60" cy="60" r="45" class="circle-bg"/>
+                                <circle cx="60" cy="60" r="45" class="circle-progress finance-progress"
+                                        data-percent="{{ health.breakdown.finance }}"/>
+                            </svg>
+                            <div class="mini-value text-success" style="color: var(--cc-secondary) !important;">{{ health.breakdown.finance }}%</div>
+                        </div>
+                        <h6 class="mt-3 fw-semibold">Finance Health</h6>
+                    </div>
+                    <div class="col-md-4 offset-md-4 mt-4">
+                        <div class="mini-health">
+                            <svg width="120" height="120">
+                                <circle cx="60" cy="60" r="45" class="circle-bg"/>
+                                <circle cx="60" cy="60" r="45" class="circle-progress report-progress"
+                                        data-percent="{{ health.breakdown.report_cards }}"/>
+                            </svg>
+                            <div class="mini-value text-warning">{{ health.breakdown.report_cards }}%</div>
+                        </div>
+                        <h6 class="mt-3 fw-semibold">Report Cards</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Insights Feed -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="cc-card h-100 d-flex flex-column">
+                <div class="cc-card-header d-flex align-items-center gap-2">
+                    <i class="bi bi-lightbulb-fill text-warning"></i>
+                    <span>AI Insights Feed</span>
+                    <span class="badge bg-primary-subtle text-primary ms-auto rounded-pill" style="background: var(--eduai-gold-soft) !important; color: var(--cc-primary) !important;">
+                        {{ insights|length }}
+                    </span>
+                </div>
+                <div class="p-3 flex-grow-1 scrollable-container">
+                    {% for insight in insights %}
+                    <div class="insight-item">
+                        <div class="insight-icon {{ insight.level|lower }}">
+                            {% if insight.level == "CRITICAL" %}
+                                <i class="bi bi-exclamation-octagon-fill"></i>
+                            {% elif insight.level == "WARNING" %}
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            {% elif insight.level == "SUCCESS" %}
+                                <i class="bi bi-check-circle-fill"></i>
+                            {% else %}
+                                <i class="bi bi-info-circle-fill"></i>
+                            {% endif %}
+                        </div>
+                        <div class="insight-content">
+                            <div class="insight-title">{{ insight.title }}</div>
+                            <div class="insight-message">{{ insight.message }}</div>
+                            <div class="insight-source">
+                                <i class="bi bi-database me-1"></i>
+                                {{ insight.source }}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5">
+                        <div class="bg-success-subtle text-success d-inline-flex p-3 rounded-circle mb-3" style="background: var(--eduai-signal-soft) !important; color: var(--cc-secondary) !important;">
+                            <i class="bi bi-check2-circle fs-1"></i>
+                        </div>
+                        <h6 class="fw-bold">All Clear!</h6>
+                        <p class="text-muted small mb-0">No critical insights at this moment.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- KEY METRICS ROW                            -->
+    <!-- ============================================ -->
+    <div class="row g-4 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="metric-card animate-in delay-1">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <div class="metric-label">Total Students</div>
+                        <div class="metric-number">{{ predictive_total|default:0 }}</div>
+                    </div>
+                    <div class="metric-icon blue">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="metric-card animate-in delay-2">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <div class="metric-label">Worsening</div>
+                        <div class="metric-number text-danger">{{ predictive_worsening|default:0 }}</div>
+                    </div>
+                    <div class="metric-icon red">
+                        <i class="bi bi-arrow-down-right"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="metric-card animate-in delay-3">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <div class="metric-label">Watch List</div>
+                        <div class="metric-number text-warning">{{ predictive_watch|default:0 }}</div>
+                    </div>
+                    <div class="metric-icon yellow">
+                        <i class="bi bi-eye"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="metric-card animate-in delay-4">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <div class="metric-label">Improving</div>
+                        <div class="metric-number text-success" style="color: var(--cc-secondary) !important;">{{ predictive_improving|default:0 }}</div>
+                    </div>
+                    <div class="metric-icon green">
+                        <i class="bi bi-arrow-up-right"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- PREDICTIVE INTELLIGENCE TABLE WITH AUTO-FILTER -->
+    <!-- ============================================ -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="cc-card">
+                <div class="cc-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-graph-up-arrow text-primary" style="color: var(--cc-primary) !important;"></i>
+                        <span>Predictive Intelligence</span>
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill">
+                            {{ predictions|length }} students
+                        </span>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                        <span class="status-badge danger">
+                            <span class="dot"></span> Critical: {{ high_risk_students|default:0 }}
+                        </span>
+                        <span class="status-badge warning">
+                            <span class="dot"></span> High: {{ high_risk_students|default:0 }}
+                        </span>
+                        <!-- Search Input -->
+                        <div class="position-relative ms-2">
+                            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2 text-muted" style="font-size: 0.65rem;"></i>
+                            <input type="text" id="predictionSearchInput" class="form-control form-control-sm ps-5"
+                                   placeholder="Search students..." style="width: 180px;" autocomplete="off">
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearPredictionSearch" style="display: none;">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                        <span class="filter-badge" id="predictionFilterBadge">
+                            <i class="bi bi-funnel-fill me-1"></i>Filtered
+                        </span>
+                    </div>
+                </div>
+                <div class="p-0">
+                    <div class="table-responsive">
+                        <table class="cc-table table mb-0" id="predictionsTable">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Current Risk</th>
+                                    <th>Predicted Risk</th>
+                                    <th>Trajectory</th>
+                                    <th>Attendance</th>
+                                    <th>Academic</th>
+                                    <th>Finance</th>
+                                    <th>Confidence</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="predictionsTableBody">
+                                {% for prediction in predictions %}
+                                <tr class="prediction-row visible-row" data-student="{{ prediction.student.user.get_full_name|lower }}" data-risk="{{ prediction.current_risk_band|lower }}">
+                                    <td>
+                                        <a href="{% url 'ai_engine:predictive_student_detail' prediction.student.id %}"
+                                           class="student-link prediction-student">
+                                            {{ prediction.student.user.get_full_name }}
+                                        </a>
+                                        <br>
+                                        <small class="text-muted prediction-id">{{ prediction.student.admission_number }}</small>
+                                    </td>
+                                    <td>
+                                        {% if prediction.current_risk_band == "CRITICAL" %}
+                                            <span class="status-badge danger prediction-risk"><span class="dot"></span> CRITICAL</span>
+                                        {% elif prediction.current_risk_band == "HIGH" %}
+                                            <span class="status-badge danger prediction-risk"><span class="dot"></span> HIGH</span>
+                                        {% elif prediction.current_risk_band == "MEDIUM" %}
+                                            <span class="status-badge warning prediction-risk"><span class="dot"></span> MEDIUM</span>
+                                        {% else %}
+                                            <span class="status-badge success prediction-risk"><span class="dot"></span> LOW</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if prediction.predicted_risk_band == "CRITICAL" %}
+                                            <span class="status-badge danger"><span class="dot"></span> CRITICAL</span>
+                                        {% elif prediction.predicted_risk_band == "HIGH" %}
+                                            <span class="status-badge danger"><span class="dot"></span> HIGH</span>
+                                        {% elif prediction.predicted_risk_band == "MEDIUM" %}
+                                            <span class="status-badge warning"><span class="dot"></span> MEDIUM</span>
+                                        {% else %}
+                                            <span class="status-badge success"><span class="dot"></span> LOW</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if prediction.trajectory == "WORSENING" %}
+                                            <span class="status-badge danger prediction-trajectory"><span class="dot"></span> Worsening</span>
+                                        {% elif prediction.trajectory == "WATCH" %}
+                                            <span class="status-badge warning prediction-trajectory"><span class="dot"></span> Watch</span>
+                                        {% elif prediction.trajectory == "IMPROVING" %}
+                                            <span class="status-badge success prediction-trajectory"><span class="dot"></span> Improving</span>
+                                        {% else %}
+                                            <span class="status-badge info prediction-trajectory"><span class="dot"></span> Stable</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if prediction.attendance %}
+                                            {% with direction=prediction.attendance.direction %}
+                                            <span class="{% if direction == 'DOWN' %}text-danger{% elif direction == 'UP' %}text-success{% endif %} fw-semibold prediction-attendance">
+                                                <i class="bi bi-arrow-{% if direction == 'DOWN' %}down{% elif direction == 'UP' %}up{% else %}right{% endif %} me-1"></i>
+                                                {{ prediction.attendance.recent }}%
+                                            </span>
+                                            {% endwith %}
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if prediction.academic %}
+                                            {% with direction=prediction.academic.direction %}
+                                            <span class="{% if direction == 'DOWN' %}text-danger{% elif direction == 'UP' %}text-success{% endif %} fw-semibold prediction-academic">
+                                                <i class="bi bi-arrow-{% if direction == 'DOWN' %}down{% elif direction == 'UP' %}up{% else %}right{% endif %} me-1"></i>
+                                                {{ prediction.academic.recent }}%
+                                            </span>
+                                            {% endwith %}
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if prediction.finance %}
+                                            {% if prediction.finance.overdue %}
+                                                <span class="status-badge danger prediction-finance"><span class="dot"></span> Overdue</span>
+                                            {% else %}
+                                                <span class="status-badge success prediction-finance"><span class="dot"></span> Clear</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if prediction.confidence %}
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress" style="width: 50px; height: 4px; border-radius: 4px;">
+                                                    <div class="progress-bar" role="progressbar"
+                                                         style="width: {{ prediction.confidence }}%; background: var(--cc-primary) !important; border-radius: 4px;"></div>
+                                                </div>
+                                                <small class="text-muted prediction-confidence">{{ prediction.confidence }}%</small>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'ai_engine:predictive_student_detail' prediction.student.id %}"
+                                           class="btn btn-sm btn-outline-primary rounded-pill px-3" style="border-color: var(--cc-primary) !important; color: var(--cc-primary) !important; border-radius: 20px !important;">
+                                            <i class="bi bi-eye me-1"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr id="emptyPredictionRow">
+                                    <td colspan="9" class="text-center py-5 text-muted">
+                                        <i class="bi bi-shield-check fs-2 d-block mb-3"></i>
+                                        <h6 class="fw-bold">No predictive alerts</h6>
+                                        <p class="small mb-0">All students are currently on track.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="predictionSearchEmpty" class="text-center text-muted py-4" style="display: none;">
+                        <i class="bi bi-search d-block mb-2 fs-3"></i>
+                        <p>No students match your search.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- INTERVENTION QUEUE + AUTOMATION             -->
+    <!-- ============================================ -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="cc-card h-100">
+                <div class="cc-card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-exclamation text-danger"></i>
+                        <span>AI Intervention Queue</span>
+                    </div>
+                    <span class="badge bg-danger-subtle text-danger rounded-pill">
+                        {{ intervention_count }} cases
+                    </span>
+                </div>
+                <div class="p-3 scrollable-container">
+                    {% for item in intervention_queue %}
+                    <div class="border rounded-3 p-3 mb-3" style="border-color: var(--surface-border) !important; border-radius: var(--cc-radius-xs) !important;">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                            <div>
+                                <h6 class="fw-bold mb-1">{{ item.student_name }}</h6>
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% if item.predicted_risk_band == "CRITICAL" %}
+                                        <span class="status-badge danger"><span class="dot"></span> CRITICAL</span>
+                                    {% elif item.predicted_risk_band == "HIGH" %}
+                                        <span class="status-badge danger"><span class="dot"></span> HIGH</span>
+                                    {% elif item.predicted_risk_band == "MEDIUM" %}
+                                        <span class="status-badge warning"><span class="dot"></span> MEDIUM</span>
+                                    {% else %}
+                                        <span class="status-badge success"><span class="dot"></span> LOW</span>
+                                    {% endif %}
+                                    {% if item.trajectory == "WORSENING" %}
+                                        <span class="status-badge danger"><span class="dot"></span> Worsening</span>
+                                    {% elif item.trajectory == "WATCH" %}
+                                        <span class="status-badge warning"><span class="dot"></span> Watch</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                {% if item.confidence %}
+                                    <small class="text-muted d-block">Confidence</small>
+                                    <strong>{{ item.confidence }}%</strong>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mt-2 d-flex flex-wrap gap-2">
+                            {% for action in item.actions %}
+                            <div class="bg-light rounded-3 px-3 py-1 d-flex align-items-center gap-2" style="background: var(--app-bg) !important; border-radius: 20px !important;">
+                                <i class="bi {{ action.icon }}" style="color: var(--cc-primary);"></i>
+                                <small class="fw-semibold">{{ action.label }}</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-shield-check fs-1" style="color: var(--cc-secondary);"></i>
+                        <h6 class="fw-bold mt-3">No intervention cases</h6>
+                        <p class="text-muted small mb-0">All students are currently stable.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="cc-card h-100">
+                <div class="cc-card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-robot" style="color: var(--cc-primary);"></i>
+                        <span>AI Automation Queue</span>
+                    </div>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill" style="background: var(--eduai-gold-soft) !important; color: var(--cc-primary) !important;">
+                        {{ automation_tasks|length }}
+                    </span>
+                </div>
+                <div class="p-3 scrollable-container">
+                    {% for task in automation_tasks %}
+                    <div class="border rounded-3 p-3 mb-3" style="border-color: var(--surface-border) !important; border-radius: var(--cc-radius-xs) !important;">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                            <div>
+                                <h6 class="fw-bold mb-1">{{ task.title }}</h6>
+                                <small class="text-muted d-block">{{ task.description }}</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-warning-subtle text-warning rounded-pill">
+                                    {{ task.priority }}
+                                </span>
+                                <form method="post" action="{% url 'ai_engine:approve_ai_task' task.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-success rounded-pill px-3" style="background: var(--cc-secondary) !important; border-color: var(--cc-secondary) !important; border-radius: 20px !important;">
+                                        <i class="bi bi-check-circle me-1"></i> Approve
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-check-circle-fill fs-1" style="color: var(--cc-secondary);"></i>
+                        <h6 class="fw-bold mt-3">Queue is empty</h6>
+                        <p class="text-muted small mb-0">No pending automation tasks.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- QUICK ACTION MODULES                       -->
+    <!-- ============================================ -->
+    <div class="row g-4 mb-4">
+        <div class="col-6 col-md-3">
+            <a href="{% url 'ai_engine:exam_dashboard' %}" class="quick-action-card animate-in delay-1">
+                <div class="qa-icon blue">
+                    <i class="bi bi-file-earmark-text"></i>
+                </div>
+                <div class="qa-title">Generate Exams</div>
+                <div class="qa-subtitle">AI-powered exam creation</div>
+            </a>
+        </div>
+        <div class="col-6 col-md-3">
+            <a href="{% url 'ai_engine:risk_dashboard' %}" class="quick-action-card animate-in delay-2">
+                <div class="qa-icon red">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div class="qa-title">Risk Prediction</div>
+                <div class="qa-subtitle">Student risk assessment</div>
+            </a>
+        </div>
+        <div class="col-6 col-md-3">
+            <a href="{% url 'ai_engine:finance_insights_dashboard' %}" class="quick-action-card animate-in delay-3">
+                <div class="qa-icon green">
+                    <i class="bi bi-cash-stack"></i>
+                </div>
+                <div class="qa-title">Finance AI</div>
+                <div class="qa-subtitle">Financial insights</div>
+            </a>
+        </div>
+        <div class="col-6 col-md-3">
+            <a href="{% url 'ai_engine:report_card_dashboard' %}" class="quick-action-card animate-in delay-4">
+                <div class="qa-icon purple">
+                    <i class="bi bi-award"></i>
+                </div>
+                <div class="qa-title">Report Cards</div>
+                <div class="qa-subtitle">AI-generated reports</div>
+            </a>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- AI COPILOT CTA                              -->
+    <!-- ============================================ -->
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="copilot-cta-section animate-in delay-5">
+                <div class="cta-accent-line"></div>
+                <div class="cta-content d-flex flex-wrap align-items-center gap-4">
+                    <div class="cta-icon">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="cta-title">Need deeper insights?</h5>
+                        <p class="cta-desc">
+                            Chat directly with the AI School Copilot for natural language queries,
+                            detailed analysis, and personalized assistance.
+                        </p>
+                    </div>
+                    <a href="{% url 'ai_engine:ai_copilot' %}" class="btn-copilot">
+                        <i class="bi bi-chat-dots"></i>
+                        Open Copilot
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Animate circular progress bars
+    document.querySelectorAll(".circle-progress").forEach(function(circle) {
+        let percent = parseFloat(circle.dataset.percent) || 0;
+        let radius = parseFloat(circle.getAttribute("r"));
+        let circumference = 2 * Math.PI * radius;
+        circle.style.strokeDasharray = circumference;
+        circle.style.strokeDashoffset = circumference;
+        let offset = circumference - (percent / 100) * circumference;
+        setTimeout(function() {
+            circle.style.strokeDashoffset = offset;
+        }, 300);
+    });
+
+    // ============================================================
+    // AUTO-FILTER FUNCTIONALITY FOR PREDICTIONS
+    // ============================================================
+    const searchInput = document.getElementById('predictionSearchInput');
+    const clearSearchBtn = document.getElementById('clearPredictionSearch');
+    const filterBadge = document.getElementById('predictionFilterBadge');
+    const rows = document.querySelectorAll('#predictionsTableBody .prediction-row');
+    const emptyState = document.getElementById('emptyPredictionRow');
+    const searchEmptyState = document.getElementById('predictionSearchEmpty');
+
+    function filterPredictions() {
+        const query = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        rows.forEach(function(row) {
+            const student = row.querySelector('.prediction-student')?.textContent?.toLowerCase() || '';
+            const id = row.querySelector('.prediction-id')?.textContent?.toLowerCase() || '';
+            const risk = row.querySelector('.prediction-risk')?.textContent?.toLowerCase() || '';
+            const trajectory = row.querySelector('.prediction-trajectory')?.textContent?.toLowerCase() || '';
+            const attendance = row.querySelector('.prediction-attendance')?.textContent?.toLowerCase() || '';
+            const academic = row.querySelector('.prediction-academic')?.textContent?.toLowerCase() || '';
+            const finance = row.querySelector('.prediction-finance')?.textContent?.toLowerCase() || '';
+            const confidence = row.querySelector('.prediction-confidence')?.textContent?.toLowerCase() || '';
+
+            const searchableText = `${student} ${id} ${risk} ${trajectory} ${attendance} ${academic} ${finance} ${confidence}`;
+
+            if (query === '' || searchableText.includes(query)) {
+                row.classList.remove('hidden-row');
+                row.classList.add('visible-row');
+                visibleCount++;
+            } else {
+                row.classList.add('hidden-row');
+                row.classList.remove('visible-row');
+            }
+        });
+
+        const total = rows.length;
+        if (query === '') {
+            clearSearchBtn.style.display = 'none';
+            filterBadge.classList.remove('show');
+            if (searchEmptyState) searchEmptyState.style.display = 'none';
+            if (emptyState) emptyState.style.display = '';
+        } else {
+            clearSearchBtn.style.display = 'inline-block';
+            filterBadge.classList.add('show');
+            filterBadge.classList.add('filter-active');
+            setTimeout(() => filterBadge.classList.remove('filter-active'), 1500);
+
+            if (visibleCount === 0) {
+                if (searchEmptyState) searchEmptyState.style.display = '';
+                if (emptyState) emptyState.style.display = 'none';
+            } else {
+                if (searchEmptyState) searchEmptyState.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'none';
+            }
+        }
+    }
+
+    let searchTimeout;
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(filterPredictions, 200);
+        });
+
+        clearSearchBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            filterPredictions();
+            searchInput.focus();
+        });
+
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                clearSearchBtn.click();
+            }
+        });
+    }
+
+    // Keyboard shortcut: Ctrl+F to focus search
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+        }
+    });
+
+    // Auto-dismiss alerts after 5 seconds
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

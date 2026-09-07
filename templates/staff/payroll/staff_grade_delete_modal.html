@@ -1,0 +1,143 @@
+<!-- staff/hr/staff_grade_delete_modal.html -->
+{% load static %}
+
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+</style>
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold text-danger">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Staff Grade
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form method="post" action="{% url action_url grade.id %}" id="gradeDeleteForm" class="delete-form">
+    {% csrf_token %}
+
+    <div class="modal-body p-4">
+        <div class="text-center mb-4">
+            <div class="bg-danger-subtle rounded-circle d-inline-flex p-3 mb-3">
+                <i class="bi bi-trash3 fs-1 text-danger"></i>
+            </div>
+            <h5 class="fw-bold">Confirm Deletion</h5>
+            <p class="text-muted">
+                Are you sure you want to delete this staff grade?
+            </p>
+        </div>
+
+        <div class="alert alert-warning border-0 rounded-4">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-info-circle me-2 mt-1"></i>
+                <div>
+                    <strong>Grade:</strong> {{ grade.name }}<br>
+                    <strong>Level:</strong> {{ grade.level }}<br>
+                    <strong>Type:</strong> {{ grade.get_grade_type_display }}<br>
+                    <strong>Staff Members:</strong> {{ grade.staff_members.count }} staff member(s)
+                </div>
+            </div>
+        </div>
+
+        {% if grade.staff_members.count > 0 %}
+        <div class="alert alert-danger border-0 rounded-4">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Warning:</strong> This grade has {{ grade.staff_members.count }} staff members assigned.
+            You must reassign them to another grade before deleting this grade.
+        </div>
+        {% else %}
+        <div class="alert alert-danger border-0 rounded-4">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Warning:</strong> This action cannot be undone.
+            All grade allowances and policies associated with this grade will also be removed.
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        {% if grade.staff_members.count > 0 %}
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" disabled>
+            <i class="bi bi-lock me-1"></i>Cannot Delete - Staff Assigned
+        </button>
+        {% else %}
+        <button type="submit" class="btn btn-danger" id="gradeDeleteBtn">
+            <i class="bi bi-trash me-1"></i>Delete Grade
+        </button>
+        {% endif %}
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('gradeDeleteForm');
+    const submitBtn = document.getElementById('gradeDeleteBtn');
+
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+
+            const formData = new FormData(this);
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const modal = form.closest('.modal');
+                    if (modal) {
+                        const modalInstance = bootstrap.Modal.getInstance(modal);
+                        if (modalInstance) {
+                            modalInstance.hide();
+                        }
+                    }
+                    location.reload();
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    showError(data.error || 'Error deleting grade.');
+                }
+            })
+            .catch(error => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                showError('Network error. Please try again.');
+                console.error('Error:', error);
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = form.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            form.insertBefore(errorDiv, form.firstChild);
+        }
+    }
+});
+</script>

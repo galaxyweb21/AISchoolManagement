@@ -1,0 +1,766 @@
+{% extends 'base/base.html' %}
+{% block page_title %}Fee Structures{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+
+</style>
+
+<!-- How Fee Structures Work -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How Fee Structures Work</div>
+            <p class="text">
+                Fee structures define the price list for each school class per term.
+                Each structure contains multiple <strong>Fee Items</strong> from different
+                <strong>Fee Categories</strong>. The <strong>Total</strong> shows the sum of
+                all items. Use the search box below to filter structures by class name or term.
+                Click <strong>"Add Structure"</strong> to create a new fee structure, or
+                <strong>"Edit"</strong> to modify an existing one. Only <strong>Published</strong>
+                structures can be used for fee preparation.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="bi bi-list-ul text-gold me-2"></i>Fee Structures</h5>
+                <p class="text-muted mb-0">Define the price list for each school class per term.</p>
+            </div>
+            <!-- In fee_structure_list.html, update the header section -->
+            <div class="d-flex gap-2">
+                {% if can_manage %}
+                <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#feeStructureModal"
+                        data-action="create" data-url="{% url 'finance:fee_structure_create' %}">
+                    <i class="bi bi-plus-lg me-1"></i>Add Structure
+                </button>
+                <a href="{% url 'finance:fee_addon_list' %}" class="btn btn-outline-gold">
+                    <i class="bi bi-plus-square me-1"></i>Add-ons
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-table text-gold me-2"></i>All Structures
+                <span class="badge bg-light text-muted ms-2" id="structureCount">{{ structures|length }}</span>
+            </h6>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="text-muted small" id="filterStatus"></span>
+                <input type="text" id="structureSearchInput" class="form-control form-control-sm"
+                       placeholder="Search structures..." style="max-width: 220px;">
+            </div>
+        </div>
+        <div class="row g-4" id="feeStructuresContainer">
+            {% for struct in structures %}
+            <div class="col-md-6 col-lg-4 structure-card" data-id="{{ struct.id }}"
+                 data-search="{{ struct.school_class.name }} {{ struct.academic_term.name }}">
+                <div class="card h-100 border shadow-sm rounded-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="fw-bold mb-0">{{ struct.school_class.name }}</h6>
+                                <small class="text-muted">{{ struct.school_class.grade_level.name }}</small>
+                            </div>
+                            <span class="badge bg-light text-dark border">{{ struct.academic_term.name }}</span>
+                        </div>
+                        <hr>
+                        <div class="mb-3 small">
+                            {% for item in struct.items.all %}
+                            <div class="d-flex justify-content-between border-bottom py-1">
+                                <span class="text-muted">{{ item.fee_category.name }}</span>
+                                <span class="fw-bold">GH¢ {{ item.amount }}</span>
+                            </div>
+                            {% empty %}
+                            <span class="text-muted fst-italic">No items defined.</span>
+                            {% endfor %}
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+                            <span class="fw-bold text-gold">Total: GH¢ {{ struct.total_termly_amount }}</span>
+                            <div class="d-flex gap-1">
+                                <a href="{% url 'finance:fee_schedule' struct.id %}" target="_blank"
+                                   class="btn btn-sm btn-outline-gold" title="Printable fee schedule for enquiries (no student name)">
+                                    <i class="bi bi-file-earmark-text"></i> Schedule
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-gold"
+                                        data-bs-toggle="modal" data-bs-target="#feeStructureModal"
+                                        data-action="edit" data-url="{% url 'finance:fee_structure_edit' struct.id %}"
+                                        data-id="{{ struct.id }}">
+                                    Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        data-bs-toggle="modal" data-bs-target="#feeStructureModal"
+                                        data-action="delete"
+                                        data-url="{% url 'finance:fee_structure_delete' struct.id %}"
+                                        data-id="{{ struct.id }}">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5 text-muted empty-state" id="emptyState">
+                <i class="bi bi-inbox fs-1 d-block mb-3 text-secondary"></i>
+                <p>No fee structures defined yet.</p>
+                {% if can_manage %}
+                <button type="button" class="btn btn-gold mt-2" data-bs-toggle="modal"
+                        data-bs-target="#feeStructureModal"
+                        data-action="create" data-url="{% url 'finance:fee_structure_create' %}">
+                    <i class="bi bi-plus-lg me-1"></i>Create your first fee structure
+                </button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic Master Modal -->
+<div class="modal fade" id="feeStructureModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="feeStructureModalTitle">Loading...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="feeStructureModalContent">
+                <!-- Content loaded via AJAX -->
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    <div id="liveToast" class="toast align-items-center border-0 shadow-sm rounded-4" role="alert" aria-live="assertive"
+         aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                <span id="toastMessage">Success!</span>
+            </div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER
+    // ============================================================
+    const structureSearchInput = document.getElementById('structureSearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const structureCount = document.getElementById('structureCount');
+    const allCards = document.querySelectorAll('.structure-card');
+    const emptyState = document.getElementById('emptyState');
+
+    if (structureSearchInput) {
+        structureSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allCards.forEach(function(card) {
+                const searchData = card.getAttribute('data-search') || '';
+                const text = card.textContent.toLowerCase();
+                const isVisible = searchData.includes(query) || text.includes(query);
+                card.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (structureCount) {
+                if (query) {
+                    structureCount.textContent = visibleCount;
+                    if (filterStatus) {
+                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                    }
+                } else {
+                    structureCount.textContent = allCards.length;
+                    if (filterStatus) {
+                        filterStatus.textContent = '';
+                    }
+                }
+            }
+
+            if (emptyState) {
+                if (visibleCount === 0 && allCards.length > 0) {
+                    emptyState.style.display = '';
+                } else {
+                    emptyState.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // TOAST NOTIFICATION
+    // ============================================================
+    function showToast(message, type) {
+        const toast = document.getElementById('liveToast');
+        const toastBody = document.getElementById('toastBody');
+
+        if (type === 'success') {
+            toastBody.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-success-subtle';
+        } else if (type === 'error') {
+            toastBody.innerHTML = `<i class="bi bi-exclamation-circle-fill text-danger me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-danger-subtle';
+        } else {
+            toastBody.innerHTML = `<i class="bi bi-info-circle-fill text-info me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-info-subtle';
+        }
+
+        const toastInstance = new bootstrap.Toast(toast, {
+            autohide: true,
+            delay: 4000
+        });
+        toastInstance.show();
+    }
+
+    // ============================================================
+    // UPDATE UI WITHOUT RELOAD
+    // ============================================================
+    function addStructureCard(data) {
+        const container = document.getElementById('feeStructuresContainer');
+        const emptyState = document.getElementById('emptyState');
+
+        // Remove empty state if exists
+        if (emptyState) emptyState.remove();
+
+        // Build the card HTML
+        const itemsHtml = data.items && data.items.length > 0
+            ? data.items.map(item => `
+                <div class="d-flex justify-content-between border-bottom py-1">
+                    <span class="text-muted">${item.category_name}</span>
+                    <span class="fw-bold">GH¢ ${item.amount}</span>
+                </div>
+            `).join('')
+            : '<span class="text-muted fst-italic">No items defined.</span>';
+
+        const cardHtml = `
+            <div class="col-md-6 col-lg-4 structure-card" data-id="${data.id}" data-search="${data.class_name} ${data.term_name}">
+                <div class="card h-100 border shadow-sm rounded-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="fw-bold mb-0">${data.class_name}</h6>
+                                <small class="text-muted">${data.grade_name}</small>
+                            </div>
+                            <span class="badge bg-light text-dark border">${data.term_name}</span>
+                        </div>
+                        <hr>
+                        <div class="mb-3 small">
+                            ${itemsHtml}
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+                            <span class="fw-bold text-gold">Total: GH¢ ${data.total}</span>
+                            <div class="d-flex gap-1">
+                                <a href="/finance/fee-structures/${data.id}/schedule/" target="_blank"
+                                   class="btn btn-sm btn-outline-gold" title="Printable fee schedule for enquiries (no student name)">
+                                    <i class="bi bi-file-earmark-text"></i> Schedule
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-gold"
+                                        data-bs-toggle="modal" data-bs-target="#feeStructureModal"
+                                        data-action="edit" data-url="/finance/fee-structures/${data.id}/edit/"
+                                        data-id="${data.id}">
+                                    Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        data-bs-toggle="modal" data-bs-target="#feeStructureModal"
+                                        data-action="delete" data-url="/finance/fee-structures/${data.id}/delete/"
+                                        data-id="${data.id}">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Create temporary container and append
+        const temp = document.createElement('div');
+        temp.innerHTML = cardHtml;
+        const newCard = temp.firstElementChild;
+
+        // Animate and prepend
+        newCard.style.opacity = '0';
+        newCard.style.transform = 'translateY(-20px)';
+        container.prepend(newCard);
+
+        requestAnimationFrame(() => {
+            newCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            newCard.style.opacity = '1';
+            newCard.style.transform = 'translateY(0)';
+        });
+
+        // Update count
+        updateCount();
+    }
+
+    function updateStructureCard(data) {
+        const card = document.querySelector(`.structure-card[data-id="${data.id}"]`);
+        if (!card) return;
+
+        // Update fields
+        const classHeading = card.querySelector('.card-body h6');
+        const gradeSmall = card.querySelector('.card-body .text-muted');
+        const termBadge = card.querySelector('.badge.bg-light');
+        const totalSpan = card.querySelector('.fw-bold.text-gold');
+        const itemsContainer = card.querySelector('.card-body .mb-3.small');
+
+        if (classHeading) classHeading.textContent = data.class_name;
+        if (gradeSmall) gradeSmall.textContent = data.grade_name;
+        if (termBadge) termBadge.textContent = data.term_name;
+        if (totalSpan) totalSpan.textContent = `Total: GH¢ ${data.total}`;
+
+        if (itemsContainer) {
+            if (data.items && data.items.length > 0) {
+                itemsContainer.innerHTML = data.items.map(item => `
+                    <div class="d-flex justify-content-between border-bottom py-1">
+                        <span class="text-muted">${item.category_name}</span>
+                        <span class="fw-bold">GH¢ ${item.amount}</span>
+                    </div>
+                `).join('');
+            } else {
+                itemsContainer.innerHTML = '<span class="text-muted fst-italic">No items defined.</span>';
+            }
+        }
+
+        // Highlight effect
+        card.style.transition = 'background-color 0.5s ease';
+        card.style.backgroundColor = 'var(--eduai-gold-soft, rgba(148, 107, 28, 0.08))';
+        setTimeout(() => {
+            card.style.backgroundColor = '';
+        }, 1000);
+    }
+
+    function removeStructureCard(id) {
+        const card = document.querySelector(`.structure-card[data-id="${id}"]`);
+        if (!card) return;
+
+        card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.8)';
+
+        setTimeout(() => {
+            card.remove();
+            updateCount();
+            const container = document.getElementById('feeStructuresContainer');
+            if (container.querySelectorAll('.structure-card').length === 0) {
+                container.innerHTML = `
+                    <div class="col-12 text-center py-5 text-muted empty-state" id="emptyState">
+                        <i class="bi bi-inbox fs-1 d-block mb-3 text-secondary"></i>
+                        <p>No fee structures defined yet.</p>
+                        {% if can_manage %}
+                        <button type="button" class="btn btn-gold mt-2" data-bs-toggle="modal" data-bs-target="#feeStructureModal"
+                                data-action="create" data-url="{% url 'finance:fee_structure_create' %}">
+                            <i class="bi bi-plus-lg me-1"></i>Create your first fee structure
+                        </button>
+                        {% endif %}
+                    </div>
+                `;
+            }
+        }, 300);
+    }
+
+    function updateCount() {
+        const count = document.querySelectorAll('.structure-card').length;
+        const structureCount = document.getElementById('structureCount');
+        if (structureCount) structureCount.textContent = count;
+    }
+
+    // ============================================================
+    // MODAL HANDLING
+    // ============================================================
+    const modal = document.getElementById('feeStructureModal');
+    const modalTitle = document.getElementById('feeStructureModalTitle');
+    const modalContent = document.getElementById('feeStructureModalContent');
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value ||
+               document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    }
+
+    modal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const action = button.getAttribute('data-action');
+        const url = button.getAttribute('data-url');
+
+        if (action === 'create') {
+            modalTitle.innerHTML = '<i class="bi bi-plus-circle text-gold me-2"></i>Add Fee Structure';
+        } else if (action === 'edit') {
+            modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Fee Structure';
+        } else if (action === 'delete') {
+            modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete';
+        }
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.text();
+        })
+        .then(html => {
+            modalContent.innerHTML = html;
+            bindStructureFormSubmit();
+            bindStructureDeleteForm();
+        })
+        .catch(err => {
+            console.error('Error loading form:', err);
+            modalContent.innerHTML = `
+                <div class="alert alert-danger border-0 shadow-sm rounded-4">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Error loading form. Please try again.
+                </div>
+                <div class="mt-3 text-end">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        });
+    });
+
+    function bindStructureFormSubmit() {
+        const form = modalContent.querySelector('form.structure-form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            // Validate at least one item
+            const categories = this.querySelectorAll('select[name="categories"]');
+            const amounts = this.querySelectorAll('input[name="amounts"]');
+            let hasItems = false;
+            for (let i = 0; i < categories.length; i++) {
+                if (categories[i].value && amounts[i].value) {
+                    hasItems = true;
+                    break;
+                }
+            }
+
+            if (!hasItems) {
+                const errorEl = document.getElementById('items-required-error');
+                if (errorEl) errorEl.style.display = 'block';
+                return;
+            }
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
+            submitBtn.disabled = true;
+
+            const existingErrors = this.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    console.error('Failed to parse JSON:', text);
+                    throw new Error('Server returned an invalid response.');
+                }
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    // Update UI without reload
+                    if (data.structure) {
+                        const action = form.getAttribute('data-mode') || 'create';
+                        if (action === 'create') {
+                            addStructureCard(data.structure);
+                        } else {
+                            updateStructureCard(data.structure);
+                        }
+                        showToast(data.message || 'Fee structure saved successfully!', 'success');
+                    }
+
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    if (modalInstance) modalInstance.hide();
+                } else {
+                    showError(data.error || 'An error occurred while saving.');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error('Form submission error:', err);
+                showError(err.message || 'An unexpected error occurred. Please try again.');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+    }
+
+    function bindStructureDeleteForm() {
+        const form = modalContent.querySelector('form.delete-form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+            submitBtn.disabled = true;
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    console.error('Failed to parse JSON:', text);
+                    throw new Error('Server returned an invalid response.');
+                }
+                if (!response.ok) {
+                    throw new Error(data.error || 'Delete failed');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    // Update UI without reload
+                    if (data.id) {
+                        removeStructureCard(data.id);
+                        showToast(data.message || 'Fee structure deleted successfully!', 'success');
+                    }
+
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    if (modalInstance) modalInstance.hide();
+                } else {
+                    modalContent.innerHTML = `
+                        <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.error || 'Error deleting.'}
+                        </div>
+                        <div class="mt-3 text-end">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                console.error('Delete error:', err);
+                modalContent.innerHTML = `
+                    <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> ${err.message || 'An unexpected error occurred.'}
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    // ============================================================
+    // FEE ITEMS FUNCTIONS - MUST BE GLOBAL
+    // ============================================================
+    window.addFeeItem = function() {
+        const container = document.getElementById('items-container');
+        if (!container) return;
+
+        const row = document.createElement('div');
+        row.className = 'row g-2 mb-2 item-row';
+
+        const firstSelect = container.querySelector('select[name="categories"]');
+        let optionsHtml = '<option value="">Select Category</option>';
+        if (firstSelect) {
+            firstSelect.querySelectorAll('option').forEach(function(opt) {
+                if (opt.value) {
+                    optionsHtml += `<option value="${opt.value}">${opt.textContent}</option>`;
+                }
+            });
+        }
+
+        row.innerHTML = `
+            <div class="col-md-7">
+                <select class="form-select" name="categories" required>${optionsHtml}</select>
+            </div>
+            <div class="col-md-4">
+                <input type="number" step="0.01" class="form-control" name="amounts" placeholder="Amount (GH¢)" required>
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="window.removeFeeItem(this)">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+
+        const errorEl = document.getElementById('items-required-error');
+        if (errorEl) errorEl.style.display = 'none';
+    };
+
+    window.removeFeeItem = function(btn) {
+        const container = document.getElementById('items-container');
+        if (!container) return;
+        const rows = container.querySelectorAll('.item-row');
+        if (rows.length <= 1) {
+            const errorEl = document.getElementById('items-required-error');
+            if (errorEl) errorEl.style.display = 'block';
+            return;
+        }
+        btn.closest('.item-row').remove();
+    };
+
+    // ============================================================
+    // AUTO-DISMISS MESSAGES
+    // ============================================================
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+
+    // ============================================================
+    // RESET MODAL ON HIDE
+    // ============================================================
+    modal.addEventListener('hidden.bs.modal', function () {
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        modalTitle.innerHTML = 'Loading...';
+    });
+});
+
+</script>
+{% include "partials/pagination.html" with page_obj=structures %}
+
+{% endblock %}

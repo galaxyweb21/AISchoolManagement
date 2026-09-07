@@ -1,0 +1,3464 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block page_title %}AI School Copilot{% endblock %}
+
+{% block content %}
+
+<style>
+/* ==========================================================================
+   AI SCHOOL COPILOT
+   ========================================================================== */
+
+:root {
+    --copilot-primary: #946B1C;
+    --copilot-primary-dark: #765314;
+    --copilot-secondary: #2C7A6D;
+    --copilot-success: #198754;
+    --copilot-danger: #dc3545;
+    --copilot-warning: #d97706;
+
+    --copilot-bg: var(--app-bg, #f7f4ec);
+    --copilot-surface: var(--surface-bg, #ffffff);
+    --copilot-border: var(--surface-border, #e5e7eb);
+    --copilot-text: var(--text-primary, #1f2937);
+    --copilot-muted: var(--text-muted, #6b7280);
+
+    --copilot-radius: 18px;
+    --copilot-shadow: 0 12px 40px rgba(15, 23, 42, .08);
+}
+
+[data-bs-theme="dark"] {
+    --copilot-bg: var(--app-bg, #0e1715);
+    --copilot-surface: var(--surface-bg, #142320);
+    --copilot-border: var(--surface-border, #263833);
+    --copilot-text: var(--text-primary, #f3f4f6);
+    --copilot-muted: var(--text-muted, #9ca3af);
+}
+
+/* ==========================================================================
+   WRAPPER
+   ========================================================================== */
+
+.copilot-wrapper {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: calc(100vh - 155px);
+    min-height: 620px;
+    overflow: hidden;
+
+    background: var(--copilot-surface);
+    border: 1px solid var(--copilot-border);
+    border-radius: var(--copilot-radius);
+    box-shadow: var(--copilot-shadow);
+}
+
+/* ==========================================================================
+   SIDEBAR
+   ========================================================================== */
+
+.copilot-sidebar {
+    width: 310px;
+    min-width: 310px;
+
+    display: flex;
+    flex-direction: column;
+
+    background: var(--copilot-surface);
+    border-right: 1px solid var(--copilot-border);
+
+    transition:
+        width .25s ease,
+        min-width .25s ease,
+        transform .25s ease;
+
+    z-index: 40;
+}
+
+.copilot-sidebar.sidebar-collapsed {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    border-right: 0;
+}
+
+.copilot-sidebar-header {
+    padding: 18px;
+    border-bottom: 1px solid var(--copilot-border);
+}
+
+.ai-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ai-brand-icon {
+    width: 44px;
+    height: 44px;
+
+    display: grid;
+    place-items: center;
+
+    color: #fff;
+    background: var(--copilot-primary);
+    border-radius: 13px;
+
+    font-size: 1.25rem;
+}
+
+.ai-brand-title {
+    color: var(--copilot-text);
+    font-weight: 800;
+    font-size: .98rem;
+}
+
+.ai-brand-title span {
+    color: var(--copilot-secondary);
+}
+
+.ai-online {
+    margin-top: 3px;
+    color: var(--copilot-muted);
+    font-size: .68rem;
+}
+
+.ai-online-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 5px;
+
+    background: var(--copilot-success);
+    border-radius: 50%;
+}
+
+/* ==========================================================================
+   SEARCH
+   ========================================================================== */
+
+.copilot-search {
+    padding: 12px;
+    border-bottom: 1px solid var(--copilot-border);
+}
+
+.copilot-search-wrap {
+    position: relative;
+}
+
+.copilot-search-wrap i {
+    position: absolute;
+    top: 50%;
+    left: 11px;
+
+    color: var(--copilot-muted);
+
+    transform: translateY(-50%);
+}
+
+.copilot-search input {
+    width: 100%;
+    height: 38px;
+
+    padding: 0 12px 0 34px;
+
+    color: var(--copilot-text);
+    background: var(--copilot-bg);
+    border: 1px solid var(--copilot-border);
+    border-radius: 10px;
+
+    outline: none;
+    font-size: .76rem;
+}
+
+.copilot-search input:focus {
+    border-color: var(--copilot-primary);
+}
+
+/* ==========================================================================
+   CONVERSATION LIST
+   ========================================================================== */
+
+.copilot-conversations {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.copilot-conversations::-webkit-scrollbar {
+    width: 5px;
+}
+
+.copilot-conversations::-webkit-scrollbar-thumb {
+    background: rgba(148, 107, 28, .25);
+    border-radius: 10px;
+}
+
+.copilot-conv-item {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    margin-bottom: 4px;
+    padding: 10px;
+
+    color: var(--copilot-text);
+
+    border: 1px solid transparent;
+    border-radius: 12px;
+
+    cursor: pointer;
+
+    transition: background .15s ease;
+}
+
+.copilot-conv-item:hover {
+    background: var(--copilot-bg);
+}
+
+.copilot-conv-item.active {
+    background: rgba(148, 107, 28, .09);
+    border-color: rgba(148, 107, 28, .22);
+}
+
+.conv-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+
+    display: grid;
+    place-items: center;
+
+    color: var(--copilot-primary);
+    background: rgba(148, 107, 28, .12);
+    border-radius: 10px;
+
+    font-size: .82rem;
+}
+
+.conv-content {
+    min-width: 0;
+    flex: 1;
+}
+
+.conv-title {
+    overflow: hidden;
+
+    color: var(--copilot-text);
+    font-weight: 700;
+    font-size: .76rem;
+
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.conv-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-top: 3px;
+
+    color: var(--copilot-muted);
+    font-size: .63rem;
+}
+
+.conv-count {
+    min-width: 20px;
+    padding: 2px 5px;
+
+    text-align: center;
+
+    background: var(--copilot-bg);
+    border-radius: 10px;
+}
+
+.conv-delete {
+    width: 30px;
+    height: 30px;
+
+    display: grid;
+    place-items: center;
+
+    flex: 0 0 30px;
+
+    color: var(--copilot-muted);
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+
+    opacity: .25;
+    cursor: pointer;
+}
+
+.copilot-conv-item:hover .conv-delete,
+.copilot-conv-item.active .conv-delete {
+    opacity: 1;
+}
+
+.conv-delete:hover {
+    color: #fff;
+    background: var(--copilot-danger);
+}
+
+/* ==========================================================================
+   SIDEBAR FOOTER
+   ========================================================================== */
+
+.copilot-sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid var(--copilot-border);
+}
+
+.ai-user-card {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.ai-user-avatar {
+    width: 36px;
+    height: 36px;
+
+    display: grid;
+    place-items: center;
+
+    flex: 0 0 36px;
+
+    color: #fff;
+    background: var(--copilot-secondary);
+    border-radius: 50%;
+
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.ai-user-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.ai-user-name {
+    overflow: hidden;
+
+    color: var(--copilot-text);
+    font-size: .73rem;
+    font-weight: 700;
+
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.ai-user-role {
+    overflow: hidden;
+
+    color: var(--copilot-muted);
+    font-size: .62rem;
+
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   MAIN
+   ========================================================================== */
+
+.copilot-main {
+    min-width: 0;
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+
+    background: var(--copilot-bg);
+}
+
+.copilot-header {
+    min-height: 68px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 10px 16px;
+
+    background: var(--copilot-surface);
+    border-bottom: 1px solid var(--copilot-border);
+}
+
+.copilot-header-left {
+    min-width: 0;
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.copilot-header h5 {
+    margin: 0;
+
+    color: var(--copilot-text);
+    font-size: .9rem;
+    font-weight: 800;
+}
+
+.copilot-subtitle {
+    margin-top: 3px;
+
+    color: var(--copilot-muted);
+    font-size: .64rem;
+}
+
+.ai-version {
+    margin-left: 4px;
+    padding: 2px 6px;
+
+    color: var(--copilot-primary);
+    background: rgba(148, 107, 28, .1);
+    border-radius: 20px;
+
+    font-size: .58rem;
+}
+
+.copilot-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ai-header-btn {
+    width: 34px;
+    height: 34px;
+
+    display: grid;
+    place-items: center;
+
+    color: var(--copilot-muted);
+    background: var(--copilot-surface);
+    border: 1px solid var(--copilot-border);
+    border-radius: 10px;
+
+    cursor: pointer;
+}
+
+.ai-header-btn:hover {
+    color: var(--copilot-primary);
+    border-color: var(--copilot-primary);
+}
+
+.mobile-menu-btn {
+    display: none;
+}
+
+/* ==========================================================================
+   MESSAGES
+   ========================================================================== */
+
+.copilot-messages {
+    flex: 1;
+    min-height: 0;
+
+    overflow-y: auto;
+
+    padding: 22px;
+}
+
+.copilot-empty {
+    min-height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    padding: 40px 20px;
+
+    text-align: center;
+}
+
+.copilot-empty-icon {
+    width: 66px;
+    height: 66px;
+
+    display: grid;
+    place-items: center;
+
+    margin-bottom: 14px;
+
+    color: #fff;
+    background: var(--copilot-primary);
+    border-radius: 18px;
+
+    font-size: 1.7rem;
+}
+
+.copilot-empty h4 {
+    color: var(--copilot-text);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.copilot-empty p {
+    max-width: 600px;
+
+    color: var(--copilot-muted);
+    font-size: .76rem;
+    line-height: 1.7;
+}
+
+.quick-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 12px;
+}
+
+.quick-question {
+    padding: 7px 11px;
+
+    color: var(--copilot-text);
+    background: var(--copilot-surface);
+    border: 1px solid var(--copilot-border);
+    border-radius: 10px;
+
+    font-size: .67rem;
+    cursor: pointer;
+}
+
+.quick-question:hover {
+    color: #fff;
+    background: var(--copilot-secondary);
+    border-color: var(--copilot-secondary);
+}
+
+/* ==========================================================================
+   MESSAGE
+   ========================================================================== */
+
+.message-row {
+    display: flex;
+    margin-bottom: 16px;
+}
+
+.message-row.user {
+    justify-content: flex-end;
+}
+
+.message {
+    width: fit-content;
+    max-width: min(850px, 88%);
+
+    padding: 12px 14px;
+
+    background: var(--copilot-surface);
+    border: 1px solid var(--copilot-border);
+    border-radius: 15px;
+
+    box-shadow: 0 4px 15px rgba(0,0,0,.03);
+}
+
+.message.user {
+    color: #fff;
+    background: var(--copilot-secondary);
+    border-color: var(--copilot-secondary);
+}
+
+.message-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    margin-bottom: 7px;
+
+    font-size: .65rem;
+    font-weight: 800;
+}
+
+.message-body {
+    color: var(--copilot-text);
+
+    font-size: .78rem;
+    line-height: 1.7;
+
+    word-break: break-word;
+}
+
+.message.user .message-body {
+    color: #fff;
+}
+
+.message-body h1,
+.message-body h2,
+.message-body h3 {
+    margin: 12px 0 7px;
+    font-weight: 800;
+}
+
+.message-body h1 { font-size: 1.1rem; }
+.message-body h2 { font-size: 1rem; }
+.message-body h3 { font-size: .9rem; }
+
+.message-body pre {
+    margin: 10px 0;
+    padding: 11px;
+
+    overflow-x: auto;
+
+    color: #e5e7eb;
+    background: #111827;
+    border-radius: 10px;
+
+    font-size: .7rem;
+}
+
+.message-body code {
+    padding: 2px 5px;
+
+    background: rgba(0,0,0,.08);
+    border-radius: 5px;
+
+    font-size: .72rem;
+}
+
+.message-body pre code {
+    padding: 0;
+    background: transparent;
+}
+
+.message-time {
+    display: block;
+
+    margin-top: 7px;
+
+    color: var(--copilot-muted);
+    font-size: .58rem;
+    text-align: right;
+}
+
+.message.user .message-time {
+    color: rgba(255,255,255,.7);
+}
+
+.message-sources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+
+    margin-top: 10px;
+}
+
+.source-chip {
+    padding: 3px 6px;
+
+    color: var(--copilot-secondary);
+    background: rgba(44,122,109,.09);
+    border-radius: 6px;
+
+    font-size: .58rem;
+}
+
+/* ==========================================================================
+   LOADING
+   ========================================================================== */
+
+.ai-loading {
+    min-height: 160px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    color: var(--copilot-muted);
+    font-size: .75rem;
+}
+
+.ai-loading i {
+    animation: copilot-spin 1s linear infinite;
+}
+
+@keyframes copilot-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.typing-row {
+    display: flex;
+    margin-bottom: 15px;
+}
+
+.typing-bubble {
+    display: flex;
+    align-items: center;
+
+    padding: 10px 13px;
+
+    color: var(--copilot-muted);
+    background: var(--copilot-surface);
+    border: 1px solid var(--copilot-border);
+    border-radius: 13px;
+
+    font-size: .65rem;
+}
+
+.typing-dot {
+    width: 6px;
+    height: 6px;
+
+    margin-right: 4px;
+
+    background: var(--copilot-secondary);
+    border-radius: 50%;
+
+    animation: copilot-dot 1.2s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) {
+    animation-delay: .15s;
+}
+
+.typing-dot:nth-child(3) {
+    animation-delay: .3s;
+}
+
+@keyframes copilot-dot {
+    0%, 80%, 100% {
+        opacity: .25;
+        transform: translateY(0);
+    }
+
+    40% {
+        opacity: 1;
+        transform: translateY(-3px);
+    }
+}
+
+/* ==========================================================================
+   INPUT
+   ========================================================================== */
+
+.copilot-input {
+    padding: 12px 16px;
+
+    background: var(--copilot-surface);
+    border-top: 1px solid var(--copilot-border);
+}
+
+.copilot-input-box {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+
+    padding: 8px;
+
+    background: var(--copilot-bg);
+    border: 1px solid var(--copilot-border);
+    border-radius: 14px;
+}
+
+.copilot-input textarea {
+    min-height: 36px;
+    max-height: 150px;
+
+    flex: 1;
+
+    padding: 8px 6px;
+
+    resize: none;
+
+    color: var(--copilot-text);
+    background: transparent;
+    border: 0;
+
+    outline: none;
+
+    font-size: .78rem;
+}
+
+#sendBtn {
+    width: 38px;
+    height: 38px;
+
+    display: grid;
+    place-items: center;
+
+    flex: 0 0 38px;
+
+    color: #fff;
+    background: var(--copilot-primary);
+    border: 0;
+    border-radius: 10px;
+
+    cursor: pointer;
+}
+
+#sendBtn:hover {
+    background: var(--copilot-primary-dark);
+}
+
+#sendBtn:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.input-meta {
+    display: flex;
+    justify-content: space-between;
+
+    margin-top: 5px;
+
+    color: var(--copilot-muted);
+    font-size: .59rem;
+}
+
+/* ==========================================================================
+   MOBILE
+   ========================================================================== */
+
+.copilot-overlay {
+    display: none;
+}
+
+@media (max-width: 991px) {
+
+    .copilot-wrapper {
+        height: calc(100vh - 110px);
+        min-height: 560px;
+    }
+
+    .copilot-sidebar {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+
+        transform: translateX(-100%);
+
+        box-shadow: 15px 0 40px rgba(0,0,0,.15);
+    }
+
+    .copilot-sidebar.open {
+        transform: translateX(0);
+    }
+
+    .copilot-sidebar.sidebar-collapsed {
+        width: 310px;
+        min-width: 310px;
+        transform: translateX(-100%);
+    }
+
+    .copilot-sidebar.sidebar-collapsed.open {
+        transform: translateX(0);
+    }
+
+    .copilot-overlay.show {
+        position: absolute;
+        inset: 0;
+
+        display: block;
+
+        background: rgba(0,0,0,.35);
+
+        z-index: 35;
+    }
+
+    .mobile-menu-btn {
+        display: grid;
+    }
+
+    .desktop-only {
+        display: none !important;
+    }
+
+    .copilot-messages {
+        padding: 15px 10px;
+    }
+
+    .message {
+        max-width: 94%;
+    }
+}
+
+@media (max-width: 576px) {
+
+    .copilot-wrapper {
+        height: calc(100vh - 90px);
+        min-height: 520px;
+
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+    }
+
+    .copilot-header {
+        padding: 9px 10px;
+    }
+
+    .copilot-input {
+        padding: 9px;
+    }
+
+    .copilot-empty {
+        padding: 25px 12px;
+    }
+}
+</style>
+
+
+<form id="copilotSecurityForm" style="display:none;">
+    {% csrf_token %}
+</form>
+
+
+<div
+    id="copilotRoot"
+    class="copilot-wrapper"
+
+    data-api-url="{% url 'ai_engine:ai_copilot_api' %}"
+
+    data-message-url-template="{% url 'ai_engine:get_conversation_messages' '00000000-0000-0000-0000-000000000000' %}"
+
+    data-delete-url-template="{% url 'ai_engine:delete_conversation' '00000000-0000-0000-0000-000000000000' %}"
+>
+
+    <!-- =====================================================================
+         OVERLAY
+         ===================================================================== -->
+
+    <div
+        id="copilotOverlay"
+        class="copilot-overlay"
+        onclick="toggleSidebar(false)">
+    </div>
+
+
+    <!-- =====================================================================
+         SIDEBAR
+         ===================================================================== -->
+
+    <aside
+        id="copilotSidebar"
+        class="copilot-sidebar"
+    >
+
+        <div class="copilot-sidebar-header">
+
+            <div class="ai-brand">
+
+                <div class="ai-brand-icon">
+                    <i class="bi bi-stars"></i>
+                </div>
+
+                <div>
+
+                    <div class="ai-brand-title">
+                        Edu<span>AI</span> Copilot
+                    </div>
+
+                    <div class="ai-online">
+                        <span class="ai-online-dot"></span>
+                        School intelligence online
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Search -->
+
+        <div class="copilot-search">
+
+            <div class="copilot-search-wrap">
+
+                <i class="bi bi-search"></i>
+
+                <input
+                    id="conversationSearch"
+                    type="search"
+                    autocomplete="off"
+                    placeholder="Search conversations..."
+                    oninput="filterConversations(this.value)"
+                >
+
+            </div>
+
+        </div>
+
+
+        <!-- Conversation list -->
+
+        <div
+            id="conversationList"
+            class="copilot-conversations"
+        >
+
+            {% for conv in conversations %}
+
+                <div
+                    class="copilot-conv-item"
+                    data-conversation-id="{{ conv.id }}"
+                    data-title="{{ conv.title|default:'Conversation'|escape }}"
+                    role="button"
+                    tabindex="0"
+                >
+
+                    <div class="conv-icon">
+                        <i class="bi bi-chat-left-text"></i>
+                    </div>
+
+                    <div class="conv-content">
+
+                        <div class="conv-title">
+                            {{ conv.title|default:"Conversation"|truncatechars:42 }}
+                        </div>
+
+                        <div class="conv-meta">
+
+                            <span>
+                                {{ conv.updated_at|timesince }} ago
+                            </span>
+
+                            <span class="conv-count">
+                                {{ conv.messages.all|length }}
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <button
+                        type="button"
+                        class="conv-delete"
+                        title="Delete conversation"
+                        aria-label="Delete conversation"
+                    >
+                        <i class="bi bi-trash3"></i>
+                    </button>
+
+                </div>
+
+            {% empty %}
+
+                <div
+                    id="conversationEmpty"
+                    class="text-center py-5"
+                    style="color:var(--copilot-muted);font-size:.75rem;"
+                >
+
+                    <i class="bi bi-chat-square-text fs-3 d-block mb-2"></i>
+
+                    No conversations yet.
+
+                    <br>
+
+                    <span style="opacity:.7;">
+                        Ask your first question below.
+                    </span>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+
+        <!-- Sidebar footer -->
+
+        <div class="copilot-sidebar-footer">
+
+            <div class="ai-user-card">
+
+                <div class="ai-user-avatar">
+
+                    {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+
+                </div>
+
+                <div class="ai-user-info">
+
+                    <div class="ai-user-name">
+                        {{ user.get_full_name|default:user.username }}
+                    </div>
+
+                    <div class="ai-user-role">
+                        {{ user.get_role_display|default:"School user" }}
+                    </div>
+
+                </div>
+
+                <button
+                    type="button"
+                    class="ai-header-btn"
+                    onclick="newConversation()"
+                    title="New conversation"
+                >
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+
+            </div>
+
+        </div>
+
+    </aside>
+
+
+    <!-- =====================================================================
+         MAIN
+         ===================================================================== -->
+
+    <main class="copilot-main">
+
+        <!-- Header -->
+
+        <header class="copilot-header">
+
+            <div class="copilot-header-left">
+
+                <button
+                    type="button"
+                    class="ai-header-btn mobile-menu-btn"
+                    onclick="toggleSidebar(true)"
+                    title="Conversations"
+                >
+                    <i class="bi bi-list"></i>
+                </button>
+
+                <div>
+
+                    <h5>
+                        <i class="bi bi-robot me-1"></i>
+
+                        AI School Copilot
+
+                        <span class="ai-version">
+                            v2.0
+                        </span>
+                    </h5>
+
+                    <div class="copilot-subtitle">
+
+                        <span id="contextInfo">
+                            New conversation
+                        </span>
+
+                        <span class="mx-1">
+                            •
+                        </span>
+
+                        <span style="color:var(--copilot-success);">
+                            Ready
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="copilot-header-actions">
+
+                <button
+                    type="button"
+                    class="ai-header-btn"
+                    onclick="clearChat()"
+                    title="Delete current conversation"
+                >
+                    <i class="bi bi-eraser"></i>
+                </button>
+
+                <button
+                    type="button"
+                    class="ai-header-btn"
+                    onclick="newConversation()"
+                    title="New conversation"
+                >
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+
+                <button
+                    type="button"
+                    class="ai-header-btn desktop-only"
+                    onclick="toggleSidebar()"
+                    title="Toggle conversations"
+                >
+                    <i class="bi bi-layout-sidebar"></i>
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <!-- Messages -->
+
+        <section
+            id="copilotMessages"
+            class="copilot-messages"
+            aria-live="polite"
+        >
+
+            <div
+                id="emptyState"
+                class="copilot-empty"
+            >
+
+                <div class="copilot-empty-icon">
+                    <i class="bi bi-stars"></i>
+                </div>
+
+                <h4>
+                    Welcome to AI School Copilot
+                </h4>
+
+                <p>
+                    Ask questions about your school's students,
+                    staff, attendance, academics, finance, payroll,
+                    leave, performance, or Ghana's education sector.
+                </p>
+
+                <div class="quick-actions">
+
+                    <button
+                        type="button"
+                        class="quick-question"
+                        onclick="quickQuestion('How many active students do we have in the school?')"
+                    >
+                        <i class="bi bi-people me-1"></i>
+                        Active students
+                    </button>
+
+                    <button
+                        type="button"
+                        class="quick-question"
+                        onclick="quickQuestion('What is our current student attendance rate?')"
+                    >
+                        <i class="bi bi-calendar-check me-1"></i>
+                        Attendance
+                    </button>
+
+                    <button
+                        type="button"
+                        class="quick-question"
+                        onclick="quickQuestion('Which staff members are currently on leave?')"
+                    >
+                        <i class="bi bi-person-walking-arrow-right me-1"></i>
+                        Staff leave
+                    </button>
+
+                    <button
+                        type="button"
+                        class="quick-question"
+                        onclick="quickQuestion('Give me an overview of the school performance and key risks.')"
+                    >
+                        <i class="bi bi-graph-up-arrow me-1"></i>
+                        School insights
+                    </button>
+
+                    <button
+                        type="button"
+                        class="quick-question"
+                        onclick="quickQuestion('Explain the current Ghana education curriculum structure.')"
+                    >
+                        <i class="bi bi-book me-1"></i>
+                        Ghana education
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <div id="messageContainer"></div>
+
+        </section>
+
+
+        <!-- Input -->
+
+        <footer class="copilot-input">
+
+            <div class="copilot-input-box">
+
+                <textarea
+                    id="questionInput"
+                    rows="1"
+                    maxlength="4000"
+                    autocomplete="off"
+                    placeholder="Ask the AI School Copilot anything..."
+                    onkeydown="handleKeyDown(event)"
+                    oninput="autoResize(this)"
+                ></textarea>
+
+                <button
+                    type="button"
+                    id="sendBtn"
+                    onclick="sendQuestion()"
+                    title="Send"
+                >
+                    <i class="bi bi-send-fill"></i>
+                </button>
+
+            </div>
+
+            <div class="input-meta">
+
+                <span>
+                    Enter to send • Shift+Enter for a new line
+                </span>
+
+                <span id="charCount">
+                    0 / 4000
+                </span>
+
+            </div>
+
+        </footer>
+
+    </main>
+
+</div>
+
+
+<script>
+(function () {
+    "use strict";
+
+    // ============================================================
+    // ELEMENTS
+    // ============================================================
+
+    const root = document.getElementById("copilotRoot");
+
+    if (!root) {
+        console.error("AI School Copilot root element was not found.");
+        return;
+    }
+
+    const input = document.getElementById("questionInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const messageContainer = document.getElementById("messageContainer");
+    const emptyState = document.getElementById("emptyState");
+    const messagesPane = document.getElementById("copilotMessages");
+    const contextInfo = document.getElementById("contextInfo");
+    const charCount = document.getElementById("charCount");
+    const sidebar = document.getElementById("copilotSidebar");
+    const overlay = document.getElementById("copilotOverlay");
+    const conversationList = document.getElementById("conversationList");
+
+    const MAX_CHARS = 4000;
+
+    const PLACEHOLDER_UUID =
+        "00000000-0000-0000-0000-000000000000";
+
+    // ============================================================
+    // STATE
+    // ============================================================
+
+    let currentConversationId = null;
+
+    let isProcessing = false;
+
+    let messageCount = 0;
+
+    let loadingConversationId = null;
+
+    // Expose this for compatibility with any existing code.
+    window.currentConversationId = null;
+
+
+    // ============================================================
+    // URL HELPERS
+    // ============================================================
+
+    function apiUrl() {
+        return root.dataset.apiUrl;
+    }
+
+
+    function messageUrl(id) {
+
+        if (!id) {
+            return null;
+        }
+
+        return root.dataset.messageUrlTemplate.replace(
+            PLACEHOLDER_UUID,
+            encodeURIComponent(String(id))
+        );
+    }
+
+
+    function deleteUrl(id) {
+
+        if (!id) {
+            return null;
+        }
+
+        return root.dataset.deleteUrlTemplate.replace(
+            PLACEHOLDER_UUID,
+            encodeURIComponent(String(id))
+        );
+    }
+
+
+    // ============================================================
+    // CSRF
+    // ============================================================
+
+    function csrfToken() {
+
+        const tokenInput =
+            document.querySelector(
+                "#copilotSecurityForm input[name='csrfmiddlewaretoken']"
+            );
+
+        if (
+            tokenInput &&
+            tokenInput.value
+        ) {
+            return tokenInput.value;
+        }
+
+        const match =
+            document.cookie.match(
+                /(?:^|;\s*)csrftoken=([^;]+)/
+            );
+
+        if (match) {
+            return decodeURIComponent(
+                match[1]
+            );
+        }
+
+        return "";
+    }
+
+
+    // ============================================================
+    // RESPONSE PARSER
+    // ============================================================
+
+    async function parseResponse(response) {
+
+        const text =
+            await response.text();
+
+        let data = {};
+
+        try {
+
+            data =
+                text
+                    ? JSON.parse(text)
+                    : {};
+
+        } catch (error) {
+
+            const invalidResponse =
+                new Error(
+                    "The server returned an invalid response."
+                );
+
+            invalidResponse.status =
+                response.status;
+
+            throw invalidResponse;
+        }
+
+        if (
+            !response.ok ||
+            data.success === false
+        ) {
+
+            const error =
+                new Error(
+                    data.error ||
+                    data.message ||
+                    (
+                        "Request failed with status " +
+                        response.status +
+                        "."
+                    )
+                );
+
+            error.status =
+                response.status;
+
+            error.data =
+                data;
+
+            throw error;
+        }
+
+        return data;
+    }
+
+
+    // ============================================================
+    // HTML ESCAPING
+    // ============================================================
+
+    function escapeHtml(value) {
+
+        return String(
+            value ?? ""
+        )
+            .replace(
+                /&/g,
+                "&amp;"
+            )
+            .replace(
+                /</g,
+                "&lt;"
+            )
+            .replace(
+                />/g,
+                "&gt;"
+            )
+            .replace(
+                /"/g,
+                "&quot;"
+            )
+            .replace(
+                /'/g,
+                "&#039;"
+            );
+    }
+
+
+    // ============================================================
+    // SIMPLE MARKDOWN
+    // ============================================================
+
+    function safeMarkdown(text) {
+
+        let html =
+            escapeHtml(text);
+
+        const codeBlocks = [];
+
+        html = html.replace(
+            /```([\s\S]*?)```/g,
+            function (_, code) {
+
+                const key =
+                    "__CODEBLOCK_" +
+                    codeBlocks.length +
+                    "__";
+
+                codeBlocks.push(
+                    "<pre><code>" +
+                    code.trim() +
+                    "</code></pre>"
+                );
+
+                return key;
+            }
+        );
+
+        html = html.replace(
+            /`([^`\n]+)`/g,
+            "<code>$1</code>"
+        );
+
+        html = html.replace(
+            /^### (.+)$/gm,
+            "<h3>$1</h3>"
+        );
+
+        html = html.replace(
+            /^## (.+)$/gm,
+            "<h2>$1</h2>"
+        );
+
+        html = html.replace(
+            /^# (.+)$/gm,
+            "<h1>$1</h1>"
+        );
+
+        html = html.replace(
+            /\*\*(.+?)\*\*/g,
+            "<strong>$1</strong>"
+        );
+
+        html = html.replace(
+            /\*([^*\n]+)\*/g,
+            "<em>$1</em>"
+        );
+
+        html = html.replace(
+            /^> (.+)$/gm,
+            "<blockquote>$1</blockquote>"
+        );
+
+        html = html.replace(
+            /(?:^|\n)((?:- .+(?:\n|$))+)/g,
+            function (_, block) {
+
+                const items =
+                    block
+                        .trim()
+                        .split("\n")
+                        .map(
+                            line =>
+                                line
+                                    .replace(
+                                        /^-\s+/,
+                                        ""
+                                    )
+                                    .trim()
+                        );
+
+                return (
+                    "\n<ul>" +
+                    items
+                        .map(
+                            item =>
+                                "<li>" +
+                                item +
+                                "</li>"
+                        )
+                        .join("") +
+                    "</ul>\n"
+                );
+            }
+        );
+
+        html = html.replace(
+            /(?:^|\n)((?:\d+\. .+(?:\n|$))+)/g,
+            function (_, block) {
+
+                const items =
+                    block
+                        .trim()
+                        .split("\n")
+                        .map(
+                            line =>
+                                line
+                                    .replace(
+                                        /^\d+\.\s+/,
+                                        ""
+                                    )
+                                    .trim()
+                        );
+
+                return (
+                    "\n<ol>" +
+                    items
+                        .map(
+                            item =>
+                                "<li>" +
+                                item +
+                                "</li>"
+                        )
+                        .join("") +
+                    "</ol>\n"
+                );
+            }
+        );
+
+        html = html.replace(
+            /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+            '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+        );
+
+        html = html.replace(
+            /\n{2,}/g,
+            "<br><br>"
+        );
+
+        html = html.replace(
+            /\n/g,
+            "<br>"
+        );
+
+        codeBlocks.forEach(
+            function (block, index) {
+
+                html =
+                    html.replace(
+                        "__CODEBLOCK_" +
+                        index +
+                        "__",
+                        block
+                    );
+            }
+        );
+
+        return html;
+    }
+
+
+    // ============================================================
+    // TIME
+    // ============================================================
+
+    function formatTime(iso) {
+
+        if (!iso) {
+            return "";
+        }
+
+        const date =
+            new Date(iso);
+
+        if (
+            Number.isNaN(
+                date.getTime()
+            )
+        ) {
+            return "";
+        }
+
+        return date.toLocaleTimeString(
+            [],
+            {
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
+    }
+
+
+    // ============================================================
+    // SCROLL
+    // ============================================================
+
+    function scrollBottom() {
+
+        requestAnimationFrame(
+            function () {
+
+                if (messagesPane) {
+                    messagesPane.scrollTop =
+                        messagesPane.scrollHeight;
+                }
+            }
+        );
+    }
+
+
+    // ============================================================
+    // FIND SIDEBAR CONVERSATION
+    // ============================================================
+
+    function conversationItem(id) {
+
+        if (!id) {
+            return null;
+        }
+
+        const wanted =
+            String(id);
+
+        const items =
+            document.querySelectorAll(
+                ".copilot-conv-item"
+            );
+
+        for (
+            let i = 0;
+            i < items.length;
+            i++
+        ) {
+
+            if (
+                String(
+                    items[i].dataset.conversationId
+                ) === wanted
+            ) {
+                return items[i];
+            }
+        }
+
+        return null;
+    }
+
+
+    // ============================================================
+    // REMOVE CONVERSATION FROM UI
+    // ============================================================
+
+    function removeConversationFromUI(id) {
+
+        const item =
+            conversationItem(id);
+
+        if (item) {
+            item.remove();
+        }
+
+        ensureConversationEmptyState();
+    }
+
+
+    // ============================================================
+    // CLEAR CURRENT CONVERSATION
+    // ============================================================
+
+    function clearCurrentConversation() {
+
+        currentConversationId = null;
+
+        window.currentConversationId =
+            null;
+
+        loadingConversationId =
+            null;
+
+        if (messageContainer) {
+            messageContainer.innerHTML =
+                "";
+        }
+
+        messageCount = 0;
+
+        if (emptyState) {
+            emptyState.style.display =
+                "flex";
+        }
+
+        if (contextInfo) {
+            contextInfo.textContent =
+                "New conversation";
+        }
+
+        document
+            .querySelectorAll(
+                ".copilot-conv-item"
+            )
+            .forEach(
+                function (item) {
+                    item.classList.remove(
+                        "active"
+                    );
+                }
+            );
+    }
+
+
+    // ============================================================
+    // ACTIVE CONVERSATION
+    // ============================================================
+
+    function setActiveConversation(id) {
+
+        document
+            .querySelectorAll(
+                ".copilot-conv-item"
+            )
+            .forEach(
+                function (item) {
+
+                    item.classList.toggle(
+                        "active",
+                        String(
+                            item.dataset.conversationId
+                        ) === String(id)
+                    );
+                }
+            );
+    }
+
+
+    // ============================================================
+    // EMPTY SIDEBAR STATE
+    // ============================================================
+
+    function ensureConversationEmptyState() {
+
+        if (!conversationList) {
+            return;
+        }
+
+        const hasConversation =
+            conversationList.querySelector(
+                ".copilot-conv-item"
+            );
+
+        const existingEmpty =
+            document.getElementById(
+                "conversationEmpty"
+            );
+
+        if (!hasConversation) {
+
+            if (!existingEmpty) {
+
+                const empty =
+                    document.createElement(
+                        "div"
+                    );
+
+                empty.id =
+                    "conversationEmpty";
+
+                empty.className =
+                    "text-center py-5";
+
+                empty.style.cssText =
+                    "color:var(--ai-muted);font-size:.75rem;";
+
+                empty.innerHTML =
+                    '<i class="bi bi-chat-square-text fs-3 d-block mb-2"></i>' +
+                    "No conversations yet.<br>" +
+                    '<span style="opacity:.7;">Ask your first question below.</span>';
+
+                conversationList.appendChild(
+                    empty
+                );
+            }
+
+        } else {
+
+            existingEmpty?.remove();
+        }
+    }
+
+
+    // ============================================================
+    // LOADING STATE
+    // ============================================================
+
+    function showLoadingConversation() {
+
+        if (emptyState) {
+            emptyState.style.display =
+                "none";
+        }
+
+        if (messageContainer) {
+
+            messageContainer.innerHTML =
+                '<div class="ai-loading">' +
+                '<i class="bi bi-arrow-repeat"></i>' +
+                "Loading conversation..." +
+                "</div>";
+        }
+    }
+
+
+    // ============================================================
+    // TYPING
+    // ============================================================
+
+    function showTyping() {
+
+        hideTyping();
+
+        const row =
+            document.createElement(
+                "div"
+            );
+
+        row.className =
+            "typing-row";
+
+        row.id =
+            "copilotTyping";
+
+        row.innerHTML =
+            '<div class="typing-bubble">' +
+            '<span class="typing-dot"></span>' +
+            '<span class="typing-dot"></span>' +
+            '<span class="typing-dot"></span>' +
+            '<span style="font-size:.68rem;color:var(--ai-muted);margin-left:4px;">Thinking...</span>' +
+            "</div>";
+
+        messageContainer.appendChild(
+            row
+        );
+
+        scrollBottom();
+    }
+
+
+    function hideTyping() {
+
+        document
+            .getElementById(
+                "copilotTyping"
+            )
+            ?.remove();
+    }
+
+
+    // ============================================================
+    // ADD MESSAGE
+    // ============================================================
+
+    function addMessage(
+        role,
+        content,
+        sources,
+        createdAt
+    ) {
+
+        const row =
+            document.createElement(
+                "div"
+            );
+
+        row.className =
+            "message-row " +
+            (
+                role === "user"
+                    ? "user"
+                    : "assistant"
+            );
+
+        const bubble =
+            document.createElement(
+                "article"
+            );
+
+        bubble.className =
+            "message " +
+            (
+                role === "user"
+                    ? "user"
+                    : "assistant"
+            );
+
+        const head =
+            document.createElement(
+                "div"
+            );
+
+        head.className =
+            "message-head";
+
+        head.innerHTML =
+            role === "user"
+                ? '<i class="bi bi-person-circle"></i><span>You</span>'
+                : '<i class="bi bi-stars"></i><span>AI School Copilot</span>';
+
+        const body =
+            document.createElement(
+                "div"
+            );
+
+        body.className =
+            "message-body";
+
+        if (
+            role === "assistant"
+        ) {
+
+            body.innerHTML =
+                safeMarkdown(
+                    content
+                );
+
+        } else {
+
+            body.innerHTML =
+                escapeHtml(
+                    content
+                ).replace(
+                    /\n/g,
+                    "<br>"
+                );
+        }
+
+        bubble.appendChild(
+            head
+        );
+
+        bubble.appendChild(
+            body
+        );
+
+        const time =
+            document.createElement(
+                "span"
+            );
+
+        time.className =
+            "message-time";
+
+        time.textContent =
+            formatTime(
+                createdAt
+            ) ||
+            new Date()
+                .toLocaleTimeString(
+                    [],
+                    {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    }
+                );
+
+        bubble.appendChild(
+            time
+        );
+
+        if (
+            role === "assistant" &&
+            Array.isArray(sources) &&
+            sources.length
+        ) {
+
+            const sourceBox =
+                document.createElement(
+                    "div"
+                );
+
+            sourceBox.className =
+                "message-sources";
+
+            sources
+                .slice(
+                    0,
+                    12
+                )
+                .forEach(
+                    function (source) {
+
+                        const chip =
+                            document.createElement(
+                                "span"
+                            );
+
+                        chip.className =
+                            "source-chip";
+
+                        chip.textContent =
+                            typeof source === "string"
+                                ? source
+                                : (
+                                    source.name ||
+                                    source.title ||
+                                    source.label ||
+                                    "Source"
+                                );
+
+                        sourceBox.appendChild(
+                            chip
+                        );
+                    }
+                );
+
+            bubble.appendChild(
+                sourceBox
+            );
+        }
+
+        row.appendChild(
+            bubble
+        );
+
+        messageContainer.appendChild(
+            row
+        );
+
+        messageCount += 1;
+
+        if (emptyState) {
+            emptyState.style.display =
+                "none";
+        }
+
+        scrollBottom();
+    }
+
+
+    // ============================================================
+    // RENDER CONVERSATION
+    // ============================================================
+
+    function renderConversation(
+        messages
+    ) {
+
+        messageContainer.innerHTML =
+            "";
+
+        messageCount = 0;
+
+        if (
+            !messages ||
+            !messages.length
+        ) {
+
+            emptyState.style.display =
+                "flex";
+
+            return;
+        }
+
+        emptyState.style.display =
+            "none";
+
+        messages.forEach(
+            function (message) {
+
+                addMessage(
+                    message.role,
+                    message.content || "",
+                    message.sources || [],
+                    message.created_at
+                );
+            }
+        );
+
+        scrollBottom();
+    }
+
+
+    // ============================================================
+    // LOAD CONVERSATION
+    // ============================================================
+
+    async function loadConversation(
+        id
+    ) {
+
+        if (
+            !id ||
+            isProcessing
+        ) {
+            return;
+        }
+
+        const conversationId =
+            String(id);
+
+        currentConversationId =
+            conversationId;
+
+        window.currentConversationId =
+            conversationId;
+
+        loadingConversationId =
+            conversationId;
+
+        setActiveConversation(
+            conversationId
+        );
+
+        showLoadingConversation();
+
+        const item =
+            conversationItem(
+                conversationId
+            );
+
+        if (contextInfo) {
+
+            contextInfo.textContent =
+                item?.dataset.title ||
+                "Conversation";
+        }
+
+        toggleSidebar(false);
+
+        try {
+
+            const url =
+                messageUrl(
+                    conversationId
+                );
+
+            const response =
+                await fetch(
+                    url,
+                    {
+                        method: "GET",
+                        headers: {
+                            "Accept":
+                                "application/json",
+                            "X-Requested-With":
+                                "XMLHttpRequest"
+                        },
+                        credentials:
+                            "same-origin"
+                    }
+                );
+
+            const data =
+                await parseResponse(
+                    response
+                );
+
+            if (
+                currentConversationId !==
+                conversationId
+            ) {
+                return;
+            }
+
+            renderConversation(
+                data.messages || []
+            );
+
+            if (contextInfo) {
+
+                contextInfo.textContent =
+                    data.title ||
+                    item?.dataset.title ||
+                    "Conversation";
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Copilot conversation load error:",
+                error
+            );
+
+            /*
+             * IMPORTANT:
+             *
+             * 404 means this conversation no longer exists.
+             *
+             * Do NOT leave it selected.
+             * Do NOT keep sending its ID.
+             */
+
+            if (
+                error.status === 404
+            ) {
+
+                removeConversationFromUI(
+                    conversationId
+                );
+
+                if (
+                    currentConversationId ===
+                    conversationId
+                ) {
+
+                    clearCurrentConversation();
+                }
+
+                showToast(
+                    "That conversation is no longer available. A new conversation is ready.",
+                    "warning"
+                );
+
+                return;
+            }
+
+            messageContainer.innerHTML =
+                "";
+
+            emptyState.style.display =
+                "flex";
+
+            showToast(
+                error.message ||
+                "Conversation could not be loaded.",
+                "danger"
+            );
+
+        } finally {
+
+            if (
+                loadingConversationId ===
+                conversationId
+            ) {
+
+                loadingConversationId =
+                    null;
+            }
+        }
+    }
+
+
+    // ============================================================
+    // ADD CONVERSATION TO SIDEBAR
+    // ============================================================
+
+    function addConversationToList(
+        id,
+        title,
+        count
+    ) {
+
+        if (!conversationList) {
+            return;
+        }
+
+        document
+            .getElementById(
+                "conversationEmpty"
+            )
+            ?.remove();
+
+        const conversationId =
+            String(id);
+
+        const existing =
+            conversationItem(
+                conversationId
+            );
+
+        if (existing) {
+            existing.remove();
+        }
+
+        const item =
+            document.createElement(
+                "div"
+            );
+
+        item.className =
+            "copilot-conv-item active";
+
+        item.dataset.conversationId =
+            conversationId;
+
+        item.dataset.title =
+            title ||
+            "Conversation";
+
+        item.setAttribute(
+            "role",
+            "button"
+        );
+
+        item.tabIndex =
+            0;
+
+        item.onclick =
+            function () {
+                loadConversation(
+                    conversationId
+                );
+            };
+
+        item.onkeydown =
+            function (event) {
+
+                if (
+                    event.key === "Enter" ||
+                    event.key === " "
+                ) {
+
+                    event.preventDefault();
+
+                    loadConversation(
+                        conversationId
+                    );
+                }
+            };
+
+        const icon =
+            document.createElement(
+                "div"
+            );
+
+        icon.className =
+            "conv-icon";
+
+        icon.innerHTML =
+            '<i class="bi bi-chat-left-text"></i>';
+
+        const content =
+            document.createElement(
+                "div"
+            );
+
+        content.className =
+            "conv-content";
+
+        const titleElement =
+            document.createElement(
+                "div"
+            );
+
+        titleElement.className =
+            "conv-title";
+
+        titleElement.textContent =
+            title ||
+            "Conversation";
+
+        const meta =
+            document.createElement(
+                "div"
+            );
+
+        meta.className =
+            "conv-meta";
+
+        meta.innerHTML =
+            "<span>just now</span>" +
+            '<span class="conv-count">' +
+            String(
+                count || 0
+            ) +
+            "</span>";
+
+        content.appendChild(
+            titleElement
+        );
+
+        content.appendChild(
+            meta
+        );
+
+        const deleteButton =
+            document.createElement(
+                "button"
+            );
+
+        deleteButton.type =
+            "button";
+
+        deleteButton.className =
+            "conv-delete";
+
+        deleteButton.title =
+            "Delete conversation";
+
+        deleteButton.setAttribute(
+            "aria-label",
+            "Delete conversation"
+        );
+
+        deleteButton.innerHTML =
+            '<i class="bi bi-trash3"></i>';
+
+        deleteButton.onclick =
+            function (event) {
+
+                event.stopPropagation();
+
+                deleteConversation(
+                    conversationId
+                );
+            };
+
+        item.appendChild(
+            icon
+        );
+
+        item.appendChild(
+            content
+        );
+
+        item.appendChild(
+            deleteButton
+        );
+
+        document
+            .querySelectorAll(
+                ".copilot-conv-item"
+            )
+            .forEach(
+                function (element) {
+                    element.classList.remove(
+                        "active"
+                    );
+                }
+            );
+
+        conversationList.prepend(
+            item
+        );
+
+        ensureConversationEmptyState();
+    }
+
+
+    // ============================================================
+    // DELETE CONVERSATION
+    // ============================================================
+
+    async function deleteConversation(
+        id
+    ) {
+
+        if (!id) {
+            return;
+        }
+
+        const conversationId =
+            String(id);
+
+        if (
+            !window.confirm(
+                "Delete this conversation permanently?"
+            )
+        ) {
+            return;
+        }
+
+        const item =
+            conversationItem(
+                conversationId
+            );
+
+        const button =
+            item?.querySelector(
+                ".conv-delete"
+            );
+
+        if (button) {
+            button.disabled =
+                true;
+        }
+
+        try {
+
+            const response =
+                await fetch(
+                    deleteUrl(
+                        conversationId
+                    ),
+                    {
+                        method: "POST",
+                        headers: {
+                            "Accept":
+                                "application/json",
+                            "X-Requested-With":
+                                "XMLHttpRequest",
+                            "X-CSRFToken":
+                                csrfToken()
+                        },
+                        credentials:
+                            "same-origin"
+                    }
+                );
+
+            await parseResponse(
+                response
+            );
+
+            const wasActive =
+                currentConversationId ===
+                conversationId;
+
+            item?.remove();
+
+            ensureConversationEmptyState();
+
+            if (wasActive) {
+
+                clearCurrentConversation();
+
+                /*
+                 * Do NOT automatically select another
+                 * conversation.
+                 *
+                 * Start clean.
+                 */
+
+                showToast(
+                    "Conversation deleted. Start a new chat.",
+                    "success"
+                );
+            } else {
+
+                showToast(
+                    "Conversation deleted.",
+                    "success"
+                );
+            }
+
+        } catch (error) {
+
+            /*
+             * If the server says 404, another tab/session
+             * probably deleted it already.
+             *
+             * Treat that as successful deletion.
+             */
+
+            if (
+                error.status === 404
+            ) {
+
+                item?.remove();
+
+                if (
+                    currentConversationId ===
+                    conversationId
+                ) {
+
+                    clearCurrentConversation();
+                }
+
+                ensureConversationEmptyState();
+
+                showToast(
+                    "Conversation was already removed.",
+                    "success"
+                );
+
+                return;
+            }
+
+            if (button) {
+                button.disabled =
+                    false;
+            }
+
+            showToast(
+                error.message ||
+                "Conversation could not be deleted.",
+                "danger"
+            );
+        }
+    }
+
+
+    // ============================================================
+    // SEND QUESTION
+    // ============================================================
+
+    async function sendQuestion() {
+
+        if (
+            isProcessing
+        ) {
+            return;
+        }
+
+        const question =
+            input.value.trim();
+
+        if (!question) {
+            return;
+        }
+
+        if (
+            question.length >
+            MAX_CHARS
+        ) {
+
+            showToast(
+                "Please keep the question below 4,000 characters.",
+                "warning"
+            );
+
+            return;
+        }
+
+        isProcessing =
+            true;
+
+        sendBtn.disabled =
+            true;
+
+        input.value =
+            "";
+
+        input.style.height =
+            "auto";
+
+        updateCharCount();
+
+        emptyState.style.display =
+            "none";
+
+        addMessage(
+            "user",
+            question,
+            [],
+            new Date().toISOString()
+        );
+
+        showTyping();
+
+        /*
+         * Snapshot the conversation ID.
+         *
+         * This prevents another UI operation from
+         * changing the ID while this request is running.
+         */
+
+        const requestedConversationId =
+            currentConversationId;
+
+        try {
+
+            const response =
+                await fetch(
+                    apiUrl(),
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+
+                            "Accept":
+                                "application/json",
+
+                            "X-Requested-With":
+                                "XMLHttpRequest",
+
+                            "X-CSRFToken":
+                                csrfToken()
+                        },
+
+                        credentials:
+                            "same-origin",
+
+                        body:
+                            JSON.stringify(
+                                {
+                                    question:
+                                        question,
+
+                                    conversation_id:
+                                        requestedConversationId ||
+                                        null
+                                }
+                            )
+                    }
+                );
+
+            let data;
+
+            try {
+
+                data =
+                    await parseResponse(
+                        response
+                    );
+
+            } catch (error) {
+
+                /*
+                 * IMPORTANT RECOVERY:
+                 *
+                 * If the selected conversation disappeared
+                 * between the time the UI selected it and the
+                 * time the message was sent, retry once without
+                 * a conversation ID.
+                 */
+
+                if (
+                    error.status === 404 &&
+                    requestedConversationId
+                ) {
+
+                    console.warn(
+                        "Stale conversation detected. Retrying as a new conversation."
+                    );
+
+                    removeConversationFromUI(
+                        requestedConversationId
+                    );
+
+                    if (
+                        currentConversationId ===
+                        requestedConversationId
+                    ) {
+
+                        currentConversationId =
+                            null;
+
+                        window.currentConversationId =
+                            null;
+                    }
+
+                    const retryResponse =
+                        await fetch(
+                            apiUrl(),
+                            {
+                                method: "POST",
+
+                                headers: {
+                                    "Content-Type":
+                                        "application/json",
+
+                                    "Accept":
+                                        "application/json",
+
+                                    "X-Requested-With":
+                                        "XMLHttpRequest",
+
+                                    "X-CSRFToken":
+                                        csrfToken()
+                                },
+
+                                credentials:
+                                    "same-origin",
+
+                                body:
+                                    JSON.stringify(
+                                        {
+                                            question:
+                                                question,
+
+                                            conversation_id:
+                                                null
+                                        }
+                                    )
+                            }
+                        );
+
+                    data =
+                        await parseResponse(
+                            retryResponse
+                        );
+
+                } else {
+
+                    throw error;
+                }
+            }
+
+            hideTyping();
+
+            const newId =
+                data.conversation_id
+                    ? String(
+                        data.conversation_id
+                    )
+                    : null;
+
+            if (!newId) {
+
+                throw new Error(
+                    "The server did not return a conversation ID."
+                );
+            }
+
+            currentConversationId =
+                newId;
+
+            window.currentConversationId =
+                newId;
+
+            setActiveConversation(
+                newId
+            );
+
+            /*
+             * New conversation:
+             * add it to sidebar.
+             */
+
+            if (
+                !conversationItem(
+                    newId
+                )
+            ) {
+
+                addConversationToList(
+                    newId,
+                    data.conversation_title ||
+                    question,
+                    data.count || 2
+                );
+
+            } else {
+
+                const item =
+                    conversationItem(
+                        newId
+                    );
+
+                if (item) {
+
+                    item.dataset.title =
+                        data.conversation_title ||
+                        question;
+
+                    const titleElement =
+                        item.querySelector(
+                            ".conv-title"
+                        );
+
+                    if (
+                        titleElement
+                    ) {
+
+                        titleElement.textContent =
+                            data.conversation_title ||
+                            question;
+                    }
+
+                    const countElement =
+                        item.querySelector(
+                            ".conv-count"
+                        );
+
+                    if (
+                        countElement
+                    ) {
+
+                        const oldCount =
+                            parseInt(
+                                countElement.textContent ||
+                                "0",
+                                10
+                            );
+
+                        countElement.textContent =
+                            String(
+                                oldCount +
+                                2
+                            );
+                    }
+                }
+            }
+
+            if (contextInfo) {
+
+                contextInfo.textContent =
+                    data.conversation_title ||
+                    contextInfo.textContent ||
+                    "Conversation";
+            }
+
+            addMessage(
+                "assistant",
+                data.answer ||
+                    "I could not generate a response.",
+                data.sources ||
+                    [],
+                new Date().toISOString()
+            );
+
+        } catch (error) {
+
+            hideTyping();
+
+            console.error(
+                "Copilot request error:",
+                error
+            );
+
+            addMessage(
+                "assistant",
+                (
+                    "I could not complete that request. " +
+                    (
+                        error.message ||
+                        "Please try again."
+                    )
+                ),
+                [],
+                new Date().toISOString()
+            );
+
+        } finally {
+
+            isProcessing =
+                false;
+
+            sendBtn.disabled =
+                false;
+
+            input.focus();
+
+            scrollBottom();
+        }
+    }
+
+
+    // ============================================================
+    // NEW CONVERSATION
+    // ============================================================
+
+    function newConversation() {
+
+        if (
+            isProcessing
+        ) {
+            return;
+        }
+
+        clearCurrentConversation();
+
+        input.value =
+            "";
+
+        input.style.height =
+            "auto";
+
+        updateCharCount();
+
+        toggleSidebar(
+            false
+        );
+
+        input.focus();
+    }
+
+
+    // ============================================================
+    // QUICK QUESTION
+    // ============================================================
+
+    function quickQuestion(
+        question
+    ) {
+
+        input.value =
+            question;
+
+        autoResize(
+            input
+        );
+
+        sendQuestion();
+    }
+
+
+    // ============================================================
+    // SIDEBAR
+    // ============================================================
+
+    function toggleSidebar(
+        open
+    ) {
+
+        if (
+            window.innerWidth >
+            991
+        ) {
+
+            if (
+                open ===
+                undefined
+            ) {
+
+                sidebar.style.display =
+                    sidebar.style.display ===
+                    "none"
+                        ? ""
+                        : "none";
+
+            } else {
+
+                sidebar.style.display =
+                    open
+                        ? ""
+                        : "none";
+            }
+
+            return;
+        }
+
+        const shouldOpen =
+            open ===
+            undefined
+                ? !sidebar.classList.contains(
+                    "open"
+                )
+                : open;
+
+        sidebar.classList.toggle(
+            "open",
+            shouldOpen
+        );
+
+        overlay.classList.toggle(
+            "show",
+            shouldOpen
+        );
+    }
+
+
+    // ============================================================
+    // TEXTAREA
+    // ============================================================
+
+    function autoResize(
+        element
+    ) {
+
+        element.style.height =
+            "auto";
+
+        element.style.height =
+            Math.min(
+                element.scrollHeight,
+                160
+            ) +
+            "px";
+
+        updateCharCount();
+    }
+
+
+    function updateCharCount() {
+
+        if (!input || !charCount) {
+            return;
+        }
+
+        const length =
+            input.value.length;
+
+        charCount.textContent =
+            length +
+            " / " +
+            MAX_CHARS;
+
+        charCount.style.color =
+            length >
+            MAX_CHARS * 0.85
+                ? "var(--ai-warning)"
+                : "var(--ai-muted)";
+    }
+
+
+    // ============================================================
+    // KEYBOARD
+    // ============================================================
+
+    function handleKeyDown(
+        event
+    ) {
+
+        if (
+            event.key ===
+            "Enter" &&
+            !event.shiftKey
+        ) {
+
+            event.preventDefault();
+
+            sendQuestion();
+        }
+    }
+
+
+    // ============================================================
+    // SEARCH
+    // ============================================================
+
+    function filterConversations(
+        query
+    ) {
+
+        const term =
+            (
+                query ||
+                ""
+            )
+                .toLowerCase()
+                .trim();
+
+        document
+            .querySelectorAll(
+                ".copilot-conv-item"
+            )
+            .forEach(
+                function (item) {
+
+                    const title =
+                        (
+                            item.dataset.title ||
+                            item.querySelector(
+                                ".conv-title"
+                            )?.textContent ||
+                            ""
+                        )
+                            .toLowerCase();
+
+                    item.style.display =
+                        !term ||
+                        title.includes(
+                            term
+                        )
+                            ? ""
+                            : "none";
+                }
+            );
+    }
+
+
+    // ============================================================
+    // TOAST
+    // ============================================================
+
+    function showToast(
+        message,
+        type
+    ) {
+
+        document
+            .getElementById(
+                "copilotToast"
+            )
+            ?.remove();
+
+        const toast =
+            document.createElement(
+                "div"
+            );
+
+        toast.id =
+            "copilotToast";
+
+        toast.style.cssText =
+            [
+                "position:fixed",
+                "right:20px",
+                "bottom:20px",
+                "z-index:99999",
+                "max-width:380px",
+                "padding:12px 15px",
+                "border-radius:12px",
+                "background:var(--ai-surface)",
+                "border:1px solid var(--ai-border)",
+                "box-shadow:0 15px 40px rgba(0,0,0,.15)",
+                "color:var(--ai-text)",
+                "font-size:.78rem",
+                "font-weight:600"
+            ].join(";");
+
+        const icon =
+            type === "success"
+                ? "check-circle-fill"
+                : type === "warning"
+                    ? "exclamation-triangle-fill"
+                    : type === "info"
+                        ? "info-circle-fill"
+                        : "exclamation-circle-fill";
+
+        toast.innerHTML =
+            '<i class="bi bi-' +
+            icon +
+            ' me-2"></i>' +
+            escapeHtml(
+                message
+            );
+
+        document.body.appendChild(
+            toast
+        );
+
+        setTimeout(
+            function () {
+                toast.remove();
+            },
+            3500
+        );
+    }
+
+
+    // ============================================================
+    // GLOBAL FUNCTIONS
+    // ============================================================
+
+    window.toggleSidebar =
+        toggleSidebar;
+
+    window.loadConversation =
+        loadConversation;
+
+    window.deleteConversation =
+        deleteConversation;
+
+    window.newConversation =
+        newConversation;
+
+    window.quickQuestion =
+        quickQuestion;
+
+    window.sendQuestion =
+        sendQuestion;
+
+    window.autoResize =
+        autoResize;
+
+    window.handleKeyDown =
+        handleKeyDown;
+
+    window.filterConversations =
+        filterConversations;
+
+
+    // ============================================================
+    // INITIALIZATION
+    // ============================================================
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        async function () {
+
+            updateCharCount();
+
+            /*
+             * Do NOT blindly trust the first sidebar item.
+             *
+             * We explicitly load it through the API.
+             */
+
+            const first =
+                document.querySelector(
+                    ".copilot-conv-item"
+                );
+
+            if (first) {
+
+                await loadConversation(
+                    first.dataset.conversationId
+                );
+
+            } else {
+
+                clearCurrentConversation();
+            }
+
+            document.addEventListener(
+                "keydown",
+                function (event) {
+
+                    if (
+                        (
+                            event.ctrlKey ||
+                            event.metaKey
+                        ) &&
+                        event.key.toLowerCase() ===
+                        "k"
+                    ) {
+
+                        event.preventDefault();
+
+                        input.focus();
+                    }
+
+                    if (
+                        (
+                            event.ctrlKey ||
+                            event.metaKey
+                        ) &&
+                        event.key.toLowerCase() ===
+                        "n"
+                    ) {
+
+                        event.preventDefault();
+
+                        newConversation();
+                    }
+
+                    if (
+                        event.key ===
+                        "Escape"
+                    ) {
+
+                        toggleSidebar(
+                            false
+                        );
+                    }
+                }
+            );
+        }
+    );
+
+})();
+</script>
+
+{% endblock %}

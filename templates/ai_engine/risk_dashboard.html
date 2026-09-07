@@ -1,0 +1,442 @@
+<!-- ai_engine/risk_dashboard.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Dropout Risk Dashboard{% endblock %}
+
+{% block extra_js %}
+{% if latest_run and latest_run.status == 'PENDING' or latest_run.status == 'RUNNING' %}
+<script>
+setTimeout(function() { window.location.reload(); }, 4000);
+</script>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+    .risk-row.hidden-row { display: none !important; }
+    .risk-row.visible-row { display: table-row !important; }
+    .filter-badge {
+        display: none;
+        background-color: var(--eduai-gold-soft);
+        color: var(--eduai-gold);
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .filter-badge.show { display: inline-block; }
+    @keyframes pulse-badge {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .filter-active { animation: pulse-badge 1.5s ease-in-out 1; }
+
+    .stat-card {
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        border: 1px solid var(--surface-border);
+        background: var(--surface-bg);
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+    }
+    .stat-card .stat-number {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1.2;
+    }
+    .stat-card .stat-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Early-Warning Dropout Risk
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% else %}
+                            Staff View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    Scores every active student on attendance, grade trend, and overdue fees so at-risk
+                    students get noticed before they fall through the cracks - not after.
+                    {% if can_trigger %}
+                        You can <strong>run a new assessment</strong> to update risk scores.
+                        Use the <strong>search bar</strong> below to filter students by name or risk band.
+                    {% endif %}
+                    The dashboard shows <strong>High Risk</strong> and <strong>Critical Risk</strong> counts for quick identification.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 p-4">
+            <div>
+                <h5 class="fw-bold mb-1">
+                    <i class="bi bi-shield-exclamation text-danger me-2"></i>Early-Warning Dropout Risk
+                </h5>
+                <p class="text-muted mb-0">
+                    Scores every active student on attendance, grade trend, and overdue fees so at-risk
+                    students get noticed before they fall through the cracks - not after.
+                </p>
+                {% if active_term %}
+                    <small class="text-muted">Active term: <strong>{{ active_term }}</strong></small>
+                {% else %}
+                    <small class="text-danger">No active academic term configured yet.</small>
+                {% endif %}
+            </div>
+            {% if can_trigger and active_term %}
+            <form method="post" action="{% url 'ai_engine:trigger_risk_assessment' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-gold">
+                    <i class="bi bi-magic me-1"></i> Run New Assessment
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not latest_run %}
+    <div class="card border-0 shadow-sm rounded-4 text-center text-muted p-5">
+        <i class="bi bi-shield-check fs-1 d-block mb-3 text-secondary"></i>
+        No risk assessment has been run yet for this term.
+    </div>
+
+    {% elif latest_run.status == 'PENDING' or latest_run.status == 'RUNNING' %}
+    <div class="card border-0 shadow-sm rounded-4 text-center p-5">
+        <div class="spinner-border text-primary mb-3 mx-auto" style="width:3rem;height:3rem; color: var(--eduai-gold, #946B1C) !important;" role="status"></div>
+        <h5 class="fw-bold">Scoring every student&hellip;</h5>
+        <p class="text-muted">Checking attendance, grade trends and fee status. This page refreshes automatically.</p>
+    </div>
+
+    {% elif latest_run.status == 'FAILED' %}
+    <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-4">
+        <i class="bi bi-exclamation-triangle me-1"></i> Assessment failed: {{ latest_run.error_message }}
+    </div>
+
+    {% else %}
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-label">Students Assessed</div>
+                <div class="stat-number mt-1">{{ latest_run.students_assessed }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-label text-warning">High Risk</div>
+                <div class="stat-number mt-1" style="color: #d97706;">{{ latest_run.high_risk_count }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-label text-danger">Critical Risk</div>
+                <div class="stat-number mt-1 text-danger">{{ latest_run.critical_risk_count }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Risk Table -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="p-4">
+            <!-- Auto-filter search bar -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-6 col-lg-5">
+                    <div class="position-relative">
+                        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                        <input type="text" id="riskSearchInput" class="form-control ps-5"
+                               placeholder="Search by student name or ID..." autocomplete="off">
+                    </div>
+                    <small class="text-muted" id="searchResultCount">Showing all {{ assessments|length }} students</small>
+                </div>
+                <div class="col-md-6 col-lg-7 text-md-end">
+                    <div class="d-flex gap-2 flex-wrap justify-content-md-end">
+                        <!-- Band Filter -->
+                        <select name="band" class="form-select form-select-sm" id="bandFilter" style="width: auto; min-width: 140px;">
+                            <option value="">All bands</option>
+                            <option value="CRITICAL" {% if selected_band == 'CRITICAL' %}selected{% endif %}>Critical</option>
+                            <option value="HIGH" {% if selected_band == 'HIGH' %}selected{% endif %}>High</option>
+                            <option value="MEDIUM" {% if selected_band == 'MEDIUM' %}selected{% endif %}>Medium</option>
+                            <option value="LOW" {% if selected_band == 'LOW' %}selected{% endif %}>Low</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearRiskSearch" style="display: none;">
+                            <i class="bi bi-x-circle me-1"></i>Clear
+                        </button>
+                        <span class="filter-badge" id="filterBadge">
+                            <i class="bi bi-funnel-fill me-1"></i>Filtered
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="riskTable">
+                    <thead>
+                        <tr>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Student</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Risk</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Score</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Top Factor</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0" id="riskTableBody">
+                        {% for a in assessments %}
+                        <tr class="border-bottom risk-row visible-row" data-student="{{ a.student.user.get_full_name|lower }}" data-id="{{ a.student.admission_number|lower }}" data-band="{{ a.risk_band }}">
+                            <td class="py-3 ps-0">
+                                <span class="fw-bold d-block risk-name">{{ a.student.user.get_full_name }}</span>
+                                <small class="text-muted risk-id">{{ a.student.admission_number }} &middot; {{ a.student.grade_level }}</small>
+                            </td>
+                            <td class="py-3">
+                                {% if a.risk_band == 'CRITICAL' %}
+                                    <span class="badge px-3 py-2 risk-band" style="background: rgba(220,38,38,0.1); color: #dc2626; border-radius: 20px;">Critical</span>
+                                {% elif a.risk_band == 'HIGH' %}
+                                    <span class="badge px-3 py-2 risk-band" style="background: rgba(217,119,6,0.1); color: #d97706; border-radius: 20px;">High</span>
+                                {% elif a.risk_band == 'MEDIUM' %}
+                                    <span class="badge px-3 py-2 risk-band" style="background: rgba(59,130,246,0.1); color: #3b82f6; border-radius: 20px;">Medium</span>
+                                {% else %}
+                                    <span class="badge px-3 py-2 risk-band" style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D); border-radius: 20px;">Low</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-semibold py-3 risk-score">{{ a.risk_score|floatformat:0 }}</td>
+                            <td class="text-muted small py-3 risk-factor">
+                                {% with top=a.contributing_factors.0 %}
+                                    {% if top %}{{ top.factor }}{% else %}No dominant factor{% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-end py-3 pe-0">
+                                <a href="{% url 'ai_engine:student_risk_detail' a.id %}" class="btn btn-sm btn-outline-gold px-3">View</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr id="emptyStateRow">
+                            <td colspan="5" class="text-center text-muted py-5">
+                                <i class="bi bi-check-circle fs-2 d-block mb-2 text-secondary"></i>
+                                No students match this filter.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div id="searchEmptyState" class="text-center text-muted py-4" style="display: none;">
+                <i class="bi bi-search d-block mb-2 fs-3"></i>
+                <p>No students match your search.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // AUTO-FILTER FUNCTIONALITY
+    // ============================================================
+    const searchInput = document.getElementById('riskSearchInput');
+    const clearSearchBtn = document.getElementById('clearRiskSearch');
+    const searchResultCount = document.getElementById('searchResultCount');
+    const filterBadge = document.getElementById('filterBadge');
+    const bandFilter = document.getElementById('bandFilter');
+    const rows = document.querySelectorAll('#riskTableBody .risk-row');
+    const emptyState = document.getElementById('emptyStateRow');
+    const searchEmptyState = document.getElementById('searchEmptyState');
+
+    function filterRisks() {
+        const query = searchInput.value.toLowerCase().trim();
+        const band = bandFilter.value;
+        let visibleCount = 0;
+
+        rows.forEach(function(row) {
+            const name = row.querySelector('.risk-name')?.textContent?.toLowerCase() || '';
+            const id = row.querySelector('.risk-id')?.textContent?.toLowerCase() || '';
+            const rowBand = row.dataset.band || '';
+
+            const searchableText = `${name} ${id}`;
+
+            let matchesSearch = query === '' || searchableText.includes(query);
+            let matchesBand = band === '' || rowBand === band;
+
+            if (matchesSearch && matchesBand) {
+                row.classList.remove('hidden-row');
+                row.classList.add('visible-row');
+                visibleCount++;
+            } else {
+                row.classList.add('hidden-row');
+                row.classList.remove('visible-row');
+            }
+        });
+
+        const total = rows.length;
+        const hasFilters = query !== '' || band !== '';
+
+        if (!hasFilters) {
+            searchResultCount.textContent = `Showing all ${total} students`;
+            clearSearchBtn.style.display = 'none';
+            filterBadge.classList.remove('show');
+            if (searchEmptyState) searchEmptyState.style.display = 'none';
+            if (emptyState) emptyState.style.display = '';
+        } else {
+            const bandLabel = band ? ` (${band} only)` : '';
+            searchResultCount.textContent = `Showing ${visibleCount} of ${total} students${visibleCount === 0 ? ' (no matches found)' : ''}${bandLabel}`;
+            clearSearchBtn.style.display = 'inline-block';
+            filterBadge.classList.add('show');
+            filterBadge.classList.add('filter-active');
+            setTimeout(() => filterBadge.classList.remove('filter-active'), 1500);
+
+            if (visibleCount === 0) {
+                if (searchEmptyState) searchEmptyState.style.display = '';
+                if (emptyState) emptyState.style.display = 'none';
+            } else {
+                if (searchEmptyState) searchEmptyState.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'none';
+            }
+        }
+    }
+
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(filterRisks, 200);
+    });
+
+    bandFilter.addEventListener('change', function() {
+        filterRisks();
+    });
+
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        bandFilter.value = '';
+        filterRisks();
+        searchInput.focus();
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            clearSearchBtn.click();
+        }
+    });
+
+    // Keyboard shortcut: Ctrl+F to focus search
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+    });
+
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

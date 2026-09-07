@@ -1,0 +1,24 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Generating Timetable{% endblock %}
+
+{% block extra_js %}
+<script>setTimeout(function() { window.location.reload(); }, 4000);</script>
+{% endblock %}
+
+{% block content %}
+<div class="card card-custom border-0 shadow-sm rounded-4 text-center p-5">
+    {% if timetable.status == 'FAILED' %}
+        <i class="bi bi-exclamation-triangle text-danger fs-1 mb-3"></i>
+        <h5 class="fw-bold">Generation failed</h5>
+        <p class="text-muted">{{ timetable.error_message }}</p>
+        <a href="{% url 'timetable_workspace' %}" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent; margin-top: 0.5rem;">Back</a>
+    {% else %}
+        <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem; color: var(--primary-color, #946B1C) !important;" role="status"></div>
+        <h5 class="fw-bold">AI is building your timetable&hellip;</h5>
+        <p class="text-muted">
+            Checking every teacher, room and class for conflicts. This page refreshes automatically.
+        </p>
+    {% endif %}
+</div>
+{% endblock %}

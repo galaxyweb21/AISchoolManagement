@@ -1,0 +1,164 @@
+<!-- staff/assignments/teacher_assignment_bulk_modal.html -->
+<form method="post" action="{% url 'staff:teacher_assignment_bulk_create' %}" id="bulkAssignmentForm">
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Class <span class="text-danger">*</span></label>
+        <select name="school_class" class="form-select" id="bulkClassSelect" required>
+            <option value="">Select Class</option>
+            {% for class in classes %}
+                <option value="{{ class.id }}">
+                    {{ class.name }} ({{ class.grade_level.name }})
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Teacher <span class="text-danger">*</span></label>
+        <select name="teacher" class="form-select" id="bulkTeacherSelect" required>
+            <option value="">Select Teacher</option>
+            {% for teacher in teachers %}
+                <option value="{{ teacher.id }}">
+                    {{ teacher.user.get_full_name }} ({{ teacher.staff_number }})
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Periods Per Week</label>
+        <input type="number" name="periods_per_week" class="form-control" value="4" min="1" max="10">
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Subjects to Assign <span class="text-danger">*</span></label>
+        <div class="border rounded-3 p-3 bg-light" style="max-height: 200px; overflow-y: auto;" id="subjectContainer">
+            {% for subject in subjects %}
+                <div class="form-check">
+                    <input class="form-check-input subject-checkbox" type="checkbox" name="subjects" value="{{ subject.id }}" id="subject_{{ subject.id }}">
+                    <label class="form-check-label" for="subject_{{ subject.id }}">
+                        {{ subject.name }} ({{ subject.code }})
+                    </label>
+                </div>
+            {% empty %}
+                <p class="text-muted mb-0">No subjects available.</p>
+            {% endfor %}
+        </div>
+        <div class="mt-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary select-all-btn">
+                <i class="bi bi-check-all me-1"></i>Select All
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary deselect-all-btn">
+                <i class="bi bi-x-circle me-1"></i>Deselect All
+            </button>
+        </div>
+        <small class="text-muted">Select multiple subjects to assign the teacher to all of them in this class.</small>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end border-top pt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="background-color: var(--eduai-gold, #946B1C); border-color: var(--eduai-gold, #946B1C);">
+            <i class="bi bi-list-plus me-1"></i> Bulk Assign
+        </button>
+    </div>
+</form>
+
+<script>
+(function() {
+    'use strict';
+
+    // Function to initialize the bulk assignment form functionality
+    function initBulkAssignment() {
+        const form = document.getElementById('bulkAssignmentForm');
+        if (!form) return;
+
+        // Find buttons within this form
+        const selectAllBtn = form.querySelector('.select-all-btn');
+        const deselectAllBtn = form.querySelector('.deselect-all-btn');
+
+        // Function to get checkboxes within this form
+        function getCheckboxes() {
+            return form.querySelectorAll('.subject-checkbox');
+        }
+
+        // Select All
+        if (selectAllBtn) {
+            // Remove any existing event listeners by cloning
+            const newSelectAllBtn = selectAllBtn.cloneNode(true);
+            selectAllBtn.parentNode.replaceChild(newSelectAllBtn, selectAllBtn);
+
+            newSelectAllBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const checkboxes = getCheckboxes();
+                checkboxes.forEach(function(cb) {
+                    cb.checked = true;
+                });
+                // Trigger change event to update any dependent UI
+                checkboxes.forEach(function(cb) {
+                    cb.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            });
+        }
+
+        // Deselect All
+        if (deselectAllBtn) {
+            // Remove any existing event listeners by cloning
+            const newDeselectAllBtn = deselectAllBtn.cloneNode(true);
+            deselectAllBtn.parentNode.replaceChild(newDeselectAllBtn, deselectAllBtn);
+
+            newDeselectAllBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const checkboxes = getCheckboxes();
+                checkboxes.forEach(function(cb) {
+                    cb.checked = false;
+                });
+                // Trigger change event to update any dependent UI
+                checkboxes.forEach(function(cb) {
+                    cb.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            });
+        }
+    }
+
+    // Initialize immediately if the form is already in the DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initBulkAssignment);
+    } else {
+        initBulkAssignment();
+    }
+
+    // Also initialize when modal is shown (for dynamic content)
+    const bulkModal = document.getElementById('bulkAssignmentModal');
+    if (bulkModal) {
+        bulkModal.addEventListener('shown.bs.modal', function() {
+            // Re-initialize when modal is shown
+            setTimeout(initBulkAssignment, 100);
+        });
+    }
+
+    // Watch for DOM changes in the modal content
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+                // Check if our form was added
+                const form = document.getElementById('bulkAssignmentForm');
+                if (form) {
+                    initBulkAssignment();
+                    // Disconnect observer once form is found
+                    observer.disconnect();
+                }
+            }
+        });
+    });
+
+    // Start observing if we have a target
+    const modalContent = document.getElementById('bulkAssignmentModalContent');
+    if (modalContent) {
+        observer.observe(modalContent, { childList: true, subtree: true });
+    }
+
+})();
+</script>

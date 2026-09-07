@@ -1,0 +1,268 @@
+<!-- staff/payroll/allowance_form_modal.html -->
+{% load static %}
+
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+</style>
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold">
+        {% if mode == 'create' %}
+            <i class="bi bi-plus-circle text-gold me-2"></i>New Allowance
+        {% else %}
+            <i class="bi bi-pencil-square text-gold me-2"></i>Edit Allowance
+        {% endif %}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form method="post" action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url allowance.id %}{% endif %}"
+      id="allowanceForm" class="needs-validation" novalidate>
+    {% csrf_token %}
+
+    <div class="modal-body p-4">
+        <!-- Name -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="allowanceName">
+                Allowance Name <span class="text-danger">*</span>
+            </label>
+            <input type="text" name="name" id="allowanceName" class="form-control"
+                   placeholder="e.g., Housing Allowance"
+                   value="{% if mode == 'edit' %}{{ allowance.name }}{% endif %}"
+                   required>
+            <div class="invalid-feedback">
+                Please enter an allowance name.
+            </div>
+        </div>
+
+        <!-- Allowance Type -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="allowanceType">
+                Allowance Type <span class="text-danger">*</span>
+            </label>
+            <select name="allowance_type" id="allowanceType" class="form-select" required>
+                <option value="">Select Type</option>
+                {% for type_code, type_label in allowance_types %}
+                    <option value="{{ type_code }}"
+                            {% if mode == 'edit' and allowance.allowance_type == type_code %}selected{% endif %}>
+                        {{ type_label }}
+                    </option>
+                {% endfor %}
+            </select>
+            <div class="invalid-feedback">
+                Please select an allowance type.
+            </div>
+        </div>
+
+        <!-- Amount -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="allowanceAmount">
+                Amount <span class="text-danger">*</span>
+            </label>
+            <div class="input-group">
+                <span class="input-group-text">GH₵</span>
+                <input type="number" name="amount" id="allowanceAmount" class="form-control"
+                       placeholder="0.00" step="0.01" min="0"
+                       value="{% if mode == 'edit' %}{{ allowance.amount }}{% endif %}"
+                       required>
+            </div>
+            <div class="invalid-feedback">
+                Please enter a valid amount.
+            </div>
+            <small class="text-muted">Enter the allowance amount in Ghana Cedis (GH₵).</small>
+        </div>
+
+        <!-- Options Row -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="is_percentage" id="isPercentage"
+                           {% if mode == 'edit' and allowance.is_percentage %}checked{% endif %}>
+                    <label class="form-check-label" for="isPercentage">
+                        Percentage Based
+                    </label>
+                    <small class="d-block text-muted">If checked, amount is a percentage of basic salary.</small>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="taxable" id="isTaxable"
+                           {% if mode == 'edit' and allowance.taxable %}checked{% endif %}>
+                    <label class="form-check-label" for="isTaxable">
+                        Taxable
+                    </label>
+                    <small class="d-block text-muted">If checked, this allowance is subject to tax.</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Description -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="allowanceDescription">
+                Description
+            </label>
+            <textarea name="description" id="allowanceDescription" class="form-control"
+                      rows="3" placeholder="Brief description of this allowance...">{% if mode == 'edit' %}{{ allowance.description }}{% endif %}</textarea>
+            <small class="text-muted">Optional: Provide additional details about this allowance.</small>
+        </div>
+
+        <!-- Active Status (Edit mode only) -->
+        {% if mode == 'edit' %}
+        <div class="mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_active" id="isActive"
+                       {% if allowance.is_active %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="isActive">
+                    Active
+                </label>
+                <small class="d-block text-muted">Inactive allowances will not be available for selection.</small>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Info Alert -->
+        <div class="alert alert-info border-0 rounded-3 bg-gold-soft">
+            <small class="d-block">
+                <i class="bi bi-info-circle me-1 text-gold"></i>
+                <strong>Note:</strong>
+                {% if mode == 'create' %}
+                    This allowance will be available for assignment to staff members.
+                {% else %}
+                    Changes will affect all staff members currently assigned this allowance.
+                {% endif %}
+            </small>
+        </div>
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn btn-gold" id="allowanceSubmitBtn">
+            <i class="bi {% if mode == 'create' %}bi-plus-circle{% else %}bi-save{% endif %} me-1"></i>
+            {% if mode == 'create' %}Create Allowance{% else %}Update Allowance{% endif %}
+        </button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('allowanceForm');
+
+    // Bootstrap form validation
+    form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // Handle form submission via AJAX
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const submitBtn = document.getElementById('allowanceSubmitBtn');
+        const originalText = submitBtn.innerHTML;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+
+        const formData = new FormData(this);
+
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+
+            if (data.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('allowanceModal') ||
+                                                          document.querySelector('.modal'));
+                if (modal) {
+                    modal.hide();
+                }
+                location.reload();
+            } else {
+                showError(data.error || 'Failed to save allowance.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            showError('Network error. Please try again.');
+            console.error('Error:', error);
+        });
+    });
+
+    function showError(message) {
+        const existingErrors = form.querySelectorAll('.alert-danger');
+        existingErrors.forEach(el => el.remove());
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+        errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+        form.insertBefore(errorDiv, form.firstChild);
+    }
+
+    // Update percentage display hint
+    const percentageCheckbox = document.getElementById('isPercentage');
+    const amountInput = document.getElementById('allowanceAmount');
+    const amountLabel = document.querySelector('label[for="allowanceAmount"]');
+
+    if (percentageCheckbox) {
+        percentageCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                amountInput.placeholder = 'e.g., 10 (for 10%)';
+                amountInput.step = '0.1';
+                if (amountLabel) {
+                    const hint = document.querySelector('label[for="allowanceAmount"] .hint');
+                    if (!hint) {
+                        const span = document.createElement('span');
+                        span.className = 'hint text-muted fw-normal ms-1';
+                        span.textContent = '(percentage)';
+                        amountLabel.appendChild(span);
+                    }
+                }
+            } else {
+                amountInput.placeholder = '0.00';
+                amountInput.step = '0.01';
+                const hint = amountLabel?.querySelector('.hint');
+                if (hint) hint.remove();
+            }
+        });
+    }
+});
+</script>

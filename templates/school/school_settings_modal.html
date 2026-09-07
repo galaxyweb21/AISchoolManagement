@@ -1,0 +1,730 @@
+<!-- school/templates/school/school_settings_modal.html -->
+{% load static %}
+
+<style>
+    /* ============================================= */
+    /* SCHOOL SETTINGS - MODERN REDESIGN            */
+    /* ============================================= */
+
+    :root {
+        --settings-gold: var(--primary-color, #946B1C);
+        --settings-gold-dark: #7a5a16;
+        --settings-gold-soft: var(--eduai-gold-soft, rgba(148, 107, 28, 0.12));
+        --settings-teal: var(--eduai-signal, #2C7A6D);
+        --settings-teal-soft: var(--eduai-signal-soft, rgba(44, 122, 109, 0.12));
+    }
+
+    /* ============================================= */
+    /* ANIMATIONS                                   */
+    /* ============================================= */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    @keyframes pulseGlow {
+        0%, 100% {
+            box-shadow: 0 0 0 0 rgba(148, 107, 28, 0.2);
+        }
+        50% {
+            box-shadow: 0 0 0 8px rgba(148, 107, 28, 0);
+        }
+    }
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+
+    .animate-fade-up {
+        animation: fadeInUp 0.5s ease forwards;
+    }
+
+    /* ============================================= */
+    /* MODAL HEADER                                 */
+    /* ============================================= */
+    .settings-modal-header {
+        background: linear-gradient(145deg, var(--surface-bg), var(--app-bg));
+        border-bottom: 1px solid var(--surface-border);
+        padding: 1.5rem 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .settings-modal-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--settings-gold), var(--settings-teal));
+    }
+    .settings-modal-header .header-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: linear-gradient(145deg, var(--settings-gold), var(--settings-gold-dark));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+        box-shadow: 0 4px 15px rgba(148, 107, 28, 0.25);
+        transition: transform 0.3s ease;
+    }
+    .settings-modal-header:hover .header-icon {
+        transform: scale(1.05) rotate(-5deg);
+    }
+    .settings-modal-header .header-title {
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: var(--text-primary);
+        margin-bottom: 0.1rem;
+    }
+    .settings-modal-header .header-subtitle {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 0;
+    }
+
+    /* ============================================= */
+    /* LOGO SECTION                                 */
+    /* ============================================= */
+    .logo-section {
+        background: var(--app-bg);
+        border-radius: 14px;
+        padding: 1.5rem;
+        border: 1px solid var(--surface-border);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    .logo-section:hover {
+        border-color: rgba(148, 107, 28, 0.2);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    }
+    .logo-section .logo-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .logo-section .logo-label i {
+        color: var(--settings-gold);
+    }
+
+    .logo-preview-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    .school-logo-preview {
+        width: 120px;
+        height: 120px;
+        border-radius: 16px;
+        object-fit: cover;
+        border: 3px solid var(--surface-border);
+        background: var(--surface-bg);
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+    }
+    .school-logo-preview:hover {
+        transform: scale(1.02);
+        border-color: var(--settings-gold);
+        box-shadow: 0 4px 20px rgba(148, 107, 28, 0.12);
+    }
+    .school-logo-placeholder {
+        width: 120px;
+        height: 120px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--surface-bg);
+        border: 3px dashed var(--surface-border);
+        color: var(--text-muted);
+        font-size: 2.5rem;
+        transition: all 0.3s ease;
+    }
+    .school-logo-placeholder:hover {
+        border-color: var(--settings-gold);
+        color: var(--settings-gold);
+        background: var(--settings-gold-soft);
+    }
+    .logo-upload-area {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    .logo-upload-area .file-input-wrapper {
+        position: relative;
+        overflow: hidden;
+    }
+    .logo-upload-area .file-input-wrapper input[type="file"] {
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+    .logo-upload-area .upload-btn {
+        padding: 0.4rem 1.2rem;
+        border: 1px solid var(--surface-border);
+        border-radius: 8px;
+        background: var(--surface-bg);
+        color: var(--text-primary);
+        font-size: 0.8rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .logo-upload-area .upload-btn:hover {
+        border-color: var(--settings-gold);
+        color: var(--settings-gold);
+        background: var(--settings-gold-soft);
+    }
+    .logo-upload-area .upload-btn i {
+        font-size: 0.9rem;
+    }
+    .logo-upload-area .file-name {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+    .logo-remove-btn {
+        padding: 0.3rem 0.8rem;
+        border: 1px solid rgba(220, 38, 38, 0.2);
+        border-radius: 8px;
+        background: transparent;
+        color: #dc2626;
+        font-size: 0.75rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        cursor: pointer;
+    }
+    .logo-remove-btn:hover {
+        background: rgba(220, 38, 38, 0.08);
+        border-color: #dc2626;
+    }
+    .logo-remove-btn i {
+        font-size: 0.8rem;
+    }
+
+    /* ============================================= */
+    /* FORM FIELDS                                  */
+    /* ============================================= */
+    .form-section-title {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--surface-border);
+        margin-bottom: 1rem;
+    }
+    .form-section-title i {
+        color: var(--settings-gold);
+        margin-right: 0.5rem;
+    }
+
+    .form-field-modern {
+        transition: all 0.3s ease;
+    }
+    .form-field-modern .form-label {
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: var(--text-primary);
+        margin-bottom: 0.3rem;
+    }
+    .form-field-modern .form-label .required {
+        color: #dc2626;
+    }
+    .form-field-modern .form-control {
+        border: 1.5px solid var(--surface-border);
+        border-radius: 10px;
+        padding: 0.6rem 0.9rem;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        background: var(--surface-bg);
+        color: var(--text-primary);
+    }
+    .form-field-modern .form-control:focus {
+        border-color: var(--settings-gold);
+        box-shadow: 0 0 0 3px rgba(148, 107, 28, 0.08);
+        background: var(--surface-bg);
+    }
+    .form-field-modern .form-control[readonly],
+    .form-field-modern .form-control[disabled] {
+        background: var(--app-bg);
+        opacity: 0.7;
+    }
+    .form-field-modern .form-control::placeholder {
+        color: var(--text-muted);
+        opacity: 0.6;
+    }
+    .form-field-modern .form-text {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    /* ============================================= */
+    /* INFO ALERT                                   */
+    /* ============================================= */
+    .info-alert-modern {
+        background: linear-gradient(145deg, rgba(59, 130, 246, 0.04), rgba(148, 107, 28, 0.04));
+        border: 1px solid rgba(59, 130, 246, 0.08);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+    .info-alert-modern .alert-icon {
+        color: #3b82f6;
+        font-size: 1.1rem;
+        margin-top: 0.1rem;
+        flex-shrink: 0;
+    }
+    .info-alert-modern .alert-content {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
+    .info-alert-modern .alert-content strong {
+        color: var(--text-primary);
+    }
+
+    /* ============================================= */
+    /* MODAL FOOTER                                 */
+    /* ============================================= */
+    .settings-modal-footer {
+        background: var(--app-bg);
+        border-top: 1px solid var(--surface-border);
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+    }
+    .btn-cancel {
+        padding: 0.5rem 1.5rem;
+        border: 1px solid var(--surface-border);
+        border-radius: 10px;
+        background: transparent;
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+    }
+    .btn-cancel:hover {
+        background: var(--app-bg);
+        border-color: var(--text-muted);
+        color: var(--text-primary);
+    }
+    .btn-save {
+        padding: 0.5rem 2rem;
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(145deg, var(--settings-gold), var(--settings-gold-dark));
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(148, 107, 28, 0.2);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 25px rgba(148, 107, 28, 0.3);
+    }
+    .btn-save:active {
+        transform: translateY(0);
+    }
+    .btn-save i {
+        font-size: 1rem;
+    }
+
+    /* ============================================= */
+    /* RESPONSIVE                                   */
+    /* ============================================= */
+    @media (max-width: 575.98px) {
+        .settings-modal-header {
+            padding: 1.25rem;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .settings-modal-header .header-icon {
+            width: 36px;
+            height: 36px;
+            font-size: 1rem;
+        }
+        .settings-modal-header .header-title {
+            font-size: 1rem;
+        }
+        .logo-section {
+            padding: 1rem;
+        }
+        .school-logo-preview,
+        .school-logo-placeholder {
+            width: 80px;
+            height: 80px;
+        }
+        .settings-modal-footer {
+            padding: 0.75rem 1.25rem;
+            flex-direction: column-reverse;
+        }
+        .settings-modal-footer .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        .form-field-modern .form-control {
+            font-size: 0.85rem;
+            padding: 0.5rem 0.75rem;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .logo-section .d-flex {
+            flex-direction: column;
+            align-items: center !important;
+            text-align: center;
+        }
+        .logo-upload-area {
+            align-items: center;
+        }
+    }
+
+    /* ============================================= */
+    /* DARK MODE                                    */
+    /* ============================================= */
+    [data-bs-theme="dark"] .settings-modal-header {
+        background: linear-gradient(145deg, var(--surface-bg), var(--app-bg));
+    }
+    [data-bs-theme="dark"] .logo-section {
+        background: var(--surface-bg);
+    }
+    [data-bs-theme="dark"] .school-logo-preview {
+        border-color: var(--surface-border);
+    }
+    [data-bs-theme="dark"] .school-logo-placeholder {
+        border-color: var(--surface-border);
+    }
+    [data-bs-theme="dark"] .info-alert-modern {
+        background: linear-gradient(145deg, rgba(59, 130, 246, 0.08), rgba(148, 107, 28, 0.06));
+    }
+    [data-bs-theme="dark"] .settings-modal-footer {
+        background: var(--surface-bg);
+    }
+    [data-bs-theme="dark"] .btn-cancel {
+        color: var(--text-muted);
+    }
+    [data-bs-theme="dark"] .btn-cancel:hover {
+        background: var(--app-bg);
+        color: var(--text-primary);
+    }
+</style>
+
+<!-- ============================================ -->
+<!-- MODAL HEADER                                 -->
+<!-- ============================================ -->
+<div class="settings-modal-header d-flex align-items-center gap-3">
+    <div class="header-icon">
+        <i class="bi bi-gear"></i>
+    </div>
+    <div>
+        <h5 class="header-title">School Settings</h5>
+        <p class="header-subtitle">Manage your institution's profile and branding</p>
+    </div>
+    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL BODY                                   -->
+<!-- ============================================ -->
+<div class="modal-body p-4">
+    <form method="post" action="{% url 'school:school_settings' %}" enctype="multipart/form-data" id="schoolSettingsForm" class="animate-fade-up">
+        {% csrf_token %}
+
+        <!-- ========================================== -->
+        <!-- LOGO SECTION                               -->
+        <!-- ========================================== -->
+        <div class="logo-section mb-4">
+            <div class="logo-label">
+                <i class="bi bi-image"></i>
+                School Branding
+            </div>
+
+            <div class="d-flex align-items-center gap-4 flex-wrap">
+                <!-- Logo Preview -->
+                <div class="logo-preview-wrapper">
+                    {% if school.logo %}
+                        <img src="{{ school.logo.url }}" alt="{{ school.name }}" class="school-logo-preview" id="logoPreview">
+                    {% else %}
+                        <div class="school-logo-placeholder" id="logoPlaceholder">
+                            <i class="bi bi-building"></i>
+                        </div>
+                        <img src="" alt="" class="school-logo-preview d-none" id="logoPreview">
+                    {% endif %}
+                </div>
+
+                <!-- Upload Controls -->
+                <div class="logo-upload-area">
+                    <div class="file-input-wrapper">
+                        <button type="button" class="upload-btn" onclick="document.getElementById('logoInput').click()">
+                            <i class="bi bi-cloud-upload"></i>
+                            Upload Logo
+                        </button>
+                        <input type="file" name="logo" id="logoInput" accept="image/*">
+                    </div>
+                    <span class="file-name" id="fileName">No file selected</span>
+                    <small class="text-muted" style="font-size: 0.7rem;">
+                        <i class="bi bi-info-circle"></i>
+                        Recommended: 200x200px PNG or JPG (max 2MB)
+                    </small>
+
+                    {% if school.logo %}
+                        <div class="mt-1">
+                            <button type="button" class="logo-remove-btn" id="removeLogoBtn">
+                                <i class="bi bi-trash"></i>
+                                Remove Logo
+                            </button>
+                            <input type="hidden" name="remove_logo" id="removeLogoHidden" value="false">
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- SCHOOL INFORMATION                         -->
+        <!-- ========================================== -->
+        <div class="form-section-title">
+            <i class="bi bi-building"></i>
+            Institution Information
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12 form-field-modern">
+                <label class="form-label">
+                    Institution Name <span class="required">*</span>
+                </label>
+                <input type="text" name="name" class="form-control" value="{{ school.name }}" placeholder="e.g., Greenwood International School" required>
+            </div>
+
+            <div class="col-md-6 form-field-modern">
+                <label class="form-label">
+                    Contact Email <span class="required">*</span>
+                </label>
+                <input type="email" name="contact_email" class="form-control" value="{{ school.contact_email }}" placeholder="admin@school.edu" required>
+            </div>
+
+            <div class="col-md-6 form-field-modern">
+                <label class="form-label">
+                    Phone Number <span class="required">*</span>
+                </label>
+                <input type="text" name="phone_number" class="form-control" value="{{ school.phone_number }}" placeholder="+233 XX XXX XXXX" required>
+            </div>
+
+            <div class="col-12 form-field-modern">
+                <label class="form-label">
+                    Address <span class="required">*</span>
+                </label>
+                <textarea name="address" class="form-control" rows="3" placeholder="Enter full school address" required>{{ school.address }}</textarea>
+            </div>
+
+            <div class="col-12 form-field-modern">
+                <label class="form-label">
+                    Subdomain / School Code
+                </label>
+                <input type="text" class="form-control" value="{{ school.subdomain }}" readonly disabled>
+                <div class="form-text">
+                    <i class="bi bi-info-circle"></i>
+                    Used for invoice/receipt numbering. Cannot be changed after creation.
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- INFO ALERT                                 -->
+        <!-- ========================================== -->
+        <div class="info-alert-modern">
+            <div class="alert-icon">
+                <i class="bi bi-info-circle-fill"></i>
+            </div>
+            <div class="alert-content">
+                <strong>Branding Tip:</strong>
+                Your school logo will appear on invoices, report cards, certificates,
+                and other official documents. For best results, use a transparent PNG with a minimum size of 200x200px.
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL FOOTER                                 -->
+<!-- ============================================ -->
+<div class="settings-modal-footer">
+    <button type="button" class="btn-cancel" data-bs-dismiss="modal">
+        <i class="bi bi-x-circle me-1"></i>
+        Cancel
+    </button>
+    <button type="submit" class="btn-save" form="schoolSettingsForm">
+        <i class="bi bi-check2-circle"></i>
+        Save Changes
+    </button>
+</div>
+
+<!-- ============================================ -->
+<!-- SCRIPT                                       -->
+<!-- ============================================ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const logoInput = document.getElementById('logoInput');
+    const logoPreview = document.getElementById('logoPreview');
+    const logoPlaceholder = document.getElementById('logoPlaceholder');
+    const fileName = document.getElementById('fileName');
+    const removeLogoBtn = document.getElementById('removeLogoBtn');
+    const removeLogoHidden = document.getElementById('removeLogoHidden');
+
+    // ==========================================================
+    // PREVIEW LOGO ON FILE SELECTION
+    // ==========================================================
+    if (logoInput) {
+        logoInput.addEventListener('change', function(e) {
+            const file = this.files[0];
+            if (file) {
+                // Update file name
+                if (fileName) {
+                    fileName.textContent = file.name;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    if (logoPreview) {
+                        logoPreview.src = event.target.result;
+                        logoPreview.classList.remove('d-none');
+                    }
+                    if (logoPlaceholder) {
+                        logoPlaceholder.classList.add('d-none');
+                    }
+                    // If remove logo was previously checked, uncheck it
+                    if (removeLogoHidden) {
+                        removeLogoHidden.value = 'false';
+                    }
+                    if (removeLogoBtn) {
+                        removeLogoBtn.style.display = 'none';
+                    }
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Reset file name
+                if (fileName) {
+                    fileName.textContent = 'No file selected';
+                }
+                // Restore original logo if exists
+                {% if school.logo %}
+                    if (logoPreview) {
+                        logoPreview.src = "{{ school.logo.url }}";
+                        logoPreview.classList.remove('d-none');
+                    }
+                    if (logoPlaceholder) {
+                        logoPlaceholder.classList.add('d-none');
+                    }
+                    if (removeLogoBtn) {
+                        removeLogoBtn.style.display = 'inline-flex';
+                    }
+                {% else %}
+                    if (logoPreview) {
+                        logoPreview.classList.add('d-none');
+                        logoPreview.src = '';
+                    }
+                    if (logoPlaceholder) {
+                        logoPlaceholder.classList.remove('d-none');
+                    }
+                {% endif %}
+            }
+        });
+    }
+
+    // ==========================================================
+    // HANDLE REMOVE LOGO
+    // ==========================================================
+    if (removeLogoBtn && removeLogoHidden) {
+        removeLogoBtn.addEventListener('click', function() {
+            const isRemoving = removeLogoHidden.value === 'true';
+            if (isRemoving) {
+                // Undo remove
+                removeLogoHidden.value = 'false';
+                removeLogoBtn.innerHTML = '<i class="bi bi-trash"></i> Remove Logo';
+                removeLogoBtn.style.color = '#dc2626';
+                {% if school.logo %}
+                    if (logoPreview) {
+                        logoPreview.src = "{{ school.logo.url }}";
+                        logoPreview.classList.remove('d-none');
+                    }
+                    if (logoPlaceholder) {
+                        logoPlaceholder.classList.add('d-none');
+                    }
+                {% endif %}
+            } else {
+                // Confirm remove
+                if (confirm('Are you sure you want to remove the school logo?')) {
+                    removeLogoHidden.value = 'true';
+                    removeLogoBtn.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Undo Remove';
+                    removeLogoBtn.style.color = '#3b82f6';
+                    if (logoPreview) {
+                        logoPreview.classList.add('d-none');
+                        logoPreview.src = '';
+                    }
+                    if (logoPlaceholder) {
+                        logoPlaceholder.classList.remove('d-none');
+                    }
+                    if (logoInput) {
+                        logoInput.value = '';
+                    }
+                    if (fileName) {
+                        fileName.textContent = 'No file selected';
+                    }
+                }
+            }
+        });
+    }
+
+    // ==========================================================
+    // HANDLE MODAL CLOSE - CLEANUP
+    // ==========================================================
+    const modal = document.getElementById('schoolSettingsModal');
+    if (modal) {
+        modal.addEventListener('hidden.bs.modal', function() {
+            // Clean up any stuck backdrops
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => backdrop.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        });
+    }
+});
+</script>

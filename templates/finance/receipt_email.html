@@ -1,0 +1,57 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Payment Receipt</title></head>
+<body style="margin:0; padding:0; background:#f4f1ea; font-family: Arial, Helvetica, sans-serif; color:#333333;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1ea; padding: 24px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:8px; overflow:hidden;">
+                    <tr>
+                        <td style="background:#2C7A6D; padding:18px 24px;">
+                            <span style="color:#ffffff; font-size:18px; font-weight:bold;">{{ school.name }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:24px;">
+                            <p style="margin:0 0 12px 0;">Dear {{ parent_name }},</p>
+                            <p style="margin:0 0 16px 0;">
+                                We confirm receipt of <strong>GH&cent; {{ payment.amount|floatformat:2 }}</strong>
+                                for <strong>{{ student_name }}</strong> ({{ student.admission_number }}),
+                                paid via {{ payment.get_method_display }} on {{ payment.paid_at|date:"d M Y" }}.
+                            </p>
+
+                            <table role="presentation" width="100%" cellpadding="6" cellspacing="0" style="border:1px solid #eeeeee; margin-bottom:16px;">
+                                <tr>
+                                    <td style="color:#666666; font-size:13px;">Receipt No.</td>
+                                    <td style="font-size:13px; text-align:right;"><strong>{{ payment.receipt_number }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td style="color:#666666; font-size:13px;">Invoice</td>
+                                    <td style="font-size:13px; text-align:right;">{{ invoice.invoice_number }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:#666666; font-size:13px;">Amount Paid</td>
+                                    <td style="font-size:13px; text-align:right; color:#2C7A6D; font-weight:bold;">GH&cent; {{ payment.amount|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:#666666; font-size:13px;">Balance Remaining</td>
+                                    <td style="font-size:13px; text-align:right; {% if balance_due > 0 %}color:#b02a37;{% else %}color:#2C7A6D;{% endif %} font-weight:bold;">GH&cent; {{ balance_due|floatformat:2 }}</td>
+                                </tr>
+                            </table>
+
+                            <p style="margin:0 0 4px 0; font-size:13px; color:#666666;">
+                                The official receipt is attached to this email as a PDF for your records.
+                            </p>
+                            <p style="margin:20px 0 0 0; font-size:13px;">Thank you,<br>{{ school.name }}</p>
+                        </td>
+                    </tr>
+                </table>
+                <p style="font-size:11px; color:#999999; margin-top:14px;">
+                    This is an automated message from {{ school.name }}'s student management system.
+                </p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -1,0 +1,185 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Bulk Payslips - {{ period.name }}</title>
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 11px;
+            margin: 20px;
+            color: #333;
+            background: #fff;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+        .payslip-container {
+            max-width: 800px;
+            margin: 0 auto 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #2C7A6D;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 20px;
+            color: #946B1C;
+            margin: 0;
+        }
+        .header h4 {
+            font-size: 16px;
+            color: #333;
+            margin: 5px 0;
+        }
+        .header .subtitle {
+            color: #666;
+            font-size: 11px;
+        }
+        .staff-info {
+            margin-bottom: 15px;
+        }
+        .staff-info table {
+            width: 100%;
+        }
+        .staff-info td {
+            padding: 3px 8px;
+        }
+        .staff-info td:first-child {
+            font-weight: bold;
+            width: 120px;
+        }
+        .section-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 15px 0 8px 0;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+        }
+        table td {
+            padding: 4px 8px;
+            border-bottom: 1px solid #eee;
+        }
+        table tr:last-child td {
+            border-bottom: none;
+        }
+        .total-row {
+            font-weight: bold;
+            border-top: 2px solid #333 !important;
+        }
+        .net-pay {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: center;
+            margin: 12px 0;
+            border-radius: 4px;
+        }
+        .net-pay h2 {
+            color: #2C7A6D;
+            font-size: 22px;
+            margin: 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+            color: #999;
+            font-size: 9px;
+        }
+        .text-success { color: #2C7A6D; }
+        .text-danger { color: #dc3545; }
+        .text-muted { color: #666; }
+        .fw-bold { font-weight: bold; }
+        .text-gold { color: #946B1C; }
+        .no-print { display: none; }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align:center; margin-bottom:20px;">
+        <button onclick="window.print()" style="padding:10px 30px; background:#946B1C; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:14px;">
+            <i class="bi bi-printer"></i> Print All Payslips
+        </button>
+        <button onclick="window.close()" style="padding:10px 30px; background:#6c757d; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:14px; margin-left:10px;">
+            Close
+        </button>
+        <p style="margin-top:10px; color:#666; font-size:12px;">
+            {{ payslips|length }} payslip(s) ready for printing
+        </p>
+    </div>
+
+    {% for payslip in payslips %}
+    <div class="payslip-container {% if not forloop.last %}page-break{% endif %}">
+        <div class="header">
+            <h1>{{ payslip.school.name }}</h1>
+            <h4>PAYSLIP</h4>
+            <div class="subtitle">
+                {{ payslip.payroll_run.payroll_period.name }}
+                &middot; {{ payslip.generated_at|date:"F d, Y" }}
+            </div>
+        </div>
+
+        <div class="staff-info">
+            <table>
+                <tr><td>Staff Name</td><td>{{ payslip.payroll_run.staff.user.get_full_name }}</td></tr>
+                <tr><td>Staff ID</td><td>{{ payslip.payroll_run.staff.staff_id }}</td></tr>
+                <tr><td>Position</td><td>{{ payslip.payroll_run.staff.get_staff_position_display }}</td></tr>
+                <tr><td>Department</td><td>{{ payslip.payroll_run.staff.department|default:"N/A" }}</td></tr>
+                <tr><td>Days Worked</td><td>{{ payslip.payroll_run.days_worked }}</td></tr>
+                <tr><td>Days Absent</td><td>{{ payslip.payroll_run.days_absent }}</td></tr>
+            </table>
+        </div>
+
+        <div class="section-title">Earnings</div>
+        <table>
+            <tr><td>Basic Salary</td><td align="right">₵{{ payslip.payroll_run.basic_salary|floatformat:2 }}</td></tr>
+            {% for name, amount in payslip.earnings.items %}
+            <tr><td>{{ name }}</td><td align="right">₵{{ amount|floatformat:2 }}</td></tr>
+            {% endfor %}
+            <tr class="total-row"><td>Total Earnings</td><td align="right" class="text-success">₵{{ payslip.payroll_run.gross_pay|floatformat:2 }}</td></tr>
+        </table>
+
+        <div class="section-title">Deductions</div>
+        <table>
+            {% for name, amount in payslip.deductions.items %}
+            <tr><td>{{ name }}</td><td align="right">₵{{ amount|floatformat:2 }}</td></tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-muted" style="text-align:center;">No deductions</td></tr>
+            {% endfor %}
+            <tr class="total-row"><td>Total Deductions</td><td align="right" class="text-danger">₵{{ payslip.payroll_run.total_deductions|floatformat:2 }}</td></tr>
+        </table>
+
+        <div class="net-pay">
+            <div class="text-muted">Net Pay</div>
+            <h2>₵{{ payslip.payroll_run.net_pay|floatformat:2 }}</h2>
+            <div class="text-muted" style="font-size:10px;">Amount payable to staff</div>
+        </div>
+
+        <div class="footer">
+            <p>This is a computer-generated payslip. No signature required.</p>
+            <p>Generated on {{ payslip.generated_at|date:"F d, Y \a\t H:i" }}</p>
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center" style="padding:50px;">
+        <h4>No payslips selected for printing.</h4>
+        <p class="text-muted">Please go back and select at least one staff member with a generated payslip.</p>
+        <button onclick="window.close()" style="padding:10px 30px; background:#6c757d; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:14px; margin-top:10px;">
+            Close
+        </button>
+    </div>
+    {% endfor %}
+</body>
+</html>

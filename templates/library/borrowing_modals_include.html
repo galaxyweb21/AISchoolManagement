@@ -1,0 +1,209 @@
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+</style>
+
+<!-- =========================================== -->
+<!-- DYNAMIC MASTER BORROWING MODAL              -->
+<!-- =========================================== -->
+<div class="modal fade" id="borrowingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="borrowingModalTitle">Loading...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="borrowingModalContent">
+                <!-- Injected Content -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================== -->
+<!-- SHARED JAVASCRIPT FOR BORROWING MODALS      -->
+<!-- =========================================== -->
+<script>
+// ============================================================
+// Lives here (in the parent page that loads normally) rather than
+// in borrowing_form_modal.html (which is fetched via AJAX and
+// injected with innerHTML -- script tags inside injected HTML never
+// execute). Declared at the top level of this script so it becomes
+// a global function, which is required for the inline
+// onchange="switchBorrowerDropdown()" attribute on the injected
+// <select> to be able to find and call it.
+// ============================================================
+function switchBorrowerDropdown() {
+    const borrowerType = document.getElementById('borrowerType');
+    const studentSelect = document.getElementById('studentSelect');
+    const staffSelect = document.getElementById('staffSelect');
+    const borrowerLabel = document.getElementById('borrowerLabel');
+
+    // Guard: only run when the borrowing form is actually in the DOM
+    if (!borrowerType || !studentSelect || !staffSelect || !borrowerLabel) {
+        return;
+    }
+
+    const type = borrowerType.value;
+
+    // Reset both first
+    studentSelect.classList.add('d-none');
+    studentSelect.disabled = true;
+    studentSelect.required = false;
+
+    staffSelect.classList.add('d-none');
+    staffSelect.disabled = true;
+    staffSelect.required = false;
+
+    if (type === 'STUDENT') {
+        studentSelect.classList.remove('d-none');
+        studentSelect.disabled = false;
+        studentSelect.required = true;
+        studentSelect.value = '';
+        borrowerLabel.innerHTML = 'Select Student <span class="text-danger">*</span>';
+    } else if (type === 'STAFF') {
+        staffSelect.classList.remove('d-none');
+        staffSelect.disabled = false;
+        staffSelect.required = true;
+        staffSelect.value = '';
+        borrowerLabel.innerHTML = 'Select Staff <span class="text-danger">*</span>';
+    } else {
+        borrowerLabel.innerHTML = 'Select Borrower <span class="text-danger">*</span>';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('borrowingModal');
+    const modalTitle = document.getElementById('borrowingModalTitle');
+    const modalContent = document.getElementById('borrowingModalContent');
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const action = button.getAttribute('data-action');
+            const url = button.getAttribute('data-url');
+
+            if (action === 'create') {
+                modalTitle.innerHTML = '<i class="bi bi-plus-circle text-gold me-2"></i>New Borrowing';
+            } else if (action === 'return') {
+                modalTitle.innerHTML = '<i class="bi bi-check2-circle text-teal me-2"></i>Return Book';
+            } else if (action === 'lost') {
+                modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-2"></i>Mark as Lost';
+            }
+
+            modalContent.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => response.text())
+            .then(html => {
+                modalContent.innerHTML = html;
+                bindFormSubmit();
+                switchBorrowerDropdown();
+            })
+            .catch(err => {
+                modalContent.innerHTML = `<div class="alert alert-danger">Error loading form.</div>`;
+            });
+        });
+
+        function bindFormSubmit() {
+            const form = modalContent.querySelector('form');
+            if (!form) return;
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
+                submitBtn.disabled = true;
+
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const modalInstance = bootstrap.Modal.getInstance(modal);
+                        modalInstance.hide();
+                        window.location.reload();
+                    } else {
+                        // Show error inline without losing the form
+                        const existingForm = modalContent.querySelector('form');
+                        if (existingForm) {
+                            const oldAlert = existingForm.querySelector('.alert-danger');
+                            if (oldAlert) oldAlert.remove();
+
+                            const errorAlert = document.createElement('div');
+                            errorAlert.className = 'alert alert-danger border-0 shadow-sm rounded-4 mb-3';
+                            errorAlert.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.error}`;
+                            existingForm.insertBefore(errorAlert, existingForm.firstChild);
+                        } else {
+                            modalContent.innerHTML = `
+                                <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.error}
+                                </div>
+                                <div class="mt-3 text-end">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            `;
+                        }
+                    }
+                })
+                .catch(err => {
+                    modalContent.innerHTML = `
+                        <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> An unexpected error occurred.
+                        </div>
+                        <div class="mt-3 text-end">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    `;
+                })
+                .finally(() => {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                });
+            });
+        }
+    }
+});
+</script>

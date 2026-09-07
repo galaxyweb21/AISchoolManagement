@@ -1,0 +1,516 @@
+<!-- templates/ai_engine/ghana_education_home.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Ghana Education Knowledge Base{% endblock %}
+
+{% block content %}
+<style>
+    /* Theme-Aware Response Styling */
+    .copilot-response {
+        background: var(--bs-tertiary-bg) !important;
+        border-radius: 12px;
+        padding: 1.5rem;
+        min-height: 150px;
+        max-height: 500px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-size: 0.95rem;
+        line-height: 1.8;
+        color: var(--bs-body-color) !important;
+        border: 1px solid var(--bs-border-color);
+        transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    }
+    [data-bs-theme="dark"] .copilot-response {
+        background: #1a1a2e !important;
+        color: #e2e8f0 !important;
+        border-color: #2d3748;
+    }
+    [data-bs-theme="dark"] .copilot-response h1,
+    [data-bs-theme="dark"] .copilot-response h2,
+    [data-bs-theme="dark"] .copilot-response h3 {
+        color: var(--primary-color, #946B1C) !important;
+    }
+    [data-bs-theme="dark"] .copilot-response strong {
+        color: var(--primary-color, #946B1C) !important;
+    }
+    [data-bs-theme="dark"] .copilot-response code {
+        background: #2d3748 !important;
+        color: #e2e8f0 !important;
+    }
+    [data-bs-theme="dark"] .copilot-response pre {
+        background: #0d0d1a !important;
+        color: #e2e8f0 !important;
+        border-color: #2d3748;
+    }
+    [data-bs-theme="dark"] .copilot-response blockquote {
+        border-left-color: var(--primary-color, #946B1C) !important;
+        color: #a0aec0 !important;
+    }
+    [data-bs-theme="dark"] .copilot-response .divider {
+        border-top-color: #2d3748 !important;
+    }
+
+    [data-bs-theme="light"] .copilot-response {
+        background: #f8f9fa !important;
+        color: #1a1a2e !important;
+        border-color: #dee2e6;
+    }
+    [data-bs-theme="light"] .copilot-response h1,
+    [data-bs-theme="light"] .copilot-response h2,
+    [data-bs-theme="light"] .copilot-response h3 {
+        color: var(--primary-color, #946B1C) !important;
+    }
+    [data-bs-theme="light"] .copilot-response strong {
+        color: var(--primary-color, #946B1C) !important;
+    }
+    [data-bs-theme="light"] .copilot-response code {
+        background: #e9ecef !important;
+        color: #1a1a2e !important;
+    }
+    [data-bs-theme="light"] .copilot-response pre {
+        background: #1a1a2e !important;
+        color: #e2e8f0 !important;
+    }
+    [data-bs-theme="light"] .copilot-response blockquote {
+        border-left-color: var(--primary-color, #946B1C) !important;
+        color: #6c757d !important;
+    }
+
+    .copilot-response h1, .copilot-response h2, .copilot-response h3 {
+        font-weight: 700;
+        margin-top: 1.2rem;
+        margin-bottom: 0.6rem;
+    }
+    .copilot-response h1 { font-size: 1.4rem; }
+    .copilot-response h2 { font-size: 1.2rem; }
+    .copilot-response h3 { font-size: 1.05rem; }
+    .copilot-response ul, .copilot-response ol {
+        padding-left: 1.5rem;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .copilot-response li {
+        margin-bottom: 0.3rem;
+    }
+    .copilot-response p {
+        margin-bottom: 0.7rem;
+    }
+    .copilot-response strong {
+        font-weight: 700;
+    }
+    .copilot-response code {
+        padding: 0.1rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-family: 'Courier New', monospace;
+    }
+    .copilot-response pre {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-size: 0.85rem;
+        margin: 0.5rem 0;
+        font-family: 'Courier New', monospace;
+        border: 1px solid var(--bs-border-color);
+    }
+    .copilot-response blockquote {
+        padding-left: 1rem;
+        margin: 0.5rem 0;
+        font-style: italic;
+    }
+    .copilot-response .badge-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 0.5rem 0;
+    }
+    .copilot-response .badge-list .badge {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+    }
+    .copilot-response .divider {
+        border: 0;
+        border-top: 2px dashed var(--bs-border-color);
+        margin: 0.75rem 0;
+    }
+    .copilot-response .emoji {
+        font-size: 1.1rem;
+    }
+    .copilot-response .source-link {
+        display: inline-block;
+        margin-top: 0.25rem;
+        font-size: 0.8rem;
+        text-decoration: none;
+    }
+    .copilot-response .source-link:hover {
+        text-decoration: underline;
+    }
+    .copilot-response .response-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    .copilot-response .response-header .badge {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .copilot-loading {
+        display: none;
+        text-align: center;
+        padding: 2rem 0;
+    }
+    .copilot-loading .spinner-border {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+    .copilot-loading p {
+        margin-top: 0.75rem;
+        color: var(--bs-secondary-color);
+    }
+    .copilot-error {
+        background: var(--bs-danger-bg-subtle);
+        color: var(--bs-danger);
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--bs-danger-border-subtle);
+    }
+    .copilot-success {
+        background: var(--bs-success-bg-subtle);
+        color: var(--bs-success);
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--bs-success-border-subtle);
+    }
+    .card-hover {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card-hover:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.08) !important;
+    }
+    .modal-content {
+        background: var(--bs-body-bg);
+        color: var(--bs-body-color);
+    }
+    .modal-header {
+        border-bottom-color: var(--bs-border-color);
+    }
+    .modal-footer {
+        border-top-color: var(--bs-border-color);
+    }
+    .bg-light-custom {
+        background: var(--bs-tertiary-bg);
+    }
+    [data-bs-theme="dark"] .modal-content {
+        background: #1a1a2e;
+        color: #e2e8f0;
+    }
+    [data-bs-theme="dark"] .bg-light-custom {
+        background: #2d3748;
+    }
+    [data-bs-theme="dark"] .form-control {
+        background: #2d3748;
+        color: #e2e8f0;
+        border-color: #4a5568;
+    }
+    [data-bs-theme="dark"] .form-control:focus {
+        background: #2d3748;
+        color: #e2e8f0;
+    }
+    [data-bs-theme="dark"] .btn-outline-secondary {
+        color: #a0aec0;
+        border-color: #4a5568;
+    }
+    [data-bs-theme="dark"] .btn-outline-secondary:hover {
+        background: #4a5568;
+        color: #e2e8f0;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <h2 class="fw-bold mb-2">
+                        <i class="bi bi-book text-primary me-2" style="color: var(--primary-color, #946B1C) !important;"></i>
+                        Ghana Education Knowledge Base
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Comprehensive reference for Ghana's education system, curriculum, policies, and best practices.
+                    </p>
+                    <small class="text-muted">{{ total_topics }} topics available</small>
+                </div>
+                <div>
+                    <form method="get" action="{% url 'ai_engine:ghana_education_search' %}" class="d-flex gap-2">
+                        <input type="text" name="q" class="form-control" placeholder="Search topics..." value="{{ request.GET.q|default:'' }}">
+                        <button type="submit" class="btn" style="background: var(--primary-color, #946B1C); color: #fff; border-color: var(--primary-color, #946B1C);">
+                            <i class="bi bi-search me-1"></i>Search
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Topics Grid -->
+    <div class="row g-4">
+        {% for domain in domains %}
+        <div class="col-md-4 col-lg-3">
+            <a href="{% url 'ai_engine:ghana_education_topic_detail' domain.slug %}" class="text-decoration-none">
+                <div class="card border-0 shadow-sm rounded-4 h-100 card-hover">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="bg-primary-subtle text-primary p-2 rounded-3" style="background: var(--eduai-gold-soft, rgba(148,107,28,0.1)) !important; color: var(--primary-color, #946B1C) !important;">
+                                <i class="bi bi-book fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1">{{ domain.label }}</h6>
+                                <small class="text-muted">{{ domain.topics|length }} topics</small>
+                            </div>
+                        </div>
+                        {% if domain.topics %}
+                        <ul class="list-unstyled mt-2 small text-muted">
+                            {% for topic in domain.topics|slice:":3" %}
+                            <li><i class="bi bi-check-circle-fill me-1" style="font-size: 0.6rem; color: var(--eduai-signal, #2C7A6D);"></i> {{ topic }}</li>
+                            {% endfor %}
+                            {% if domain.topics|length > 3 %}
+                            <li><small class="text-muted">+{{ domain.topics|length|add:"-3" }} more</small></li>
+                            {% endif %}
+                        </ul>
+                        {% endif %}
+                        {% if domain.subdomains %}
+                        <div class="mt-2">
+                            {% for sub in domain.subdomains|slice:":3" %}
+                            <span class="badge bg-light text-muted border me-1">{{ sub }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <i class="bi bi-inbox fs-1 text-muted"></i>
+            <p class="text-muted mt-2">No topics available.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-lightning-fill text-warning me-2"></i>Quick Actions</h6>
+                    <div class="d-flex flex-wrap gap-3">
+                        <button class="btn" style="border-color: var(--primary-color, #946B1C); color: var(--primary-color, #946B1C); background: transparent;" onclick="openCopilotModal()">
+                            <i class="bi bi-stars me-1"></i>Ask Copilot About Ghana Education
+                        </button>
+                        <a href="{% url 'ai_engine:ghana_education_search' %}" class="btn" style="border-color: var(--eduai-signal, #2C7A6D); color: var(--eduai-signal, #2C7A6D); background: transparent;">
+                            <i class="bi bi-search me-1"></i>Search All Topics
+                        </a>
+                        <button class="btn" style="border-color: #3b82f6; color: #3b82f6; background: transparent;" onclick="window.print()">
+                            <i class="bi bi-printer me-1"></i>Print Reference
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Copilot Modal -->
+<div class="modal fade" id="copilotModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-stars text-primary me-2" style="color: var(--primary-color, #946B1C) !important;"></i>Ask AI Copilot
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Topic Context</label>
+                    <div class="bg-light-custom rounded-3 p-2">
+                        <span class="badge" style="background: var(--primary-color, #946B1C); color: #fff;" id="copilotTopicBadge">Ghana Education</span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Your Question</label>
+                    <textarea id="copilotQuestionInput" class="form-control" rows="4" placeholder="Ask anything about Ghana Education system, curriculum, policies, or best practices..."></textarea>
+                    <small class="text-muted">Press Shift+Enter for new line, Enter to send</small>
+                </div>
+                <div class="mb-3" id="copilotResponseArea" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-semibold mb-0">Response</label>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" onclick="copyResponse()">
+                                <i class="bi bi-clipboard me-1"></i>Copy
+                            </button>
+                            <button class="btn btn-sm" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" onclick="downloadResponse()">
+                                <i class="bi bi-download me-1"></i>Download
+                            </button>
+                        </div>
+                    </div>
+                    <div id="copilotResponseContent" class="copilot-response"></div>
+                </div>
+                <div id="copilotLoading" class="copilot-loading">
+                    <div class="spinner-border text-primary" role="status" style="color: var(--primary-color, #946B1C) !important;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">AI Copilot is thinking...</p>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn" id="copilotSendBtn" onclick="sendCopilotQuestion()" style="background: var(--primary-color, #946B1C); color: #fff; border-color: var(--primary-color, #946B1C);">
+                    <i class="bi bi-send me-1"></i>Ask Copilot
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openCopilotModal() {
+    const modal = new bootstrap.Modal(document.getElementById('copilotModal'));
+    document.getElementById('copilotTopicBadge').textContent = 'Ghana Education';
+    document.getElementById('copilotQuestionInput').value = '';
+    document.getElementById('copilotResponseArea').style.display = 'none';
+    document.getElementById('copilotLoading').style.display = 'none';
+    document.getElementById('copilotResponseContent').innerHTML = '';
+    modal.show();
+    setTimeout(() => {
+        document.getElementById('copilotQuestionInput').focus();
+    }, 500);
+}
+
+function formatResponse(text) {
+    if (!text) return '<p class="text-muted">No response received.</p>';
+
+    let html = text;
+    html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    html = html.replace(/^(\d+)\.\s/gm, '<li>$1.</li>');
+    html = html.replace(/^[-•]\s/gm, '<li>');
+    html = html.replace(/<\/li>\n<li>/g, '</li><li>');
+    html = html.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>');
+    html = html.replace(/^---$/gm, '<hr class="divider">');
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = html.replace(/\n/g, '<br>');
+    if (!html.startsWith('<')) {
+        html = '<p>' + html + '</p>';
+    }
+    return html;
+}
+
+function sendCopilotQuestion() {
+    const question = document.getElementById('copilotQuestionInput').value.trim();
+    if (!question) {
+        alert('Please enter a question.');
+        return;
+    }
+
+    const sendBtn = document.getElementById('copilotSendBtn');
+    const loading = document.getElementById('copilotLoading');
+    const responseArea = document.getElementById('copilotResponseArea');
+    const responseContent = document.getElementById('copilotResponseContent');
+
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Sending...';
+    loading.style.display = 'block';
+    responseArea.style.display = 'none';
+    responseContent.innerHTML = '';
+
+    fetch('{% url "ai_engine:ghana_education_ask_copilot" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            topic_slug: 'ghana_education',
+            question: question
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        loading.style.display = 'none';
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="bi bi-send me-1"></i>Ask Copilot';
+
+        if (data.success) {
+            const formatted = formatResponse(data.answer || 'No response received.');
+            responseContent.innerHTML = formatted;
+            responseArea.style.display = 'block';
+            responseArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            responseContent.innerHTML = `<div class="copilot-error">⚠️ Error: ${data.error || 'Failed to get response. Please try again.'}</div>`;
+            responseArea.style.display = 'block';
+        }
+    })
+    .catch(error => {
+        loading.style.display = 'none';
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="bi bi-send me-1"></i>Ask Copilot';
+        responseContent.innerHTML = `<div class="copilot-error">⚠️ Network error. Please check your connection and try again.</div>`;
+        responseArea.style.display = 'block';
+    });
+}
+
+function copyResponse() {
+    const content = document.getElementById('copilotResponseContent');
+    const text = content.innerText || content.textContent;
+    if (text) {
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = event.target.closest('button');
+            const original = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check-circle-fill me-1 text-success"></i>Copied!';
+            setTimeout(() => { btn.innerHTML = original; }, 2000);
+        });
+    }
+}
+
+function downloadResponse() {
+    const content = document.getElementById('copilotResponseContent');
+    const text = content.innerText || content.textContent;
+    if (text) {
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `copilot_response_${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('copilotQuestionInput');
+    if (input) {
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendCopilotQuestion();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

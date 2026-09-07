@@ -1,0 +1,203 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% block page_title %}Ghana Terminal Results Centre{% endblock %}
+{% block content %}
+<style>
+:root { --v82-gold: var(--eduai-gold, #946B1C); --v82-gold-soft: var(--eduai-gold-soft, rgba(148,107,28,.16)); --v82-signal: var(--eduai-signal, #2C7A6D); --v82-signal-soft: var(--eduai-signal-soft, rgba(44,122,109,.16)); --v82-surface: var(--surface-bg, #fff); --v82-app: var(--app-bg, #F7F4EC); --v82-border: var(--surface-border, #E7E1D3); --v82-text: var(--text-primary, #1F2A28); --v82-muted: var(--text-muted, #6B7570); }
+.results-hero{background:var(--v82-surface);color:var(--v82-text);border:1px solid var(--v82-border);border-left:4px solid var(--v82-gold);border-radius:18px;padding:24px;box-shadow:0 4px 14px rgba(0,0,0,.04)}
+.results-hero .eyebrow{color:var(--v82-gold);letter-spacing:.08em}
+.results-card{background:var(--v82-surface);color:var(--v82-text);border:1px solid var(--v82-border)!important;border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.04)}
+.results-table th{font-size:.70rem;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;background:var(--v82-app);color:var(--v82-muted);border-bottom-color:var(--v82-border)}
+.results-table td{vertical-align:middle;border-color:var(--v82-border)}
+.mark-input{min-width:100px;max-width:125px}.final-cell{font-weight:800;min-width:80px}
+.question-card{border:1px solid var(--v82-border);border-radius:14px;padding:14px;margin-bottom:10px;background:var(--v82-surface)}
+.score-help{font-size:.78rem;background:var(--v82-signal-soft);color:var(--v82-text);border:1px solid rgba(44,122,109,.18)}
+.sticky-actions{position:sticky;bottom:0;z-index:10;background:var(--v82-surface);border-top:1px solid var(--v82-border);padding:12px 0}
+.v82-brand-btn{background:var(--v82-gold)!important;border-color:var(--v82-gold)!important;color:#fff!important}.v82-brand-btn:hover,.v82-brand-btn:focus{background:#7f5b17!important;border-color:#7f5b17!important;color:#fff!important}
+.v82-outline-btn{border-color:var(--v82-gold)!important;color:var(--v82-gold)!important;background:transparent!important}.v82-outline-btn:hover{background:var(--v82-gold-soft)!important;color:var(--v82-gold)!important}
+.v82-signal-badge{background:var(--v82-signal-soft);color:var(--v82-signal);border:1px solid rgba(44,122,109,.18)}
+.v82-class-banner{display:flex;align-items:center;gap:12px;background:var(--v82-gold-soft);border:1px solid rgba(148,107,28,.22);border-radius:14px;padding:12px 14px;color:var(--v82-text)}
+.v82-class-banner .icon{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--v82-gold);color:#fff}
+.v82-class-banner .label{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--v82-muted);font-weight:700}.v82-class-banner .value{font-weight:800}
+.modal-content{background:var(--v82-surface);color:var(--v82-text);border-color:var(--v82-border)!important}.modal-header,.modal-footer{border-color:var(--v82-border)!important}
+.btn-light{background:var(--v82-app)!important;border-color:var(--v82-border)!important;color:var(--v82-text)!important}
+</style>
+
+<div class="results-hero mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+  <div>
+    <div class="small text-uppercase fw-bold eyebrow">Ghana terminal assessment</div>
+    <h3 class="fw-bold mb-1">Terminal Results & Examination Management</h3>
+    <div class="text-muted">Enter the official Class Score /30 and End-of-Term Examination /70. Exams may be generated online, printed, manually written or manually marked.</div>
+  </div>
+  {% if can_create %}<button class="btn v82-brand-btn fw-semibold" data-bs-toggle="modal" data-bs-target="#assessmentModal"><i class="bi bi-plus-circle me-1"></i>New Assessment</button>{% endif %}
+</div>
+
+{% if is_class_teacher and selected_class %}
+<div class="v82-class-banner mb-4">
+  <div class="icon"><i class="bi bi-person-workspace"></i></div>
+  <div><div class="label">Your assigned class</div><div class="value">{{ selected_class.name }}{% if selected_class.grade_level %} — {{ selected_class.grade_level.name }}{% endif %}</div></div>
+  <span class="badge v82-signal-badge ms-auto">Class Teacher</span>
+</div>
+{% endif %}
+
+<form method="get" id="filterForm" class="card results-card mb-4">
+  {% csrf_token %}
+  <div class="card-body p-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-lg-3 col-md-6">
+        <label class="form-label small fw-semibold">Academic Term</label>
+        <select name="term_id" class="form-select" onchange="document.getElementById('filterForm').submit()">
+          {% for t in terms %}<option value="{{ t.id }}" {% if selected_term_id == t.id|stringformat:'s' %}selected{% endif %}>{{ t.name }} — {{ t.academic_year.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-3 col-md-6">
+        <label class="form-label small fw-semibold">{% if is_class_teacher %}Assigned Class{% else %}Class{% endif %}</label>
+        <select name="class_id" class="form-select" onchange="document.getElementById('filterForm').submit()">
+          <option value="">Select class</option>
+          {% for c in school_classes %}<option value="{{ c.id }}" {% if selected_class_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}{% if c.grade_level %} — {{ c.grade_level.name }}{% endif %}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-3 col-md-6">
+        <label class="form-label small fw-semibold">Subject</label>
+        <select name="subject" class="form-select" onchange="document.getElementById('filterForm').submit()">
+          <option value="">Select subject</option>
+          {% for s in subjects %}<option value="{{ s.name }}" {% if selected_subject|lower == s.name|lower %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-3 col-md-6">
+        <label class="form-label small fw-semibold">Question / Assessment (optional)</label>
+        <select name="assessment_id" class="form-select" onchange="document.getElementById('filterForm').submit()">
+          <option value="">No assessment selected</option>
+          {% for a in assessments %}<option value="{{ a.id }}" {% if active_assessment and active_assessment.id == a.id %}selected{% endif %}>{{ a.title }} — {{ a.get_score_component_display }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% if selected_class and selected_subject and selected_term %}
+<div class="card results-card mb-4">
+  <div class="card-header bg-transparent border-0 p-4 pb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h5 class="fw-bold mb-1">{{ selected_class.name }} — {{ selected_subject }}</h5>
+      <div class="text-muted small">{{ selected_term.name }} · Class Score 30% + Examination 70% = Final 100%</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <span class="badge text-bg-light">{{ students|length }} student(s)</span>
+      <span class="badge bg-success-subtle text-success">Official terminal scale</span>
+    </div>
+  </div>
+  <div class="card-body p-4 pt-2">
+    <div id="saveMessage" class="alert d-none"></div>
+    <div class="alert alert-info score-help mb-3">
+      <strong>Entry options:</strong> Weighted mode expects <b>Class /30</b> and <b>Exam /70</b>. Raw mode lets you enter the marks exactly as marked on the paper and automatically converts them to the 30/70 scale.
+      Printed/manual examinations do not require questions to be entered into the system.
+    </div>
+    <div class="d-flex align-items-end gap-3 flex-wrap mb-3">
+      <div>
+        <label class="form-label small fw-semibold mb-1">Entry mode</label>
+        <select id="entryMode" class="form-select form-select-sm" onchange="toggleRawMode()">
+          <option value="WEIGHTED">Weighted — enter /30 and /70</option>
+          <option value="RAW">Raw marks — convert to /30 and /70</option>
+        </select>
+      </div>
+      <div id="rawMaxControls" class="d-none d-flex gap-2 align-items-end"><div><label class="form-label small mb-1">Class raw max</label><input id="classRawMax" type="number" min="1" value="100" class="form-control form-control-sm" style="width:105px"></div><div><label class="form-label small mb-1">Exam raw max</label><input id="examRawMax" type="number" min="1" value="100" class="form-control form-control-sm" style="width:105px"></div></div>
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="recalculateRows()"><i class="bi bi-calculator me-1"></i>Recalculate</button>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover results-table align-middle mb-0" id="terminalResultsTable">
+        <thead><tr><th>#</th><th>Student</th><th>Admission</th><th>Class Score</th><th>Examination</th><th>Final /100</th><th>Grade</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for student in students %}
+          {% with r=student.terminal_result %}
+          <tr data-student-id="{{ student.id }}">
+            <td>{{ forloop.counter }}</td>
+            <td class="fw-semibold">{{ student.user.get_full_name }}</td>
+            <td class="text-muted">{{ student.admission_number }}</td>
+            <td>
+              <div class="input-group input-group-sm mark-input">
+                <input class="form-control class-score" type="number" min="0" max="30" step="0.01" value="{% if r.class_score is not None %}{{ r.class_score }}{% endif %}">
+                <span class="input-group-text class-max">/30</span>
+              </div>
+            </td>
+            <td>
+              <div class="input-group input-group-sm mark-input">
+                <input class="form-control exam-score" type="number" min="0" max="70" step="0.01" value="{% if r.exam_score is not None %}{{ r.exam_score }}{% endif %}">
+                <span class="input-group-text exam-max">/70</span>
+              </div>
+            </td>
+            <td class="final-cell">—</td>
+            <td class="grade-cell">—</td>
+            <td class="status-cell"><span class="badge bg-secondary-subtle text-secondary">Draft</span></td>
+          </tr>
+          {% endwith %}
+        {% empty %}
+          <tr><td colspan="8" class="text-center text-muted py-5">No active students are enrolled in this class.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if students %}
+    <div class="sticky-actions mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="small text-muted"><b>Important:</b> a result becomes Complete only when both Class /30 and Exam /70 are present.</div>
+      {% if can_edit_results %}<button type="button" class="btn v82-brand-btn" onclick="saveAllTerminalResults()"><i class="bi bi-check2-circle me-1"></i>Save All Terminal Results</button>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="card results-card mb-4"><div class="card-body text-center py-5"><i class="bi bi-table fs-1 text-muted"></i><h5 class="fw-bold mt-3">Select a term, class and subject</h5><p class="text-muted mb-0">The terminal mark sheet will show every active student in the selected class.</p></div></div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="card results-card"><div class="card-body p-4">
+      <h6 class="fw-bold mb-3">How V8.2 handles examinations</h6>
+      <div class="row g-3">
+        <div class="col-md-4"><div class="p-3 rounded-3 bg-light h-100"><b>AI exam</b><div class="small text-muted mt-1">Generate questions, review, print, manually mark and enter Exam /70.</div></div></div>
+        <div class="col-md-4"><div class="p-3 rounded-3 bg-light h-100"><b>Teacher exam</b><div class="small text-muted mt-1">Create or write questions yourself, print them and record the marks later.</div></div></div>
+        <div class="col-md-4"><div class="p-3 rounded-3 bg-light h-100"><b>Manual exam</b><div class="small text-muted mt-1">No questions required. Enter only the final examination marks from the marked papers.</div></div></div>
+      </div>
+    </div></div>
+  </div>
+  <div class="col-xl-4">
+    {% if active_assessment %}
+    <div class="card results-card mb-4"><div class="card-body p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3"><div><h6 class="fw-bold mb-1">{{ active_assessment.title }}</h6><small class="text-muted">{{ active_assessment.get_score_component_display }} · Max {{ active_assessment.max_score }}</small></div>{% if can_manage_questions %}<button class="btn btn-sm v82-brand-btn" data-bs-toggle="modal" data-bs-target="#questionModal"><i class="bi bi-plus"></i> Add</button>{% endif %}</div>
+      {% for q in questions %}<div class="question-card"><div class="d-flex justify-content-between"><span class="badge text-bg-light">Q{{ forloop.counter }} · {{ q.marks }} mark(s)</span>{% if can_manage_questions %}<button class="btn btn-sm btn-link text-danger p-0" onclick="deleteQuestion('{{ q.id }}')"><i class="bi bi-trash"></i></button>{% endif %}</div><div class="fw-semibold mt-2">{{ q.question_text }}</div>{% if q.options %}<ol class="small text-muted mt-2 mb-0">{% for option in q.options %}<li>{{ option }}</li>{% endfor %}</ol>{% endif %}</div>{% empty %}<div class="text-center text-muted py-4">No questions recorded. Questions are optional for manually written/printed examinations.</div>{% endfor %}
+    </div></div>
+    {% endif %}
+    <div class="card results-card"><div class="card-body p-4"><h6 class="fw-bold">Terminal workflow</h6><ol class="small text-muted ps-3 mb-0"><li>Teacher is assigned to class + subject.</li><li>Record CA/class work or enter the final Class Score /30.</li><li>Generate, write or print the examination.</li><li>Mark the papers manually or online.</li><li>Enter Examination /70.</li><li>System calculates Final /100, grade and remark.</li><li>Generate and approve end-of-term report cards.</li></ol></div></div>
+  </div>
+</div>
+
+{% if can_manage_questions %}
+<div class="modal fade" id="questionModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4"><div class="modal-header"><h5 class="modal-title fw-bold">Add Examination Question</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="questionError" class="alert alert-danger d-none"></div><div class="mb-3"><label class="form-label">Question</label><textarea id="q_text" class="form-control" rows="3"></textarea></div><div class="row g-3"><div class="col-md-4"><label class="form-label">Type</label><select id="q_type" class="form-select"><option value="SHORT_ANSWER">Short Answer</option><option value="MCQ">Multiple Choice</option><option value="TRUE_FALSE">True / False</option><option value="ESSAY">Essay</option></select></div><div class="col-md-4"><label class="form-label">Marks</label><input id="q_marks" type="number" min="1" value="1" class="form-control"></div><div class="col-md-4"><label class="form-label">Correct Answer</label><input id="q_answer" class="form-control"></div><div class="col-12"><label class="form-label">Options (one per line for MCQ)</label><textarea id="q_options" class="form-control" rows="4"></textarea></div></div></div><div class="modal-footer"><button class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn v82-brand-btn" onclick="saveQuestion()">Save Question</button></div></div></div></div>
+{% endif %}
+
+{% if can_create %}
+<div class="modal fade" id="assessmentModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4"><div class="modal-header"><h5 class="modal-title fw-bold">Create Assessment</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="assessmentError" class="alert alert-danger d-none"></div><div class="row g-3"><div class="col-md-8"><label class="form-label">Title</label><input id="na_title" class="form-control" placeholder="End of Term Mathematics Examination"></div><div class="col-md-4"><label class="form-label">Assessment Type</label><select id="na_type" class="form-select"><option value="EXAM">Exam</option><option value="QUIZ">Quiz</option><option value="ASSIGNMENT">Assignment</option></select></div><div class="col-md-6"><label class="form-label">Class</label><select id="na_class" class="form-select"><option value="">Select class</option>{% for c in school_classes %}<option value="{{ c.id }}" {% if selected_class_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }} — {{ c.grade_level.name }}</option>{% endfor %}</select></div><div class="col-md-6"><label class="form-label">Subject</label><select id="na_subject" class="form-select">{% for s in subjects %}<option value="{{ s.name }}" {% if selected_subject|lower == s.name|lower %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div><div class="col-md-6"><label class="form-label">Terminal Component</label><select id="na_component" class="form-select" onchange="setAssessmentMax()"><option value="CA">Class / Continuous Assessment</option><option value="EXAM" selected>End-of-Term Examination</option><option value="OTHER">Other Assessment</option></select></div><div class="col-md-6"><label class="form-label">Assessment Maximum</label><input id="na_max" type="number" min="1" value="70" class="form-control"></div><div class="col-12"><label class="form-label">Academic Term</label><select id="na_term" class="form-select">{% for t in terms %}<option value="{{ t.id }}" {% if selected_term_id == t.id|stringformat:'s' %}selected{% endif %}>{{ t.name }} — {{ t.academic_year.name }}</option>{% endfor %}</select></div></div></div><div class="modal-footer"><button class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn v82-brand-btn" onclick="createAssessment()">Create Assessment</button></div></div></div></div>
+{% endif %}
+
+<script>
+function csrf(){const el=document.querySelector('#filterForm input[name=csrfmiddlewaretoken]');return el?el.value:document.cookie.split('; ').find(x=>x.startsWith('csrftoken='))?.split('=')[1]||'';}
+async function post(url,data){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf(),'X-Requested-With':'XMLHttpRequest'},body:JSON.stringify(data)});let j={};try{j=await r.json()}catch(e){}if(!r.ok||!j.success)throw new Error(j.error||'Request failed.');return j;}
+function gradeFor(v){if(v===null||Number.isNaN(v))return ['',''];if(v>=90)return ['A+','Outstanding'];if(v>=80)return ['A','Excellent'];if(v>=70)return ['B','Very Good'];if(v>=60)return ['C','Good'];if(v>=50)return ['D','Satisfactory'];if(v>=40)return ['E','Pass'];return ['F','Needs Improvement'];}
+function recalcRow(row){const mode=document.getElementById('entryMode')?.value||'WEIGHTED';const c=parseFloat(row.querySelector('.class-score')?.value);const e=parseFloat(row.querySelector('.exam-score')?.value);const cOk=!Number.isNaN(c),eOk=!Number.isNaN(e);let cf=c,ef=e;if(mode==='RAW'){const cm=parseFloat(document.getElementById('classRawMax')?.value||'100');const em=parseFloat(document.getElementById('examRawMax')?.value||'100');if(cOk)cf=c/cm*30;if(eOk)ef=e/em*70;}const final=cOk&&eOk?(cf+ef):null;row.querySelector('.final-cell').textContent=final===null?'—':final.toFixed(2);const g=gradeFor(final);row.querySelector('.grade-cell').textContent=g[0]||'—';row.querySelector('.status-cell').innerHTML=(cOk&&eOk)?'<span class="badge bg-success-subtle text-success">Complete</span>':'<span class="badge bg-warning-subtle text-warning">Draft</span>';return {c:cOk?cf:null,e:eOk?ef:null};}
+function recalculateRows(){document.querySelectorAll('#terminalResultsTable tbody tr[data-student-id]').forEach(recalcRow);}
+function toggleRawMode(){const raw=document.getElementById('entryMode').value==='RAW';document.getElementById('rawMaxControls').classList.toggle('d-none',!raw);document.querySelectorAll('#terminalResultsTable tbody tr[data-student-id]').forEach(row=>{const c=row.querySelector('.class-score'),e=row.querySelector('.exam-score');if(raw){c.dataset.rawMax=c.dataset.rawMax||'100';e.dataset.rawMax=e.dataset.rawMax||'100';row.querySelector('.class-max').textContent='/100 → /30';row.querySelector('.exam-max').textContent='/100 → /70';c.max=100;e.max=100;}else{row.querySelector('.class-max').textContent='/30';row.querySelector('.exam-max').textContent='/70';c.max=30;e.max=70;} });recalculateRows();}
+document.querySelectorAll('#terminalResultsTable .class-score,#terminalResultsTable .exam-score').forEach(x=>x.addEventListener('input',()=>recalcRow(x.closest('tr'))));
+function showSave(msg,ok){const el=document.getElementById('saveMessage');if(!el)return;el.className='alert '+(ok?'alert-success':'alert-danger');el.textContent=msg;el.classList.remove('d-none');window.scrollTo({top:el.getBoundingClientRect().top+window.scrollY-100,behavior:'smooth'});}
+async function saveAllTerminalResults(){const rows=[];document.querySelectorAll('#terminalResultsTable tbody tr[data-student-id]').forEach(row=>{const c=row.querySelector('.class-score').value,e=row.querySelector('.exam-score').value;if(c!==''||e!=='')rows.push({student_id:row.dataset.studentId,class_score:c,exam_score:e,teacher_note:''});});if(!rows.length){showSave('Enter at least one Class Score or Examination Score.',false);return;}const mode=document.getElementById('entryMode').value;const classRawMax=document.getElementById('classRawMax')?.value||'100';const examRawMax=document.getElementById('examRawMax')?.value||'100';rows.forEach(x=>{x.class_raw_max=classRawMax;x.exam_raw_max=examRawMax;});try{const j=await post('{% url "assessments:api_save_terminal_results" %}',{school_class_id:'{{ selected_class.id }}',academic_term_id:'{{ selected_term.id }}',subject:'{{ selected_subject|escapejs }}',entry_mode:mode,results:rows});showSave(`Saved ${j.saved} student result(s). ${j.complete} complete terminal result(s).`,true);recalculateRows();}catch(e){showSave(e.message,false);}}
+{% if can_create %}
+function setAssessmentMax(){const c=document.getElementById('na_component').value;document.getElementById('na_max').value=c==='EXAM'?70:c==='CA'?30:100;}
+async function createAssessment(){const box=document.getElementById('assessmentError');box.classList.add('d-none');try{const j=await post('{% url "assessments:api_create_assessment" %}',{title:document.getElementById('na_title').value,subject:document.getElementById('na_subject').value,assessment_type:document.getElementById('na_type').value,score_component:document.getElementById('na_component').value,school_class_id:document.getElementById('na_class').value,academic_term_id:document.getElementById('na_term').value,max_score:document.getElementById('na_max').value});location.href='{% url "assessments:grading_portal" %}?class_id='+encodeURIComponent(document.getElementById('na_class').value)+'&subject='+encodeURIComponent(document.getElementById('na_subject').value)+'&term_id='+encodeURIComponent(document.getElementById('na_term').value)+'&assessment_id='+j.assessment.id;}catch(e){box.textContent=e.message;box.classList.remove('d-none');}}
+{% endif %}
+{% if can_manage_questions %}
+async function saveQuestion(){const box=document.getElementById('questionError');box.classList.add('d-none');try{await post('{% url "assessments:api_save_question" %}',{assessment_id:'{{ active_assessment.id }}',question_text:document.getElementById('q_text').value,question_type:document.getElementById('q_type').value,marks:document.getElementById('q_marks').value,correct_answer:document.getElementById('q_answer').value,options:document.getElementById('q_options').value.split('\n').map(x=>x.trim()).filter(Boolean)});location.reload();}catch(e){box.textContent=e.message;box.classList.remove('d-none');}}
+async function deleteQuestion(id){if(!confirm('Delete this question?'))return;try{await post('{% url "assessments:api_delete_question" question_id="00000000-0000-0000-0000-000000000000" %}'.replace('00000000-0000-0000-0000-000000000000',id),{});location.reload();}catch(e){alert(e.message);}}
+{% endif %}
+recalculateRows();
+</script>
+{% endblock %}

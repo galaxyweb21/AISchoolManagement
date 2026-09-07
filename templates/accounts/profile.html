@@ -1,0 +1,253 @@
+<!-- accounts/templates/accounts/profile.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}My Profile{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    My Profile
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {{ role_display }}
+                    </span>
+                </div>
+                <p class="text">
+                    This page displays your personal profile information and account details.
+                    You can <strong>edit your profile</strong> to update personal information,
+                    <strong>change your password</strong> for security, or adjust <strong>settings</strong>
+                    like theme preferences and notification options.
+                    Your <strong>role</strong> determines what you can access in the system.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <!-- Profile Card -->
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4 text-center">
+                    <!-- Profile Picture -->
+                    <div class="position-relative d-inline-block mb-3">
+                        <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto"
+                             style="width: 120px; height: 120px; border: 3px solid var(--eduai-gold, #946B1C);">
+                            <span class="display-3 fw-bold text-secondary">
+                                {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+                            </span>
+                        </div>
+                        <a href="{% url 'accounts:profile_edit' %}" class="position-absolute bottom-0 end-0 bg-gold rounded-circle p-2"
+                           style="width: 36px; height: 36px; text-decoration: none; border: 2px solid white; background: var(--eduai-gold, #946B1C) !important;">
+                            <i class="bi bi-pencil text-white"></i>
+                        </a>
+                    </div>
+
+                    <h5 class="fw-bold mb-1">{{ user.get_full_name }}</h5>
+                    <span class="badge badge-gold px-3 py-2 rounded-pill">
+                        <i class="bi bi-person-badge me-1"></i>{{ role_display }}
+                    </span>
+                    {% if school %}
+                    <p class="text-muted small mt-2">
+                        <i class="bi bi-building me-1"></i>{{ school.name }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="card border-0 shadow-sm rounded-4 mt-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">Quick Actions</h6>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'accounts:profile_edit' %}" class="btn btn-outline-gold btn-sm">
+                            <i class="bi bi-pencil me-1"></i> Edit Profile
+                        </a>
+                        <a href="{% url 'accounts:profile_settings' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-gear me-1"></i> Settings
+                        </a>
+                        <a href="{% url 'accounts:logout' %}" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-box-arrow-right me-1"></i> Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <!-- Profile Details -->
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0">
+                    <h5 class="fw-bold mb-0">Profile Information</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small text-uppercase fw-bold d-block">First Name</label>
+                            <p class="fw-semibold mb-0">{{ user.first_name|default:"Not set" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small text-uppercase fw-bold d-block">Last Name</label>
+                            <p class="fw-semibold mb-0">{{ user.last_name|default:"Not set" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small text-uppercase fw-bold d-block">Email</label>
+                            <p class="fw-semibold mb-0">{{ user.email|default:"Not set" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small text-uppercase fw-bold d-block">Phone</label>
+                            <p class="fw-semibold mb-0">{{ user.phone_number|default:"Not set" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small text-uppercase fw-bold d-block">Username</label>
+                            <p class="fw-semibold mb-0">{{ user.username }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small text-uppercase fw-bold d-block">Role</label>
+                            <p class="fw-semibold mb-0">{{ role_display }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Password Update -->
+            <div class="card border-0 shadow-sm rounded-4 mt-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0">
+                    <h5 class="fw-bold mb-0">Change Password</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" action="{% url 'accounts:profile' %}">
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small">Current Password</label>
+                                <input type="password" name="current_password" class="form-control" placeholder="Enter current password">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small">New Password</label>
+                                <input type="password" name="new_password" class="form-control" placeholder="Enter new password" minlength="8">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small">Confirm Password</label>
+                                <input type="password" name="confirm_password" class="form-control" placeholder="Confirm new password" minlength="8">
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-warning btn-sm">
+                                    <i class="bi bi-key me-1"></i> Update Password
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

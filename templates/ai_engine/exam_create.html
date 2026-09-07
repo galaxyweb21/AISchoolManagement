@@ -1,0 +1,225 @@
+<!-- ai_engine/exam_create.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}New AI Exam{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Generate AI Exam
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        Teacher View
+                    </span>
+                </div>
+                <p class="text">
+                    Fill in the details below to generate a new AI-powered exam.
+                    The AI will create questions based on the <strong>subject</strong>, <strong>topic</strong>,
+                    <strong>grade level</strong>, and <strong>difficulty</strong> you select.
+                    You can review and edit each question after generation.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="card border-0 shadow-sm rounded-4" style="max-width: 700px; margin: auto;">
+        <div class="p-4">
+            <h5 class="fw-bold mb-3">
+                <i class="bi bi-stars text-gold me-2"></i>Generate a new exam
+            </h5>
+            <form method="post">
+                {% csrf_token %}
+
+                <!-- Title -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                    <input type="text" name="title" class="form-control" placeholder="e.g., Mid-Term Mathematics Quiz"
+                           value="{{ form_data.title|default:'' }}" required>
+                    <small class="text-muted">A descriptive name for this exam.</small>
+                </div>
+
+                <!-- Subject Dropdown -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Subject <span class="text-danger">*</span></label>
+                    <select name="subject" class="form-select" required>
+                        <option value="">Select a Subject</option>
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}" {% if form_data.subject == subject.id|stringformat:"s" %}selected{% endif %}>
+                            {{ subject.name }} {% if subject.code %}({{ subject.code }}){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted">Select a subject from the list of available subjects.</small>
+                </div>
+
+                <!-- Topic -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Topic <span class="text-muted fw-normal">(optional)</span></label>
+                    <input type="text" name="topic" class="form-control" placeholder="e.g., Quadratic equations"
+                           value="{{ form_data.topic|default:'' }}">
+                    <small class="text-muted">Specific topic within the subject to focus on.</small>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <!-- School Class -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">School Class <span class="text-danger">*</span></label>
+                        <select name="school_class" class="form-select" required>
+                            <option value="">Select Class</option>
+                            {% for cls in school_classes %}
+                            <option value="{{ cls.id }}" {% if form_data.school_class == cls.id|stringformat:"s" %}selected{% endif %}>
+                                {{ cls.name }}
+                                <span class="text-muted">
+                                    ({{ cls.grade_level.name }}
+                                    {% if cls.grade_level.stage != 'OTHER' %}
+                                        — {{ cls.grade_level.get_stage_display }}
+                                    {% endif %})
+                                </span>
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            The class's grade level determines the curriculum stage ({{ stage_choices|join:", " }}).
+                        </small>
+                    </div>
+
+                    <!-- Difficulty -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Difficulty <span class="text-danger">*</span></label>
+                        <select name="difficulty" class="form-select">
+                            <option value="EASY" {% if form_data.difficulty == 'EASY' %}selected{% endif %}>Easy</option>
+                            <option value="MEDIUM" {% if form_data.difficulty == 'MEDIUM' or not form_data %}selected{% endif %}>Medium</option>
+                            <option value="HARD" {% if form_data.difficulty == 'HARD' %}selected{% endif %}>Hard</option>
+                        </select>
+                        <small class="text-muted">Controls the complexity of generated questions.</small>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <!-- Number of Questions -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Number of Questions</label>
+                        <input type="number" name="num_questions" class="form-control" min="1" max="30"
+                               value="{{ form_data.num_questions|default:10 }}">
+                        <small class="text-muted">Between 1 and 30 questions.</small>
+                    </div>
+
+                    <!-- Grade Level Display -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Grade Level Display</label>
+                        <input type="text" name="grade_level_display" class="form-control"
+                               placeholder="e.g., Grade 10 (auto-filled from class)"
+                               value="{{ form_data.grade_level_display|default:'' }}">
+                        <small class="text-muted">Optional - used for display only.</small>
+                    </div>
+                </div>
+
+                <!-- Question Types -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold d-block">Question Types</label>
+                    {% for value, label in question_types %}
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" name="question_types" value="{{ value }}"
+                               id="qt_{{ value }}" {% if value == 'MCQ' or value in form_data.question_types %}checked{% endif %}>
+                        <label class="form-check-label" for="qt_{{ value }}">{{ label }}</label>
+                    </div>
+                    {% endfor %}
+                    <small class="text-muted d-block mt-1">Select at least one question type.</small>
+                </div>
+
+                <!-- Buttons -->
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-gold">
+                        <i class="bi bi-stars me-1"></i>Generate Exam
+                    </button>
+                    <a href="{% url 'ai_engine:exam_dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

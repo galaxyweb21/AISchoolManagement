@@ -1,0 +1,497 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Fee Waivers{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+</style>
+
+<!-- How Fee Waivers Work -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How Fee Waivers Work</div>
+            <p class="text">
+                Fee waivers allow you to apply discounts or exemptions to student fees.
+                Each waiver specifies the <strong>student</strong>, <strong>reason</strong>,
+                <strong>type</strong> (Percentage or Fixed Amount), <strong>value</strong>,
+                and the <strong>term</strong> it applies to (or "Standing" for ongoing waivers).
+                Waivers can be <strong>Active</strong> or <strong>Inactive</strong>. Use the
+                search box below to filter waivers by student name, reason, or type. Click
+                <strong>"Add Waiver"</strong> to create a new waiver, or <strong>"Edit"</strong>
+                to modify an existing one.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="bi bi-percent text-gold me-2"></i>Fee Waivers</h5>
+                <p class="text-muted mb-0">Manage scholarships, discounts, and waivers for students.</p>
+            </div>
+            {% if can_manage %}
+            <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#waiverModal"
+                    data-action="create" data-url="{% url 'finance:waiver_create' %}">
+                <i class="bi bi-plus-lg me-1"></i>Add Waiver
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-table text-gold me-2"></i>All Waivers
+                <span class="badge bg-light text-muted ms-2" id="waiverCount">{{ waivers|length }}</span>
+            </h6>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="text-muted small" id="filterStatus"></span>
+                <input type="text" id="waiverSearchInput" class="form-control form-control-sm" placeholder="Search waivers..." style="max-width: 220px;">
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="waiversTable">
+                <thead>
+                    <tr>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Student</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Reason</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Type</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Value</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Term</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Status</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0" id="waiversTableBody">
+                    {% for waiver in waivers %}
+                    <tr class="border-bottom waiver-row" data-id="{{ waiver.id }}" data-search="{{ waiver.student.user.get_full_name }} {{ waiver.reason }} {{ waiver.waiver_type }}">
+                        <td class="py-3 ps-0">
+                            <span class="fw-bold d-block">{{ waiver.student.user.get_full_name }}</span>
+                            <small class="text-muted">{{ waiver.student.admission_number }}</small>
+                        </td>
+                        <td class="py-3">{{ waiver.reason }}</td>
+                        <td class="py-3">{{ waiver.get_waiver_type_display }}</td>
+                        <td class="py-3 text-center fw-bold">
+                            {% if waiver.waiver_type == 'PERCENTAGE' %}
+                                {{ waiver.value }}%
+                            {% else %}
+                                GH¢ {{ waiver.value }}
+                            {% endif %}
+                        </td>
+                        <td class="py-3">{{ waiver.academic_term.name|default:"Standing" }}</td>
+                        <td class="py-3 text-center">
+                            {% if waiver.is_active %}
+                            <span class="badge badge-teal rounded-pill px-3 py-2">Active</span>
+                            {% else %}
+                            <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-2">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 pe-0 text-end text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-gold px-3"
+                                    data-bs-toggle="modal" data-bs-target="#waiverModal"
+                                    data-action="edit" data-url="{% url 'finance:waiver_edit' waiver.id %}">
+                                Edit
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger px-3"
+                                    data-bs-toggle="modal" data-bs-target="#waiverModal"
+                                    data-action="delete" data-url="{% url 'finance:waiver_delete' waiver.id %}">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr class="empty-state-row">
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="bi bi-percent fs-2 d-block mb-2 text-secondary"></i>
+                            No fee waivers defined yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic Master Modal -->
+<div class="modal fade" id="waiverModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="waiverModalTitle">Loading...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="waiverModalContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER
+    // ============================================================
+    const waiverSearchInput = document.getElementById('waiverSearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const waiverCount = document.getElementById('waiverCount');
+    const allRows = document.querySelectorAll('.waiver-row');
+    const emptyState = document.querySelector('.empty-state-row');
+
+    if (waiverSearchInput) {
+        waiverSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const searchData = row.getAttribute('data-search') || '';
+                const text = row.textContent.toLowerCase();
+                const isVisible = searchData.includes(query) || text.includes(query);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (waiverCount) {
+                if (query) {
+                    waiverCount.textContent = visibleCount;
+                    if (filterStatus) {
+                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                    }
+                } else {
+                    waiverCount.textContent = allRows.length;
+                    if (filterStatus) {
+                        filterStatus.textContent = '';
+                    }
+                }
+            }
+
+            if (emptyState) {
+                if (visibleCount === 0 && allRows.length > 0) {
+                    emptyState.style.display = '';
+                } else {
+                    emptyState.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    const modal = document.getElementById('waiverModal');
+    const modalTitle = document.getElementById('waiverModalTitle');
+    const modalContent = document.getElementById('waiverModalContent');
+
+    function getCSRFToken() {
+        const name = 'csrftoken';
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    }
+
+    modal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const action = button.getAttribute('data-action');
+        const url = button.getAttribute('data-url');
+
+        if (action === 'create') {
+            modalTitle.innerHTML = '<i class="bi bi-plus-circle text-gold me-2"></i>Add Fee Waiver';
+        } else if (action === 'edit') {
+            modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Fee Waiver';
+        } else if (action === 'delete') {
+            modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete';
+        }
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+            bindFormSubmit();
+            bindDeleteForm();
+        })
+        .catch(err => {
+            console.error('Error loading form:', err);
+            modalContent.innerHTML = `
+                <div class="alert alert-danger border-0 shadow-sm rounded-4">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Error loading form. Please try again.
+                </div>
+                <div class="mt-3 text-end">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        });
+    });
+
+    function bindFormSubmit() {
+        const form = modalContent.querySelector('form.waiver-form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
+            submitBtn.disabled = true;
+
+            const existingErrors = this.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Server returned an invalid response.');
+                }
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    window.location.reload();
+                } else {
+                    showError(data.error || 'An error occurred while saving.');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error('Form submission error:', err);
+                showError(err.message || 'An unexpected error occurred. Please try again.');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 shadow-sm rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    function bindDeleteForm() {
+        const form = modalContent.querySelector('form.delete-form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+            submitBtn.disabled = true;
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Server returned an invalid response.');
+                }
+                if (!response.ok) {
+                    throw new Error(data.error || 'Delete failed');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    window.location.reload();
+                } else {
+                    modalContent.innerHTML = `
+                        <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.error || 'Error deleting.'}
+                        </div>
+                        <div class="mt-3 text-end">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                console.error('Delete error:', err);
+                modalContent.innerHTML = `
+                    <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> ${err.message || 'An unexpected error occurred.'}
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    // ============================================================
+    // AUTO-DISMISS MESSAGES
+    // ============================================================
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% include "partials/pagination.html" with page_obj=waivers %}
+
+{% endblock %}

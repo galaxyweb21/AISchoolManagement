@@ -1,0 +1,597 @@
+<!-- communication/templates/communication/notification_preferences.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Notification Preferences{% endblock %}
+
+{% block content %}
+<style>
+    .preference-card {
+        border-radius: 12px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .preference-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+    .preference-section {
+        border-left: 3px solid var(--eduai-gold, #946B1C);
+        padding-left: 1rem;
+    }
+    .toggle-switch-lg .form-check-input {
+        width: 3rem;
+        height: 1.5rem;
+        cursor: pointer;
+    }
+    .toggle-switch-lg .form-check-input:checked {
+        background-color: var(--eduai-gold, #946B1C);
+        border-color: var(--eduai-gold, #946B1C);
+    }
+    .category-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+    }
+    .category-icon.overdue { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+    .category-icon.timetable { background: rgba(13, 110, 253, 0.1); color: #0d6efd; }
+    .category-icon.grade { background: rgba(25, 135, 84, 0.1); color: #198754; }
+    .category-icon.announcement { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+    .category-icon.attendance { background: rgba(253, 126, 20, 0.1); color: #fd7e14; }
+    .category-icon.promotion { background: rgba(111, 66, 193, 0.1); color: #6f42c1; }
+    .category-icon.leave { background: rgba(13, 202, 240, 0.1); color: #0dcaf0; }
+    .category-icon.system { background: rgba(108, 117, 125, 0.1); color: #6c757d; }
+    .preference-row {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    .preference-row:last-child {
+        border-bottom: none;
+    }
+    .preference-label {
+        font-weight: 500;
+        color: var(--bs-body-color);
+    }
+    .preference-description {
+        font-size: 0.8rem;
+        color: var(--bs-secondary-color);
+    }
+    .toast-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+    }
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Notification Preferences
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {{ request.user.get_role_display|default:"User" }}
+                    </span>
+                </div>
+                <p class="text">
+                    Choose how and when you receive notifications.
+                    You can configure <strong>channels</strong> (Email, SMS, In-App) and
+                    <strong>categories</strong> (Overdue Balance, Timetable Updates, Grade Release, etc.).
+                    Changes are saved immediately. Use the <strong>Reset to Defaults</strong> button
+                    to restore all preferences to their default settings.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge badge-gold rounded-pill px-3 py-2">
+                            <i class="bi bi-bell me-1"></i> NOTIFICATION PREFERENCES
+                        </span>
+                    </div>
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-sliders2 text-gold me-2"></i>
+                        Notification Preferences
+                    </h5>
+                    <p class="text-muted mb-0 small">
+                        Choose how and when you receive notifications
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'communication:inbox' %}" class="btn btn-outline-gold btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i> Back to Inbox
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row g-4">
+        <!-- Channel Preferences -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 preference-card">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-wifi me-2 text-gold"></i>
+                        Notification Channels
+                    </h6>
+                    <p class="text-muted small mb-3">Select how you want to receive notifications</p>
+
+                    <form method="post" id="preferencesForm" action="{% url 'communication:notification_preferences' %}">
+                        {% csrf_token %}
+
+                        <!-- Channel Settings -->
+                        <div class="preference-section mb-4">
+                            <div class="preference-row d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="preference-label">
+                                        <i class="bi bi-envelope me-2 text-gold"></i> Email
+                                    </div>
+                                    <div class="preference-description">Receive notifications via email</div>
+                                </div>
+                                <div class="form-check form-switch toggle-switch-lg">
+                                    <input class="form-check-input" type="checkbox" name="email_enabled" id="emailEnabled"
+                                           {% if preferences.email_enabled %}checked{% endif %} value="on">
+                                </div>
+                            </div>
+
+                            <div class="preference-row d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="preference-label">
+                                        <i class="bi bi-phone me-2 text-teal"></i> SMS
+                                    </div>
+                                    <div class="preference-description">Receive notifications via SMS</div>
+                                </div>
+                                <div class="form-check form-switch toggle-switch-lg">
+                                    <input class="form-check-input" type="checkbox" name="sms_enabled" id="smsEnabled"
+                                           {% if preferences.sms_enabled %}checked{% endif %} value="on">
+                                </div>
+                            </div>
+
+                            <div class="preference-row d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="preference-label">
+                                        <i class="bi bi-bell me-2 text-warning"></i> In-App
+                                    </div>
+                                    <div class="preference-description">Receive notifications within the app</div>
+                                </div>
+                                <div class="form-check form-switch toggle-switch-lg">
+                                    <input class="form-check-input" type="checkbox" name="in_app_enabled" id="inAppEnabled"
+                                           {% if preferences.in_app_enabled %}checked{% endif %} value="on">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Save Button -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-gold" id="savePreferencesBtn">
+                                <i class="bi bi-save me-1"></i> Save Preferences
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="resetDefaultsBtn">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Reset to Defaults
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Preferences -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 preference-card">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-tags me-2 text-gold"></i>
+                        Notification Categories
+                    </h6>
+                    <p class="text-muted small mb-3">Choose which types of notifications you want to receive</p>
+
+                    <div class="preference-section" id="categorySection">
+                        <!-- Overdue Balance -->
+                        <div class="preference-row d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="category-icon overdue">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                </div>
+                                <div>
+                                    <div class="preference-label">Overdue Balance</div>
+                                    <div class="preference-description">Notifications about overdue payments</div>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch toggle-switch-lg">
+                                <input class="form-check-input" type="checkbox" name="overdue_balance_enabled" id="overdueBalance"
+                                       {% if preferences.overdue_balance_enabled %}checked{% endif %} value="on">
+                            </div>
+                        </div>
+
+                        <!-- Timetable Update -->
+                        <div class="preference-row d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="category-icon timetable">
+                                    <i class="bi bi-calendar-event"></i>
+                                </div>
+                                <div>
+                                    <div class="preference-label">Timetable Updates</div>
+                                    <div class="preference-description">Changes to class schedules</div>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch toggle-switch-lg">
+                                <input class="form-check-input" type="checkbox" name="timetable_update_enabled" id="timetableUpdate"
+                                       {% if preferences.timetable_update_enabled %}checked{% endif %} value="on">
+                            </div>
+                        </div>
+
+                        <!-- Grade Release -->
+                        <div class="preference-row d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="category-icon grade">
+                                    <i class="bi bi-award"></i>
+                                </div>
+                                <div>
+                                    <div class="preference-label">Grade Release</div>
+                                    <div class="preference-description">When grades are published</div>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch toggle-switch-lg">
+                                <input class="form-check-input" type="checkbox" name="grade_release_enabled" id="gradeRelease"
+                                       {% if preferences.grade_release_enabled %}checked{% endif %} value="on">
+                            </div>
+                        </div>
+
+                        <!-- Announcements -->
+                        <div class="preference-row d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="category-icon announcement">
+                                    <i class="bi bi-megaphone"></i>
+                                </div>
+                                <div>
+                                    <div class="preference-label">Announcements</div>
+                                    <div class="preference-description">School-wide announcements</div>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch toggle-switch-lg">
+                                <input class="form-check-input" type="checkbox" name="announcement_enabled" id="announcement"
+                                       {% if preferences.announcement_enabled %}checked{% endif %} value="on">
+                            </div>
+                        </div>
+
+                        <!-- Attendance Alert -->
+                        <div class="preference-row d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="category-icon attendance">
+                                    <i class="bi bi-person-check"></i>
+                                </div>
+                                <div>
+                                    <div class="preference-label">Attendance Alerts</div>
+                                    <div class="preference-description">Low attendance notifications</div>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch toggle-switch-lg">
+                                <input class="form-check-input" type="checkbox" name="attendance_alert_enabled" id="attendanceAlert"
+                                       {% if preferences.attendance_alert_enabled %}checked{% endif %} value="on">
+                            </div>
+                        </div>
+
+                        <!-- Promotion Result -->
+                        <div class="preference-row d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="category-icon promotion">
+                                    <i class="bi bi-arrow-up-circle"></i>
+                                </div>
+                                <div>
+                                    <div class="preference-label">Promotion Results</div>
+                                    <div class="preference-description">Student promotion outcomes</div>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch toggle-switch-lg">
+                                <input class="form-check-input" type="checkbox" name="promotion_result_enabled" id="promotionResult"
+                                       {% if preferences.promotion_result_enabled %}checked{% endif %} value="on">
+                            </div>
+                        </div>
+
+                        <!-- Leave Approval -->
+                        <div class="preference-row d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="category-icon leave">
+                                    <i class="bi bi-calendar-check"></i>
+                                </div>
+                                <div>
+                                    <div class="preference-label">Leave Approvals</div>
+                                    <div class="preference-description">Staff leave request updates</div>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch toggle-switch-lg">
+                                <input class="form-check-input" type="checkbox" name="leave_approval_enabled" id="leaveApproval"
+                                       {% if preferences.leave_approval_enabled %}checked{% endif %} value="on">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Card -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 bg-gold-soft">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <i class="bi bi-info-circle text-gold fs-4 mt-1"></i>
+                        <div>
+                            <h6 class="fw-bold mb-1">About Notification Preferences</h6>
+                            <p class="text-muted small mb-0">
+                                Your preferences are saved automatically when you click "Save Preferences".
+                                You can always change these settings later. Some notifications may be
+                                required by your school and cannot be disabled.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container">
+    <div id="preferenceToast" class="toast border-0 shadow-sm rounded-4" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-body d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill text-teal fs-5" id="toastIcon"></i>
+            <span id="toastMessage">Preferences saved successfully!</span>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('preferencesForm');
+    const saveBtn = document.getElementById('savePreferencesBtn');
+    const resetBtn = document.getElementById('resetDefaultsBtn');
+    const toast = document.getElementById('preferenceToast');
+    const toastMessage = document.getElementById('toastMessage');
+    const toastIcon = document.getElementById('toastIcon');
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    function showToast(message, type) {
+        try {
+            toastMessage.textContent = message;
+            if (type === 'error') {
+                toastIcon.className = 'bi bi-exclamation-circle-fill text-danger fs-5';
+                toast.classList.add('border-danger');
+            } else {
+                toastIcon.className = 'bi bi-check-circle-fill text-teal fs-5';
+                toast.classList.remove('border-danger');
+            }
+            const toastInstance = new bootstrap.Toast(toast, {
+                autohide: true,
+                delay: 3000
+            });
+            toastInstance.show();
+        } catch (toastErr) {
+            console.warn('Preference toast could not be shown:', toastErr);
+        }
+    }
+
+    // ============================================================
+    // SAVE PREFERENCES
+    // ============================================================
+    function savePreferences(triggerBtn, successMessage) {
+        const originalText = triggerBtn.innerHTML;
+        triggerBtn.disabled = true;
+        triggerBtn.innerHTML = '<span class="spinner-border spinner-border-sm spinner-gold me-2" role="status"></span>Saving...';
+
+        const formData = new FormData(form);
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(text || 'Server error');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                setTimeout(() => { window.location.reload(); }, 1200);
+                showToast(successMessage || data.message || 'Preferences saved successfully!');
+            } else {
+                showToast('Error: ' + (data.error || 'Failed to save preferences.'), 'error');
+                triggerBtn.disabled = false;
+                triggerBtn.innerHTML = originalText;
+            }
+        })
+        .catch(err => {
+            console.error('Error saving preferences:', err);
+            showToast('An unexpected error occurred: ' + err.message, 'error');
+            triggerBtn.disabled = false;
+            triggerBtn.innerHTML = originalText;
+        });
+    }
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        savePreferences(saveBtn);
+    });
+
+    // ============================================================
+    // RESET TO DEFAULTS
+    // ============================================================
+    resetBtn.addEventListener('click', function() {
+        if (!confirm('Reset all preferences to default settings?')) return;
+
+        document.getElementById('emailEnabled').checked = true;
+        document.getElementById('smsEnabled').checked = false;
+        document.getElementById('inAppEnabled').checked = true;
+
+        document.getElementById('overdueBalance').checked = true;
+        document.getElementById('timetableUpdate').checked = true;
+        document.getElementById('gradeRelease').checked = true;
+        document.getElementById('announcement').checked = true;
+        document.getElementById('attendanceAlert').checked = true;
+        document.getElementById('promotionResult').checked = true;
+        document.getElementById('leaveApproval').checked = true;
+
+        savePreferences(resetBtn, 'Preferences reset to defaults and saved.');
+    });
+
+    // ============================================================
+    // TOGGLE ALL CATEGORIES - Double click on section header
+    // ============================================================
+    const categorySection = document.getElementById('categorySection');
+    if (categorySection) {
+        const header = categorySection.closest('.card-body').querySelector('h6');
+        if (header) {
+            header.style.cursor = 'pointer';
+            header.title = 'Double-click to toggle all categories';
+            header.addEventListener('dblclick', function() {
+                const checkboxes = categorySection.querySelectorAll('input[type="checkbox"]');
+                const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+                checkboxes.forEach(cb => cb.checked = !allChecked);
+                showToast(allChecked ? 'All categories disabled' : 'All categories enabled');
+            });
+        }
+    }
+
+    // ============================================================
+    // ANIMATE TOGGLE SWITCHES
+    // ============================================================
+    document.querySelectorAll('.form-check-input').forEach(input => {
+        input.addEventListener('change', function() {
+            const wrapper = this.closest('.preference-row');
+            if (wrapper) {
+                wrapper.style.transition = 'background-color 0.2s ease';
+                wrapper.style.backgroundColor = 'rgba(148, 107, 28, 0.04)';
+                setTimeout(() => {
+                    wrapper.style.backgroundColor = 'transparent';
+                }, 300);
+            }
+        });
+    });
+
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

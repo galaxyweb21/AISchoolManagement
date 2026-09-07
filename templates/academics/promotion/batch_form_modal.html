@@ -1,0 +1,171 @@
+<!-- academics/templates/academics/promotion/batch_form_modal.html -->
+{% load static %}
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold">
+        <i class="bi bi-arrow-up-circle text-primary me-2" style="color: var(--primary-color, #946B1C) !important;"></i>
+        Process Promotion Batch
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form method="post" action="{% url 'academics:promotion_batch_create' %}" id="promotionBatchForm" class="needs-validation" novalidate>
+    {% csrf_token %}
+
+    <div class="modal-body p-4">
+        <!-- Batch Name -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="batchName">
+                Batch Name <span class="text-danger">*</span>
+            </label>
+            <input type="text" name="name" id="batchName" class="form-control"
+                   placeholder="e.g., 2025 Academic Year Promotion"
+                   value="{% now 'Y' %} Academic Year Promotion" required>
+            <div class="invalid-feedback">Please enter a batch name.</div>
+        </div>
+
+        <!-- Grade Levels -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="fromGradeLevel">
+                    From Grade Level <span class="text-danger">*</span>
+                </label>
+                <select name="from_grade_level" id="fromGradeLevel" class="form-select" required>
+                    <option value="">Select Grade</option>
+                    {% for grade in grade_levels %}
+                        <option value="{{ grade.id }}">{{ grade.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="invalid-feedback">Please select the starting grade level.</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold" for="toGradeLevel">
+                    To Grade Level <span class="text-danger">*</span>
+                </label>
+                <select name="to_grade_level" id="toGradeLevel" class="form-select" required>
+                    <option value="">Select Grade</option>
+                    {% for grade in grade_levels %}
+                        <option value="{{ grade.id }}">{{ grade.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="invalid-feedback">Please select the target grade level.</div>
+            </div>
+        </div>
+
+        <!-- Academic Term -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="academicTerm">
+                Academic Term <span class="text-danger">*</span>
+            </label>
+            <select name="academic_term" id="academicTerm" class="form-select" required>
+                <option value="">Select Term</option>
+                {% for term in terms %}
+                    <option value="{{ term.id }}">
+                        {{ term.name }} - {{ term.academic_year.name }}
+                        {% if term.is_active %}(Active){% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+            <div class="invalid-feedback">Please select an academic term.</div>
+            <small class="text-muted">This is the term whose results will be evaluated for promotion.</small>
+        </div>
+
+        <!-- Promotion Rule -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="promotionRule">
+                Promotion Rule <span class="text-muted">(Optional)</span>
+            </label>
+            <select name="promotion_rule" id="promotionRule" class="form-select">
+                <option value="">Auto-detect or use default</option>
+                {% for rule in rules %}
+                    <option value="{{ rule.id }}">
+                        {{ rule.from_grade_level.name }} → {{ rule.to_grade_level.name }}
+                        ({{ rule.get_promotion_mode_display }})
+                    </option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Leave empty to use the default rule for the selected grade levels.</small>
+        </div>
+
+        <!-- Promotion Mode -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Promotion Mode</label>
+            <div class="d-flex gap-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="mode" id="modeAuto" value="AUTO" checked>
+                    <label class="form-check-label fw-semibold" for="modeAuto">
+                        <i class="bi bi-robot text-primary me-1" style="color: var(--primary-color, #946B1C) !important;"></i>Automatic
+                    </label>
+                    <br>
+                    <small class="text-muted">Automatically promote students based on criteria.</small>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="mode" id="modeManual" value="MANUAL">
+                    <label class="form-check-label fw-semibold" for="modeManual">
+                        <i class="bi bi-person text-success me-1" style="color: var(--eduai-signal, #2C7A6D) !important;"></i>Manual
+                    </label>
+                    <br>
+                    <small class="text-muted">Generate recommendations for manual review.</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Alert -->
+        <div class="alert border-0 rounded-3" style="background: rgba(59,130,246,0.1); color: #3b82f6;">
+            <small>
+                <i class="bi bi-info-circle me-1"></i>
+                <strong>How it works:</strong>
+                <ul class="mb-0 mt-1">
+                    <li>Students are evaluated based on their performance in the selected term.</li>
+                    <li>Promotion criteria include overall average, subject passes, and attendance.</li>
+                    <li>Conditional promotion allows students who narrowly miss requirements to be promoted with conditions.</li>
+                    <li>Results will show: Promoted, Conditional, or Repeated.</li>
+                </ul>
+            </small>
+        </div>
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn" id="batchSubmitBtn" style="background: var(--primary-color, #946B1C); color: #fff; border-color: var(--primary-color, #946B1C);">
+            <i class="bi bi-play-fill me-1"></i>Process Promotions
+        </button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('promotionBatchForm');
+
+    form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    const fromGrade = document.getElementById('fromGradeLevel');
+    const toGrade = document.getElementById('toGradeLevel');
+    const ruleSelect = document.getElementById('promotionRule');
+
+    function updateRuleOptions() {
+        if (!fromGrade.value || !toGrade.value) return;
+
+        const options = ruleSelect.options;
+        for (let i = 0; i < options.length; i++) {
+            const opt = options[i];
+            if (opt.value && opt.text.includes(fromGrade.options[fromGrade.selectedIndex].text) &&
+                opt.text.includes(toGrade.options[toGrade.selectedIndex].text)) {
+                ruleSelect.value = opt.value;
+                break;
+            }
+        }
+    }
+
+    fromGrade.addEventListener('change', updateRuleOptions);
+    toGrade.addEventListener('change', updateRuleOptions);
+});
+</script>

@@ -1,0 +1,828 @@
+<!-- staff/templates/staff/payroll/staff_allowance_list.html -->
+{% extends 'base/base.html' %}
+{% load staff_filters %}
+
+{% block page_title %}Staff Allowances{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-custom {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.7rem;
+    }
+    .toggle-status-icon {
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+    .toggle-status-icon:hover {
+        transform: scale(1.2);
+    }
+    /* Toggle Modal Styles */
+    .toggle-confirm-icon {
+        font-size: 3rem;
+    }
+    .toggle-detail-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .toggle-detail-item:last-child {
+        border-bottom: none;
+    }
+    .toggle-detail-label {
+        color: #6c757d;
+        font-weight: 500;
+    }
+    .toggle-detail-value {
+        font-weight: 600;
+    }
+    /* Pagination styles */
+    .pagination .page-link {
+        color: var(--eduai-gold, #946B1C);
+    }
+    .pagination .page-item.active .page-link {
+        background-color: var(--eduai-gold, #946B1C);
+        border-color: var(--eduai-gold, #946B1C);
+        color: #fff;
+    }
+    .pagination .page-link:focus {
+        box-shadow: 0 0 0 0.2rem rgba(148, 107, 28, 0.25);
+    }
+    .pagination .page-item.disabled .page-link {
+        color: #6c757d;
+    }
+</style>
+
+<!-- ============================================================ -->
+<!-- MESSAGES / TOAST NOTIFICATIONS                                -->
+<!-- ============================================================ -->
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <h2 class="fw-bold mb-2">
+                        <i class="bi bi-person-plus text-gold me-2"></i>
+                        Staff Allowances
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Assign individual allowances to staff members.
+                        These override grade-level allowances.
+                    </p>
+                    <small class="text-muted">
+                        {{ total_count|default:staff_allowances|length }} staff allowance(s) assigned
+                    </small>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#staffAllowanceModal"
+                            data-action="create" data-url="{% url 'staff:staff_allowance_create' %}">
+                        <i class="bi bi-plus-lg me-1"></i>Assign Allowance
+                    </button>
+                    <a href="{% url 'staff:allowance_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-layers me-1"></i>Grade Allowances
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="alert alert-info border-0 rounded-4 bg-gold-soft mb-4">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle-fill text-gold fs-4 me-3 mt-1"></i>
+            <div>
+                <h6 class="fw-bold mb-1">How Staff Allowances Work</h6>
+                <p class="mb-0 small">
+                    <strong>Individual Staff Allowances</strong> override grade-level allowances.
+                    If a staff member has both a grade allowance and an individual allowance,
+                    the individual allowance takes precedence. Leave the amount blank to use
+                    the default allowance amount.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Staff Allowance List -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-transparent border-0 p-4 pb-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0">
+                    <i class="bi bi-table text-gold me-2"></i>Assigned Allowances
+                    <span class="badge bg-light text-muted ms-2">{{ total_count|default:staff_allowances|length }}</span>
+                </h6>
+                <div>
+                    <input type="text" id="staffAllowanceSearch" class="form-control form-control-sm"
+                           placeholder="Search..." style="width: 200px;">
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="staffAllowanceTable">
+                    <thead>
+                        <tr>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 ps-4">
+                                Staff
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">
+                                Allowance
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">
+                                Default Amount
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">
+                                Staff Amount
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">
+                                Taxable
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">
+                                Status
+                            </th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end pe-4">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0">
+                        {% for item in staff_allowances %}
+                        <tr class="border-bottom staff-allowance-row">
+                            <td class="ps-4 py-3">
+                                <div class="fw-semibold">
+                                    {% if item.staff.user.get_full_name %}
+                                        {{ item.staff.user.get_full_name }}
+                                    {% else %}
+                                        {{ item.staff.user.username }}
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">{{ item.staff.staff_id|default:"-" }}</small>
+                            </td>
+                            <td class="py-3">
+                                <div class="fw-semibold">{{ item.allowance.name }}</div>
+                                <small class="text-muted">{{ item.allowance.get_allowance_type_display }}</small>
+                            </td>
+                            <td class="py-3 text-end">
+                                {% if item.allowance.is_percentage %}
+                                    {{ item.allowance.amount|floatformat:2 }}%
+                                {% else %}
+                                    GH₵ {{ item.allowance.amount|floatformat:2 }}
+                                {% endif %}
+                            </td>
+                            <td class="py-3 text-end">
+                                {% if item.amount is not None %}
+                                    {% if item.allowance.is_percentage %}
+                                        <span class="fw-bold text-gold">{{ item.amount|floatformat:2 }}%</span>
+                                    {% else %}
+                                        <span class="fw-bold text-gold">GH₵ {{ item.amount|floatformat:2 }}</span>
+                                    {% endif %}
+                                    <small class="d-block text-muted">Custom</small>
+                                {% else %}
+                                    <span class="text-muted">Uses default</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 text-center">
+                                {% if item.allowance.taxable %}
+                                    <span class="badge bg-warning-subtle text-warning border badge-custom">Taxable</span>
+                                {% else %}
+                                    <span class="badge bg-teal-soft text-teal border badge-custom">Non-Taxable</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 text-center">
+                                {% if item.is_active %}
+                                    <span class="badge bg-teal-soft text-teal border badge-custom">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary border badge-custom">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 pe-4 text-end text-nowrap">
+                                <!-- Edit Button -->
+                                <button type="button" class="btn btn-sm btn-outline-gold px-2"
+                                        data-bs-toggle="modal" data-bs-target="#staffAllowanceModal"
+                                        data-action="edit" data-url="{% url 'staff:staff_allowance_edit' item.id %}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <!-- Toggle Button -->
+                                <button type="button" class="btn btn-sm btn-outline-gold px-2"
+                                        onclick="openToggleModal('{{ item.id }}', '{{ item.allowance.name }}', '{% if item.staff.user.get_full_name %}{{ item.staff.user.get_full_name }}{% else %}{{ item.staff.user.username }}{% endif %}', {{ item.is_active|yesno:'true,false' }})">
+                                    {% if item.is_active %}
+                                        <i class="bi bi-toggle-on text-success toggle-status-icon"></i>
+                                    {% else %}
+                                        <i class="bi bi-toggle-off text-secondary toggle-status-icon"></i>
+                                    {% endif %}
+                                </button>
+                                <!-- Delete Button -->
+                                <button type="button" class="btn btn-sm btn-outline-danger px-2"
+                                        data-bs-toggle="modal" data-bs-target="#staffAllowanceModal"
+                                        data-action="delete" data-url="{% url 'staff:staff_allowance_delete' item.id %}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-2 d-block mb-3"></i>
+                                <h6 class="fw-bold">No staff allowances assigned</h6>
+                                <p class="small mb-0">Assign an allowance to a staff member to include it in payroll.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ========================================================== -->
+        <!-- PAGINATION                                                   -->
+        <!-- ========================================================== -->
+        {% if page_obj and paginator and paginator.num_pages > 1 %}
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 p-4 border-top">
+            <div class="text-muted small">
+                Showing <strong>{{ page_obj.start_index }}</strong> to <strong>{{ page_obj.end_index }}</strong>
+                of <strong>{{ paginator.count }}</strong> allowances
+            </div>
+            <nav aria-label="Staff allowances pagination">
+                <ul class="pagination pagination-sm mb-0">
+                    <!-- Previous -->
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="bi bi-chevron-left"></i></span>
+                    </li>
+                    {% endif %}
+
+                    <!-- Page numbers -->
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- Next -->
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="bi bi-chevron-right"></i></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-lightning-fill text-warning me-2"></i>Quick Actions</h6>
+                    <div class="d-flex flex-wrap gap-3">
+                        <button type="button" class="btn btn-outline-gold" data-bs-toggle="modal" data-bs-target="#staffAllowanceModal"
+                                data-action="create" data-url="{% url 'staff:staff_allowance_create' %}">
+                            <i class="bi bi-plus-lg me-1"></i>Assign Allowance
+                        </button>
+                        <a href="{% url 'staff:allowance_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-layers me-1"></i>Grade Allowances
+                        </a>
+                        <a href="{% url 'staff:payroll_dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Back to Payroll
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- STAFF ALLOWANCE MODAL (Create/Edit/Delete)                  -->
+<!-- ========================================================== -->
+<div class="modal fade" id="staffAllowanceModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-body p-0">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- TOGGLE CONFIRMATION MODAL                                  -->
+<!-- ========================================================== -->
+<div class="modal fade" id="toggleConfirmModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="toggleModalTitle">
+                    <i class="bi bi-arrow-repeat text-gold me-2"></i>
+                    Confirm Action
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <div class="rounded-circle d-inline-flex p-3 mb-3" id="toggleIconWrapper" style="background: rgba(148, 107, 28, 0.12);">
+                        <i class="bi bi-exclamation-triangle-fill text-gold toggle-confirm-icon"></i>
+                    </div>
+                    <h5 class="fw-bold" id="toggleConfirmMessage">Are you sure?</h5>
+                    <p class="text-muted" id="toggleConfirmDetail">This action will change the status of this allowance.</p>
+                </div>
+
+                <!-- Allowance Details -->
+                <div class="bg-light rounded-3 p-3 mb-3">
+                    <div class="toggle-detail-item">
+                        <span class="toggle-detail-label">Staff Member</span>
+                        <span class="toggle-detail-value" id="toggleStaffName">-</span>
+                    </div>
+                    <div class="toggle-detail-item">
+                        <span class="toggle-detail-label">Allowance</span>
+                        <span class="toggle-detail-value" id="toggleAllowanceName">-</span>
+                    </div>
+                    <div class="toggle-detail-item">
+                        <span class="toggle-detail-label">Current Status</span>
+                        <span class="toggle-detail-value" id="toggleCurrentStatus">-</span>
+                    </div>
+                    <div class="toggle-detail-item">
+                        <span class="toggle-detail-label">New Status</span>
+                        <span class="toggle-detail-value" id="toggleNewStatus">-</span>
+                    </div>
+                </div>
+
+                <div class="alert alert-info border-0 rounded-4 bg-gold-soft">
+                    <i class="bi bi-info-circle text-gold me-2"></i>
+                    <span class="small" id="toggleInfoText">
+                        This action can be reversed at any time.
+                    </span>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-gold" id="toggleConfirmBtn">
+                    <i class="bi bi-check-circle me-1"></i>
+                    <span id="toggleConfirmBtnText">Confirm</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH FUNCTIONALITY
+    // ============================================================
+    const searchInput = document.getElementById('staffAllowanceSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            document.querySelectorAll('.staff-allowance-row').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        });
+    }
+
+    // ============================================================
+    // STAFF ALLOWANCE MODAL (Create/Edit/Delete)
+    // ============================================================
+    const modal = document.getElementById('staffAllowanceModal');
+    const modalContent = modal.querySelector('.modal-body');
+
+    modal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const action = button.getAttribute('data-action');
+        const url = button.getAttribute('data-url');
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading...</p>
+            </div>
+        `;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+
+            if (action === 'delete') {
+                bindDeleteForm();
+            } else {
+                bindFormSubmit();
+            }
+        })
+        .catch(err => {
+            console.error('Error loading form:', err);
+            modalContent.innerHTML = `
+                <div class="p-4 text-center">
+                    <div class="alert alert-danger border-0 rounded-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error loading form. Please try again.
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        });
+    });
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    function bindFormSubmit() {
+        const form = modalContent.querySelector('form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    // Show success message via URL reload with message parameter
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('message', data.message || 'Operation completed successfully.');
+                    url.searchParams.set('message_type', 'success');
+                    window.location.href = url.toString();
+                } else {
+                    showError(data.error || 'An error occurred while saving.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            })
+            .catch(err => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                showError('Network error. Please try again.');
+                console.error('Error:', err);
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    function bindDeleteForm() {
+        const form = modalContent.querySelector('form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('message', data.message || 'Deleted successfully.');
+                    url.searchParams.set('message_type', 'success');
+                    window.location.href = url.toString();
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    showError(data.error || 'Error deleting.');
+                }
+            })
+            .catch(err => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                showError('Network error. Please try again.');
+                console.error('Error:', err);
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    modal.addEventListener('hidden.bs.modal', function () {
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading...</p>
+            </div>
+        `;
+    });
+
+    // ============================================================
+    // TOGGLE CONFIRMATION MODAL
+    // ============================================================
+    const toggleModal = document.getElementById('toggleConfirmModal');
+    const toggleConfirmBtn = document.getElementById('toggleConfirmBtn');
+    let pendingToggleData = null;
+
+    // Make the function globally accessible
+    window.openToggleModal = function(id, allowanceName, staffName, isActive) {
+        pendingToggleData = {
+            id: id,
+            allowanceName: allowanceName,
+            staffName: staffName,
+            isActive: isActive
+        };
+
+        // Update modal content
+        document.getElementById('toggleStaffName').textContent = staffName;
+        document.getElementById('toggleAllowanceName').textContent = allowanceName;
+
+        const currentStatus = isActive ? 'Active' : 'Inactive';
+        const newStatus = isActive ? 'Inactive' : 'Active';
+        const action = isActive ? 'Deactivate' : 'Activate';
+
+        document.getElementById('toggleCurrentStatus').innerHTML =
+            `<span class="badge ${isActive ? 'bg-success' : 'bg-secondary'}">${currentStatus}</span>`;
+        document.getElementById('toggleNewStatus').innerHTML =
+            `<span class="badge ${isActive ? 'bg-secondary' : 'bg-success'}">${newStatus}</span>`;
+
+        document.getElementById('toggleConfirmMessage').textContent =
+            `Are you sure you want to ${action} "${allowanceName}"?`;
+        document.getElementById('toggleConfirmDetail').textContent =
+            `This will ${isActive ? 'remove' : 'add'} this allowance from ${staffName}'s payroll.`;
+        document.getElementById('toggleInfoText').textContent =
+            isActive ? 'This action can be reversed by activating the allowance again.' :
+            'This action can be reversed by deactivating the allowance again.';
+        document.getElementById('toggleConfirmBtnText').textContent = action;
+
+        // Change button color based on action
+        if (isActive) {
+            toggleConfirmBtn.className = 'btn btn-warning';
+        } else {
+            toggleConfirmBtn.className = 'btn btn-success';
+        }
+
+        // Show the modal
+        const modalInstance = new bootstrap.Modal(toggleModal);
+        modalInstance.show();
+    };
+
+    // Handle confirm button click
+    toggleConfirmBtn.addEventListener('click', function() {
+        if (!pendingToggleData) return;
+
+        const { id, allowanceName, staffName, isActive } = pendingToggleData;
+        const csrfToken = getCSRFToken();
+
+        // Disable button and show loading
+        toggleConfirmBtn.disabled = true;
+        toggleConfirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
+
+        // Make the AJAX request
+        fetch(`/staff/staff-allowances/${id}/toggle-active/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            toggleConfirmBtn.disabled = false;
+            toggleConfirmBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Confirm';
+
+            if (data.success) {
+                const modalInstance = bootstrap.Modal.getInstance(toggleModal);
+                modalInstance.hide();
+                const url = new URL(window.location.href);
+                url.searchParams.set('message', data.message || 'Status toggled successfully.');
+                url.searchParams.set('message_type', 'success');
+                window.location.href = url.toString();
+            } else {
+                showToggleError(data.error || 'Failed to toggle status.');
+            }
+        })
+        .catch(error => {
+            toggleConfirmBtn.disabled = false;
+            toggleConfirmBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Confirm';
+            showToggleError('Network error. Please try again.');
+            console.error('Error:', error);
+        });
+    });
+
+    function showToggleError(message) {
+        const existingErrors = toggleModal.querySelectorAll('.alert-danger');
+        existingErrors.forEach(el => el.remove());
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+        errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+        const body = toggleModal.querySelector('.modal-body');
+        if (body) {
+            body.insertBefore(errorDiv, body.firstChild);
+        }
+    }
+
+    // Reset pending data when modal is hidden
+    toggleModal.addEventListener('hidden.bs.modal', function () {
+        pendingToggleData = null;
+        // Remove any error messages
+        const errors = toggleModal.querySelectorAll('.alert-danger');
+        errors.forEach(el => el.remove());
+    });
+
+    // ============================================================
+    // HANDLE URL MESSAGE PARAMETERS
+    // ============================================================
+    const urlParams = new URLSearchParams(window.location.search);
+    const message = urlParams.get('message');
+    const messageType = urlParams.get('message_type');
+
+    if (message) {
+        // Show toast or alert
+        const alertClass = messageType === 'success' ? 'success' :
+                          messageType === 'error' ? 'danger' :
+                          messageType === 'warning' ? 'warning' : 'info';
+
+        const container = document.getElementById('messagesContainer');
+        if (container) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${alertClass} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3`;
+            alertDiv.setAttribute('role', 'alert');
+            alertDiv.innerHTML = `
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        ${alertClass === 'success' ? 'bi-check-circle-fill text-success' :
+                          alertClass === 'danger' ? 'bi-exclamation-circle-fill text-danger' :
+                          alertClass === 'warning' ? 'bi-exclamation-triangle-fill text-warning' :
+                          'bi-info-circle-fill text-info'}
+                        fs-5
+                    "></i>
+                    <span>${message}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            container.appendChild(alertDiv);
+
+            // Auto-dismiss after 5 seconds
+            setTimeout(function() {
+                const bsAlert = new bootstrap.Alert(alertDiv);
+                bsAlert.close();
+            }, 5000);
+
+            // Remove the parameters from URL without reload
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('message');
+            newUrl.searchParams.delete('message_type');
+            window.history.replaceState({}, '', newUrl.toString());
+        }
+    }
+
+    // Auto-dismiss existing messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% include "partials/pagination.html" with page_obj=staff_allowances %}
+
+{% endblock %}

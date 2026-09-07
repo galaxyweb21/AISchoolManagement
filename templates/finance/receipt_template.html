@@ -1,0 +1,317 @@
+<!-- finance/templates/finance/receipt_template.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Receipt</title>
+    <style>
+        @page {
+            size: a4;
+            margin: 2cm;
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 12px;
+            color: #333;
+            line-height: 1.5;
+        }
+        .receipt-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #946B1C;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #946B1C;
+            font-size: 24px;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .header .school-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        .header .school-details {
+            font-size: 11px;
+            color: #666;
+        }
+        .logo {
+            max-width: 100px;
+            max-height: 80px;
+            margin-bottom: 10px;
+        }
+        .receipt-title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #946B1C;
+            margin: 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        .receipt-number {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .receipt-number strong {
+            color: #333;
+        }
+        .info-grid {
+            display: table;
+            width: 100%;
+            margin-bottom: 20px;
+            border-collapse: collapse;
+        }
+        .info-grid .row {
+            display: table-row;
+        }
+        .info-grid .label {
+            display: table-cell;
+            padding: 5px 10px;
+            font-weight: bold;
+            color: #555;
+            width: 30%;
+            border-bottom: 1px solid #eee;
+        }
+        .info-grid .value {
+            display: table-cell;
+            padding: 5px 10px;
+            border-bottom: 1px solid #eee;
+            width: 70%;
+        }
+        .amount-box {
+            background-color: #f8f6f0;
+            border: 2px solid #946B1C;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .amount-box .amount {
+            font-size: 32px;
+            font-weight: bold;
+            color: #946B1C;
+        }
+        .amount-box .amount-words {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .amount-box .currency {
+            font-size: 20px;
+            font-weight: bold;
+            color: #946B1C;
+        }
+        table.items {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table.items th {
+            background-color: #946B1C;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        table.items td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+        }
+        table.items .total-row {
+            font-weight: bold;
+            background-color: #f8f6f0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #946B1C;
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+        }
+        .footer .thank-you {
+            font-size: 16px;
+            color: #946B1C;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .signature-line {
+            margin-top: 30px;
+            display: table;
+            width: 100%;
+        }
+        .signature-line .col {
+            display: table-cell;
+            text-align: center;
+            padding-top: 30px;
+        }
+        .signature-line .line {
+            border-top: 1px solid #333;
+            width: 200px;
+            margin: 0 auto;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        @media print {
+            body { margin: 0; padding: 0; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="receipt-container">
+    <!-- Header -->
+    <div class="header">
+        {% if school_logo %}
+        <img src="{{ school_logo }}" alt="{{ school_name }}" class="logo">
+        {% endif %}
+        <div class="school-name">{{ school_name }}</div>
+        <div class="school-details">
+            {{ school_address|default:'' }}<br>
+            {{ school_phone|default:'' }} | {{ school_email|default:'' }}
+        </div>
+        <div class="receipt-title">Payment Receipt</div>
+        <div class="receipt-number">
+            Receipt #: <strong>{{ receipt_number }}</strong>
+        </div>
+    </div>
+
+    <!-- Student & Payment Info -->
+    <div class="info-grid">
+        <div class="row">
+            <div class="label">Student Name</div>
+            <div class="value">{{ student_name }}</div>
+        </div>
+        <div class="row">
+            <div class="label">Admission Number</div>
+            <div class="value">{{ admission_number }}</div>
+        </div>
+        <div class="row">
+            <div class="label">Parent/Guardian</div>
+            <div class="value">{{ parent_name }}</div>
+        </div>
+        <div class="row">
+            <div class="label">Invoice Number</div>
+            <div class="value">{{ invoice_number }}</div>
+        </div>
+        <div class="row">
+            <div class="label">Payment Method</div>
+            <div class="value">{{ method }}</div>
+        </div>
+        <div class="row">
+            <div class="label">Reference Number</div>
+            <div class="value">{{ reference_number }}</div>
+        </div>
+        <div class="row">
+            <div class="label">Payment Date</div>
+            <div class="value">{{ date|date:"F d, Y H:i" }}</div>
+        </div>
+        <div class="row">
+            <div class="label">Status</div>
+            <div class="value">
+                {% if is_full_payment %}
+                    <span class="badge badge-success">Fully Paid</span>
+                {% elif balance_due > 0 %}
+                    <span class="badge badge-warning">Partial Payment</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Amount -->
+    <div class="amount-box">
+        <div>Amount Paid</div>
+        <div>
+            <span class="currency">{{ currency }}</span>
+            <span class="amount">{{ amount|floatformat:2 }}</span>
+        </div>
+        <div class="amount-words">({{ amount_words }})</div>
+    </div>
+
+    <!-- Invoice Summary -->
+    <h4 style="color: #946B1C; margin-top: 20px;">Invoice Summary</h4>
+    <table class="items">
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th style="text-align: right;">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in payment.invoice.line_items.all %}
+            <tr>
+                <td>{{ item.description }}</td>
+                <td style="text-align: right;">{{ currency }} {{ item.amount|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td style="border-top: 2px solid #946B1C;">Total Invoice Amount</td>
+                <td style="border-top: 2px solid #946B1C; text-align: right;">{{ currency }} {{ total_amount|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td>Amount Paid</td>
+                <td style="text-align: right;">{{ currency }} {{ amount_paid|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td style="border-bottom: 2px solid #946B1C;">Balance Due</td>
+                <td style="border-bottom: 2px solid #946B1C; text-align: right;">
+                    {% if balance_due > 0 %}
+                        <strong>{{ currency }} {{ balance_due|floatformat:2 }}</strong>
+                    {% else %}
+                        <strong style="color: #28a745;">{{ currency }} 0.00</strong>
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="thank-you">Thank You for Your Payment!</div>
+        <p>This is a system-generated receipt. Please keep it for your records.</p>
+        <p style="font-size: 10px; color: #999;">
+            Generated on {{ date|date:"F d, Y H:i" }} | Receipt #: {{ receipt_number }}
+        </p>
+        <div class="signature-line">
+            <div class="col">
+                <div class="line"></div>
+                <span style="font-size: 11px; color: #666;">Authorized Signature</span>
+            </div>
+            <div class="col">
+                <div class="line"></div>
+                <span style="font-size: 11px; color: #666;">Date</span>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,569 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Book Catalog{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+</style>
+
+<!-- How Book Catalog Works -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How Book Catalog Works</div>
+            <p class="text">
+                This is the master list of all books in your library. Each book shows its
+                <strong>title</strong>, <strong>author</strong>, <strong>category</strong>,
+                <strong>ISBN</strong>, <strong>availability</strong> (available copies / total copies),
+                and current <strong>status</strong>. Use the search box below to filter books by
+                title, author, or ISBN. Click <strong>"Add Book"</strong> to add new books to
+                your collection, or use the <strong>3-dot menu</strong> to edit or delete a book.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="bi bi-book text-gold me-2"></i>Book Catalog</h5>
+                <p class="text-muted mb-0">Browse and manage your school's library collection.</p>
+            </div>
+            <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#bookModal" data-action="create" data-url="{% url 'library:book_create' %}">
+                <i class="bi bi-plus-lg me-1"></i>Add Book
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-table text-gold me-2"></i>All Books
+                <span class="badge bg-light text-muted ms-2" id="bookCount">{{ books|length }}</span>
+            </h6>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="text-muted small" id="filterStatus"></span>
+                <input type="text" id="bookSearchInput" class="form-control form-control-sm" placeholder="Search books..." style="max-width: 220px;">
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="booksTable">
+                <thead>
+                    <tr>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Title</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Author</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Category</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">ISBN</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Available</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Status</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0" id="bookTableBody">
+                    {% for book in books %}
+                    <tr class="border-bottom book-row" data-id="{{ book.id }}" data-search="{{ book.title }} {{ book.author }} {{ book.isbn|default:'' }}">
+                        <td class="fw-semibold py-3 ps-0" data-field="title">{{ book.title }}</td>
+                        <td class="py-3" data-field="author">{{ book.author }}</td>
+                        <td class="py-3" data-field="category"><span class="badge badge-gold rounded-pill px-3 py-2">{{ book.category.name }}</span></td>
+                        <td class="py-3 text-muted" data-field="isbn"><code class="small bg-light px-2 py-1 rounded-2 border">{{ book.isbn|default:"—" }}</code></td>
+                        <td class="text-center py-3" data-field="available">
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">{{ book.available_copies }}/{{ book.total_copies }}</span>
+                        </td>
+                        <td class="text-center py-3" data-field="status">
+                            {% if book.status == 'AVAILABLE' %}
+                                <span class="badge badge-teal rounded-pill px-3 py-2">Available</span>
+                            {% elif book.status == 'BORROWED' %}
+                                <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2">Borrowed</span>
+                            {% elif book.status == 'LOST' %}
+                                <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-2">Lost</span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">{{ book.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end py-3 pe-0 text-nowrap">
+                            <a href="{% url 'library:book_detail' book.id %}" class="btn btn-sm btn-outline-gold px-3 me-2">
+                                <i class="bi bi-eye me-1"></i> View
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-secondary px-2"
+                                    data-bs-toggle="modal" data-bs-target="#actionModal"
+                                    data-book-id="{{ book.id }}"
+                                    data-book-title="{{ book.title }}">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr class="empty-state-row">
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="bi bi-book fs-2 d-block mb-2 text-secondary"></i>
+                            No books have been added to the library yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================== -->
+<!-- MASTER MODAL: CRUD Operations -->
+<!-- =========================================== -->
+<div class="modal fade" id="bookModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="bookModalTitle">Loading...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="bookModalContent">
+                <!-- Injected Content -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================== -->
+<!-- MINI ACTION MODAL: The "3-Dot" Popup         -->
+<!-- =========================================== -->
+<div class="modal fade" id="actionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-sm rounded-4 text-center">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h6 class="fw-bold mb-0 w-100" id="actionModalTitle">Book Options</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 d-flex flex-column gap-2">
+                <button type="button" class="btn btn-outline-gold w-100 py-2"
+                        id="actionEditBtn">
+                    <i class="bi bi-pencil-square me-2"></i> Edit Book
+                </button>
+                <button type="button" class="btn btn-outline-danger w-100 py-2"
+                        id="actionDeleteBtn">
+                    <i class="bi bi-trash me-2"></i> Delete Book
+                </button>
+                <button type="button" class="btn btn-secondary w-100 mt-2" data-bs-dismiss="modal">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER
+    // ============================================================
+    const bookSearchInput = document.getElementById('bookSearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const bookCount = document.getElementById('bookCount');
+    const allRows = document.querySelectorAll('.book-row');
+    const emptyState = document.querySelector('.empty-state-row');
+
+    if (bookSearchInput) {
+        bookSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const searchData = row.getAttribute('data-search') || '';
+                const text = row.textContent.toLowerCase();
+                const isVisible = searchData.includes(query) || text.includes(query);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (bookCount) {
+                if (query) {
+                    bookCount.textContent = visibleCount;
+                    if (filterStatus) {
+                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                    }
+                } else {
+                    bookCount.textContent = allRows.length;
+                    if (filterStatus) {
+                        filterStatus.textContent = '';
+                    }
+                }
+            }
+
+            if (emptyState) {
+                if (visibleCount === 0 && allRows.length > 0) {
+                    emptyState.style.display = '';
+                } else {
+                    emptyState.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // 1. MASTER CRUD MODAL LOGIC
+    // ============================================================
+    const modal = document.getElementById('bookModal');
+    const modalTitle = document.getElementById('bookModalTitle');
+    const modalContent = document.getElementById('bookModalContent');
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+
+    modal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const action = button.getAttribute('data-action');
+        const url = button.getAttribute('data-url');
+
+        if (action === 'create') {
+            modalTitle.innerHTML = '<i class="bi bi-plus-circle text-gold me-2"></i>Add New Book';
+        } else if (action === 'edit') {
+            modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Book';
+        } else if (action === 'delete') {
+            modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete';
+        }
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+            bindFormSubmit();
+        })
+        .catch(err => {
+            modalContent.innerHTML = `<div class="alert alert-danger">Error loading form.</div>`;
+        });
+    });
+
+    function bindFormSubmit() {
+        const form = modalContent.querySelector('form');
+        if (!form) return;
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
+            submitBtn.disabled = true;
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    window.location.reload();
+                } else {
+                    modalContent.innerHTML = `
+                        <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.error}
+                        </div>
+                        <div class="mt-3 text-end">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                modalContent.innerHTML = `
+                    <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> An unexpected error occurred.
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                `;
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+    }
+
+    // ============================================================
+    // 2. MINI ACTION MODAL LOGIC
+    // ============================================================
+    const actionModal = document.getElementById('actionModal');
+    const actionEditBtn = document.getElementById('actionEditBtn');
+    const actionDeleteBtn = document.getElementById('actionDeleteBtn');
+    const actionModalTitle = document.getElementById('actionModalTitle');
+
+    let currentActionBookId = null;
+
+    actionModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        currentActionBookId = button.getAttribute('data-book-id');
+        const bookTitle = button.getAttribute('data-book-title');
+
+        actionModalTitle.innerText = `Options for "${bookTitle}"`;
+    });
+
+    // Handle "Edit" button inside Mini Modal
+    actionEditBtn.addEventListener('click', function() {
+        const miniInstance = bootstrap.Modal.getInstance(actionModal);
+        miniInstance.hide();
+
+        setTimeout(() => {
+            const bookModalInstance = new bootstrap.Modal(document.getElementById('bookModal'));
+            document.getElementById('bookModalTitle').innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Book';
+
+            const editUrl = "/library/catalog/" + currentActionBookId + "/edit/";
+
+            const modalContent = document.getElementById('bookModalContent');
+            modalContent.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+
+            fetch(editUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => response.text())
+            .then(html => {
+                modalContent.innerHTML = html;
+                const form = modalContent.querySelector('form');
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const formData = new FormData(this);
+                        const submitBtn = this.querySelector('button[type="submit"]');
+                        const originalText = submitBtn.innerHTML;
+                        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+                        submitBtn.disabled = true;
+
+                        fetch(this.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const modalInstance = bootstrap.Modal.getInstance(document.getElementById('bookModal'));
+                                modalInstance.hide();
+                                window.location.reload();
+                            } else {
+                                modalContent.innerHTML = `
+                                    <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                                        <i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.error}
+                                    </div>
+                                    <div class="mt-3 text-end">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                `;
+                            }
+                        })
+                        .catch(err => {
+                            modalContent.innerHTML = `
+                                <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i> An unexpected error occurred.
+                                </div>
+                                <div class="mt-3 text-end">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            `;
+                        })
+                        .finally(() => {
+                            submitBtn.innerHTML = originalText;
+                            submitBtn.disabled = false;
+                        });
+                    });
+                }
+            })
+            .catch(err => {
+                modalContent.innerHTML = `<div class="alert alert-danger">Error loading form.</div>`;
+            });
+
+            bookModalInstance.show();
+        }, 300);
+    });
+
+    // Handle "Delete" button inside Mini Modal
+    actionDeleteBtn.addEventListener('click', function() {
+        const miniInstance = bootstrap.Modal.getInstance(actionModal);
+        miniInstance.hide();
+
+        setTimeout(() => {
+            const bookModalInstance = new bootstrap.Modal(document.getElementById('bookModal'));
+            document.getElementById('bookModalTitle').innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete';
+
+            const deleteUrl = "/library/catalog/" + currentActionBookId + "/delete/";
+
+            const modalContent = document.getElementById('bookModalContent');
+            modalContent.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+
+            fetch(deleteUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => response.text())
+            .then(html => {
+                modalContent.innerHTML = html;
+                const form = modalContent.querySelector('form');
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const formData = new FormData(this);
+                        const submitBtn = this.querySelector('button[type="submit"]');
+                        const originalText = submitBtn.innerHTML;
+                        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>';
+                        submitBtn.disabled = true;
+
+                        fetch(this.action, {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const modalInstance = bootstrap.Modal.getInstance(document.getElementById('bookModal'));
+                                modalInstance.hide();
+                                window.location.reload();
+                            } else {
+                                modalContent.innerHTML = `
+                                    <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                                        <i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.error}
+                                    </div>
+                                    <div class="mt-3 text-end">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                `;
+                            }
+                        })
+                        .catch(err => {
+                            modalContent.innerHTML = `
+                                <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i> An unexpected error occurred.
+                                </div>
+                                <div class="mt-3 text-end">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            `;
+                        })
+                        .finally(() => {
+                            submitBtn.innerHTML = originalText;
+                            submitBtn.disabled = false;
+                        });
+                    });
+                }
+            })
+            .catch(err => {
+                modalContent.innerHTML = `<div class="alert alert-danger">Error loading form.</div>`;
+            });
+
+            bookModalInstance.show();
+        }, 300);
+    });
+});
+</script>
+{% include "partials/pagination.html" with page_obj=books %}
+
+{% endblock %}

@@ -1,0 +1,51 @@
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+<nav class="enterprise-pagination d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4" aria-label="Pagination">
+    <div class="small text-muted">
+        Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Page navigation">
+            {% if page_obj.has_previous %}
+                <a class="btn btn-outline-secondary js-page-link" data-page="1" href="?page=1" aria-label="First page">&laquo;</a>
+                <a class="btn btn-outline-secondary js-page-link" data-page="{{ page_obj.previous_page_number }}" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous page">&lsaquo;</a>
+            {% else %}
+                <span class="btn btn-outline-secondary disabled">&laquo;</span>
+                <span class="btn btn-outline-secondary disabled">&lsaquo;</span>
+            {% endif %}
+
+            <span class="btn btn-primary">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+            {% if page_obj.has_next %}
+                <a class="btn btn-outline-secondary js-page-link" data-page="{{ page_obj.next_page_number }}" href="?page={{ page_obj.next_page_number }}" aria-label="Next page">&rsaquo;</a>
+                <a class="btn btn-outline-secondary js-page-link" data-page="{{ page_obj.paginator.num_pages }}" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last page">&raquo;</a>
+            {% else %}
+                <span class="btn btn-outline-secondary disabled">&rsaquo;</span>
+                <span class="btn btn-outline-secondary disabled">&raquo;</span>
+            {% endif %}
+        </div>
+
+        <select class="form-select form-select-sm" style="width:auto" aria-label="Records per page" onchange="if(this.value){const u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.href=u.toString();}">
+            {% with current=request.GET.per_page|default:'25' %}
+                <option value="25" {% if current == '25' %}selected{% endif %}>25 / page</option>
+                <option value="50" {% if current == '50' %}selected{% endif %}>50 / page</option>
+                <option value="100" {% if current == '100' %}selected{% endif %}>100 / page</option>
+            {% endwith %}
+        </select>
+    </div>
+</nav>
+
+<script>
+(function () {
+    var links = document.querySelectorAll('.js-page-link');
+    links.forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            event.preventDefault();
+            var url = new URL(window.location.href);
+            url.searchParams.set('page', this.dataset.page);
+            window.location.href = url.toString();
+        });
+    });
+})();
+</script>
+{% endif %}

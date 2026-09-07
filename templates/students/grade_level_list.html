@@ -1,0 +1,310 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Grade Levels{% endblock %}
+
+{% block content %}
+
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+</style>
+
+<!-- Messages are now handled by the global handler in base.html -->
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1"><i class="bi bi-layers text-gold me-2"></i>Grade Levels</h5>
+                <p class="text-muted mb-0">Manage the grade levels and class groupings in your school.</p>
+            </div>
+            <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#gradeLevelModal"
+                    data-action="create" data-url="{% url 'students:grade_level_create' %}"
+                    data-modal-handler>
+                <i class="bi bi-plus-lg me-1"></i>Add Grade Level
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- How Grade Levels Work -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How Grade Levels Work</div>
+            <p class="text">
+                Grade levels are the year groups students are placed in (e.g. Basic 1, JHS 2).
+                <strong>Order</strong> controls how they're sequenced across the school (used for
+                promotion and reporting), and <strong>Assigned Students</strong> shows how many students
+                currently belong to each grade level. Use the search box below to filter the list.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4" data-table-update>
+    <div class="p-4 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h6 class="fw-bold mb-0">
+            <i class="bi bi-table text-gold me-2"></i>All Grade Levels
+            <span class="badge bg-light text-muted ms-2" id="gradeCount">{{ grade_levels|length }}</span>
+        </h6>
+        <div class="d-flex gap-2 align-items-center">
+            <span class="text-muted small" id="filterStatus"></span>
+            <input type="text" id="gradeLevelSearchInput" class="form-control form-control-sm" placeholder="Search grade levels..." style="max-width: 220px;">
+        </div>
+    </div>
+    <div class="p-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="gradeLevelsTable">
+                <thead>
+                    <tr>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Name</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Order</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Assigned Students</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0" id="gradeLevelTableBody">
+                    {% for g in grade_levels %}
+                    <tr class="border-bottom grade-level-row" data-id="{{ g.id }}">
+                        <td class="fw-semibold py-3 ps-0" data-field="name">{{ g.name }}</td>
+                        <td class="text-center py-3" data-field="order">
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">{{ g.order }}</span>
+                        </td>
+                        <td class="text-center py-3" data-field="student_count">
+                            <span class="badge bg-gold-soft text-gold rounded-pill px-3 py-2">{{ g.students.count }}</span>
+                        </td>
+                        <td class="text-end py-3 pe-0 text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-gold px-3"
+                                    data-bs-toggle="modal" data-bs-target="#gradeLevelModal"
+                                    data-action="edit" data-url="{% url 'students:grade_level_edit' g.id %}"
+                                    data-id="{{ g.id }}" data-modal-handler>
+                                <i class="bi bi-pencil-square me-1"></i> Edit
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger px-3 ms-1"
+                                    data-bs-toggle="modal" data-bs-target="#gradeLevelModal"
+                                    data-action="delete" data-url="{% url 'students:grade_level_delete' g.id %}"
+                                    data-id="{{ g.id }}" data-modal-handler>
+                                <i class="bi bi-trash me-1"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr class="empty-state-row">
+                        <td colspan="4" class="text-center text-muted py-5">
+                            <i class="bi bi-layers fs-2 d-block mb-2 text-secondary"></i>
+                            No grade levels created yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Row Template for dynamic updates -->
+<template id="rowTemplate">
+    <tr class="border-bottom grade-level-row" data-id="">
+        <td class="fw-semibold py-3 ps-0" data-field="name">Grade Name</td>
+        <td class="text-center py-3" data-field="order">
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">0</span>
+        </td>
+        <td class="text-center py-3" data-field="student_count">
+            <span class="badge bg-gold-soft text-gold rounded-pill px-3 py-2">0</span>
+        </td>
+        <td class="text-end py-3 pe-0 text-nowrap">
+            <button type="button" class="btn btn-sm btn-outline-gold px-3 edit-btn">
+                <i class="bi bi-pencil-square me-1"></i> Edit
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger px-3 ms-1 delete-btn">
+                <i class="bi bi-trash me-1"></i> Delete
+            </button>
+        </td>
+    </tr>
+</template>
+
+<!-- =========================================== -->
+<!-- DYNAMIC MASTER MODAL -->
+<!-- =========================================== -->
+<div class="modal fade" id="gradeLevelModal" tabindex="-1" aria-hidden="true" data-modal-handler>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="gradeLevelModalTitle">Loading...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="gradeLevelModalContent">
+                <!-- Content injected here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER with real-time count update
+    // ============================================================
+    const gradeLevelSearchInput = document.getElementById('gradeLevelSearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const gradeCount = document.getElementById('gradeCount');
+    const allRows = document.querySelectorAll('.grade-level-row');
+    const emptyState = document.querySelector('.empty-state-row');
+
+    if (gradeLevelSearchInput) {
+        gradeLevelSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const text = row.textContent.toLowerCase();
+                const isVisible = text.includes(query);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            // Update count
+            if (gradeCount) {
+                if (query) {
+                    gradeCount.textContent = visibleCount;
+                    if (filterStatus) {
+                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                    }
+                } else {
+                    gradeCount.textContent = allRows.length;
+                    if (filterStatus) {
+                        filterStatus.textContent = '';
+                    }
+                }
+            }
+
+            // Show empty state if no rows visible
+            if (emptyState) {
+                if (visibleCount === 0 && allRows.length > 0) {
+                    emptyState.style.display = '';
+                } else {
+                    emptyState.style.display = 'none';
+                }
+            }
+        });
+
+        // Clear filter status on blur if empty
+        gradeLevelSearchInput.addEventListener('blur', function() {
+            if (!this.value && filterStatus) {
+                filterStatus.textContent = '';
+            }
+        });
+    }
+
+    const modal = document.getElementById('gradeLevelModal');
+    const modalTitle = document.getElementById('gradeLevelModalTitle');
+    const modalContent = document.getElementById('gradeLevelModalContent');
+
+    modal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const action = button.getAttribute('data-action');
+        const url = button.getAttribute('data-url');
+
+        if (action === 'create') {
+            modalTitle.innerHTML = '<i class="bi bi-plus-circle text-gold me-2"></i>Add New Grade Level';
+        } else if (action === 'edit') {
+            modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Grade Level';
+        } else if (action === 'delete') {
+            modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete';
+        }
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+            // The global modal handler will auto-bind the form
+        })
+        .catch(err => {
+            modalContent.innerHTML = `
+                <div class="alert alert-danger border-0 shadow-sm rounded-4">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Error loading form. Please try again.
+                </div>
+                <div class="mt-3 text-end">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        });
+    });
+});
+</script>
+{% include "partials/pagination.html" with page_obj=grade_levels %}
+
+{% endblock %}

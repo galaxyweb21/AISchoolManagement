@@ -1,0 +1,937 @@
+<!-- staff_list.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Staff Management{% endblock %}
+
+{% block content %}
+
+<!-- Messages -->
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<!-- Page Description -->
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-3">
+    <div class="p-3">
+        <div class="d-flex align-items-start gap-3">
+            <div class="rounded-circle bg-gold-soft d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; min-width: 40px;">
+                <i class="bi bi-info-circle text-gold fs-5"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold mb-1">Staff Management</h6>
+                <p class="text-muted small mb-0">
+                    This page displays all staff members in your school. Use the search bar below to filter by name, staff ID, position, or email.
+                    Click <strong>"Add Staff"</strong> to create a new staff profile. Click <strong>"View"</strong> to see detailed information about a staff member.
+                    <span class="badge bg-gold-soft text-gold ms-1">Admin Only: Edit/Delete</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold mb-1">
+                    <i class="bi bi-people-fill text-primary me-2" style="color: var(--eduai-gold) !important;"></i>Staff
+                </h5>
+                <p class="text-muted mb-0">Manage teachers, administrators, and support staff.</p>
+            </div>
+            <button type="button" class="btn btn-primary" style="background-color: var(--eduai-gold); border-color: var(--eduai-gold);" data-bs-toggle="modal" data-bs-target="#staffModal"
+                    data-action="create" data-url="{% url 'staff:staff_create' %}">
+                <i class="bi bi-plus-lg me-1"></i>Add Staff
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4">
+    <div class="p-4">
+        <!-- Auto-filter search bar -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-8 col-lg-6">
+                <div class="position-relative">
+                    <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                    <input type="text" id="staffSearchInput" class="form-control ps-5" placeholder="Search by name, staff ID, position, or email..." autocomplete="off">
+                </div>
+                <small class="text-muted" id="searchResultCount">Showing all {{ staff_members|length }} staff members</small>
+            </div>
+            <div class="col-md-4 col-lg-6 text-md-end">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="clearStaffSearch" style="display: none;">
+                    <i class="bi bi-x-circle me-1"></i>Clear Search
+                </button>
+                <span class="badge bg-secondary-subtle text-secondary ms-2" id="activeFilterBadge" style="display: none;">
+                    <i class="bi bi-funnel-fill me-1"></i>Filtered
+                </span>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="staffTable">
+                <thead>
+                    <tr>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Staff ID</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Name</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Position</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Status</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0" id="staffTableBody">
+                    {% for s in staff_members %}
+                    <tr class="border-bottom staff-row" data-staff-id="{{ s.id }}">
+                        <!-- Staff ID -->
+                        <td class="py-3 ps-0">
+                            <code class="text-muted small bg-light px-2 py-1 rounded-2 border staff-id">{{ s.staff_id }}</code>
+                        </td>
+
+                        <!-- Name + Profile Picture -->
+                        <td class="py-3">
+                            <div class="d-flex align-items-center gap-2">
+                                {% if s.profile_picture %}
+                                    <img src="{{ s.profile_picture.url }}" alt="{{ s.user.get_full_name }}" class="rounded-circle border" style="width: 36px; height: 36px; object-fit: cover;">
+                                {% else %}
+                                    <div class="rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center text-muted border" style="width: 36px; height: 36px; font-size: 0.75rem; font-weight: 700;">
+                                        {{ s.user.first_name|first|upper }}{{ s.user.last_name|first|upper }}
+                                    </div>
+                                {% endif %}
+                                <div>
+                                    <div class="fw-semibold staff-name">{{ s.user.get_full_name }}</div>
+                                    <div class="text-muted small" style="font-size: 0.7rem;">
+                                        <span class="staff-email">{{ s.user.email }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Position -->
+                        <td class="py-3">
+                            <span class="badge rounded-pill px-3 py-2 staff-position" style="background-color: var(--eduai-gold-soft); color: var(--eduai-gold);">
+                                {{ s.get_staff_position_display }}
+                            </span>
+                        </td>
+
+                        <!-- Status -->
+                        <td class="py-3 text-center">
+                            {% if s.is_active %}
+                                <span class="badge rounded-pill px-3 py-2 status-badge active-badge" style="background-color: var(--eduai-signal-soft); color: var(--eduai-signal);">
+                                    <i class="bi bi-check-circle-fill me-1 small"></i> Active
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2 status-badge inactive-badge">
+                                    <i class="bi bi-circle me-1 small"></i> Inactive
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="text-end py-3 pe-0 text-nowrap">
+                            <a href="{% url 'staff:staff_detail' s.id %}" class="btn btn-sm px-3" style="color: var(--eduai-gold); border-color: var(--eduai-gold);">
+                                <i class="bi bi-eye me-1"></i> View
+                            </a>
+                            {% if can_edit or can_delete %}
+                            <button type="button" class="btn btn-sm btn-outline-secondary px-2 ms-1"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#staffActionModal"
+                                    data-staff-id="{{ s.id }}"
+                                    data-staff-name="{{ s.user.get_full_name|escapejs }}">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr id="emptyStateRow">
+                        <td colspan="5" class="text-center text-muted py-5">
+                            <i class="bi bi-people-fill fs-2 d-block mb-2 text-secondary"></i>
+                            No staff members have been added yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================== -->
+<!-- STAFF ACTION MODAL (Edit/Delete Options)   -->
+<!-- =========================================== -->
+<div class="modal fade" id="staffActionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="staffActionModalTitle">
+                    <i class="bi bi-person me-2" style="color: var(--eduai-gold);"></i>Staff Actions
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted text-center mb-3" id="staffActionName">Select an action for <strong></strong></p>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn py-3" id="actionEditBtn" style="color: var(--eduai-gold); border-color: var(--eduai-gold);">
+                        <i class="bi bi-pencil-square me-2"></i> Edit Staff
+                    </button>
+                    <button type="button" class="btn btn-outline-danger py-3" id="actionDeleteBtn">
+                        <i class="bi bi-trash me-2"></i> Delete Staff
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================== -->
+<!-- DYNAMIC MASTER MODAL (Create/Edit/Delete)   -->
+<!-- =========================================== -->
+<div class="modal fade" id="staffModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="staffModalTitle">Loading...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="staffModalCloseBtn"></button>
+            </div>
+            <div class="modal-body p-4" id="staffModalContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border" role="status" style="color: var(--eduai-gold);">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    <div id="liveToast" class="toast align-items-center border-0 shadow-sm rounded-4" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                <span id="toastMessage">Success!</span>
+            </div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-filter CSS -->
+<style>
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+    .btn-gold { background-color: var(--eduai-gold, #946B1C) !important; border-color: var(--eduai-gold, #946B1C) !important; color: #fff !important; }
+    .btn-gold:hover { background-color: #7a5917 !important; border-color: #7a5917 !important; color: #fff !important; }
+    .btn-outline-gold { color: var(--eduai-gold, #946B1C) !important; border-color: var(--eduai-gold, #946B1C) !important; }
+    .btn-outline-gold:hover { background-color: var(--eduai-gold, #946B1C) !important; border-color: var(--eduai-gold, #946B1C) !important; color: #fff !important; }
+    .spinner-gold { color: var(--eduai-gold, #946B1C) !important; }
+
+    /* Search highlight */
+    .search-highlight {
+        background-color: rgba(148, 107, 28, 0.2);
+        border-radius: 2px;
+        padding: 0 2px;
+    }
+    .search-highlight-email {
+        background-color: rgba(44, 122, 109, 0.15);
+        border-radius: 2px;
+        padding: 0 2px;
+    }
+
+    /* Row visibility animation */
+    .staff-row.hidden-row {
+        display: none !important;
+    }
+    .staff-row.visible-row {
+        display: table-row !important;
+    }
+
+    /* Filter badge pulse animation */
+    @keyframes pulse-badge {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .filter-active {
+        animation: pulse-badge 1.5s ease-in-out 1;
+    }
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================
+    // AUTO-FILTER FUNCTIONALITY
+    // ============================================
+    const searchInput = document.getElementById('staffSearchInput');
+    const clearSearchBtn = document.getElementById('clearStaffSearch');
+    const searchResultCount = document.getElementById('searchResultCount');
+    const activeFilterBadge = document.getElementById('activeFilterBadge');
+    const rows = document.querySelectorAll('#staffTableBody .staff-row');
+    const emptyState = document.getElementById('emptyStateRow');
+
+    function filterStaff() {
+        const query = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        rows.forEach(function(row) {
+            // Get all searchable text from the row
+            const name = row.querySelector('.staff-name')?.textContent?.toLowerCase() || '';
+            const email = row.querySelector('.staff-email')?.textContent?.toLowerCase() || '';
+            const staffId = row.querySelector('.staff-id')?.textContent?.toLowerCase() || '';
+            const position = row.querySelector('.staff-position')?.textContent?.toLowerCase() || '';
+            const status = row.querySelector('.status-badge')?.textContent?.toLowerCase() || '';
+
+            const searchableText = `${name} ${email} ${staffId} ${position} ${status}`;
+
+            if (query === '' || searchableText.includes(query)) {
+                row.classList.remove('hidden-row');
+                row.classList.add('visible-row');
+                visibleCount++;
+            } else {
+                row.classList.add('hidden-row');
+                row.classList.remove('visible-row');
+            }
+        });
+
+        // Update result count
+        const total = rows.length;
+        if (query === '') {
+            searchResultCount.textContent = `Showing all ${total} staff members`;
+            clearSearchBtn.style.display = 'none';
+            activeFilterBadge.style.display = 'none';
+        } else {
+            searchResultCount.textContent = `Showing ${visibleCount} of ${total} staff members${visibleCount === 0 ? ' (no matches found)' : ''}`;
+            clearSearchBtn.style.display = 'inline-block';
+            activeFilterBadge.style.display = 'inline-block';
+            activeFilterBadge.classList.add('filter-active');
+            setTimeout(() => activeFilterBadge.classList.remove('filter-active'), 1500);
+        }
+
+        // Show/hide empty state
+        if (emptyState) {
+            if (visibleCount === 0 && total > 0) {
+                emptyState.style.display = 'table-row';
+                // Update empty state message
+                const emptyMsg = emptyState.querySelector('.text-muted');
+                if (emptyMsg) {
+                    emptyMsg.innerHTML = `
+                        <i class="bi bi-search fs-2 d-block mb-2 text-secondary"></i>
+                        No staff members match your search "<strong>${query}</strong>".
+                        <br><small class="text-muted">Try adjusting your search terms.</small>
+                    `;
+                }
+            } else if (emptyState.style.display !== 'none' && visibleCount > 0) {
+                // Reset empty state if it was shown
+                emptyState.style.display = 'none';
+            }
+        }
+    }
+
+    // Debounce search input
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(filterStaff, 200);
+    });
+
+    // Clear search
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        filterStaff();
+        searchInput.focus();
+    });
+
+    // Keyboard shortcut: Escape to clear search
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            clearSearchBtn.click();
+        }
+    });
+
+    // ============================================
+    // TOAST NOTIFICATION
+    // ============================================
+    function showToast(message, type) {
+        const toast = document.getElementById('liveToast');
+        const toastBody = document.getElementById('toastBody');
+
+        if (type === 'success') {
+            toastBody.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-success-subtle';
+        } else if (type === 'error') {
+            toastBody.innerHTML = `<i class="bi bi-exclamation-circle-fill text-danger me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-danger-subtle';
+        } else {
+            toastBody.innerHTML = `<i class="bi bi-info-circle-fill text-info me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-info-subtle';
+        }
+
+        const toastInstance = new bootstrap.Toast(toast, {
+            autohide: true,
+            delay: 4000
+        });
+        toastInstance.show();
+    }
+
+    // ============================================
+    // UPDATE TABLE ROW WITHOUT RELOAD
+    // ============================================
+    function updateStaffRow(staffId, data) {
+        const row = document.querySelector(`.staff-row[data-staff-id="${staffId}"]`);
+        if (row) {
+            // Update name
+            const nameCell = row.querySelector('.staff-name');
+            if (nameCell && data.user) {
+                nameCell.textContent = data.user.full_name || data.user.username;
+            }
+
+            // Update email
+            const emailCell = row.querySelector('.staff-email');
+            if (emailCell && data.user) {
+                emailCell.textContent = data.user.email || '';
+            }
+
+            // Update position
+            const positionBadge = row.querySelector('.staff-position');
+            if (positionBadge && data.staff_position_display) {
+                positionBadge.textContent = data.staff_position_display;
+            }
+
+            // Update status
+            const statusBadge = row.querySelector('.status-badge');
+            if (statusBadge && data.is_active !== undefined) {
+                if (data.is_active) {
+                    statusBadge.className = 'badge rounded-pill px-3 py-2 status-badge active-badge';
+                    statusBadge.style.backgroundColor = 'var(--eduai-signal-soft)';
+                    statusBadge.style.color = 'var(--eduai-signal)';
+                    statusBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1 small"></i> Active';
+                } else {
+                    statusBadge.className = 'badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2 status-badge inactive-badge';
+                    statusBadge.style.backgroundColor = '';
+                    statusBadge.style.color = '';
+                    statusBadge.innerHTML = '<i class="bi bi-circle me-1 small"></i> Inactive';
+                }
+            }
+
+            // Update staff ID if changed
+            const staffIdCell = row.querySelector('.staff-id');
+            if (staffIdCell && data.staff_id) {
+                staffIdCell.textContent = data.staff_id;
+            }
+        } else {
+            // Row doesn't exist - reload to show new row
+            window.location.reload();
+        }
+    }
+
+    // ============================================
+    // ADD NEW STAFF ROW
+    // ============================================
+    function addStaffRow(staff) {
+        const tbody = document.getElementById('staffTableBody');
+        const emptyRow = document.getElementById('emptyStateRow');
+
+        // Remove empty state if exists
+        if (emptyRow) {
+            emptyRow.remove();
+        }
+
+        // Create new row
+        const tr = document.createElement('tr');
+        tr.className = 'border-bottom staff-row visible-row';
+        tr.setAttribute('data-staff-id', staff.id);
+
+        tr.innerHTML = `
+            <td class="py-3 ps-0">
+                <code class="text-muted small bg-light px-2 py-1 rounded-2 border staff-id">${staff.staff_id || 'STAFF-XXXX'}</code>
+            </td>
+            <td class="py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center text-muted border" style="width: 36px; height: 36px; font-size: 0.75rem; font-weight: 700;">
+                        ${staff.initials || '??'}
+                    </div>
+                    <div>
+                        <div class="fw-semibold staff-name">${staff.full_name || 'Staff Member'}</div>
+                        <div class="text-muted small" style="font-size: 0.7rem;">
+                            <span class="staff-email">${staff.email || ''}</span>
+                        </div>
+                    </div>
+                </div>
+            </td>
+            <td class="py-3">
+                <span class="badge rounded-pill px-3 py-2 staff-position" style="background-color: var(--eduai-gold-soft); color: var(--eduai-gold);">${staff.position_display || 'Staff'}</span>
+            </td>
+            <td class="py-3 text-center">
+                <span class="badge rounded-pill px-3 py-2 status-badge active-badge" style="background-color: var(--eduai-signal-soft); color: var(--eduai-signal);">
+                    <i class="bi bi-check-circle-fill me-1 small"></i> Active
+                </span>
+            </td>
+            <td class="text-end py-3 pe-0 text-nowrap">
+                <a href="/staff/${staff.id}/" class="btn btn-sm px-3" style="color: var(--eduai-gold); border-color: var(--eduai-gold);">
+                    <i class="bi bi-eye me-1"></i> View
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-secondary px-2 ms-1"
+                        data-bs-toggle="modal" data-bs-target="#staffActionModal"
+                        data-staff-id="${staff.id}"
+                        data-staff-name="${staff.full_name}">
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+            </td>
+        `;
+
+        tbody.prepend(tr);
+
+        // Update search result count
+        const totalRows = document.querySelectorAll('#staffTableBody .staff-row').length;
+        const searchResultCount = document.getElementById('searchResultCount');
+        if (searchResultCount) {
+            const query = document.getElementById('staffSearchInput')?.value?.trim() || '';
+            if (query === '') {
+                searchResultCount.textContent = `Showing all ${totalRows} staff members`;
+            }
+        }
+    }
+
+    // ============================================
+    // REMOVE STAFF ROW
+    // ============================================
+    function removeStaffRow(staffId) {
+        const row = document.querySelector(`.staff-row[data-staff-id="${staffId}"]`);
+        if (row) {
+            row.remove();
+            const tbody = document.getElementById('staffTableBody');
+            if (tbody.children.length === 0) {
+                tbody.innerHTML = `
+                    <tr id="emptyStateRow">
+                        <td colspan="5" class="text-center text-muted py-5">
+                            <i class="bi bi-people-fill fs-2 d-block mb-2 text-secondary"></i>
+                            No staff members have been added yet.
+                        </td>
+                    </tr>
+                `;
+            }
+
+            // Update search result count
+            const totalRows = document.querySelectorAll('#staffTableBody .staff-row').length;
+            const searchResultCount = document.getElementById('searchResultCount');
+            if (searchResultCount) {
+                const query = document.getElementById('staffSearchInput')?.value?.trim() || '';
+                if (query === '') {
+                    searchResultCount.textContent = `Showing all ${totalRows} staff members`;
+                }
+            }
+        }
+    }
+
+    // ============================================
+    // STAFF ACTION MODAL
+    // ============================================
+    const actionModal = document.getElementById('staffActionModal');
+    const actionName = document.getElementById('staffActionName');
+    let currentStaffId = null;
+    let currentStaffName = null;
+
+    if (actionModal) {
+        actionModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            if (!button) return;
+
+            const staffId = button.getAttribute('data-staff-id');
+            const staffName = button.getAttribute('data-staff-name');
+
+            currentStaffId = staffId;
+            currentStaffName = staffName;
+
+            const nameSpan = actionName?.querySelector('strong');
+            if (nameSpan) {
+                nameSpan.textContent = staffName || 'Staff Member';
+            }
+
+            const editBtn = document.getElementById('actionEditBtn');
+            if (editBtn) {
+                const baseUrl = "{% url 'staff:staff_edit' '00000000-0000-0000-0000-000000000000' %}";
+                const url = baseUrl.replace('00000000-0000-0000-0000-000000000000', staffId || '');
+                editBtn.setAttribute('data-url', url);
+                editBtn.setAttribute('data-staff-id', staffId || '');
+            }
+
+            const deleteBtn = document.getElementById('actionDeleteBtn');
+            if (deleteBtn) {
+                const baseUrl = "{% url 'staff:staff_delete' '00000000-0000-0000-0000-000000000000' %}";
+                const url = baseUrl.replace('00000000-0000-0000-0000-000000000000', staffId || '');
+                deleteBtn.setAttribute('data-url', url);
+                deleteBtn.setAttribute('data-staff-id', staffId || '');
+            }
+        });
+    }
+
+    // Edit button handler
+    const editBtn = document.getElementById('actionEditBtn');
+    if (editBtn) {
+        editBtn.addEventListener('click', function() {
+            const url = this.getAttribute('data-url');
+            const staffId = this.getAttribute('data-staff-id');
+
+            if (!url || !staffId) return;
+
+            const actionModalInstance = bootstrap.Modal.getInstance(document.getElementById('staffActionModal'));
+            if (actionModalInstance) actionModalInstance.hide();
+
+            openStaffModal('edit', url, staffId);
+        });
+    }
+
+    // Delete button handler
+    const deleteBtn = document.getElementById('actionDeleteBtn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', function() {
+            const url = this.getAttribute('data-url');
+            const staffId = this.getAttribute('data-staff-id');
+
+            if (!url || !staffId) return;
+
+            const actionModalInstance = bootstrap.Modal.getInstance(document.getElementById('staffActionModal'));
+            if (actionModalInstance) actionModalInstance.hide();
+
+            openStaffModal('delete', url, staffId);
+        });
+    }
+
+    // ============================================
+    // STAFF MODAL
+    // ============================================
+    const modal = document.getElementById('staffModal');
+    const modalTitle = document.getElementById('staffModalTitle');
+    const modalContent = document.getElementById('staffModalContent');
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    function openStaffModal(action, url, staffId) {
+        const goldColor = getComputedStyle(document.documentElement).getPropertyValue('--eduai-gold').trim() || '#946B1C';
+
+        if (action === 'create') {
+            modalTitle.innerHTML = `<i class="bi bi-person-plus-fill me-2" style="color: ${goldColor};"></i>Add New Staff Member`;
+        } else if (action === 'edit') {
+            modalTitle.innerHTML = `<i class="bi bi-pencil-square me-2" style="color: ${goldColor};"></i>Edit Staff Member`;
+        } else if (action === 'delete') {
+            modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete';
+        }
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border" role="status" style="color: ${goldColor};">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.text();
+        })
+        .then(html => {
+            modalContent.innerHTML = html;
+            if (modalContent.querySelector('form.delete-form')) {
+                bindDeleteForm(staffId);
+            } else {
+                bindFormSubmit(action, staffId);
+            }
+        })
+        .catch(err => {
+            console.error('Error loading form:', err);
+            modalContent.innerHTML = `
+                <div class="alert alert-danger border-0 shadow-sm rounded-4">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Error loading form. Please try again.
+                </div>
+                <div class="mt-3 text-end">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        });
+
+        const modalInstance = new bootstrap.Modal(modal);
+        modalInstance.show();
+    }
+
+    // ============================================
+    // BIND FORM SUBMISSION - NO RELOAD
+    // ============================================
+    function bindFormSubmit(action, staffId) {
+        const form = modalContent.querySelector('form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
+            submitBtn.disabled = true;
+
+            const existingErrors = this.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                let data;
+                try { data = JSON.parse(text); }
+                catch (e) { throw new Error('Server returned an invalid response.'); }
+                if (!response.ok) throw new Error(data.error || 'Request failed');
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+
+                    if (action === 'create') {
+                        // Add new row
+                        addStaffRow({
+                            id: data.staff_id || 'new',
+                            staff_id: data.staff_id || 'STAFF-XXXX',
+                            full_name: data.full_name || data.name || 'Staff Member',
+                            email: data.email || '',
+                            initials: data.initials || 'SM',
+                            position_display: data.position_display || data.position || 'Staff'
+                        });
+                        showToast(data.message || 'Staff added successfully!', 'success');
+                    } else if (action === 'edit') {
+                        // Update existing row
+                        updateStaffRow(staffId, data);
+                        showToast(data.message || 'Staff updated successfully!', 'success');
+                    }
+                } else {
+                    showError(data.error || 'An error occurred while saving.');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error('Form submission error:', err);
+                showError(err.message || 'An unexpected error occurred.');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 shadow-sm rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    // ============================================
+    // BIND DELETE FORM - NO RELOAD
+    // ============================================
+    function bindDeleteForm(staffId) {
+        const form = modalContent.querySelector('form.delete-form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+            submitBtn.disabled = true;
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                let data;
+                try { data = JSON.parse(text); }
+                catch (e) { throw new Error('Server returned an invalid response.'); }
+                if (!response.ok) throw new Error(data.error || 'Delete failed');
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+
+                    // Remove row without reload
+                    removeStaffRow(staffId);
+                    showToast(data.message || 'Staff deleted successfully!', 'success');
+                } else {
+                    modalContent.innerHTML = `
+                        <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.error || 'Error deleting.'}
+                        </div>
+                        <div class="mt-3 text-end">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                console.error('Delete error:', err);
+                modalContent.innerHTML = `
+                    <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> ${err.message || 'An unexpected error occurred.'}
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    // ============================================
+    // HANDLE CREATE BUTTON
+    // ============================================
+    const createBtn = document.querySelector('[data-action="create"]');
+    if (createBtn) {
+        createBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = this.getAttribute('data-url');
+            openStaffModal('create', url);
+        });
+    }
+
+    // ============================================
+    // RESET MODAL ON HIDE
+    // ============================================
+    if (modal) {
+        modal.addEventListener('hidden.bs.modal', function () {
+            const goldColor = getComputedStyle(document.documentElement).getPropertyValue('--eduai-gold').trim() || '#946B1C';
+
+            modalContent.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border" role="status" style="color: ${goldColor};">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            modalTitle.innerHTML = 'Loading...';
+
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        });
+    }
+
+    // ============================================
+    // MODAL CLOSE BUTTON
+    // ============================================
+    const closeBtn = document.getElementById('staffModalCloseBtn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            const modalInstance = bootstrap.Modal.getInstance(modal);
+            if (modalInstance) modalInstance.hide();
+        });
+    }
+
+    // ============================================
+    // CANCEL BUTTONS INSIDE MODAL
+    // ============================================
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('[data-bs-dismiss="modal"]');
+        if (target && target.closest('#staffModal')) {
+            const modalInstance = bootstrap.Modal.getInstance(modal);
+            if (modalInstance) modalInstance.hide();
+        }
+    });
+
+    // ============================================
+    // AUTO DISMISS MESSAGES
+    // ============================================
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+
+    // ============================================
+    // KEYBOARD SHORTCUT: Ctrl+F to focus search
+    // ============================================
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            // Only if not in a form field
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+        // Escape to close modals
+        if (e.key === 'Escape') {
+            const openModals = document.querySelectorAll('.modal.show');
+            if (openModals.length > 0) {
+                const lastModal = openModals[openModals.length - 1];
+                const modalInstance = bootstrap.Modal.getInstance(lastModal);
+                if (modalInstance) modalInstance.hide();
+            }
+        }
+    });
+});
+</script>
+{% include "partials/pagination.html" with page_obj=staff_members %}
+
+{% endblock %}

@@ -1,0 +1,280 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Fee Schedule - {{ school_class.name }} - {{ academic_term.name }}</title>
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 12px;
+            color: #333333;
+            margin: 30px;
+        }
+        table { border-collapse: collapse; width: 100%; }
+        .header-table td { vertical-align: top; }
+        .school-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #946B1C;
+            margin: 0 0 4px 0;
+        }
+        .school-meta {
+            font-size: 11px;
+            color: #666666;
+            line-height: 1.5;
+        }
+        .logo-cell { width: 70px; }
+        .logo-cell img { width: 60px; height: 60px; }
+        .statement-tag {
+            text-align: right;
+            font-size: 11px;
+            color: #666666;
+        }
+        .title-bar {
+            margin-top: 18px;
+            padding: 10px 14px;
+            background-color: #946B1C;
+            color: #ffffff;
+        }
+        .title-bar .title {
+            font-size: 15px;
+            font-weight: bold;
+        }
+        .title-bar .subtitle {
+            font-size: 12px;
+            text-align: right;
+        }
+        .notice {
+            margin-top: 16px;
+            padding: 10px 14px;
+            background-color: #f4f1ea;
+            border-left: 4px solid #946B1C;
+            font-size: 11px;
+            color: #555555;
+        }
+        .section-label {
+            margin-top: 22px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #946B1C;
+        }
+        .section-note {
+            font-size: 10.5px;
+            color: #777777;
+            margin: 2px 0 8px 0;
+        }
+        .details-table {
+            margin-top: 8px;
+            border: 1px solid #dddddd;
+        }
+        .details-table th {
+            background-color: #f4f1ea;
+            color: #333333;
+            text-align: left;
+            padding: 8px 10px;
+            font-size: 11px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #dddddd;
+        }
+        .details-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eeeeee;
+            font-size: 12px;
+        }
+        .details-table td.amount, .details-table th.amount { text-align: right; }
+        .details-table tfoot td {
+            font-weight: bold;
+            border-top: 2px solid #333333;
+            border-bottom: none;
+        }
+        .summary-table {
+            margin-top: 22px;
+            width: 60%;
+            margin-left: 40%;
+            border: 1px solid #dddddd;
+        }
+        .summary-table td {
+            padding: 8px 10px;
+            font-size: 12px;
+        }
+        .summary-table .label { color: #333333; }
+        .summary-table .value { text-align: right; font-weight: bold; }
+        .summary-table .row-returning td { background-color: #f4f1ea; }
+        .summary-table .row-new td { background-color: #ffffff; }
+        .footer-note {
+            margin-top: 40px;
+            font-size: 10px;
+            color: #999999;
+            text-align: center;
+            border-top: 1px solid #dddddd;
+            padding-top: 10px;
+        }
+        .no-print { margin-top: 24px; }
+        .no-print .btn {
+            display: inline-block;
+            padding: 9px 18px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 13px;
+            margin-right: 8px;
+            border: 1px solid #946B1C;
+            color: #946B1C;
+            background: #ffffff;
+            cursor: pointer;
+        }
+        .no-print .btn-solid {
+            background: #946B1C;
+            color: #ffffff;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <table class="header-table">
+        <tr>
+            {% if school.logo %}
+            <td class="logo-cell"><img src="{{ school.logo.url }}" alt="{{ school.name }}"></td>
+            {% endif %}
+            <td>
+                <div class="school-name">{{ school.name }}</div>
+                <div class="school-meta">
+                    {{ school.address }}<br>
+                    {{ school.phone_number }} &nbsp;|&nbsp; {{ school.contact_email }}
+                </div>
+            </td>
+            <td class="statement-tag">
+                Fee Schedule<br>
+                Generated {% now "d M Y" %}
+            </td>
+        </tr>
+    </table>
+
+    <table class="title-bar">
+        <tr>
+            <td class="title">{{ school_class.name }} ({{ school_class.grade_level.name }})</td>
+            <td class="subtitle">{{ academic_term.name }} &mdash; {{ academic_term.academic_year.name }}</td>
+        </tr>
+    </table>
+
+    <div class="notice">
+        This is a general fee schedule for enquiry purposes and does not represent any individual
+        student's invoice. Actual charges may vary based on a student's enrollment status, waivers,
+        or optional items selected. Please contact the school's finance office to confirm figures
+        for a specific admission.
+    </div>
+
+    <div class="section-label">Base Termly Fees</div>
+    <table class="details-table">
+        <tr>
+            <th>Fee Category</th>
+            <th class="amount">Amount</th>
+        </tr>
+        {% for item in base_items %}
+        <tr>
+            <td>{{ item.fee_category.name }}</td>
+            <td class="amount">GH&cent; {{ item.amount|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="2" style="text-align:center; color:#999999;">No published fee structure for this class/term yet.</td>
+        </tr>
+        {% endfor %}
+        <tfoot>
+            <tr>
+                <td>Base Total</td>
+                <td class="amount">GH&cent; {{ base_total|floatformat:2 }}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    {% if all_students_addons %}
+    <div class="section-label">Additional Fees / Add-Ons (All Students)</div>
+    <p class="section-note">Applies to every student in this class for this term.</p>
+    <table class="details-table">
+        <tr>
+            <th>Category</th>
+            <th>Add-On</th>
+            <th class="amount">Amount</th>
+        </tr>
+        {% for addon in all_students_addons %}
+        <tr>
+            <td>{{ addon.fee_category.name }}</td>
+            <td>{{ addon.name }}</td>
+            <td class="amount">GH&cent; {{ addon.amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    {% if new_student_addons %}
+    <div class="section-label">Add-Ons for New/Admitting Students Only</div>
+    <p class="section-note">Only applies to students newly admitted to the school this term (e.g. admission fee, uniform).</p>
+    <table class="details-table">
+        <tr>
+            <th>Category</th>
+            <th>Add-On</th>
+            <th class="amount">Amount</th>
+        </tr>
+        {% for addon in new_student_addons %}
+        <tr>
+            <td>{{ addon.fee_category.name }}</td>
+            <td>{{ addon.name }}</td>
+            <td class="amount">GH&cent; {{ addon.amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    {% if optional_addons %}
+    <div class="section-label">Optional Add-Ons</div>
+    <p class="section-note">Parents/guardians may opt in to these; they are not part of the base fee.</p>
+    <table class="details-table">
+        <tr>
+            <th>Category</th>
+            <th>Add-On</th>
+            <th class="amount">Amount</th>
+        </tr>
+        {% for addon in optional_addons %}
+        <tr>
+            <td>{{ addon.fee_category.name }}</td>
+            <td>{{ addon.name }}</td>
+            <td class="amount">GH&cent; {{ addon.amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    <table class="summary-table">
+        <tr class="row-returning">
+            <td class="label">Estimated Total &ndash; Returning Student</td>
+            <td class="value">GH&cent; {{ estimated_total_returning|floatformat:2 }}</td>
+        </tr>
+        {% if new_student_addons %}
+        <tr class="row-new">
+            <td class="label">Estimated Total &ndash; New/Admitting Student</td>
+            <td class="value">GH&cent; {{ estimated_total_new|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+    </table>
+
+    <div class="footer-note">
+        This is a general fee schedule from {{ school.name }} for enquiry purposes only and does not name
+        any specific student. For an actual invoice, please contact the school's finance office.
+    </div>
+
+    {% if not is_pdf %}
+    <div class="no-print">
+        <button type="button" class="btn btn-solid" onclick="window.print()">Print Schedule</button>
+        <a class="btn" href="{% url 'finance:fee_schedule_pdf' structure_id %}">Download PDF</a>
+        <a class="btn" href="{% url 'finance:fee_structure_detail' structure_id %}">Back to Fee Structure</a>
+    </div>
+    {% endif %}
+
+</body>
+</html>

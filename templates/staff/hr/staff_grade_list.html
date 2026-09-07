@@ -1,0 +1,557 @@
+<!-- staff/hr/staff_grade_list.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Staff Grades{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+    .bg-teal-soft { background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important; }
+    .text-teal { color: var(--eduai-signal, #2C7A6D) !important; }
+    .btn-gold { background-color: var(--eduai-gold, #946B1C) !important; border-color: var(--eduai-gold, #946B1C) !important; color: #fff !important; }
+    .btn-gold:hover { background-color: #7a5917 !important; border-color: #7a5917 !important; color: #fff !important; }
+    .btn-outline-gold { color: var(--eduai-gold, #946B1C) !important; border-color: var(--eduai-gold, #946B1C) !important; }
+    .btn-outline-gold:hover { background-color: var(--eduai-gold, #946B1C) !important; border-color: var(--eduai-gold, #946B1C) !important; color: #fff !important; }
+    .spinner-gold { color: var(--eduai-gold, #946B1C) !important; }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon { color: var(--eduai-gold, #946B1C); font-size: 1.25rem; margin-right: 0.75rem; }
+    .page-description .title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.15rem; }
+    .page-description .text { font-size: 0.85rem; color: var(--bs-secondary-color); margin-bottom: 0; }
+    .page-description .badge-role { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)); color: var(--eduai-gold, #946B1C); font-weight: 500; }
+
+    .grade-card.hidden-row { display: none !important; }
+    .grade-card.visible-row { display: block !important; }
+    .search-highlight { background-color: rgba(148, 107, 28, 0.2); border-radius: 2px; padding: 0 2px; }
+
+    .filter-badge {
+        display: none;
+        background-color: var(--eduai-gold-soft);
+        color: var(--eduai-gold);
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .filter-badge.show { display: inline-block; }
+
+    @keyframes pulse-badge {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    .filter-active { animation: pulse-badge 1.5s ease-in-out 1; }
+
+    .grade-card {
+        transition: all 0.2s ease;
+    }
+    .grade-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.06) !important;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Staff Grade Management
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% elif request.user.role == 'BURSAR' %}
+                            Bursar View
+                        {% else %}
+                            Read-Only View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    This page manages staff grades, which define salary scales and leave entitlements for staff members.
+                    {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                        You can <strong>create</strong> new grades, <strong>edit</strong> existing ones,
+                        or <strong>delete</strong> grades. Use the <strong>search bar</strong> below to
+                        filter grades by name, code, type, or level.
+                    {% else %}
+                        You have read-only access to view staff grades.
+                    {% endif %}
+                    Grades are used to determine compensation and benefits for staff members.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-layers text-gold me-2"></i>
+                        Staff Grades
+                    </h5>
+                    <p class="text-muted mb-0">Manage staff grades and levels for salary and benefits.</p>
+                    <small class="text-muted">{{ grades|length }} grade(s) configured</small>
+                </div>
+                {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#staffGradeModal"
+                        data-action="create" data-url="{% url 'staff:staff_grade_create' %}">
+                    <i class="bi bi-plus-lg me-1"></i>Add Grade
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Auto-filter search bar -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="row g-3">
+                <div class="col-md-8 col-lg-6">
+                    <div class="position-relative">
+                        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                        <input type="text" id="gradeSearchInput" class="form-control ps-5"
+                               placeholder="Search by grade name, code, type, or level..." autocomplete="off">
+                    </div>
+                    <small class="text-muted" id="searchResultCount">Showing all {{ grades|length }} grades</small>
+                </div>
+                <div class="col-md-4 col-lg-6 text-md-end">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearGradeSearch" style="display: none;">
+                        <i class="bi bi-x-circle me-1"></i>Clear Search
+                    </button>
+                    <span class="filter-badge" id="filterBadge">
+                        <i class="bi bi-funnel-fill me-1"></i>Filtered
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grade Cards -->
+    <div class="row g-4" id="gradeCardsContainer">
+        {% for grade in grades %}
+        <div class="col-md-6 col-lg-4 grade-card visible-row" data-grade-id="{{ grade.id }}">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h6 class="fw-bold mb-0 grade-name">{{ grade.name }}</h6>
+                            <span class="badge bg-secondary-subtle text-secondary grade-code">{{ grade.code }}</span>
+                            <span class="badge bg-info-subtle text-info grade-level">
+                                Level {{ grade.level }}
+                            </span>
+                        </div>
+                        <span class="badge {% if grade.is_active %}bg-teal-soft text-teal{% else %}bg-danger-subtle text-danger{% endif %} rounded-pill px-3 py-2 grade-status">
+                            {% if grade.is_active %}
+                                <i class="bi bi-check-circle-fill me-1 small"></i>Active
+                            {% else %}
+                                <i class="bi bi-circle me-1 small"></i>Inactive
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="mb-3">
+                        <span class="badge bg-light text-dark grade-type">{{ grade.get_grade_type_display }}</span>
+                        <small class="text-muted d-block mt-2 grade-staff-count">{{ grade.staff_members.count }} staff members</small>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Base Salary</small>
+                            <strong class="grade-salary">GH₵ {{ grade.base_salary|floatformat:2 }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Annual Leave</small>
+                            <strong class="grade-leave">{{ grade.annual_leave_days }} days</strong>
+                        </div>
+                    </div>
+
+                    {% if grade.description %}
+                    <p class="small text-muted mb-3 grade-description">{{ grade.description|truncatechars:80 }}</p>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                        <button type="button" class="btn btn-sm btn-outline-gold px-3"
+                                data-bs-toggle="modal" data-bs-target="#staffGradeModal"
+                                data-action="edit" data-url="{% url 'staff:staff_grade_edit' grade.id %}">
+                            <i class="bi bi-pencil me-1"></i>Edit
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger px-3"
+                                data-bs-toggle="modal" data-bs-target="#staffGradeModal"
+                                data-action="delete" data-url="{% url 'staff:staff_grade_delete' grade.id %}">
+                            <i class="bi bi-trash me-1"></i>Delete
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12" id="emptyStateRow">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-inbox fs-1 text-muted"></i>
+                    <p class="text-muted mt-2">No staff grades configured.</p>
+                    {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                    <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#staffGradeModal"
+                            data-action="create" data-url="{% url 'staff:staff_grade_create' %}">
+                        <i class="bi bi-plus-lg me-1"></i>Add Your First Grade
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Empty State for Search Results -->
+    <div class="row" id="searchEmptyState" style="display: none;">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-search fs-1 text-muted"></i>
+                    <p class="text-muted mt-2" id="searchEmptyMessage">No grades match your search.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Staff Grade Modal -->
+<div class="modal fade" id="staffGradeModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-body p-0">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================
+    // AUTO-FILTER FUNCTIONALITY
+    // ============================================
+    const searchInput = document.getElementById('gradeSearchInput');
+    const clearSearchBtn = document.getElementById('clearGradeSearch');
+    const searchResultCount = document.getElementById('searchResultCount');
+    const filterBadge = document.getElementById('filterBadge');
+    const cards = document.querySelectorAll('#gradeCardsContainer .grade-card');
+    const emptyState = document.getElementById('emptyStateRow');
+    const searchEmptyState = document.getElementById('searchEmptyState');
+    const searchEmptyMessage = document.getElementById('searchEmptyMessage');
+
+    function filterGrades() {
+        const query = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        cards.forEach(function(card) {
+            const name = card.querySelector('.grade-name')?.textContent?.toLowerCase() || '';
+            const code = card.querySelector('.grade-code')?.textContent?.toLowerCase() || '';
+            const type = card.querySelector('.grade-type')?.textContent?.toLowerCase() || '';
+            const level = card.querySelector('.grade-level')?.textContent?.toLowerCase() || '';
+            const status = card.querySelector('.grade-status')?.textContent?.toLowerCase() || '';
+            const description = card.querySelector('.grade-description')?.textContent?.toLowerCase() || '';
+
+            const searchableText = `${name} ${code} ${type} ${level} ${status} ${description}`;
+
+            if (query === '' || searchableText.includes(query)) {
+                card.classList.remove('hidden-row');
+                card.classList.add('visible-row');
+                visibleCount++;
+            } else {
+                card.classList.add('hidden-row');
+                card.classList.remove('visible-row');
+            }
+        });
+
+        const total = cards.length;
+        if (query === '') {
+            searchResultCount.textContent = `Showing all ${total} grades`;
+            clearSearchBtn.style.display = 'none';
+            filterBadge.classList.remove('show');
+            if (searchEmptyState) searchEmptyState.style.display = 'none';
+            if (emptyState) emptyState.style.display = '';
+        } else {
+            searchResultCount.textContent = `Showing ${visibleCount} of ${total} grades${visibleCount === 0 ? ' (no matches found)' : ''}`;
+            clearSearchBtn.style.display = 'inline-block';
+            filterBadge.classList.add('show');
+            filterBadge.classList.add('filter-active');
+            setTimeout(() => filterBadge.classList.remove('filter-active'), 1500);
+
+            if (visibleCount === 0) {
+                if (searchEmptyState) {
+                    searchEmptyState.style.display = '';
+                    if (searchEmptyMessage) {
+                        searchEmptyMessage.textContent = `No grades match your search "${query}". Try adjusting your search terms.`;
+                    }
+                }
+                if (emptyState) emptyState.style.display = 'none';
+            } else {
+                if (searchEmptyState) searchEmptyState.style.display = 'none';
+                if (emptyState) emptyState.style.display = 'none';
+            }
+        }
+    }
+
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(filterGrades, 200);
+    });
+
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        filterGrades();
+        searchInput.focus();
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            clearSearchBtn.click();
+        }
+    });
+
+    // Keyboard shortcut: Ctrl+F to focus search
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+    });
+
+    // ============================================
+    // STAFF GRADE MODAL
+    // ============================================
+    const modal = document.getElementById('staffGradeModal');
+    const modalContent = modal.querySelector('.modal-body');
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    modal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const action = button.getAttribute('data-action');
+        const url = button.getAttribute('data-url');
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+            if (action === 'delete') {
+                bindDeleteForm();
+            } else {
+                bindFormSubmit();
+            }
+        })
+        .catch(err => {
+            console.error('Error loading form:', err);
+            modalContent.innerHTML = `
+                <div class="p-4 text-center">
+                    <div class="alert alert-danger border-0 rounded-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error loading form. Please try again.
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        });
+    });
+
+    function bindFormSubmit() {
+        const form = modalContent.querySelector('form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    location.reload();
+                } else {
+                    showError(data.error || 'An error occurred while saving.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            })
+            .catch(err => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                showError('Network error. Please try again.');
+                console.error('Error:', err);
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    function bindDeleteForm() {
+        const form = modalContent.querySelector('form.delete-form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    location.reload();
+                } else {
+                    modalContent.innerHTML = `
+                        <div class="p-4 text-center">
+                            <div class="alert alert-danger border-0 rounded-4">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                ${data.error || 'Error deleting.'}
+                            </div>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                modalContent.innerHTML = `
+                    <div class="p-4 text-center">
+                        <div class="alert alert-danger border-0 rounded-4">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            Network error. Please try again.
+                        </div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                `;
+                console.error('Error:', err);
+            });
+        });
+    }
+
+    modal.addEventListener('hidden.bs.modal', function () {
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+    });
+
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% include "partials/pagination.html" with page_obj=grades %}
+
+{% endblock %}

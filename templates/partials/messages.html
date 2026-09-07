@@ -1,0 +1,31 @@
+<!-- templates/partials/messages.html -->
+{% if messages %}
+<div class="container-fluid px-4 py-2" style="position: sticky; top: 0; z-index: 999;">
+    {% for message in messages %}
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show" role="alert" style="animation: slideDown 0.3s ease;">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi
+                {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                {% else %}bi-info-circle-fill text-info{% endif %}
+                fs-5
+            "></i>
+            <span class="fw-medium">{{ message }}</span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+    @keyframes slideDown {
+        0% { opacity: 0; transform: translateY(-20px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+    .alert {
+        max-width: 800px;
+        margin: 0 auto 0.5rem auto;
+    }
+</style>
+{% endif %}

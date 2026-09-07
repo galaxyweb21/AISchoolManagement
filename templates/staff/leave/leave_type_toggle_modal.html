@@ -1,0 +1,139 @@
+<!-- staff/leave/leave_type_toggle_modal.html -->
+{% load static %}
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold {% if leave_type.is_active %}text-warning{% else %}text-teal{% endif %}">
+        <i class="bi {% if leave_type.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %} me-2"></i>
+        {% if leave_type.is_active %}Deactivate{% else %}Activate{% endif %} Leave Type
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body p-4 text-center">
+    <div class="mb-4">
+        <div class="rounded-circle {% if leave_type.is_active %}bg-warning-subtle{% else %}bg-teal-soft{% endif %} d-inline-flex align-items-center justify-content-center" style="width: 72px; height: 72px;">
+            <i class="bi {% if leave_type.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %} {% if leave_type.is_active %}text-warning{% else %}text-teal{% endif %} fs-1"></i>
+        </div>
+    </div>
+
+    <h6 class="fw-bold mb-2">
+        {% if leave_type.is_active %}Deactivate{% else %}Activate{% endif %} Leave Type
+    </h6>
+
+    <div class="bg-light rounded-3 p-3 mb-3 text-start">
+        <div class="row g-2">
+            <div class="col-6">
+                <small class="text-muted d-block">Name</small>
+                <span class="fw-semibold">{{ leave_type.name }}</span>
+            </div>
+            <div class="col-6">
+                <small class="text-muted d-block">Code</small>
+                <span class="badge bg-secondary-subtle text-secondary">{{ leave_type.code }}</span>
+            </div>
+            <div class="col-6">
+                <small class="text-muted d-block">Category</small>
+                <span class="fw-semibold">{{ leave_type.get_category_display }}</span>
+            </div>
+            <div class="col-6">
+                <small class="text-muted d-block">Current Status</small>
+                <span class="badge {% if leave_type.is_active %}bg-teal-soft text-teal{% else %}bg-danger-subtle text-danger{% endif %}">
+                    {% if leave_type.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {% if leave_type.is_active %}
+    <div class="alert alert-warning border-0 rounded-4 text-start">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Deactivating this leave type will:</strong>
+        <ul class="mb-0 mt-2">
+            <li>Prevent new leave requests from using this type</li>
+            <li>Existing leave requests will remain unchanged</li>
+            <li>Staff will not see this as an option when requesting leave</li>
+        </ul>
+    </div>
+    {% else %}
+    <div class="alert alert-success border-0 rounded-4 text-start">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Activating this leave type will:</strong>
+        <ul class="mb-0 mt-2">
+            <li>Make it available for new leave requests</li>
+            <li>Staff will see it as an option when requesting leave</li>
+            <li>Existing leave requests remain unaffected</li>
+        </ul>
+    </div>
+    {% endif %}
+
+    <p class="text-muted small mb-0">
+        <i class="bi bi-info-circle me-1"></i>
+        {% if leave_type.is_active %}
+        Deactivated leave types can be reactivated at any time.
+        {% else %}
+        Activated leave types can be deactivated at any time.
+        {% endif %}
+    </p>
+</div>
+
+<div class="modal-footer border-0 px-4 pb-4 d-flex gap-2 justify-content-center">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+        <i class="bi bi-x-circle me-1"></i>Cancel
+    </button>
+    <button type="button" class="btn {% if leave_type.is_active %}btn-warning{% else %}btn-teal{% endif %}" id="confirmToggleBtn"
+            onclick="
+                var btn = this;
+                var originalHtml = btn.innerHTML;
+                var csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+                var csrfToken = csrfEl ? csrfEl.value : '';
+                btn.disabled = true;
+                btn.innerHTML = '<span class=\'spinner-border spinner-border-sm me-2\' role=\'status\'></span>Processing...';
+                fetch('{% url 'staff:leave_type_toggle_active' leave_type.id %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        var modalEl = document.getElementById('leaveTypeModal');
+                        var modalInstance = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+                        if (modalInstance) { modalInstance.hide(); }
+                        window.location.reload();
+                    } else {
+                        alert(data.error || 'Error processing request.');
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    }
+                })
+                .catch(function(err) {
+                    alert('An unexpected error occurred. Please try again.');
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                });
+            ">
+        <i class="bi {% if leave_type.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %} me-1"></i>
+        {% if leave_type.is_active %}Deactivate{% else %}Activate{% endif %}
+    </button>
+</div>
+
+<style>
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .btn-teal {
+        background-color: var(--eduai-signal, #2C7A6D) !important;
+        border-color: var(--eduai-signal, #2C7A6D) !important;
+        color: #fff !important;
+    }
+    .btn-teal:hover {
+        background-color: #1f5c52 !important;
+        border-color: #1f5c52 !important;
+        color: #fff !important;
+    }
+</style>

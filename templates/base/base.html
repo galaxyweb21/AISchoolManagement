@@ -1,0 +1,303 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <!-- === HEADER (Meta, Bootstrap, Fonts) === -->
+    {% include "base/header.html" %}
+
+    <!-- === CUSTOM ENTERPRISE STYLES (Light/Dark Patch) === -->
+     <style>
+        /* =========================================
+           1. CSS VARIABLES (Light & Dark Modes)
+           ========================================= */
+        :root {
+            /* Brand Colors
+               Deepened from the original #C9962B / #3FA796 - those read
+               beautifully as accents but only hit ~2.7:1 and ~2.9:1
+               contrast against white, below WCAG AA's 4.5:1 minimum for
+               button text (this app uses both as .btn-primary/success
+               backgrounds with white text on nearly every page). These
+               keep the same gold/teal identity at 4.8:1 and 5.1:1. */
+            --primary-color: #946B1C;
+            --dark-bg: #0B1A18;
+            --eduai-gold: #946B1C;
+            --eduai-gold-soft: rgba(148, 107, 28, 0.16);
+            --eduai-signal: #2C7A6D;
+            --eduai-signal-soft: rgba(44, 122, 109, 0.16);
+
+            /* Light Theme Defaults */
+            --app-bg: #F7F4EC;
+            --surface-bg: #FFFFFF;
+            --surface-border: #E7E1D3;
+            --text-primary: #1F2A28;
+            --text-muted: #6B7570;
+            --sidebar-bg: #FFFFFF;
+            --sidebar-text: #4B5450;
+            --sidebar-text-active: #1F2A28;
+            --sidebar-border: #ECE7DA;
+            --sidebar-width: 268px;
+        }
+
+        /* Dark Theme Overrides */
+        html[data-bs-theme="dark"] {
+            --app-bg: #0E1715;
+            --surface-bg: #142320;
+            --surface-border: #223330;
+            --text-primary: #ECE8DD;
+            --text-muted: #8FA39D;
+            --sidebar-bg: #0B1A18;
+            --sidebar-text: #9FB0AB;
+            --sidebar-text-active: #FFFFFF;
+            --sidebar-border: rgba(255,255,255,0.06);
+        }
+
+        /* =========================================
+           2. GLOBAL BODY & SIDEBAR SHELL
+           ========================================= */
+        body {
+            font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--app-bg);
+            color: var(--text-primary);
+            transition: background-color .25s ease, color .25s ease;
+            overflow-x: hidden;
+        }
+
+        #sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--sidebar-border);
+            color: var(--sidebar-text);
+            transition: width .22s ease, background-color .25s ease, transform .22s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 1040;
+        }
+
+        #content-wrapper {
+            margin-left: var(--sidebar-width);
+            width: calc(100% - var(--sidebar-width));
+            min-height: 100vh;
+            transition: margin-left 0.3s ease, width 0.3s ease;
+        }
+
+        /* FIXED: When sidebar is collapsed, adjust content wrapper */
+        #sidebar.collapsed ~ #content-wrapper {
+            margin-left: 68px;
+            width: calc(100% - 68px);
+        }
+
+        /* =========================================
+           3. THEME PATCH FOR HARDCODED BOOTSTRAP
+           ========================================= */
+        /* Cards & Surfaces */
+        .card, .card-custom, .bg-white {
+            background-color: var(--surface-bg) !important;
+            border-color: var(--surface-border) !important;
+            color: var(--text-primary) !important;
+        }
+        .border, .border-bottom, .border-top, .border-start, .border-end {
+            border-color: var(--surface-border) !important;
+        }
+
+        /* Typography */
+        .text-dark, .text-black, .fw-bold, h1, h2, h3, h4, h5, h6 {
+            color: var(--text-primary) !important;
+        }
+        .text-muted, .text-secondary {
+            color: var(--text-muted) !important;
+        }
+
+        /* Tables */
+        .table {
+            color: var(--text-primary) !important;
+        }
+        .table-light {
+            background-color: var(--surface-bg) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--surface-border) !important;
+        }
+        .table-hover tbody tr:hover {
+            color: var(--text-primary);
+            background-color: var(--app-bg) !important;
+        }
+
+        /* Form Inputs & Selects */
+        .form-control, .form-select, .input-group-text {
+            background-color: var(--surface-bg) !important;
+            border: 1px solid var(--surface-border) !important;
+            color: var(--text-primary) !important;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 0.25rem var(--eduai-gold-soft) !important;
+        }
+
+        /* Dropdowns & List Groups */
+        .list-group-item, .dropdown-menu {
+            background-color: var(--surface-bg) !important;
+            border-color: var(--surface-border) !important;
+            color: var(--text-primary) !important;
+        }
+        .dropdown-item:hover {
+            background-color: var(--app-bg) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* Badges */
+        .badge.bg-light, .badge.bg-secondary-subtle {
+            background-color: var(--app-bg) !important;
+            color: var(--text-primary) !important;
+        }
+        .badge.bg-primary-subtle {
+            background-color: var(--eduai-gold-soft) !important;
+            color: var(--eduai-gold) !important;
+        }
+        .badge.bg-success-subtle {
+            background-color: var(--eduai-signal-soft) !important;
+            color: var(--eduai-signal) !important;
+        }
+
+        /* =========================================
+           4. CARD ANIMATIONS & AI CARDS
+           ========================================= */
+        .card-custom {
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.02);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+        }
+        .ai-card {
+            transition: all .25s ease;
+            cursor: pointer;
+            background: var(--surface-bg);
+        }
+        .ai-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+            border-color: var(--primary-color) !important;
+        }
+        .ai-card i {
+            transition: .25s;
+        }
+        .ai-card:hover i {
+            transform: scale(1.12);
+        }
+
+        /* =========================================
+           5. CRITICAL BOOTSTRAP OVERRIDE PATCH
+           ========================================= */
+        [data-bs-theme="dark"] .card,
+        [data-bs-theme="dark"] .card-header,
+        [data-bs-theme="dark"] .card-body,
+        [data-bs-theme="dark"] .card-footer,
+        [data-bs-theme="dark"] .bg-white,
+        [data-bs-theme="dark"] .bg-light,
+        [data-bs-theme="dark"] .table,
+        [data-bs-theme="dark"] .form-control,
+        [data-bs-theme="dark"] .form-select,
+        [data-bs-theme="dark"] .dropdown-menu,
+        [data-bs-theme="dark"] .list-group-item {
+            background-color: var(--surface-bg) !important;
+            border-color: var(--surface-border) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* =========================================
+           6. RESPONSIVE MOBILE OVERRIDES
+           ========================================= */
+        @media (max-width: 991.98px) {
+            #sidebar {
+                position: fixed; top: 0; left: 0; height: 100vh; z-index: 1050;
+                transform: translateX(-100%);
+                width: 280px !important;
+            }
+            #sidebar.mobile-open { transform: translateX(0); }
+            #sidebar.collapsed ~ #content-wrapper {
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+            #content-wrapper { margin-left: 0 !important; width: 100% !important; }
+            .eduai-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1040; display: none; }
+            .eduai-scrim.show { display: block; }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- === SIDEBAR === -->
+    {% include "base/sidebar.html" %}
+
+    <!-- === MOBILE SCRIM === -->
+    <div class="eduai-scrim" id="eduaiScrim"></div>
+
+    <!-- === MAIN CONTENT === -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <!-- Top Navbar -->
+        {% include "base/navbar.html" %}
+
+        <!-- Dynamic Content Body -->
+        <!-- In base.html, replace the messages block with this -->
+
+<!-- Dynamic Content Body -->
+<!-- In base.html, keep your messages section but add data-auto-dismiss -->
+<div class="container-fluid p-4" id="mainContent">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-2" role="alert" data-auto-dismiss>
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% block content %}
+    {% endblock %}
+</div>
+    </div>
+
+    <!-- === SCRIPTS === -->
+    {% include "base/js.html" %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Theme toggle
+            const savedTheme = localStorage.getItem('eduai-theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+
+            window.toggleTheme = function () {
+                const current = document.documentElement.getAttribute('data-bs-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-bs-theme', next);
+                localStorage.setItem('eduai-theme', next);
+                updateThemeIcon(next);
+            };
+
+            function updateThemeIcon(theme) {
+                document.querySelectorAll('[data-theme-icon]').forEach(function (el) {
+                    el.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+                });
+            }
+        });
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,458 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Timetable{% endblock %}
+
+{% block content %}
+<style>
+    .conflict-badge {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.7rem;
+    }
+    .timetable-cell {
+        min-height: 60px;
+        padding: 0.5rem;
+    }
+    .timetable-cell .subject-name {
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    .timetable-cell .class-name {
+        font-size: 0.75rem;
+        color: var(--bs-secondary-color);
+    }
+    .timetable-cell .teacher-name {
+        font-size: 0.7rem;
+        color: var(--bs-secondary-color);
+    }
+    .timetable-cell .room-name {
+        font-size: 0.65rem;
+        color: var(--bs-secondary-color);
+        font-weight: 500;
+    }
+    .stats-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+    .stat-item {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 8px;
+        padding: 0.25rem 0.75rem;
+        background: var(--bs-tertiary-bg);
+        font-size: 0.8rem;
+    }
+    .stat-item .label {
+        color: var(--bs-secondary-color);
+    }
+    .stat-item .value {
+        font-weight: 600;
+        margin-left: 0.25rem;
+    }
+    .stat-item.danger {
+        background: var(--bs-danger-bg-subtle);
+        border-color: var(--bs-danger-border-subtle);
+    }
+    .stat-item.danger .value {
+        color: var(--bs-danger);
+    }
+</style>
+
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div class="container-fluid py-4">
+    <!-- Header Card -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge px-3 py-2" style="background: var(--eduai-gold-soft, rgba(148,107,28,0.1)); color: var(--primary-color, #946B1C);">
+                            <i class="bi bi-calendar-event me-1"></i> TIMETABLE
+                        </span>
+                        {% if timetable.is_published %}
+                            <span class="badge px-3 py-2" style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D);">
+                                <i class="bi bi-check-circle-fill me-1"></i> Published
+                            </span>
+                        {% else %}
+                            <span class="badge px-3 py-2" style="background: var(--app-bg, #F7F4EC); color: var(--text-muted, #6B7570);">
+                                <i class="bi bi-pencil me-1"></i> Draft
+                            </span>
+                        {% endif %}
+                        {% if timetable.status == 'COMPLETE' %}
+                            <span class="badge px-3 py-2" style="background: rgba(59,130,246,0.1); color: #3b82f6;">
+                                <i class="bi bi-check-circle me-1"></i> Complete
+                            </span>
+                        {% endif %}
+                    </div>
+                    <h5 class="fw-bold mb-1">
+                        {{ timetable.academic_term.name }}
+                    </h5>
+                    <p class="text-muted mb-0 small">
+                        <i class="bi bi-clock me-1"></i>
+                        Generated {{ timetable.generated_at|date:"M d, Y H:i" }}
+                        {% if timetable.generated_by %}
+                            · by {{ timetable.generated_by.get_full_name|default:timetable.generated_by.username }}
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <!-- Class Filter -->
+                    <form method="get" class="d-flex gap-2">
+                        <select name="class_id" class="form-select form-select-sm" onchange="this.form.submit()" style="width: auto; min-width: 150px;">
+                            <option value="">All Classes</option>
+                            {% for c in classes %}
+                                <option value="{{ c.id }}" {% if selected_class_id == c.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ c.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        {% if selected_class_id %}
+                            <a href="{% url 'academics:timetable_detail' timetable.id %}" class="btn btn-sm" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;">
+                                <i class="bi bi-x-circle"></i>
+                            </a>
+                        {% endif %}
+                    </form>
+
+                    <!-- Actions -->
+                    {% if can_publish and not timetable.is_published %}
+                        <form method="post" action="{% url 'academics:publish_timetable' timetable.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm" style="background: var(--eduai-signal, #2C7A6D); color: #fff; border-color: var(--eduai-signal, #2C7A6D);"
+                                    onclick="return confirm('Publish this timetable? This will make it the active timetable.')">
+                                <i class="bi bi-check2-circle me-1"></i>Publish
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    {% if can_publish and not timetable.is_published %}
+                        <button type="button" class="btn btn-sm" style="border-color: #dc2626; color: #dc2626; background: transparent;"
+                                data-bs-toggle="modal" data-bs-target="#timetableDeleteModal">
+                            <i class="bi bi-trash me-1"></i>Delete
+                        </button>
+                    {% endif %}
+
+                    <a href="{% url 'academics:timetable_workspace' %}" class="btn btn-sm" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;">
+                        <i class="bi bi-arrow-left me-1"></i>Back
+                    </a>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <span class="label">Fitness</span>
+                    <span class="value">{{ timetable.fitness_score|floatformat:3 }}</span>
+                </div>
+                <div class="stat-item {% if timetable.hard_conflicts > 0 %}danger{% endif %}">
+                    <span class="label">Hard Conflicts</span>
+                    <span class="value">{{ timetable.hard_conflicts }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="label">Soft Conflicts</span>
+                    <span class="value">{{ timetable.soft_conflicts }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="label">Generations</span>
+                    <span class="value">{{ timetable.generations_run }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="label">Entries</span>
+                    <span class="value">{{ entries_count }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conflict Alert -->
+    {% if timetable.hard_conflicts > 0 %}
+    <div class="alert alert-warning border-0 shadow-sm rounded-4 mb-4">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+            <div>
+                <strong>This timetable has {{ timetable.hard_conflicts }} unresolved conflict(s).</strong>
+                <p class="mb-0 small">
+                    Double-booked teacher/room/class, a lab lesson in a non-lab room,
+                    or a class over room capacity. Regenerate with more rooms/timeslots/teachers.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Timetable Table -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0 text-center">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="text-uppercase fw-bold text-muted small border-bottom pb-2" style="min-width: 60px;">
+                                <i class="bi bi-clock me-1"></i>Period
+                            </th>
+                            {% for d in days %}
+                                <th class="text-uppercase fw-bold text-muted small border-bottom pb-2" style="min-width: 120px;">
+                                    {{ d }}
+                                </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if rows %}
+                            {% for row in rows %}
+                                <tr>
+                                    <td class="fw-bold text-muted py-2" style="background-color: var(--bs-tertiary-bg);">
+                                        P{{ row.period }}
+                                    </td>
+                                    {% for entry in row.cells %}
+                                        <td class="timetable-cell">
+                                            {% if entry %}
+                                                <div class="subject-name">{{ entry.subject.name }}</div>
+                                                <div class="class-name">
+                                                    <i class="bi bi-people me-1"></i>{{ entry.school_class.name }}
+                                                </div>
+                                                <div class="teacher-name">
+                                                    <i class="bi bi-person me-1"></i>{{ entry.teacher.user.get_full_name }}
+                                                </div>
+                                                <div class="room-name">
+                                                    <i class="bi bi-door-open me-1"></i>{{ entry.room.name }}
+                                                    {% if entry.is_lab %}
+                                                        <span class="badge ms-1" style="background: var(--eduai-gold-soft, rgba(148,107,28,0.1)); color: var(--primary-color, #946B1C); font-size: 0.55rem;">Lab</span>
+                                                    {% endif %}
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">&mdash;</span>
+                                            {% endif %}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    <i class="bi bi-calendar2-week fs-2 d-block mb-2 text-secondary"></i>
+                                    No timetable entries found.
+                                    {% if selected_class_id %}
+                                        <br><small>Try viewing all classes.</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Info -->
+    <div class="mt-3 text-center">
+        <small class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>
+            {% if selected_class_id %}
+                Showing timetable for <strong>{{ selected_class_display|default:"selected class" }}</strong>
+            {% else %}
+                Showing all classes
+            {% endif %}
+            · {{ entries_count }} total entries
+        </small>
+    </div>
+</div>
+
+<div class="modal fade" id="timetableDeleteModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-body p-0">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-danger" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteModal = document.getElementById('timetableDeleteModal');
+    if (!deleteModal) return;
+
+    const modalBody = deleteModal.querySelector('.modal-body');
+
+    deleteModal.addEventListener('show.bs.modal', function() {
+        modalBody.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-danger" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading...</p>
+            </div>
+        `;
+
+        const url = "{% url 'academics:delete_timetable' timetable.id %}";
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.text();
+        })
+        .then(html => {
+            modalBody.innerHTML = html;
+            bindDeleteForm();
+        })
+        .catch(err => {
+            console.error('Error loading modal:', err);
+            modalBody.innerHTML = `
+                <div class="p-4 text-center">
+                    <div class="alert alert-danger border-0 rounded-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error loading. Please try again.
+                    </div>
+                    <button type="button" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        });
+    });
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    function bindDeleteForm() {
+        const form = modalBody.querySelector('form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (!confirm('Are you ABSOLUTELY sure you want to delete this timetable?\n\nThis action cannot be undone!')) {
+                return;
+            }
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn ? submitBtn.innerHTML : 'Delete';
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+            }
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Delete failed');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(deleteModal);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                    window.location.href = data.redirect_url || '{% url "academics:timetable_workspace" %}';
+                } else {
+                    showError(data.error || 'Error deleting timetable.');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Delete error:', err);
+                showError(err.message || 'An unexpected error occurred. Please try again.');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const firstElement = newForm.querySelector('.modal-body') || newForm.querySelector('div:first-child');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+
+            if (firstElement) {
+                newForm.insertBefore(errorDiv, firstElement);
+            } else {
+                newForm.prepend(errorDiv);
+            }
+        }
+    }
+
+    deleteModal.addEventListener('hidden.bs.modal', function() {
+        modalBody.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-danger" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading...</p>
+            </div>
+        `;
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('timetableDeleteModal');
+            if (modal && modal.classList.contains('show')) {
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,1146 @@
+<!-- finance/templates/finance/student_fees_list.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}Prepared Student Fees{% endblock %}
+
+{% block content %}
+<style>
+    /* ============================================= */
+    /* KPI CARDS                                     */
+    /* ============================================= */
+    .kpi-card {
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+    .kpi-card .kpi-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .kpi-card .kpi-number {
+        font-size: 1.6rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+    .kpi-card .kpi-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--bs-secondary-color);
+        font-weight: 600;
+    }
+    .kpi-card .kpi-change {
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+    }
+    .kpi-card .kpi-change.up { color: #198754; background: rgba(25, 135, 84, 0.1); }
+    .kpi-card .kpi-change.down { color: #dc3545; background: rgba(220, 53, 69, 0.1); }
+    .kpi-card .kpi-change.neutral { color: #6c757d; background: rgba(108, 117, 125, 0.1); }
+
+    /* ============================================= */
+    /* STATUS BADGES                                 */
+    /* ============================================= */
+    .status-badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+
+    /* ============================================= */
+    /* BULK ACTIONS                                  */
+    /* ============================================= */
+    .bulk-actions {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 0.75rem 1.25rem;
+        display: none;
+        border: 1px solid var(--bs-border-color);
+    }
+    .bulk-actions.show {
+        display: flex;
+    }
+
+    /* ============================================= */
+    /* FEE AMOUNT                                    */
+    /* ============================================= */
+    .fee-amount {
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+    }
+    .fee-amount-total {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--eduai-gold, #946B1C);
+    }
+
+    /* ============================================= */
+    /* FILTER SECTION                                */
+    /* ============================================= */
+    .filter-section {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem;
+        border: 1px solid var(--bs-border-color);
+    }
+
+    /* ============================================= */
+    /* ADD-ON ITEMS STYLES                           */
+    /* ============================================= */
+    .addon-tag {
+        font-size: 0.6rem;
+        padding: 0.1rem 0.4rem;
+        border-radius: 3px;
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.12));
+        color: var(--eduai-gold, #946B1C);
+        display: inline-block;
+        margin-right: 0.2rem;
+    }
+    .fee-detail-popover {
+        cursor: pointer;
+        text-decoration: underline dotted;
+        text-underline-offset: 2px;
+    }
+
+    /* ============================================= */
+    /* ANIMATIONS                                    */
+    /* ============================================= */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .kpi-card {
+        animation: fadeInUp 0.4s ease forwards;
+    }
+    .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+    .kpi-card:nth-child(2) { animation-delay: 0.1s; }
+    .kpi-card:nth-child(3) { animation-delay: 0.15s; }
+    .kpi-card:nth-child(4) { animation-delay: 0.2s; }
+    .kpi-card:nth-child(5) { animation-delay: 0.25s; }
+    .kpi-card:nth-child(6) { animation-delay: 0.3s; }
+
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+
+    /* ============================================= */
+    /* RESPONSIVE                                    */
+    /* ============================================= */
+    @media (max-width: 768px) {
+        .kpi-card .kpi-number {
+            font-size: 1.2rem;
+        }
+        .bulk-actions {
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 0.5rem;
+        }
+        .bulk-actions .d-flex {
+            justify-content: center;
+        }
+    }
+</style>
+
+<!-- How Student Fees Work -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How Student Fees Work</div>
+            <p class="text">
+                This page shows all prepared student fee records. The KPI cards at the top display
+                the total count of fees by status: <strong>Draft</strong>, <strong>Prepared</strong>,
+                <strong>Approved</strong>, <strong>Invoiced</strong>, and <strong>Cancelled</strong>.
+                The summary cards show the <strong>Total Base Amount</strong>, the <strong>Total New Student Class Add-ons</strong>,
+                and the <strong>Total Final Amount</strong>. For each new student, the Base Amount is the class base fee,
+                Add-ons contains only the new-student add-ons configured for that student's class, and Final Amount is Base Amount + Add-ons. Use the
+                <strong>Status Filter</strong> and <strong>Search</strong> box to find specific
+                fee records. Select multiple <strong>Prepared</strong> fees and click
+                <strong>"Approve Selected"</strong> to approve them in bulk.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid py-4">
+    <!-- ========================================================== -->
+    <!-- HEADER                                                     -->
+    <!-- ========================================================== -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge badge-gold rounded-pill px-3 py-2">
+                            <i class="bi bi-file-earmark-text me-1"></i> STUDENT FEES
+                        </span>
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">
+                            <i class="bi bi-database me-1"></i> {{ total_count }} Total
+                        </span>
+                    </div>
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-cash-stack text-gold me-2"></i>
+                        Prepared Student Fees
+                    </h5>
+                    <p class="text-muted mb-0 small">
+                        View all prepared student fee items, total balances, and approval statuses.
+                    </p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    {% if can_manage %}
+                    <a href="{% url 'finance:fee_preparation' %}" class="btn btn-gold">
+                        <i class="bi bi-gear me-1"></i> Fee Preparation
+                    </a>
+                    {% endif %}
+                    <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+                        <i class="bi bi-printer me-1"></i> Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- KPI CARDS                                                  -->
+    <!-- ========================================================== -->
+    <div class="row g-3 mb-4">
+        <!-- Total -->
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-gold-soft text-gold">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-gold" id="totalCountDisplay">{{ total_count }}</div>
+                        <div class="kpi-label">Total Fees</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Draft -->
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-secondary-subtle text-secondary">
+                        <i class="bi bi-pencil"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-secondary">{{ draft_count }}</div>
+                        <div class="kpi-label">Draft</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prepared -->
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-info-subtle text-info">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-info">{{ prepared_count }}</div>
+                        <div class="kpi-label">Prepared</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Approved -->
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-teal-soft text-teal">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-teal">{{ approved_count }}</div>
+                        <div class="kpi-label">Approved</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoiced -->
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-warning-subtle text-warning">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-warning">{{ invoiced_count }}</div>
+                        <div class="kpi-label">Invoiced</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cancelled -->
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-danger-subtle text-danger">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-danger">{{ cancelled_count }}</div>
+                        <div class="kpi-label">Cancelled</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- FINANCIAL SUMMARY                                          -->
+    <!-- ========================================================== -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted text-uppercase fw-semibold">
+                                <i class="bi bi-calculator me-1"></i> Total Base Amount
+                            </small>
+                            <h5 class="fw-bold mb-0">GH¢ {{ total_base|floatformat:2 }}</h5>
+                        </div>
+                        <div class="bg-gold-soft text-gold p-2 rounded-3">
+                            <i class="bi bi-cash-stack fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted text-uppercase fw-semibold">
+                                <i class="bi bi-plus-slash-minus me-1"></i> Total New Student Class Add-ons
+                            </small>
+                            <h5 class="fw-bold mb-0 text-gold">GH¢ {{ total_addons|floatformat:2 }}</h5>
+                        </div>
+                        <div class="bg-gold-soft text-gold p-2 rounded-3">
+                            <i class="bi bi-plus-square fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted text-uppercase fw-semibold">
+                                <i class="bi bi-check-circle me-1"></i> Total Final Amount
+                            </small>
+                            <h5 class="fw-bold mb-0 text-teal">GH¢ {{ total_final|floatformat:2 }}</h5>
+                        </div>
+                        <div class="bg-teal-soft text-teal p-2 rounded-3">
+                            <i class="bi bi-cash-coin fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- ACTIONS BAR                                                -->
+    <!-- ========================================================== -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.location.reload()">
+                        <i class="bi bi-arrow-repeat me-1"></i> Refresh
+                    </button>
+                </div>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <button type="button" class="btn btn-sm btn-outline-gold" onclick="rebuildAllFees()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Rebuild All Fees
+                    </button>
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Rebuild fees for all students to include latest add-ons
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- BULK ACTIONS BAR                                           -->
+    <!-- ========================================================== -->
+    <div class="bulk-actions mb-4 align-items-center justify-content-between" id="bulkActions">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <span class="fw-bold" id="selectedCount">0</span>
+            <span class="text-muted">selected</span>
+            <div class="vr"></div>
+            <button type="button" class="btn btn-success btn-sm" onclick="bulkApprove()">
+                <i class="bi bi-check2-all me-1"></i> Approve Selected
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearSelection()">
+                <i class="bi bi-x-circle me-1"></i> Clear Selection
+            </button>
+        </div>
+        <small class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>
+            Only fees with status 'Prepared' can be approved
+        </small>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- FILTER BAR                                                 -->
+    <!-- ========================================================== -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Filter by Status</label>
+                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="DRAFT" {% if selected_status == 'DRAFT' %}selected{% endif %}>Draft</option>
+                        <option value="PREPARED" {% if selected_status == 'PREPARED' %}selected{% endif %}>Prepared</option>
+                        <option value="APPROVED" {% if selected_status == 'APPROVED' %}selected{% endif %}>Approved</option>
+                        <option value="INVOICED" {% if selected_status == 'INVOICED' %}selected{% endif %}>Invoiced</option>
+                        <option value="CANCELLED" {% if selected_status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">Search</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" name="search" class="form-control form-control-sm border-start-0"
+                               placeholder="Search by student name..." value="{{ search|default:'' }}" id="searchInput">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-gold btn-sm w-100">
+                        <i class="bi bi-funnel me-1"></i> Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- STUDENT FEES TABLE                                         -->
+    <!-- ========================================================== -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h6 class="fw-bold mb-0">
+                    <i class="bi bi-table text-gold me-2"></i>Fee Records
+                    <span class="badge bg-light text-muted ms-2" id="feeCount">{{ student_fees|length }}</span>
+                </h6>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="text-muted small" id="filterStatus"></span>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="feesTable">
+                    <thead class="bg-light">
+                    <tr>
+                        <th class="text-uppercase fw-bold text-muted small border-bottom pb-2 ps-4" style="width: 40px;">
+                            <input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes(this)">
+                        </th>
+                        <th class="text-uppercase fw-bold text-muted small border-bottom pb-2" style="min-width: 180px;">
+                            <i class="bi bi-person me-1"></i>Student
+                        </th>
+                        <th class="text-uppercase fw-bold text-muted small border-bottom pb-2" style="min-width: 120px;">
+                            <i class="bi bi-people me-1"></i>Class
+                        </th>
+                        <th class="text-uppercase fw-bold text-muted small border-bottom pb-2" style="min-width: 140px;">
+                            <i class="bi bi-calendar3 me-1"></i>Term
+                        </th>
+                        <th class="text-uppercase fw-bold text-muted small border-bottom pb-2 text-end" style="min-width: 120px;">
+                            <i class="bi bi-cash me-1"></i>Base Amount
+                        </th>
+                        <th class="text-uppercase fw-bold text-muted small border-bottom pb-2 text-end" style="min-width: 120px;">
+                            <i class="bi bi-plus-slash-minus me-1"></i>Add-ons
+                        </th>
+                        <th class="text-uppercase fw-bold text-muted small border-bottom pb-2 text-end" style="min-width: 130px;">
+                            <i class="bi bi-check-circle me-1"></i>Final Amount
+                        </th>
+                        <th class="text-uppercase fw-bold text-muted small border-bottom pb-2 text-center" style="min-width: 110px;">
+                            <i class="bi bi-tag me-1"></i>Status
+                        </th>
+                        <th class="text-uppercase fw-bold text-muted small border-bottom pb-2 text-end pe-4" style="min-width: 100px;">
+                            <i class="bi bi-gear me-1"></i>Actions
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody class="border-top-0" id="feesTableBody">
+                    {% for fee in student_fees %}
+                    <tr class="border-bottom fee-row" data-id="{{ fee.id }}" data-status="{{ fee.status }}" data-search="{{ fee.student.user.get_full_name }}">
+                        <td class="ps-4 py-3">
+                            <input type="checkbox" class="fee-checkbox" value="{{ fee.id }}"
+                                   data-status="{{ fee.status }}"
+                                   {% if fee.status != 'PREPARED' %}disabled{% endif %}
+                                   onchange="updateSelection()">
+                        </td>
+                        <!-- Student -->
+                        <td class="py-3">
+                            <div class="fw-semibold">{{ fee.student.user.get_full_name|default:fee.student.user.username }}</div>
+                            <small class="text-muted">{{ fee.student.admission_number|default:"N/A" }}</small>
+                        </td>
+
+                        <!-- Class -->
+                        <td class="py-3">
+                            <span class="badge bg-info-subtle text-info">
+                                {{ fee.student.school_class.name|default:"N/A" }}
+                            </span>
+                        </td>
+
+                        <!-- Term -->
+                        <td class="py-3">
+                            <span class="badge bg-light text-dark border">{{ fee.academic_term.name }}</span>
+                        </td>
+
+                        <!-- Base Amount -->
+                        <td class="py-3 text-end fee-amount text-muted">
+                            GH¢ {{ fee.base_amount|floatformat:2 }}
+                        </td>
+
+                        <!-- NEW STUDENTS ONLY: Class Add-ons -->
+                        <td class="py-3 text-end fee-amount text-gold">
+                            GH¢ {{ fee.new_student_addon_total|floatformat:2 }}
+                        </td>
+
+                        <!-- NEW STUDENTS ONLY: Final Amount = Base Amount + Class Add-ons; Returning/Existing = Base Amount -->
+                        <td class="py-3 text-end fee-amount fee-amount-total">
+                            GH¢ {{ fee.display_final_amount|floatformat:2 }}
+                        </td>
+
+                        <!-- Status -->
+                        <td class="py-3 text-center">
+                            <span class="status-badge
+                                {% if fee.status == 'APPROVED' %}bg-teal-soft text-teal
+                                {% elif fee.status == 'INVOICED' %}bg-info-subtle text-info
+                                {% elif fee.status == 'PREPARED' %}bg-gold-soft text-gold
+                                {% elif fee.status == 'CANCELLED' %}bg-danger-subtle text-danger
+                                {% else %}bg-secondary-subtle text-secondary{% endif %}
+                            ">
+                                <i class="bi
+                                    {% if fee.status == 'APPROVED' %}bi-check-circle-fill
+                                    {% elif fee.status == 'INVOICED' %}bi-file-earmark-text
+                                    {% elif fee.status == 'PREPARED' %}bi-clock-fill
+                                    {% elif fee.status == 'CANCELLED' %}bi-x-circle-fill
+                                    {% else %}bi-circle{% endif %}
+                                    me-1
+                                "></i>
+                                {{ fee.get_status_display }}
+                            </span>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="py-3 pe-4 text-end">
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'finance:student_financial_account' fee.student.id %}"
+                                   class="btn btn-sm btn-outline-gold" title="View Ledger">
+                                    <i class="bi bi-wallet2"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-info"
+                                        onclick="viewFeeItems('{{ fee.id }}')" title="View Items">
+                                    <i class="bi bi-list-ul"></i>
+                                </button>
+                                {% if can_manage and fee.status == 'PREPARED' %}
+                                <button type="button" class="btn btn-sm btn-outline-success"
+                                        onclick="approveSingleFee('{{ fee.id }}')" title="Approve Fee">
+                                    <i class="bi bi-check2"></i>
+                                </button>
+                                {% endif %}
+                                {% if can_manage and fee.status != 'INVOICED' and fee.status != 'CANCELLED' %}
+                                <a href="{% url 'finance:student_fee_adjustments' fee.id %}"
+                                   class="btn btn-sm btn-outline-secondary" title="Manage Adjustments">
+                                    <i class="bi bi-sliders"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr class="empty-state-row">
+                        <td colspan="9" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                            <p class="mb-0">No prepared student fees found.</p>
+                            <small class="text-muted">Fees will appear here once prepared.</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- PAGINATION                                                 -->
+    <!-- ========================================================== -->
+    {% if student_fees.has_other_pages %}
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <small class="text-muted">
+            Showing {{ student_fees.start_index }} to {{ student_fees.end_index }} of {{ student_fees.paginator.count }} entries
+        </small>
+        <nav>
+            <ul class="ul pagination pagination-sm mb-0">
+                {% if student_fees.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ student_fees.previous_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if search %}&search={{ search }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link"><i class="bi bi-chevron-left"></i></span>
+                </li>
+                {% endif %}
+
+                {% for num in student_fees.paginator.page_range %}
+                {% if student_fees.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > student_fees.number|add:'-3' and num < student_fees.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if search %}&search={{ search }}{% endif %}">
+                        {{ num }}
+                    </a>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                {% if student_fees.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ student_fees.next_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if search %}&search={{ search }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link"><i class="bi bi-chevron-right"></i></span>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ========================================================== -->
+<!-- FEE ITEMS DETAIL MODAL                                    -->
+<!-- ========================================================== -->
+<div class="modal fade" id="feeItemsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-list-ul text-gold me-2"></i>Fee Items Detail
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="feeItemsModalContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- TOAST CONTAINER                                            -->
+<!-- ========================================================== -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    <div id="liveToast" class="toast align-items-center border-0 shadow-sm rounded-4" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                <span id="toastMessage">Success!</span>
+            </div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // TABLE SEARCH / FILTER (client-side)
+    // ============================================================
+    const searchInput = document.getElementById('searchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const feeCount = document.getElementById('feeCount');
+    const allRows = document.querySelectorAll('.fee-row');
+    const emptyState = document.querySelector('.empty-state-row');
+
+    // Store original display state
+    let originalCount = allRows.length;
+
+    function applyClientFilter() {
+        if (!searchInput) return;
+        const query = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        allRows.forEach(function(row) {
+            const searchData = row.getAttribute('data-search') || '';
+            const text = row.textContent.toLowerCase();
+            const isVisible = searchData.includes(query) || text.includes(query);
+            row.style.display = isVisible ? '' : 'none';
+            if (isVisible) visibleCount++;
+        });
+
+        if (feeCount) {
+            if (query) {
+                feeCount.textContent = visibleCount;
+                if (filterStatus) {
+                    filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                }
+            } else {
+                feeCount.textContent = originalCount;
+                if (filterStatus) {
+                    filterStatus.textContent = '';
+                }
+            }
+        }
+
+        if (emptyState) {
+            if (visibleCount === 0 && allRows.length > 0) {
+                emptyState.style.display = '';
+            } else {
+                emptyState.style.display = 'none';
+            }
+        }
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', applyClientFilter);
+        // Initial filter if there's a search value from URL
+        if (searchInput.value) {
+            setTimeout(applyClientFilter, 100);
+        }
+    }
+
+    // ============================================================
+    // TOAST NOTIFICATION
+    // ============================================================
+    function showToast(message, type) {
+        const toast = document.getElementById('liveToast');
+        const toastBody = document.getElementById('toastBody');
+
+        if (type === 'success') {
+            toastBody.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-success-subtle';
+        } else if (type === 'error') {
+            toastBody.innerHTML = `<i class="bi bi-exclamation-circle-fill text-danger me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-danger-subtle';
+        } else {
+            toastBody.innerHTML = `<i class="bi bi-info-circle-fill text-info me-2"></i> <span id="toastMessage">${message}</span>`;
+            toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-info-subtle';
+        }
+
+        const toastInstance = new bootstrap.Toast(toast, {
+            autohide: true,
+            delay: 4000
+        });
+        toastInstance.show();
+    }
+
+    // ============================================================
+    // SELECTION MANAGEMENT
+    // ============================================================
+    window.updateSelection = function() {
+        const checkboxes = document.querySelectorAll('.fee-checkbox:checked');
+        const count = checkboxes.length;
+        const bulkActions = document.getElementById('bulkActions');
+        const selectedCount = document.getElementById('selectedCount');
+
+        if (count > 0) {
+            bulkActions.classList.add('show');
+            selectedCount.textContent = count;
+        } else {
+            bulkActions.classList.remove('show');
+        }
+    };
+
+    window.toggleAllCheckboxes = function(selectAll) {
+        const checkboxes = document.querySelectorAll('.fee-checkbox:not(:disabled)');
+        checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        updateSelection();
+    };
+
+    window.clearSelection = function() {
+        document.querySelectorAll('.fee-checkbox').forEach(cb => cb.checked = false);
+        updateSelection();
+    };
+
+    // ============================================================
+    // VIEW FEE ITEMS
+    // ============================================================
+    window.viewFeeItems = function(feeId) {
+        const modal = new bootstrap.Modal(document.getElementById('feeItemsModal'));
+        const modalContent = document.getElementById('feeItemsModalContent');
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        modal.show();
+
+        fetch(`/finance/api/student-fee/${feeId}/`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let itemsHtml = '';
+
+                // Totals come from the backend. The API calculates them from
+                // the actual StudentFeeItem rows, so the modal cannot display
+                // Base + Add-ons differently from the stored fee items.
+                const baseTotal = parseFloat(data.base_items_total || 0);
+                const addonTotal = parseFloat(data.addon_total || 0);
+                const grandTotal = parseFloat(data.items_total || (baseTotal + addonTotal));
+
+                data.items.forEach(function(item) {
+                    // The backend is the single source of truth.
+                    // Only a term enrollment of NEW can mark a line as a
+                    // new-student-only class add-on.
+                    const isAddon = item.is_new_student_addon === true;
+
+                    itemsHtml += `
+                        <div class="d-flex justify-content-between border-bottom py-2 ${isAddon ? 'bg-gold-soft' : ''}">
+                            <div>
+                                <span class="fw-medium">${item.category}</span>
+                                <div class="text-muted small">${item.description}</div>
+                                ${isAddon ? '<span class="addon-tag">Add-on</span>' : ''}
+                            </div>
+                            <div class="text-end">
+                                <div class="small">
+                                    <span class="text-muted">Base: ₵${item.standard_amount}</span>
+                                    ${item.discount_amount > 0 ? `<span class="text-success"> Discount: -₵${item.discount_amount}</span>` : ''}
+                                </div>
+                                <span class="fw-bold ${isAddon ? 'text-gold' : ''}">₵${item.final_amount}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                modalContent.innerHTML = `
+                    <div class="mb-3">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <small class="text-muted">Student</small>
+                                <div class="fw-bold">${data.student_name}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">Status</small>
+                                <div>
+                                    <span class="badge bg-${data.status === 'APPROVED' ? 'teal' : data.status === 'PREPARED' ? 'warning' : 'secondary'}">
+                                        ${data.status}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <h6 class="fw-bold">Fee Items</h6>
+                            <div>
+                                <span class="badge bg-light text-dark">Base: ₵${baseTotal.toFixed(2)}</span>
+                                ${data.is_new_student
+                                    ? `<span class="badge bg-gold-soft text-gold ms-1">New Student Add-ons: ₵${addonTotal.toFixed(2)}</span>`
+                                    : `<span class="badge bg-light text-muted ms-1">New Student Add-ons: ₵0.00</span>`}
+                            </div>
+                        </div>
+                        ${itemsHtml}
+                    </div>
+                    <hr>
+                    <div class="row g-3 text-end">
+                        <div class="col-4">
+                            <small class="text-muted">Base</small>
+                            <div>₵${baseTotal.toFixed(2)}</div>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted text-gold">Add-ons</small>
+                            <div class="text-gold">₵${addonTotal.toFixed(2)}</div>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted fw-bold">Total</small>
+                            <div class="fw-bold fee-amount-total">₵${grandTotal.toFixed(2)}</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                modalContent.innerHTML = `
+                    <div class="alert alert-danger border-0 rounded-4">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        ${data.error || 'Error loading fee details.'}
+                    </div>
+                `;
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            modalContent.innerHTML = `
+                <div class="alert alert-danger border-0 rounded-4">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    An error occurred while loading fee details.
+                </div>
+            `;
+        });
+    };
+
+    // ============================================================
+    // SINGLE APPROVE
+    // ============================================================
+    window.approveSingleFee = function(feeId) {
+        if (!confirm('Approve this student fee?')) return;
+
+        const btn = document.querySelector(`button[onclick*="approveSingleFee('${feeId}')"]`);
+        if (!btn) return;
+
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+        btn.disabled = true;
+
+        fetch(`/finance/api/student-fee/${feeId}/approve/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message || 'Fee approved successfully!', 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast(data.error || 'Error approving fee.', 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            showToast('An unexpected error occurred.', 'error');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    };
+
+    // ============================================================
+    // BULK APPROVE
+    // ============================================================
+    window.bulkApprove = function() {
+        const selected = document.querySelectorAll('.fee-checkbox:checked');
+        if (selected.length === 0) {
+            showToast('Please select at least one fee to approve.', 'error');
+            return;
+        }
+
+        if (!confirm(`Approve ${selected.length} selected fee(s)?`)) return;
+
+        const feeIds = Array.from(selected).map(cb => cb.value);
+        const btn = document.querySelector('#bulkActions .btn-success');
+        if (!btn) return;
+
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Approving...';
+        btn.disabled = true;
+
+        fetch('/finance/api/student-fees/bulk-approve/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ fee_ids: feeIds })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message || 'Fees approved successfully!', 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showToast(data.error || 'Error approving fees.', 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            showToast('An unexpected error occurred.', 'error');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    };
+
+    // ============================================================
+    // REBUILD ALL FEES
+    // ============================================================
+    window.rebuildAllFees = function() {
+        if (!confirm('This will rebuild fees for ALL students. This may take a few moments. Continue?')) return;
+
+        const btn = document.querySelector('button[onclick="rebuildAllFees()"]');
+        if (!btn) return;
+
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Rebuilding...';
+        btn.disabled = true;
+
+        fetch('/finance/api/rebuild-all-fees/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message || 'All fees rebuilt successfully!', 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showToast(data.error || 'Error rebuilding fees.', 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            showToast('An unexpected error occurred.', 'error');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    };
+
+    // ============================================================
+    // CSRF TOKEN
+    // ============================================================
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value ||
+               document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    }
+
+    // ============================================================
+    // AUTO-DISMISS MESSAGES
+    // ============================================================
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% include "partials/pagination.html" with page_obj=student_fees %}
+
+{% endblock %}
