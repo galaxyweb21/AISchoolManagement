@@ -19,10 +19,14 @@ def _int_setting(name, default):
 
 
 class EmailMonitoringService:
-    """SMTP health testing and controlled report-card delivery retries."""
+    """Provider-neutral email health testing and report-card delivery retries."""
 
     @staticmethod
-    def test(school, user=None, recipient=None):
+    def provider_label():
+        return getattr(settings, 'EMAIL_PROVIDER', 'unknown').upper()
+
+    @classmethod
+    def test(cls, school, user=None, recipient=None):
         recipient = (recipient or '').strip()
         started = time.monotonic()
         check = EmailHealthCheck.objects.create(
@@ -35,16 +39,21 @@ class EmailMonitoringService:
             connection_verified = True
             connection.close()
 
-            message = 'SMTP connection and authentication succeeded.'
             if recipient:
                 email = EmailMessage(
                     subject=f'{school.name} – EduAI Email Health Test',
                     body=(f'This is a test email from {school.name}.\n\n'
                           'If you received this message, outbound email delivery is working.'),
-                    from_email=None, to=[recipient], connection=get_connection(fail_silently=False),
+                    from_email=None,
+                    to=[recipient],
                 )
                 email.send(fail_silently=False)
-                message = f'SMTP connection/authentication and test delivery to {recipient} succeeded.'
+                message = (
+                    f'{cls.provider_label()} API connection/authentication and '
+                    f'test delivery to {recipient} succeeded.'
+                )
+            else:
+                message = f'{cls.provider_label()} email provider connection verified.'
 
             check.success = True
             check.connection_verified = connection_verified
@@ -61,7 +70,7 @@ class EmailMonitoringService:
 
     @classmethod
     def send_report_card_delivery(cls, delivery):
-        """Send one report card and persist attempt/retry state."""
+        """Send one report card through the configured Django email backend."""
         from ai_engine.services.export_service import ExportService
 
         now = timezone.now()
@@ -103,7 +112,6 @@ class EmailMonitoringService:
             delivery.status = 'FAILED'
             delivery.error_message = f'{type(exc).__name__}: {str(exc)[:500]}'
             if delivery.retry_count < max_retries:
-                # Exponential backoff: 15, 30, 60 minutes by default.
                 delay = delay_minutes * (2 ** max(0, delivery.retry_count - 1))
                 delivery.next_retry_at = timezone.now() + timedelta(minutes=delay)
             else:

@@ -234,14 +234,33 @@ LOGGING = {
 # ==========================================
 # EMAIL CONFIG
 # ==========================================
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# Render Free blocks outbound SMTP ports (25/465/587).  The production
+# deployment therefore uses Brevo's HTTPS API.  Local development defaults
+# to Django's console backend so email workflows can be tested offline.
+EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "console" if DEBUG else "brevo").strip().lower()
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@localhost" if DEBUG else "")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+BREVO_API_URL = os.getenv("BREVO_API_URL", "https://api.brevo.com/v3/smtp/email")
+BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", DEFAULT_FROM_EMAIL)
+BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "EduAI School Management")
+EMAIL_API_TIMEOUT = int(os.getenv("EMAIL_API_TIMEOUT", "20"))
+
+# Legacy SMTP settings are retained for paid/alternative deployments where
+# SMTP is permitted, but they are no longer used by the Render Free default.
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").strip().lower() in {"1", "true", "yes", "on"}
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "galaxyweb21@gmail.com")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "galaxyweb21@gmail.com")
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "15"))
+
+if EMAIL_PROVIDER == "console":
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+elif EMAIL_PROVIDER == "brevo":
+    EMAIL_BACKEND = "ai_engine.email_backends.BrevoEmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
 REPORT_CARD_EMAIL_MAX_RETRIES = int(os.getenv("REPORT_CARD_EMAIL_MAX_RETRIES", "3"))
 REPORT_CARD_EMAIL_RETRY_DELAY_MINUTES = int(os.getenv("REPORT_CARD_EMAIL_RETRY_DELAY_MINUTES", "15"))
 

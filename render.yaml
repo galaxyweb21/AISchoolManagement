@@ -40,18 +40,18 @@ services:
         value: "60"
       - key: CELERY_TASK_ALWAYS_EAGER
         value: "True"
+      - key: EMAIL_PROVIDER
+        value: brevo
       - key: DEFAULT_FROM_EMAIL
-        value: demo@eduai.school
-      - key: EMAIL_HOST
-        value: smtp.gmail.com
-      - key: EMAIL_PORT
-        value: "587"
-      - key: EMAIL_USE_TLS
-        value: "True"
-      - key: EMAIL_HOST_USER
         sync: false
-      - key: EMAIL_HOST_PASSWORD
+      - key: BREVO_API_KEY
         sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        value: EduAI School Management
+      - key: EMAIL_API_TIMEOUT
+        value: "20"
       - key: REPORT_CARD_EMAIL_MAX_RETRIES
         value: "3"
       - key: REPORT_CARD_EMAIL_RETRY_DELAY_MINUTES

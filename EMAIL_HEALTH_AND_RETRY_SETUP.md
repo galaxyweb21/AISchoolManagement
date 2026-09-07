@@ -1,48 +1,63 @@
 # EduAI Email Health, Password Reset and Report-Card Delivery
 
-## What was added
+## Why SMTP was replaced
 
-- **Email Health** dashboard under AI Engine → Report Cards → Email Health.
-- Real SMTP connection/authentication test plus optional real test-message delivery.
-- Persistent health-test history.
-- Per-parent report-card delivery records with status, attempts, last attempt, next retry and error.
-- Automatic report-card email retry with bounded exponential backoff. Default: 3 attempts at approximately 15, 30 and 60 minutes.
-- Manual **Retry Now** from the delivery monitor starts a fresh bounded cycle when automatic attempts have been exhausted.
-- Release batch counts are refreshed after retries; a batch can move from PARTIAL to COMPLETE after all email failures are resolved.
-- `test_email_configuration` management command for Render/local diagnostics.
-- The SMTP password is no longer hard-coded in settings. Configure it through environment variables.
+The Render Free web service cannot make outbound connections to SMTP ports. The live deployment therefore uses an HTTPS transactional-email API instead of Gmail SMTP. The application keeps Django's normal email interface, so password resets, report cards and future notifications share one delivery path.
 
-## Render environment variables
+## Production provider: Brevo
 
-Set these on the Render web service:
+Brevo provides transactional email through its REST API over HTTPS. The API endpoint is `https://api.brevo.com/v3/smtp/email`; requests authenticate with an API key and require a verified sender.
+
+Create/verify a sender in Brevo, generate an API key, then add these Render environment variables:
 
 ```text
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USE_TLS=True
-EMAIL_HOST_USER=your-sending-gmail@gmail.com
-EMAIL_HOST_PASSWORD=your-16-character-gmail-app-password
-DEFAULT_FROM_EMAIL=your-sending-gmail@gmail.com
-EMAIL_TIMEOUT=15
+EMAIL_PROVIDER=brevo
+BREVO_API_KEY=<your Brevo API key>
+BREVO_SENDER_EMAIL=<your verified sender address>
+BREVO_SENDER_NAME=EduAI School Management
+DEFAULT_FROM_EMAIL=<your verified sender address>
+EMAIL_API_TIMEOUT=20
 REPORT_CARD_EMAIL_MAX_RETRIES=3
 REPORT_CARD_EMAIL_RETRY_DELAY_MINUTES=15
 ```
 
-Use a **Gmail App Password**, not the normal Gmail account password. Keep `EMAIL_HOST_PASSWORD` out of GitHub and source files.
+Never put the API key in GitHub, source files, screenshots or chat.
 
-## Testing
+## Local/offline development
 
-Run:
+You do **not** need to deploy the project before testing email locally. When `DEBUG=True` and `EMAIL_PROVIDER` is not overridden, settings default to Django's console email backend. The application will run normally and email messages will be printed in the terminal instead of going to the internet.
+
+Recommended local `.env` values:
+
+```text
+DEBUG=True
+EMAIL_PROVIDER=console
+DEFAULT_FROM_EMAIL=no-reply@localhost
+```
+
+Then run:
 
 ```text
 python manage.py migrate
-python manage.py test_email_configuration test-recipient@example.com
+python manage.py runserver
 ```
 
-Then use **Email Health** in the application to confirm the same configuration through the browser.
+Request a password reset in the browser. The reset email, including its reset URL, will appear in the terminal running `runserver`. You can paste that URL into your browser and test the complete password-reset workflow without any external email provider.
 
-## Celery / Render note
+You can also test the email backend without opening the browser:
 
-Automatic retry and automatic end-of-term release are scheduled through Celery Beat. The code includes the Beat entries, but a Render web service alone does not execute scheduled Celery Beat jobs. For a production deployment, run a Celery worker and Celery Beat (or a supported scheduler/cron service) against the same Redis broker.
+```text
+python manage.py email_smoke_test test@example.com
+```
 
-On a UAT/free setup without a worker/Beat, the Email Health dashboard and **Retry Now** button remain available, and report-card release can still send immediately during the release request when SMTP is configured.
+With `EMAIL_PROVIDER=console`, this intentionally prints the email locally. If you later set `EMAIL_PROVIDER=brevo` and a valid `BREVO_API_KEY`, the same command sends through Brevo over HTTPS.
+
+## Email Health dashboard
+
+Open **AI Engine → Report Cards → Email Health**. The health test verifies the configured provider and sends a real test message. Delivery records store SENT/FAILED/SKIPPED state, attempt count, error details and next retry time.
+
+## Report-card retry
+
+Automatic retries use exponential backoff (default approximately 15, 30 and 60 minutes). A manual **Retry Now** starts a fresh bounded retry cycle after automatic attempts are exhausted.
+
+The current Render Free web service has no separate Celery worker/Beat service, so scheduled retries require a worker/scheduler if you want them to run automatically. The release request and manual Retry Now remain available.

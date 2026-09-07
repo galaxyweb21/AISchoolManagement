@@ -49,13 +49,10 @@ class SafePasswordResetView(auth_views.PasswordResetView):
     """
 
     def form_valid(self, form):
-        # Fail fast when the production SMTP relay has not been configured.
-        # Without this guard Django can wait on smtp.gmail.com until Gunicorn
-        # kills the worker, which is exactly what the Render log shows.
-        if (
-            getattr(settings, 'EMAIL_BACKEND', '') == 'django.core.mail.backends.smtp.EmailBackend'
-            and (not getattr(settings, 'EMAIL_HOST_USER', '') or not getattr(settings, 'EMAIL_HOST_PASSWORD', ''))
-        ):
+        # Fail fast when the selected provider is not configured. Local
+        # development uses Django's console backend and requires no API key.
+        provider = getattr(settings, 'EMAIL_PROVIDER', '').strip().lower()
+        if provider == 'brevo' and not getattr(settings, 'BREVO_API_KEY', ''):
             form.add_error(
                 None,
                 'Password reset email is not configured on this server yet. '
@@ -71,7 +68,7 @@ class SafePasswordResetView(auth_views.PasswordResetView):
             email = (form.cleaned_data.get("email") or "").strip()
             logger.info("Password reset requested for registered email %s", email)
             response = super().form_valid(form)
-            logger.info("Password reset email dispatched for %s", email)
+            logger.info("Password reset workflow completed for %s; Django handled provider delivery.", email)
             return response
         except Exception:
             logger.exception("Password reset email delivery failed.")
