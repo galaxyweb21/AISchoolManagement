@@ -630,14 +630,25 @@ class LeaveLifecycleService:
         )
 
         # ------------------------------------------------------
-        # The requested days MUST already be reserved.
+        # Legacy-data recovery
         # ------------------------------------------------------
-
+        # Older requests may have been created as PENDING without a
+        # corresponding pending reservation. Recover only the missing
+        # amount when the balance can safely cover it. This keeps the
+        # approval workflow reliable without ever over-crediting leave.
         if balance.pending < requested:
-            raise ValidationError(
-                "The requested leave days are not currently "
-                "reserved."
-            )
+            missing = requested - balance.pending
+            balance.calculate_remaining()
+            if balance.remaining < missing:
+                raise ValidationError(
+                    "The requested leave days are not reserved and the "
+                    f"available balance ({balance.remaining}) cannot cover "
+                    f"the missing reservation of {missing} days."
+                )
+
+            balance.pending += missing
+            balance.calculate_remaining()
+            balance.save(update_fields=["pending", "remaining", "updated_at"])
 
         before = (
             LeaveLifecycleService._balance_snapshot(
@@ -715,7 +726,18 @@ class LeaveLifecycleService:
         # approval transaction is rolled back.
         # ------------------------------------------------------
 
-        leave_request.sync_attendance()
+        try:
+            leave_request.sync_attendance()
+        except Exception:
+            # Approval is the authoritative HR transaction. Attendance is a
+            # secondary integration and must not make an otherwise valid leave
+            # approval fail. The sync flag remains false so it can be repaired
+            # later by a retry/admin action.
+            import logging
+            logging.getLogger(__name__).exception(
+                "Leave attendance synchronization failed for %s",
+                leave_request.pk,
+            )
 
         return leave_request
 

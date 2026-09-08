@@ -1,0 +1,128 @@
+<!-- Reusable enterprise leave edit modal -->
+<div class="modal fade" id="leaveEditModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header border-0 px-4 py-3">
+        <div>
+          <div class="small text-uppercase fw-bold text-muted" style="letter-spacing:.08em;">Leave Management</div>
+          <h5 class="modal-title fw-bold mb-0">Edit Leave Request</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0" id="leaveEditModalBody">
+        <div class="text-center py-5">
+          <div class="spinner-border" role="status"></div>
+          <div class="small text-muted mt-2">Loading leave request…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  function csrfToken() {
+    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return input ? input.value : '';
+  }
+
+  function workingDays(a, b) {
+    if (!a || !b) return 0;
+    const start = new Date(a + 'T00:00:00');
+    const end = new Date(b + 'T00:00:00');
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return 0;
+    let total = 0;
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const day = cursor.getDay();
+      if (day !== 0 && day !== 6) total++;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return total;
+  }
+
+  function initializeForm(form) {
+    if (!form || form.dataset.leaveBound === '1') return;
+    form.dataset.leaveBound = '1';
+    const start = form.querySelector('input[name="start_date"]');
+    const end = form.querySelector('input[name="end_date"]');
+    const count = form.querySelector('#daysCount');
+    const type = form.querySelector('#leaveType');
+    const info = form.querySelector('#leaveTypeInfo');
+    const notice = form.querySelector('#documentationNotice');
+
+    function refreshDays() {
+      if (count) count.textContent = workingDays(start?.value, end?.value);
+    }
+    function refreshType() {
+      if (!type) return;
+      const option = type.options[type.selectedIndex];
+      const category = option ? option.dataset.category : '';
+      const descriptions = {
+        ANNUAL: 'Annual leave for rest and recreation.',
+        SICK: 'Leave for illness or medical care.',
+        MATERNITY: 'Maternity leave.', PATERNITY: 'Paternity leave.',
+        CASUAL: 'Short-term personal leave.', STUDY: 'Study or professional development leave.',
+        COMPASSIONATE: 'Bereavement or serious family emergency leave.',
+        UNPAID: 'Approved leave without pay.', OTHER: 'Other approved leave.'
+      };
+      if (info) info.textContent = descriptions[category] || '';
+      if (notice) notice.classList.toggle('d-none', !(option && option.dataset.document === '1'));
+    }
+    start?.addEventListener('change', refreshDays);
+    end?.addEventListener('change', refreshDays);
+    type?.addEventListener('change', refreshType);
+    refreshDays(); refreshType();
+
+    form.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      if (!form.checkValidity() || workingDays(start?.value, end?.value) <= 0) {
+        form.classList.add('was-validated');
+        return;
+      }
+      const button = form.querySelector('button[type="submit"]');
+      const original = button ? button.innerHTML : '';
+      if (button) { button.disabled = true; button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…'; }
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST', body: new FormData(form),
+          headers: {'X-CSRFToken': csrfToken(), 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || 'Unable to update the leave request.');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('leaveEditModal'));
+        if (modal) modal.hide();
+        window.location.reload();
+      } catch (error) {
+        let box = form.querySelector('.leave-edit-error');
+        if (!box) { box = document.createElement('div'); box.className = 'alert alert-danger border-0 rounded-3 leave-edit-error mx-4 mt-3'; form.prepend(box); }
+        box.textContent = error.message || 'Unable to update the leave request.';
+        if (button) { button.disabled = false; button.innerHTML = original; }
+      }
+    });
+  }
+
+  function openEditModal(url) {
+    const modalElement = document.getElementById('leaveEditModal');
+    const body = document.getElementById('leaveEditModalBody');
+    if (!modalElement || !body || !url) return;
+    body.innerHTML = '<div class="text-center py-5"><div class="spinner-border" role="status"></div><div class="small text-muted mt-2">Loading leave request…</div></div>';
+    bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    fetch(url, {headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html'}})
+      .then(async response => {
+        const html = await response.text();
+        if (!response.ok) throw new Error('Unable to load the leave request.');
+        return html;
+      })
+      .then(html => { body.innerHTML = html; initializeForm(body.querySelector('form')); })
+      .catch(error => { body.innerHTML = '<div class="p-4"><div class="alert alert-danger border-0 rounded-3 mb-0">' + error.message + '</div></div>'; });
+  }
+
+  document.addEventListener('click', function (event) {
+    const link = event.target.closest('[data-leave-edit-url]');
+    if (!link) return;
+    event.preventDefault();
+    openEditModal(link.dataset.leaveEditUrl);
+  });
+})();
+</script>

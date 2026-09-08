@@ -156,7 +156,7 @@
                         <i class="bi bi-arrow-left me-1"></i>Back to List
                     </a>
                     {% if can_edit_this_leave and leave.status == 'PENDING' %}
-                    <a href="{% url 'staff:leave_request_edit' leave.id %}" class="btn btn-outline-gold btn-sm">
+                    <a href="{% url 'staff:leave_request_edit' leave.id %}" data-leave-edit-url="{% url 'staff:leave_request_edit' leave.id %}" class="btn btn-outline-gold btn-sm">
                         <i class="bi bi-pencil me-1"></i>Edit
                     </a>
                     {% endif %}
@@ -460,6 +460,8 @@
         </div>
     </div>
 </div>
+
+{% include "staff/leave/leave_edit_modal.html" %}
 
 <!-- Reject Modal -->
 <div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
