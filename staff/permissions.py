@@ -55,14 +55,6 @@ def can_view_all_leave(user):
 
 
 def can_approve_leave(user, leave_request=None):
-    # No approver may approve their own request, including administrators.
-    if leave_request is not None:
-        try:
-            if leave_request.staff.user_id == user.id:
-                return False
-        except Exception:
-            return False
-
     if is_school_admin(user):
         return True
 

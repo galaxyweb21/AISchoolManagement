@@ -5617,11 +5617,6 @@ def leave_request_edit(request, leave_id):
         return JsonResponse({"success": False, "error": "You cannot edit this leave request."}, status=403)
 
     if request.method == "GET":
-        # Return the form fragment only for AJAX/modal requests. A direct URL
-        # visit should never render the fragment as an unstyled standalone page.
-        if request.headers.get("X-Requested-With") != "XMLHttpRequest":
-            return redirect("staff:leave_detail", leave_id=leave.id)
-
         leave_types = LeaveType.objects.filter(school=school, is_active=True).order_by("category", "name")
         replacement_staff = StaffProfile.objects.filter(
             school=school, is_active=True
@@ -5757,17 +5752,15 @@ def leave_approve(request, leave_id):
             return redirect(referer)
         return redirect('staff:leave_detail', leave_id=leave.id)
 
-    except (ValueError, ValidationError) as exc:
-        error_text = "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
+    except ValueError as exc:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({"success": False, "error": error_text}, status=400)
-        messages.error(request, error_text)
+            return JsonResponse({"success": False, "error": str(exc)}, status=400)
+        messages.error(request, str(exc))
         return redirect('staff:leave_detail', leave_id=leave.id)
     except Exception as exc:
-        logger.exception("Leave approval failed for %s", leave.id)
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({"success": False, "error": "Unable to approve the leave request. Please try again or contact an administrator."}, status=500)
-        messages.error(request, "Unable to approve the leave request. Please try again or contact an administrator.")
+            return JsonResponse({"success": False, "error": "Unable to approve the leave request."}, status=500)
+        messages.error(request, "Unable to approve the leave request.")
         return redirect('staff:leave_detail', leave_id=leave.id)
 
 

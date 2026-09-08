@@ -149,6 +149,12 @@ class FullSchoolDatabaseIntelligence:
     def staff_question(self, q):
         if not any(w in q for w in ("staff", "employee", "employees", "personnel", "teacher", "teachers")):
             return None
+        # Leave-specific questions must be handled by leave_question(), not
+        # by the generic staff handler. Otherwise questions such as
+        # "Which staff members are currently on leave?" are incorrectly
+        # interpreted as "list active staff".
+        if "leave" in q or "on leave" in q:
+            return None
         if not self.can("staff"):
             return self.denied("staff information")
         qs = self.staff()
@@ -207,27 +213,111 @@ class FullSchoolDatabaseIntelligence:
         return {"answer": f"There are **{count:,} {label} staff members** matching your query.", "data": {"count": count, "status": label}, **self.meta()}
 
     def leave_question(self, q):
-        if "leave" not in q:
+        """Answer current staff-leave questions from LeaveRequest only."""
+        if "leave" not in q and "on leave" not in q:
             return None
         if not self.can("staff"):
             return self.denied("staff leave information")
+
         from staff.models import LeaveRequest
-        qs = LeaveRequest.objects.filter(school=self.school, staff__school=self.school)
-        if any(x in q for x in ("today", "currently", "currently on leave", "on leave now", "available")):
-            today = timezone.localdate()
-            qs = qs.filter(status__in=("APPROVED", "TAKEN"), start_date__lte=today, end_date__gte=today)
-            count = qs.values("staff_id").distinct().count()
-            if any(x in q for x in ("who", "which", "list", "show", "names")):
-                rows = qs.select_related("staff__user", "leave_type").order_by("staff__user__last_name")[:MAX_LIST]
-                lines = [f"## Staff on Leave Today — {today:%d %B %Y}", "", f"**{count:,} staff members** are on approved/taken leave today.", ""]
-                for i, r in enumerate(rows, 1):
-                    name = r.staff.user.get_full_name().strip() or r.staff.user.username
-                    lines.append(f"{i}. **{name}** — {r.leave_type.name} — {r.start_date:%d %b} to {r.end_date:%d %b}")
-                return {"answer": "\n".join(lines), "data": {"count": count}, **self.meta()}
-            return {"answer": f"As of **{today:%d %B %Y}**, **{count:,} staff members** are on approved/taken leave.", "data": {"count": count}, **self.meta()}
-        if any(a in q for a in ("how many", "number of", "count", "total", "list", "show", "who", "which")):
+
+        today = timezone.localdate()
+        qs = LeaveRequest.objects.filter(
+            school=self.school,
+            staff__school=self.school,
+        ).select_related("staff__user", "staff__department", "staff__staff_grade", "leave_type")
+
+        # "currently", "today", "now", and "available" in a leave context
+        # mean a leave transaction that covers today. Only APPROVED/TAKEN
+        # requests count as active leave; PENDING/DRAFT/REJECTED/CANCELLED
+        # requests must never be presented as people currently on leave.
+        current = any(x in q for x in (
+            "today", "currently", "right now", "now", "at present",
+            "on leave", "available",
+        ))
+
+        if current:
+            qs = qs.filter(
+                status__in=("APPROVED", "TAKEN"),
+                start_date__lte=today,
+                end_date__gte=today,
+                staff__is_active=True,
+            )
+
+            # Optional role filter.
+            if "teacher" in q or "teaching staff" in q:
+                qs = qs.filter(staff__staff_position="TEACHER")
+
+            staff_ids = list(qs.values_list("staff_id", flat=True).distinct())
+            count = len(staff_ids)
+            wants_list = any(x in q for x in ("who", "which", "list", "show", "names"))
+
+            if not wants_list:
+                return {
+                    "answer": (
+                        f"As of **{today:%d %B %Y}**, **{count:,} staff member"
+                        f"{'s' if count != 1 else ''}** are on approved/taken leave."
+                    ),
+                    "data": {"count": count, "date": today.isoformat()},
+                    **self.meta(),
+                }
+
+            rows = list(
+                qs.order_by(
+                    "staff__user__last_name",
+                    "staff__user__first_name",
+                    "start_date",
+                )
+            )
+
+            # One person can have more than one overlapping record. Present
+            # each person once and combine the verified leave details.
+            grouped = {}
+            for r in rows:
+                key = r.staff_id
+                grouped.setdefault(key, {"staff": r.staff, "leaves": []})["leaves"].append(r)
+
+            lines = [
+                "## Staff Currently on Leave",
+                "",
+                f"**{count:,} staff member{'s' if count != 1 else ''}** "
+                f"currently have approved/taken leave covering **{today:%d %B %Y}**.",
+                "",
+            ]
+            records = []
+            for i, item in enumerate(grouped.values(), 1):
+                staff = item["staff"]
+                name = staff.user.get_full_name().strip() or staff.user.username
+                position = staff.get_staff_position_display()
+                department = getattr(staff.department, "name", None) or "No department"
+                leave_details = []
+                for leave in item["leaves"]:
+                    leave_name = getattr(leave.leave_type, "name", None) or "Leave"
+                    leave_details.append(
+                        f"{leave_name} ({leave.start_date:%d %b %Y} – {leave.end_date:%d %b %Y})"
+                    )
+                details = "; ".join(leave_details)
+                lines.append(f"{i}. **{name}** — {position} — {department}")
+                lines.append(f"   - {details}")
+                records.append({"name": name, "position": position, "department": department, "leave": leave_details})
+
+            if count > MAX_LIST:
+                lines.append(f"\n*Showing the first {MAX_LIST} of {count:,} staff members.*")
+
+            return {
+                "answer": "\n".join(lines),
+                "data": {"count": count, "date": today.isoformat(), "staff": records[:MAX_LIST]},
+                **self.meta(),
+            }
+
+        # Non-current leave questions can safely report request totals.
+        if any(x in q for x in ("how many", "number of", "count", "total", "list", "show", "who", "which")):
             count = qs.count()
-            return {"answer": f"There are **{count:,} leave requests** in the school database.", "data": {"count": count}, **self.meta()}
+            return {
+                "answer": f"There are **{count:,} leave requests** in the school database.",
+                "data": {"count": count},
+                **self.meta(),
+            }
         return None
 
     # ------------------------------------------------------------------
@@ -480,8 +570,8 @@ class FullSchoolDatabaseIntelligence:
             return None
         handlers = (
             self.school_context,
-            self.staff_question,
             self.leave_question,
+            self.staff_question,
             self.student,
             self.attendance,
             self.finance_summary,

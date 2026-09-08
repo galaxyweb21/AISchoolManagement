@@ -367,16 +367,10 @@
                                     </button>
                                     {% endif %}
 
-                                    {% if leave.status == 'PENDING' %}
-                                        {% if is_admin or leave.staff.user_id == request.user.id %}
-                                        <a href="{% url 'staff:leave_request_edit' leave.id %}" data-leave-edit-url="{% url 'staff:leave_request_edit' leave.id %}" class="btn btn-outline-secondary btn-sm" title="Edit leave request">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        {% elif is_hod and leave.staff.department_id == request.user.staff_profile.department_id %}
-                                        <a href="{% url 'staff:leave_request_edit' leave.id %}" data-leave-edit-url="{% url 'staff:leave_request_edit' leave.id %}" class="btn btn-outline-secondary btn-sm" title="Edit leave request">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        {% endif %}
+                                    {% if can_edit_this_leave and leave.status == 'PENDING' %}
+                                    <a href="{% url 'staff:leave_request_edit' leave.id %}" class="btn btn-outline-secondary btn-sm" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
                                     {% endif %}
 
                                     {% if can_cancel_this_leave and leave.status != 'CANCELLED' and leave.status != 'REJECTED' %}
@@ -633,7 +627,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% include "partials/pagination.html" with page_obj=leaves %}
-
-{% include "staff/leave/leave_edit_modal.html" %}
 
 {% endblock %}
