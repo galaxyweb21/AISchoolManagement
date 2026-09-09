@@ -2,7 +2,7 @@
 from .api import api_generate_feedback
 from .risk import risk_dashboard, trigger_risk_assessment, student_risk_detail
 from .reports import (
-    report_card_dashboard, trigger_report_card_batch, report_card_detail,
+    report_card_dashboard, trigger_report_card_batch, generate_all_report_cards_zip, report_card_detail,
     save_report_card_narrative, regenerate_report_card_narrative,
     finalize_report_card, unfinalize_report_card, trigger_report_comment_batch, generate_report_card_comment, release_all_report_cards, email_health_dashboard, run_email_health_test, retry_report_card_delivery
 )
@@ -50,7 +50,7 @@ from .exports import (
 __all__ = [
     'api_generate_feedback',
     'risk_dashboard', 'trigger_risk_assessment', 'student_risk_detail',
-    'report_card_dashboard', 'trigger_report_card_batch', 'report_card_detail',
+    'report_card_dashboard', 'trigger_report_card_batch', 'generate_all_report_cards_zip', 'report_card_detail',
     'save_report_card_narrative', 'regenerate_report_card_narrative',
     'finalize_report_card', 'unfinalize_report_card', 'trigger_report_comment_batch', 'generate_report_card_comment', 'release_all_report_cards', 'email_health_dashboard', 'run_email_health_test', 'retry_report_card_delivery',
     'finance_insights_dashboard', 'invoice_risk_detail',

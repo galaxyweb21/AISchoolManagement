@@ -161,7 +161,7 @@
                         </span>
                         <span class="badge
                             {% if batch.status == 'COMPLETED' %}style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D);"
-                            {% elif batch.status == 'PROCESSING' %}style="background: rgba(59,130,246,0.1); color: #3b82f6;"
+                            {% elif batch.status == 'PROCESSING' %}style="background: var(--eduai-signal-soft); color: var(--eduai-signal);"
                             {% elif batch.status == 'FAILED' %}style="background: rgba(220,38,38,0.1); color: #dc2626;"
                             {% else %}style="background: rgba(217,119,6,0.1); color: #d97706;"{% endif %}
                         ">
@@ -296,7 +296,7 @@
                                     {{ promotion.get_status_display }}
                                 </span>
                                 {% if promotion.is_automatic %}
-                                <span class="badge" style="background: rgba(59,130,246,0.1); color: #3b82f6;">
+                                <span class="badge" style="background: var(--eduai-signal-soft); color: var(--eduai-signal);">
                                     <i class="bi bi-robot me-1"></i>Auto
                                 </span>
                                 {% endif %}

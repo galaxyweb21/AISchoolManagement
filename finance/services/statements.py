@@ -181,27 +181,52 @@ def send_invoice_statement_email(invoice):
     return result
 
 
+def _safe_zip_name(value):
+    import re
+    value = re.sub(r'[\\/:*?"<>|]+', '-', str(value or 'Class'))
+    return re.sub(r'\s+', ' ', value).strip() or 'Class'
+
+
+def _safe_pdf_name(value):
+    import re
+    value = re.sub(r'[\\/:*?"<>|]+', '-', str(value or 'Student'))
+    return re.sub(r'\s+', ' ', value).strip() or 'Student'
+
+
 def generate_bulk_statements_zip(invoices):
-    """
-    Build one PDF per invoice and package them into a single zip archive.
-    Returns (zip_bytes, summary) where summary reports how many succeeded
-    and which invoices (by invoice_number) failed to render.
-    """
-    buffer = io.BytesIO()
-    succeeded, failed = [], []
+    """Create one outer ZIP containing one ZIP per class.
 
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-        for invoice in invoices:
-            pdf_bytes = generate_invoice_statement_pdf(invoice)
-            if pdf_bytes:
-                filename = f"Fee-Statement-{invoice.invoice_number}.pdf"
-                zf.writestr(filename, pdf_bytes)
-                succeeded.append(invoice.invoice_number)
-            else:
-                failed.append(invoice.invoice_number)
-
-    summary = {'total': len(invoices), 'succeeded': len(succeeded), 'failed': failed}
-    return buffer.getvalue(), summary
+    Each class archive contains PDFs named with the student's full name and
+    admission/student ID, making large statement exports easy to distribute.
+    """
+    buffer=io.BytesIO()
+    succeeded=[]; failed=[]
+    grouped={}
+    for invoice in invoices:
+        cls=getattr(invoice.student,'school_class',None)
+        class_name=getattr(cls,'name',None) or 'Unassigned Class'
+        grouped.setdefault(class_name,[]).append(invoice)
+    with zipfile.ZipFile(buffer,'w',zipfile.ZIP_DEFLATED) as outer:
+        for class_name,class_invoices in sorted(grouped.items(),key=lambda x:x[0].lower()):
+            class_buffer=io.BytesIO()
+            with zipfile.ZipFile(class_buffer,'w',zipfile.ZIP_DEFLATED) as inner:
+                used=set()
+                for invoice in class_invoices:
+                    pdf=generate_invoice_statement_pdf(invoice)
+                    if not pdf:
+                        failed.append(invoice.invoice_number); continue
+                    student=invoice.student
+                    student_name=_safe_pdf_name(student.user.get_full_name() or str(student))
+                    student_id=_safe_pdf_name(getattr(student,'admission_number',None) or str(student.id)[:12])
+                    base=f'{student_name} - {student_id} - Fee Statement - {invoice.invoice_number}.pdf'
+                    filename=base; n=2
+                    while filename in used:
+                        filename=f'{student_name} - {student_id} - Fee Statement - {invoice.invoice_number} ({n}).pdf'; n+=1
+                    used.add(filename)
+                    inner.writestr(filename,pdf); succeeded.append(invoice.invoice_number)
+            if class_invoices and any(x in succeeded for x in [i.invoice_number for i in class_invoices]):
+                outer.writestr(f'{_safe_zip_name(class_name)}.zip',class_buffer.getvalue())
+    return buffer.getvalue(), {'total':len(invoices),'succeeded':len(succeeded),'failed':failed}
 
 
 def send_bulk_invoice_statements(invoices):

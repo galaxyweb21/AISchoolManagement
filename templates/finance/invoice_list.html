@@ -537,11 +537,7 @@ async function submitBulkGenerate(modal) {
         return;
     }
 
-    if (schoolClassIds.length === 0) {
-        if (errorText) errorText.textContent = 'Please select at least one School Class.';
-        if (errorDiv) errorDiv.style.display = 'block';
-        return;
-    }
+    // No class is required: an empty selection means ALL school classes.
 
     // Disable button and show loading
     submitBtn.disabled = true;

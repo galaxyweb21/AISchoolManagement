@@ -192,7 +192,7 @@
                         High &middot; {{ assessment.risk_score|floatformat:0 }}/100
                     </span>
                 {% elif assessment.risk_band == 'MEDIUM' %}
-                    <span class="badge fs-6 px-3 py-2" style="background: rgba(59,130,246,0.1); color: #3b82f6; border-radius: 20px;">
+                    <span class="badge fs-6 px-3 py-2" style="background: var(--eduai-signal-soft); color: var(--eduai-signal); border-radius: 20px;">
                         <i class="bi bi-info-circle me-1"></i>
                         Medium &middot; {{ assessment.risk_score|floatformat:0 }}/100
                     </span>

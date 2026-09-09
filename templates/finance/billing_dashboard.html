@@ -342,6 +342,7 @@
                 newScript.textContent = oldScript.textContent;
                 document.body.appendChild(newScript);
             });
+            if (typeof window.initPaymentModal === 'function') window.initPaymentModal();
 
             // After the modal is loaded, pre-fill the amount
             setTimeout(function() {

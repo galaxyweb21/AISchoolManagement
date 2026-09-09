@@ -179,7 +179,7 @@ def billing_dashboard(request):
         collection_rate = 0
 
     context = {
-        'invoices': invoices,
+        'invoices': paginate_queryset(invoices, request),
         'total_billed': total_billed,
         'total_collected': total_collected,
         'total_receivables': total_receivables,
@@ -1122,13 +1122,13 @@ def fee_preparation(request):
         school=school
     ).select_related(
         'student', 'student__user', 'academic_term', 'student__school_class'
-    ).order_by('-updated_at')[:50]
+    ).order_by('-updated_at')
 
     context = {
         'active_term': active_term,
         'terms': terms,
         'class_status': class_status,
-        'student_fees': student_fees,
+        'student_fees': paginate_queryset(student_fees, request),
         'can_manage': user_can_manage_finance(request.user),
     }
 
@@ -1843,15 +1843,31 @@ def api_student_fee_approve(request, student_fee_id):
         })
 
     if student_fee.status == 'APPROVED':
-        # Approval is a state transition, not a charge operation. Repeating
-        # approval must never create another debit.
+        # Approval is already complete. Repair a missing invoice rather than
+        # forcing the bursar to run a second workflow.
         from .services.fee_preparation import create_student_fee_ledger_entry
         with transaction.atomic():
             create_student_fee_ledger_entry(student_fee, created_by=request.user)
+        invoice = None
+        invoice_error = None
+        try:
+            invoice = ensure_student_term_invoice(
+                student_fee.student, created_by=request.user,
+                academic_term=student_fee.academic_term
+            )
+        except Exception as exc:
+            invoice_error = str(exc)
         return JsonResponse({
             'success': True,
-            'message': 'This student fee is already approved. No duplicate charge was created.',
+            'message': (
+                f'Fee is already approved. Invoice {invoice.invoice_number} is ready.'
+                if invoice else
+                'Fee is already approved. No duplicate charge was created; invoice generation can be retried.'
+            ),
             'status': student_fee.status,
+            'invoice_id': str(invoice.id) if invoice else None,
+            'invoice_number': invoice.invoice_number if invoice else None,
+            'invoice_error': invoice_error,
             'idempotent': True,
         })
 
@@ -1870,10 +1886,32 @@ def api_student_fee_approve(request, student_fee_id):
         from .services.fee_preparation import create_student_fee_ledger_entry
         create_student_fee_ledger_entry(student_fee, created_by=request.user)
 
+    invoice = None
+    invoice_error = None
+    try:
+        invoice = ensure_student_term_invoice(
+            student_fee.student, created_by=request.user,
+            academic_term=student_fee.academic_term
+        )
+    except Exception as exc:
+        invoice_error = str(exc)
+        __import__('logging').getLogger(__name__).exception(
+            'Automatic invoice creation failed after fee approval for %s', student_fee.id
+        )
+
+    message = f'Student fee for {student_fee.student.user.get_full_name()} has been approved.'
+    if invoice:
+        message += f' Invoice {invoice.invoice_number} was generated automatically.'
+    elif invoice_error:
+        message += ' The fee is approved, but the invoice could not be generated automatically; use Generate Invoices to retry.'
+
     return JsonResponse({
         'success': True,
-        'message': f'Student fee for {student_fee.student.user.get_full_name()} has been approved.',
+        'message': message,
         'status': student_fee.status,
+        'invoice_id': str(invoice.id) if invoice else None,
+        'invoice_number': invoice.invoice_number if invoice else None,
+        'invoice_error': invoice_error,
     })
 
 
@@ -1911,6 +1949,10 @@ def api_student_fee_bulk_approve(request):
                 if student_fee.status == 'APPROVED':
                     from .services.fee_preparation import create_student_fee_ledger_entry
                     create_student_fee_ledger_entry(student_fee, created_by=request.user)
+                    try:
+                        ensure_student_term_invoice(student_fee.student, created_by=request.user, academic_term=student_fee.academic_term)
+                    except Exception as invoice_exc:
+                        errors.append(f"{student_fee.student.user.get_full_name()}: approved, but automatic invoice failed: {invoice_exc}")
                     continue
 
                 if student_fee.status == 'CANCELLED':
@@ -1927,6 +1969,13 @@ def api_student_fee_bulk_approve(request):
                 from .services.fee_preparation import create_student_fee_ledger_entry
                 create_student_fee_ledger_entry(student_fee, created_by=request.user)
                 approved_count += 1
+                try:
+                    ensure_student_term_invoice(
+                        student_fee.student, created_by=request.user,
+                        academic_term=student_fee.academic_term
+                    )
+                except Exception as invoice_exc:
+                    errors.append(f"{student_fee.student.user.get_full_name()}: approved, but automatic invoice failed: {invoice_exc}")
 
             except Exception as e:
                 errors.append(f"Error processing fee {fee_id}: {str(e)}")
@@ -2196,112 +2245,69 @@ def api_bulk_email_invoice_statements(request):
 @login_required
 @require_POST
 def api_generate_invoices(request):
-    """Generate/repair term invoices through the centralized finance lifecycle."""
+    """Generate all missing invoices for prepared/approved fees in a term.
+
+    Class selection is optional. If no classes are selected, every active
+    student in the selected term's school is processed. Approved StudentFee
+    rows are the authoritative source; PREPARED rows are promoted to APPROVED
+    only when the school explicitly requests automatic preparation.
+    """
     if not user_can_manage_finance(request.user):
         return json_error('Permission denied.', status=403)
-
     try:
-        data = json.loads(request.body or '{}')
-        term_id = data.get('term_id')
-        school_class_ids = data.get('school_class_ids') or []
-        due_date = data.get('due_date')
-
-        if not term_id:
-            return json_error('Academic term is required.')
-        if not school_class_ids:
-            return json_error('At least one school class is required.')
+        data=json.loads(request.body or '{}')
+        term_id=data.get('term_id')
+        class_ids=data.get('school_class_ids') or []
+        due_date=data.get('due_date')
+        if not term_id: return json_error('Academic term is required.')
+        school=request.user.school
+        term=get_object_or_404(AcademicTerm,id=term_id,academic_year__school=school)
         if not due_date:
-            return json_error('Invoice due date is required.')
-
-        school = request.user.school
-        term = get_object_or_404(
-            AcademicTerm,
-            id=term_id,
-            academic_year__school=school,
-        )
-        school_classes = SchoolClass.objects.filter(
-            id__in=school_class_ids,
-            school=school,
-        )
-        if not school_classes.exists():
-            return json_error('No valid school classes selected.')
-
-        generated_count = 0
-        existing_count = 0
-        skipped_count = 0
-        errors = []
-
-        # Process students rather than pre-existing StudentFee rows. This is
-        # important: the enterprise workflow can now repair a student that was
-        # created after the bulk invoice run and has no StudentFee yet.
-        students = (
-            Student.objects
-            .filter(
-                school=school,
-                school_class__in=school_classes,
-                is_active=True,
-            )
-            .select_related('school_class', 'user')
-            .distinct()
-        )
-
+            due_date=term.end_date
+        else:
+            from datetime import datetime
+            try:
+                due_date=datetime.strptime(str(due_date), '%Y-%m-%d').date()
+            except ValueError:
+                return json_error('Due date must be in YYYY-MM-DD format.')
+        classes=SchoolClass.objects.filter(school=school,id__in=class_ids) if class_ids else SchoolClass.objects.filter(school=school)
+        students=Student.objects.filter(school=school,school_class__in=classes,is_active=True).select_related('user','school_class').distinct()
+        generated=existing=skipped=0
+        errors=[]
         for student in students:
             try:
-                before = Invoice.objects.filter(
-                    school=school,
-                    student=student,
-                    academic_term=term,
-                ).exists()
-
-                invoice = ensure_student_term_invoice(
-                    student,
-                    created_by=request.user,
-                    academic_term=term,
-                    due_date=due_date,
-                )
-
-                if invoice:
-                    if before:
-                        existing_count += 1
-                    else:
-                        generated_count += 1
+                inv=Invoice.objects.filter(school=school,student=student,academic_term=term).first()
+                if inv:
+                    existing+=1; continue
+                fee=StudentFee.objects.filter(school=school,student=student,academic_term=term).prefetch_related('items').first()
+                if not fee:
+                    # Prepare the missing fee only when a valid structure exists.
+                    fee=prepare_student_fee(student,term,prepared_by=request.user)
+                if fee.status=='PREPARED':
+                    fee.status='APPROVED'; fee.approved_by=request.user
+                    fee.save(update_fields=['status','approved_by','updated_at'])
+                    create_student_fee_ledger_entry(fee,created_by=request.user)
+                if fee.status!='APPROVED':
+                    skipped+=1; continue
+                inv=ensure_student_term_invoice(student,created_by=request.user,academic_term=term,due_date=due_date)
+                if inv:
+                    generated+=1
                 else:
-                    skipped_count += 1
-
+                    skipped+=1
+                    errors.append(f'{student}: approved fee has no billable items')
             except Exception as exc:
-                errors.append(f'{student}: {exc}')
-                logger = __import__('logging').getLogger(__name__)
-                logger.exception(
-                    'Term invoice generation failed for student %s.',
-                    student,
-                )
-
-        message_parts = []
-        if generated_count:
-            message_parts.append(f'✅ {generated_count} invoice(s) generated.')
-        if existing_count:
-            message_parts.append(f'ℹ️ {existing_count} invoice(s) already existed.')
-        if skipped_count:
-            message_parts.append(f'⚠️ {skipped_count} student(s) were not eligible for invoicing.')
-        if errors:
-            message_parts.append(f'❌ {len(errors)} student(s) failed.')
-
-        if not message_parts:
-            message_parts.append('No students were found for the selected classes.')
-
-        return JsonResponse({
-            'success': True,
-            'message': ' '.join(message_parts),
-            'generated': generated_count,
-            'existing': existing_count,
-            'skipped': skipped_count,
-            'errors': errors[:20],
-        })
-
+                skipped+=1; errors.append(f'{student}: {exc}')
+        msg=[]
+        if generated: msg.append(f'{generated} invoice(s) generated.')
+        if existing: msg.append(f'{existing} invoice(s) already existed.')
+        if skipped: msg.append(f'{skipped} student(s) could not be invoiced.')
+        if not msg: msg.append('No active students were found for the selected term/classes.')
+        return JsonResponse({'success':True,'message':' '.join(msg),'generated':generated,'existing':existing,'skipped':skipped,'errors':errors[:30]})
     except json.JSONDecodeError:
         return json_error('Invalid JSON request.')
     except Exception as exc:
-        return json_error(str(exc), status=500)
+        __import__('logging').getLogger(__name__).exception('Invoice generation failed')
+        return json_error(str(exc),status=500)
 
 
 # ============================================================================

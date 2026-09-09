@@ -14,6 +14,7 @@ from ai_engine.services.report_card_engine import ReportCardEngine
 from ai_engine.services.report_comment_service import ReportCommentService
 from ai_engine.tasks import run_report_card_batch_task, run_report_comment_batch_task
 from core.pagination import paginate_queryset
+from ai_engine.services.report_card_zip import report_card_class_zip_response
 from school.models import AcademicTerm
 
 
@@ -89,7 +90,17 @@ def report_card_dashboard(request):
         elif status_filter == 'comments_missing': qs = qs.filter(Q(teacher_comment='') | Q(headteacher_comment=''))
         search = request.GET.get('q', '').strip()
         if search:
-            qs = qs.filter(Q(student__user__first_name__icontains=search) | Q(student__user__last_name__icontains=search) | Q(student__admission_number__icontains=search))
+            # Support both single-name searches (e.g. "Ama") and full-name
+            # searches (e.g. "Ama Mensah").  Each word must match at least
+            # one of the student's first name, last name, or admission number.
+            # This avoids the common problem where "First Last" cannot match
+            # because neither first_name nor last_name contains the whole phrase.
+            for term in search.split():
+                qs = qs.filter(
+                    Q(student__user__first_name__icontains=term)
+                    | Q(student__user__last_name__icontains=term)
+                    | Q(student__admission_number__icontains=term)
+                )
         comment_counts['total'] = qs.count()
         comment_counts['teacher_missing'] = qs.filter(teacher_comment='').count()
         comment_counts['head_missing'] = qs.filter(headteacher_comment='').count()
@@ -122,6 +133,38 @@ def trigger_report_card_batch(request):
         ReportCardBatchService.run(batch)
         messages.info(request, 'Report cards were generated using the available local worker.')
     return redirect('ai_engine:report_card_dashboard')
+
+
+@login_required
+@require_POST
+def generate_all_report_cards_zip(request):
+    """Generate/refresh every student report card, then download class-grouped ZIPs."""
+    if not role_allows(request.user, 'reports', 'create'):
+        messages.error(request, "You don't have permission to generate report cards.")
+        return redirect('ai_engine:report_card_dashboard')
+    school = _school(request)
+    active_term = AcademicTerm.objects.filter(
+        academic_year__school=school, academic_year__is_active=True, is_active=True
+    ).first()
+    if not active_term:
+        messages.error(request, 'No active academic term is configured.')
+        return redirect('ai_engine:report_card_dashboard')
+
+    batch = ReportCardBatchService.create_pending(school, active_term, request.user)
+    ReportCardBatchService.run(batch)
+    if batch.status != 'COMPLETE':
+        messages.error(request, batch.error_message or 'Report-card generation failed.')
+        return redirect('ai_engine:report_card_dashboard')
+
+    try:
+        response, class_count, student_count = report_card_class_zip_response(school, active_term)
+    except Exception as exc:
+        messages.error(request, f'Report cards were generated, but the ZIP could not be created: {str(exc)[:300]}')
+        return redirect('ai_engine:report_card_dashboard')
+    if response is None:
+        messages.warning(request, 'No report cards are available for the active term.')
+        return redirect('ai_engine:report_card_dashboard')
+    return response
 
 
 @login_required

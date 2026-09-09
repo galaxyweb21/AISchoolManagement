@@ -47,6 +47,7 @@ urlpatterns = [
     # Report Cards
     path('report-cards/', views.report_card_dashboard, name='report_card_dashboard'),
     path('report-cards/run/', views.trigger_report_card_batch, name='trigger_report_card_batch'),
+    path('report-cards/generate-all-zip/', views.generate_all_report_cards_zip, name='generate_all_report_cards_zip'),
     path('report-cards/release-all/', views.release_all_report_cards, name='release_all_report_cards'),
     path('report-cards/email-health/', views.email_health_dashboard, name='email_health_dashboard'),
     path('report-cards/email-health/test/', views.run_email_health_test, name='run_email_health_test'),

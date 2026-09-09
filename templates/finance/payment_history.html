@@ -328,6 +328,7 @@ function loadPaymentModal() {
             newScript.textContent = oldScript.textContent;
             document.body.appendChild(newScript);
         });
+        if (typeof window.initPaymentModal === 'function') window.initPaymentModal();
     })
     .catch(err => {
         console.error('Error loading payment modal:', err);

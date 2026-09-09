@@ -24,6 +24,22 @@
             --eduai-gold-soft: rgba(148, 107, 28, 0.16);
             --eduai-signal: #2C7A6D;
             --eduai-signal-soft: rgba(44, 122, 109, 0.16);
+            --eduai-gold-rgb: 148, 107, 28;
+            --eduai-signal-rgb: 44, 122, 109;
+
+            /* Bootstrap semantic aliases — keep framework utilities on-brand */
+            --bs-primary: var(--eduai-gold);
+            --bs-primary-rgb: var(--eduai-gold-rgb);
+            --bs-primary-bg-subtle: var(--eduai-gold-soft);
+            --bs-primary-border-subtle: rgba(var(--eduai-gold-rgb), 0.35);
+            --bs-primary-text-emphasis: var(--eduai-gold);
+            --bs-info: var(--eduai-signal);
+            --bs-info-rgb: var(--eduai-signal-rgb);
+            --bs-info-bg-subtle: var(--eduai-signal-soft);
+            --bs-info-border-subtle: rgba(var(--eduai-signal-rgb), 0.35);
+            --bs-info-text-emphasis: var(--eduai-signal);
+            --bs-link-color: var(--eduai-gold);
+            --bs-link-color-rgb: var(--eduai-gold-rgb);
 
             /* Light Theme Defaults */
             --app-bg: #F7F4EC;
@@ -49,7 +65,72 @@
             --sidebar-text: #9FB0AB;
             --sidebar-text-active: #FFFFFF;
             --sidebar-border: rgba(255,255,255,0.06);
+            --bs-primary: var(--eduai-gold);
+            --bs-primary-rgb: var(--eduai-gold-rgb);
+            --bs-primary-bg-subtle: var(--eduai-gold-soft);
+            --bs-primary-border-subtle: rgba(var(--eduai-gold-rgb), 0.35);
+            --bs-primary-text-emphasis: var(--eduai-gold);
+            --bs-info: var(--eduai-signal);
+            --bs-info-rgb: var(--eduai-signal-rgb);
+            --bs-info-bg-subtle: var(--eduai-signal-soft);
+            --bs-info-border-subtle: rgba(var(--eduai-signal-rgb), 0.35);
+            --bs-info-text-emphasis: var(--eduai-signal);
+            --bs-link-color: var(--eduai-gold);
+            --bs-link-color-rgb: var(--eduai-gold-rgb);
         }
+
+        /* =========================================
+           1B. THEME ALIGNMENT FOR BOOTSTRAP UTILITIES
+           =========================================
+           Keep Bootstrap utility classes, but remove the default blue palette so
+           every page follows the same EduAI gold/teal brand theme. */
+        .btn-primary, .btn-primary:focus, .btn-primary:active {
+            background-color: var(--eduai-gold) !important;
+            border-color: var(--eduai-gold) !important;
+            color: #fff !important;
+        }
+        .btn-primary:hover {
+            background-color: color-mix(in srgb, var(--eduai-gold) 88%, #000) !important;
+            border-color: color-mix(in srgb, var(--eduai-gold) 88%, #000) !important;
+            color: #fff !important;
+        }
+        .btn-outline-primary {
+            color: var(--eduai-gold) !important;
+            border-color: var(--eduai-gold) !important;
+        }
+        .btn-outline-primary:hover, .btn-outline-primary:focus, .btn-outline-primary:active {
+            background-color: var(--eduai-gold) !important;
+            border-color: var(--eduai-gold) !important;
+            color: #fff !important;
+        }
+        .text-primary { color: var(--eduai-gold) !important; }
+        .bg-primary { background-color: var(--eduai-gold) !important; }
+        .border-primary { border-color: var(--eduai-gold) !important; }
+        .bg-primary-subtle { background-color: var(--eduai-gold-soft) !important; }
+        .link-primary, a.text-primary { color: var(--eduai-gold) !important; }
+        .btn-info, .btn-info:focus, .btn-info:active {
+            background-color: var(--eduai-signal) !important;
+            border-color: var(--eduai-signal) !important;
+            color: #fff !important;
+        }
+        .btn-info:hover {
+            background-color: color-mix(in srgb, var(--eduai-signal) 88%, #000) !important;
+            border-color: color-mix(in srgb, var(--eduai-signal) 88%, #000) !important;
+            color: #fff !important;
+        }
+        .btn-outline-info {
+            color: var(--eduai-signal) !important;
+            border-color: var(--eduai-signal) !important;
+        }
+        .btn-outline-info:hover, .btn-outline-info:focus, .btn-outline-info:active {
+            background-color: var(--eduai-signal) !important;
+            border-color: var(--eduai-signal) !important;
+            color: #fff !important;
+        }
+        .text-info { color: var(--eduai-signal) !important; }
+        .bg-info { background-color: var(--eduai-signal) !important; }
+        .border-info { border-color: var(--eduai-signal) !important; }
+        .bg-info-subtle { background-color: var(--eduai-signal-soft) !important; }
 
         /* =========================================
            2. GLOBAL BODY & SIDEBAR SHELL
@@ -299,5 +380,44 @@
     </script>
 
     {% block extra_js %}{% endblock %}
+
+    <!-- Global table pagination: every table with more than 25 body rows gets
+         a lightweight local paginator. Server-paginated tables remain untouched. -->
+    <script>
+    (function(){
+      const PAGE=25;
+      function initTable(table){
+        if(!table || table.dataset.paginationInitialized==='1' || table.dataset.noPagination==='true') return;
+        const tbody=table.tBodies && table.tBodies[0]; if(!tbody) return;
+        const rows=Array.from(tbody.rows).filter(r=>!r.dataset.paginationPlaceholder);
+        if(rows.length<=PAGE) return;
+        table.dataset.paginationInitialized='1';
+        const wrapper=table.closest('.table-responsive') || table.parentElement;
+        const nav=document.createElement('div'); nav.className='d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 table-auto-pagination';
+        const info=document.createElement('small'); info.className='text-muted';
+        const controls=document.createElement('div'); controls.className='btn-group btn-group-sm';
+        nav.append(info,controls); wrapper.parentNode.insertBefore(nav,wrapper.nextSibling);
+        let page=1, pages=Math.ceil(rows.length/PAGE);
+        function render(){
+          const start=(page-1)*PAGE,end=Math.min(start+PAGE,rows.length);
+          rows.forEach((r,i)=>r.style.display=(i>=start&&i<end)?'':'none');
+          info.textContent='Showing '+(start+1)+'–'+end+' of '+rows.length;
+          controls.innerHTML='';
+          [['«',1,page===1],['‹',page-1,page===1]].forEach(x=>add(x[0],x[1],x[2]));
+          const first=Math.max(1,page-2),last=Math.min(pages,page+2);
+          for(let i=first;i<=last;i++) add(String(i),i,false,i===page);
+          add('›',page+1,page===pages); add('»',pages,page===pages);
+        }
+        function add(text,target,disabled,active){
+          const b=document.createElement('button'); b.type='button'; b.className='btn '+(active?'btn-primary':'btn-outline-secondary'); b.textContent=text; b.disabled=disabled;
+          b.addEventListener('click',()=>{page=target;render();}); controls.appendChild(b);
+        }
+        render();
+      }
+      function scan(){document.querySelectorAll('table').forEach(initTable);}
+      if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',scan); else scan();
+      new MutationObserver(()=>scan()).observe(document.body,{childList:true,subtree:true});
+    })();
+    </script>
 </body>
 </html>

@@ -84,7 +84,7 @@
                             {% if t.status == 'PENDING' %}
                                 <span class="badge px-3 py-2" style="background: var(--app-bg, #F7F4EC); color: var(--text-muted, #6B7570);">Queued</span>
                             {% elif t.status == 'RUNNING' %}
-                                <span class="badge px-3 py-2" style="background: rgba(59,130,246,0.1); color: #3b82f6;">Generating&hellip;</span>
+                                <span class="badge px-3 py-2" style="background: var(--eduai-signal-soft); color: var(--eduai-signal);">Generating&hellip;</span>
                             {% elif t.status == 'FAILED' %}
                                 <span class="badge px-3 py-2" style="background: rgba(220,38,38,0.1); color: #dc2626;">Failed</span>
                             {% elif t.is_published %}

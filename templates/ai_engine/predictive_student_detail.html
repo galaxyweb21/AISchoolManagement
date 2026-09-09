@@ -239,7 +239,7 @@
                     {% elif prediction.current_risk_band == "HIGH" %}
                         <span style="color: #d97706;">{{ prediction.current_risk_band }}</span>
                     {% elif prediction.current_risk_band == "MEDIUM" %}
-                        <span style="color: #3b82f6;">{{ prediction.current_risk_band }}</span>
+                        <span style="color: var(--eduai-signal);">{{ prediction.current_risk_band }}</span>
                     {% else %}
                         <span style="color: var(--eduai-signal, #2C7A6D);">{{ prediction.current_risk_band }}</span>
                     {% endif %}
@@ -257,7 +257,7 @@
                     {% elif prediction.predicted_risk_band == "HIGH" %}
                         <span style="color: #d97706;">{{ prediction.predicted_risk_band }}</span>
                     {% elif prediction.predicted_risk_band == "MEDIUM" %}
-                        <span style="color: #3b82f6;">{{ prediction.predicted_risk_band }}</span>
+                        <span style="color: var(--eduai-signal);">{{ prediction.predicted_risk_band }}</span>
                     {% else %}
                         <span style="color: var(--eduai-signal, #2C7A6D);">{{ prediction.predicted_risk_band }}</span>
                     {% endif %}

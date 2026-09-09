@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         {{ exam.subject }}{% if exam.topic %} &middot; {{ exam.topic }}{% endif %} &middot;
                         {{ exam.school_class.name|default:"No Class" }}
                         ({{ exam.grade_level|default:"N/A" }})
-                        {% if stage_display %}&middot; <span class="badge" style="background: #3b82f6; color: #fff;">{{ stage_display }}</span>{% endif %}
+                        {% if stage_display %}&middot; <span class="badge" style="background: var(--eduai-signal); color: #fff;">{{ stage_display }}</span>{% endif %}
                         &middot; {{ exam.get_difficulty_display }} &middot;
                         {{ questions|length }} question(s), {{ total_points }} point(s) total
                     </small>
@@ -494,7 +494,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <label class="form-label small text-muted mb-1">Points</label>
                         <input type="number" name="points" class="form-control mb-2" style="max-width:100px;" value="{{ q.points }}" min="1">
                         <button type="submit" class="btn btn-outline-secondary-custom">Save</button>
-                        {% if not q.is_ai_generated %}<span class="badge ms-2" style="background: #3b82f6; color: #fff;">Manually added</span>{% endif %}
+                        {% if not q.is_ai_generated %}<span class="badge ms-2" style="background: var(--eduai-signal); color: #fff;">Manually added</span>{% endif %}
                         {% if q.edited_by %}<span class="text-muted small ms-2">edited by {{ q.edited_by.get_full_name }}</span>{% endif %}
                     </div>
                 </form>

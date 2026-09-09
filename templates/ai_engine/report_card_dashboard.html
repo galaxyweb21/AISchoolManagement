@@ -35,6 +35,15 @@
         border-color: var(--eduai-gold, #946B1C) !important;
         color: #fff !important;
     }
+    .report-card-table-region {
+        position: relative;
+        transition: opacity .15s ease;
+    }
+    .report-card-table-region.is-loading {
+        opacity: .55;
+        pointer-events: none;
+    }
+
     .badge-gold {
         background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
         color: var(--eduai-gold, #946B1C) !important;
@@ -178,13 +187,21 @@
                     </button>
                 </form>
             {% endif %}
+            {% if can_generate and active_term %}
+                <form method="post" action="{% url 'ai_engine:generate_all_report_cards_zip' %}" class="d-inline" onsubmit="return confirm('Generate all report cards for the active term and download one ZIP per class?');">
+                    {% csrf_token %}
+                    <button class="btn btn-gold">
+                        <i class="bi bi-file-earmark-zip me-1"></i> Generate All + Class ZIPs
+                    </button>
+                </form>
+            {% endif %}
             {% if can_generate_headteacher and active_term %}
                 <a class="btn btn-outline-secondary" href="{% url 'ai_engine:email_health_dashboard' %}"><i class="bi bi-envelope-check me-1"></i>Email Health</a>
-                <form method="post" action="{% url 'ai_engine:release_all_report_cards' %}" class="d-inline" onsubmit="return confirm('This will generate missing comments, finalize all complete report cards, build one A4 print pack grouped by class, and email finalized cards to parents. Continue?');">
+                <form method="post" action="{% url 'ai_engine:release_all_report_cards' %}" class="d-inline" onsubmit="return confirm('This will finalize eligible report cards, generate missing AI comments, email finalized cards to parents, and create the official release pack. Continue?');">
                     {% csrf_token %}
                     <input type="hidden" name="term_id" value="{{ active_term.id }}">
                     <button class="btn btn-outline-gold">
-                        <i class="bi bi-send-check me-1"></i> Auto Release All Report Cards
+                        <i class="bi bi-send-check me-1"></i> Finalize & Release All
                     </button>
                 </form>
             {% endif %}
@@ -197,6 +214,9 @@
                 {{ latest_batch.students_skipped_finalized }} finalized skipped.
             </div>
         {% endif %}
+        <div class="mt-3 p-3 rounded-3 bg-body-tertiary border small">
+            <strong><i class="bi bi-info-circle me-1"></i>Recommended workflow:</strong> Generate all report cards first. AI comments are optional assistance and should not be treated as the approval decision. Use <strong>Finalize & Release All</strong> only when authorized administrators are ready to publish/lock the results.
+        </div>
         {% if latest_release %}
             <div class="mt-3 p-3 rounded-3 bg-body-tertiary small">
                 <strong><i class="bi bi-shield-check me-1"></i> Latest automatic release:</strong>
@@ -293,9 +313,9 @@
 
 <div class="card border-0 shadow-sm rounded-4">
     <div class="card-body p-4">
-        <form method="get" class="row g-2 mb-3">
+        <form method="get" class="row g-2 mb-3" id="reportCardFilterForm">
             <div class="col-md-6">
-                <input name="q" value="{{ search_query }}" class="form-control form-control-sm" placeholder="Search student or admission number">
+                <input name="q" value="{{ search_query }}" class="form-control form-control-sm" placeholder="Search first name, last name or admission number..." autocomplete="off" id="reportCardSearch">
             </div>
             <div class="col-md-3">
                 <select name="status" class="form-select form-select-sm">
@@ -312,6 +332,81 @@
             </div>
         </form>
 
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('reportCardFilterForm');
+            const input = document.getElementById('reportCardSearch');
+            const tableRegion = document.getElementById('reportCardTableRegion');
+            if (!form || !input || !tableRegion) return;
+
+            let timer = null;
+            let controller = null;
+
+            function buildUrl(page) {
+                const url = new URL(window.location.href);
+                const q = input.value.trim();
+                const status = form.querySelector('[name="status"]');
+                const classField = form.querySelector('[name="class_id"]');
+                if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
+                if (status && status.value) url.searchParams.set('status', status.value); else url.searchParams.delete('status');
+                if (classField && classField.value) url.searchParams.set('class_id', classField.value); else url.searchParams.delete('class_id');
+                if (page) url.searchParams.set('page', page); else url.searchParams.delete('page');
+                return url;
+            }
+
+            async function refreshTable(page) {
+                const url = buildUrl(page);
+                if (controller) controller.abort();
+                controller = new AbortController();
+                tableRegion.classList.add('is-loading');
+
+                try {
+                    const response = await fetch(url.toString(), {
+                        method: 'GET',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        signal: controller.signal
+                    });
+                    if (!response.ok) throw new Error('Unable to refresh report cards.');
+                    const html = await response.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const fresh = doc.getElementById('reportCardTableRegion');
+                    if (!fresh) throw new Error('Report-card table was not returned.');
+                    tableRegion.innerHTML = fresh.innerHTML;
+                    history.replaceState(null, '', url.toString());
+                } catch (error) {
+                    if (error.name !== 'AbortError') console.error(error);
+                } finally {
+                    tableRegion.classList.remove('is-loading');
+                }
+            }
+
+            input.addEventListener('input', function () {
+                clearTimeout(timer);
+                timer = setTimeout(function () { refreshTable(1); }, 300);
+            });
+
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                clearTimeout(timer);
+                refreshTable(1);
+            });
+
+            form.addEventListener('change', function (event) {
+                if (event.target.matches('[name="status"], [name="class_id"]')) {
+                    refreshTable(1);
+                }
+            });
+
+            tableRegion.addEventListener('click', function (event) {
+                const link = event.target.closest('.js-page-link');
+                if (!link) return;
+                event.preventDefault();
+                refreshTable(link.dataset.page || '1');
+            });
+        });
+        </script>
+
+        <div id="reportCardTableRegion" class="report-card-table-region">
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="bg-light">
@@ -402,6 +497,7 @@
             </table>
         </div>
         {% include 'partials/pagination.html' %}
+        </div>
     </div>
 </div>
 {% endblock %}

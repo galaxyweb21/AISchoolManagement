@@ -432,6 +432,7 @@ async function submitPaymentDetail() {
     const amount = document.getElementById('modalPaymentAmount').value;
     const method = document.getElementById('modalPaymentMethod').value;
     const reference = document.getElementById('modalReference').value;
+    const receiptWindow = window.open('about:blank', '_blank');
 
     if (!amount || parseFloat(amount) <= 0) {
         alert("Please enter a valid payment amount.");
@@ -456,6 +457,7 @@ async function submitPaymentDetail() {
         if (response.ok && data.success) {
             const modal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
             modal.hide();
+            if (receiptWindow && !receiptWindow.closed) { receiptWindow.location.href = data.receipt_url; } else { window.open(data.receipt_url, '_blank'); }
             window.location.reload();
         } else {
             alert("Payment Failed: " + (data.error || "Unknown error."));

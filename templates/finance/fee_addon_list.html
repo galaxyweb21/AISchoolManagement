@@ -209,10 +209,10 @@
                     </div>
                     <div class="structure-actions">
                         {% if column.items %}
-                        <button type="button" class="btn btn-sm btn-outline-gold js-class-addon-modal" data-url="{% url 'finance:class_addon_edit' column.items.0.addon_structure.id %}">
+                        <button type="button" class="btn btn-sm btn-outline-gold js-class-addon-modal" data-url="{% url 'finance:class_addon_edit' column.school_class.id %}">
                             Edit
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-danger js-delete-class-addon" data-url="{% url 'finance:class_addon_delete' column.items.0.addon_structure.id %}" data-name="{{ column.items.0.addon_structure.name|escapejs }}">
+                        <button type="button" class="btn btn-sm btn-outline-danger js-delete-class-addon" data-url="{% url 'finance:class_addon_delete' column.school_class.id %}" data-name="{{ column.school_class.name|escapejs }}">
                             Delete
                         </button>
                         {% endif %}
@@ -335,6 +335,60 @@
     };
 
     // ============================================================
+    // DELETE CLASS ADD-ONS - delegated handler
+    // ============================================================
+    document.addEventListener('click', function(event) {
+        const button = event.target.closest('.js-delete-class-addon');
+        if (!button) return;
+        event.preventDefault();
+
+        const url = button.dataset.url;
+        const name = button.dataset.name || 'this class add-on';
+        if (!url) {
+            showToast('Delete URL is missing.', 'error');
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to delete all add-ons for "${name}"?`)) return;
+
+        const originalHtml = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+        fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(async response => {
+            const text = await response.text();
+            let data = {};
+            try { data = JSON.parse(text); }
+            catch (error) {
+                throw new Error(`Server returned HTTP ${response.status}.`);
+            }
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || data.message || 'Unable to delete class add-ons.');
+            }
+            return data;
+        })
+        .then(data => {
+            showToast(data.message || 'Class add-ons deleted successfully.', 'success');
+            setTimeout(() => window.location.reload(), 500);
+        })
+        .catch(error => {
+            console.error('Class add-on delete error:', error);
+            showToast(error.message || 'Unable to delete class add-ons.', 'error');
+            button.disabled = false;
+            button.innerHTML = originalHtml;
+        });
+    });
+
+    // ============================================================
     // REBUILD CLASS FEES
     // ============================================================
     document.addEventListener('click', function(e) {
@@ -445,6 +499,31 @@
     // ============================================================
     // INITIALIZE CLASS ADDON FORM
     // ============================================================
+    // Robust add-item handler for both CREATE and EDIT modal loads.
+    // The form is injected with innerHTML, so the button also has an inline
+    // fallback. This function does not depend on the form having been loaded
+    // on the initial page.
+    window.addClassAddonItem = function(button) {
+        const root = button.closest('.class-addon-modal') || document;
+        const itemsContainer = root.querySelector('#addonItemsContainer');
+        const template = root.querySelector('#addonItemTemplate');
+        if (!itemsContainer || !template) return false;
+        const clone = template.content.cloneNode(true);
+        const row = clone.querySelector('.js-addon-item-row');
+        if (!row) return false;
+        const count = itemsContainer.querySelectorAll('.js-addon-item-row').length + 1;
+        const num = row.querySelector('.enterprise-item-number');
+        if (num) num.textContent = String(count).padStart(2, '0');
+        itemsContainer.appendChild(clone);
+        const countEl = root.querySelector('#addonItemCount');
+        if (countEl) countEl.textContent = itemsContainer.querySelectorAll('.js-addon-item-row').length;
+        const first = itemsContainer.lastElementChild?.querySelector('input[name="item_names"]');
+        if (first) setTimeout(()=>first.focus(),50);
+        const error = root.querySelector('#addonItemsError');
+        if (error) error.classList.add('d-none');
+        return false;
+    };
+
     function initializeClassAddonForm(container) {
         console.log('initializeClassAddonForm called');
 
@@ -567,15 +646,10 @@
         // ============================================================
         // ADD BUTTON
         // ============================================================
-        // Remove existing listeners by replacing with a new button
-        const newAddBtn = addBtn.cloneNode(true);
-        addBtn.parentNode.replaceChild(newAddBtn, addBtn);
-
-        newAddBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('Add item button clicked');
-            addRow();
-        });
+        // The button uses the global fallback handler above. Keep the local
+        // addRow implementation for compatibility with older cached markup.
+        // Do not attach another click listener here, otherwise one click could
+        // create two rows after a modal refresh.
 
         // ============================================================
         // TERM TYPE TOGGLE

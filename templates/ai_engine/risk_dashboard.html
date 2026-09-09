@@ -295,7 +295,7 @@ setTimeout(function() { window.location.reload(); }, 4000);
                                 {% elif a.risk_band == 'HIGH' %}
                                     <span class="badge px-3 py-2 risk-band" style="background: rgba(217,119,6,0.1); color: #d97706; border-radius: 20px;">High</span>
                                 {% elif a.risk_band == 'MEDIUM' %}
-                                    <span class="badge px-3 py-2 risk-band" style="background: rgba(59,130,246,0.1); color: #3b82f6; border-radius: 20px;">Medium</span>
+                                    <span class="badge px-3 py-2 risk-band" style="background: var(--eduai-signal-soft); color: var(--eduai-signal); border-radius: 20px;">Medium</span>
                                 {% else %}
                                     <span class="badge px-3 py-2 risk-band" style="background: var(--eduai-signal-soft, rgba(44,122,109,0.1)); color: var(--eduai-signal, #2C7A6D); border-radius: 20px;">Low</span>
                                 {% endif %}

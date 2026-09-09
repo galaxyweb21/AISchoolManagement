@@ -55,7 +55,7 @@
                     <a href="{% url 'academics:promotion_batch_list' %}" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;">
                         <i class="bi bi-list me-1"></i>Batches
                     </a>
-                    <a href="{% url 'academics:promotion_rule_list' %}" class="btn" style="border-color: #3b82f6; color: #3b82f6; background: transparent;">
+                    <a href="{% url 'academics:promotion_rule_list' %}" class="btn" style="border-color: var(--eduai-signal); color: var(--eduai-signal); background: transparent;">
                         <i class="bi bi-gear me-1"></i>Rules
                     </a>
                 </div>
@@ -66,13 +66,13 @@
     <!-- Stats Cards -->
     <div class="row g-3 mb-4">
         <div class="col-md-3 col-6">
-            <div class="stat-card" style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2);">
+            <div class="stat-card" style="background: var(--eduai-signal-soft); border: 1px solid var(--eduai-signal-soft);">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <small class="text-muted text-uppercase fw-semibold">Total</small>
-                        <h3 class="fw-bold mb-0" style="color: #3b82f6;">{{ stats.total }}</h3>
+                        <h3 class="fw-bold mb-0" style="color: var(--eduai-signal);">{{ stats.total }}</h3>
                     </div>
-                    <div class="stat-icon bg-primary text-white" style="background: #3b82f6 !important;">
+                    <div class="stat-icon bg-primary text-white" style="background: var(--eduai-signal) !important;">
                         <i class="bi bi-people"></i>
                     </div>
                 </div>
@@ -182,7 +182,7 @@
                                     {{ promotion.get_status_display }}
                                 </span>
                                 {% if promotion.is_automatic %}
-                                <span class="badge promotion-badge" style="background: rgba(59,130,246,0.1); color: #3b82f6;">
+                                <span class="badge promotion-badge" style="background: var(--eduai-signal-soft); color: var(--eduai-signal);">
                                     <i class="bi bi-robot me-1"></i>Auto
                                 </span>
                                 {% endif %}
@@ -268,7 +268,7 @@
                                 {{ rule.to_grade_level.name }}
                             </td>
                             <td class="py-3">
-                                <span class="badge" style="background: rgba(59,130,246,0.1); color: #3b82f6;">{{ rule.get_promotion_mode_display }}</span>
+                                <span class="badge" style="background: var(--eduai-signal-soft); color: var(--eduai-signal);">{{ rule.get_promotion_mode_display }}</span>
                             </td>
                             <td class="py-3 text-center">{{ rule.minimum_passing_grade }}%</td>
                             <td class="py-3 text-center">{{ rule.minimum_overall_average }}%</td>

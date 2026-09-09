@@ -300,7 +300,7 @@
         margin-top: 1rem;
     }
     .info-alert-modern .alert-icon {
-        color: #3b82f6;
+        color: var(--eduai-signal);
         font-size: 1.1rem;
         margin-top: 0.1rem;
         flex-shrink: 0;
@@ -693,7 +693,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (confirm('Are you sure you want to remove the school logo?')) {
                     removeLogoHidden.value = 'true';
                     removeLogoBtn.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Undo Remove';
-                    removeLogoBtn.style.color = '#3b82f6';
+                    removeLogoBtn.style.color = 'var(--eduai-signal)';
                     if (logoPreview) {
                         logoPreview.classList.add('d-none');
                         logoPreview.src = '';
