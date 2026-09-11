@@ -21,7 +21,7 @@ def parent_children_list(request):
     """
     if request.user.role != 'PARENT':
         messages.error(request, "This assistant is for parent accounts.")
-        return redirect('dashboard')
+        return redirect('dashboard:dashboard')
 
     children = Student.objects.filter(parent=request.user, school=request.user.school).select_related('user')
     if children.count() == 1:
