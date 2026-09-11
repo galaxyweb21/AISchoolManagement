@@ -5,7 +5,8 @@ from .views import (
     api_toggle_attendance,
     api_capture_attendance,
     api_register_face,
-    api_live_capture
+    api_live_capture,
+    student_attendance_history
 )
 
 app_name = 'attendance'
@@ -16,4 +17,5 @@ urlpatterns = [
     path('api/capture/', api_capture_attendance, name='api_capture_attendance'),
     path('api/register-face/', api_register_face, name='api_register_face'),
     path('api/live-capture/', api_live_capture, name='api_live_capture'),
+    path('student/<uuid:student_id>/history/', student_attendance_history, name='student_attendance_history'),
 ]

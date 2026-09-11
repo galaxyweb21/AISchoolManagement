@@ -11,6 +11,9 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .models import Announcement, NotificationLog, NotificationStatus, UserNotificationPreference, NotificationCategory
 from .services import NotificationService, AnnouncementService
@@ -158,6 +161,15 @@ def announcement_toggle_archive(request, announcement_id):
 @require_GET
 def notification_list(request):
     """Return the current user's latest notifications for the navbar dropdown."""
+    # Keep the navbar bell in sync with attendance alerts as well as the full
+    # Notification Center. This is idempotent and only creates missing alerts.
+    if getattr(request.user, 'role', None) in ['PARENT', 'STUDENT']:
+        try:
+            from attendance.services.notifications import sync_absence_notifications_for_user
+            sync_absence_notifications_for_user(request.user)
+        except Exception:
+            logger.exception('Attendance notification bell sync failed for user %s', request.user.pk)
+
     notifications = (
         NotificationLog.objects
         .filter(recipient=request.user)
@@ -194,6 +206,26 @@ def notification_list(request):
 @require_GET
 def notification_center(request):
     """Full notification center for the authenticated user's notifications."""
+    # Backfill promotion-result notifications for existing promotion records.
+    # This makes older promotion batches visible to parents/students without
+    # requiring the administrator to re-run the promotion process.
+    if getattr(request.user, 'role', None) in ['PARENT', 'STUDENT']:
+        try:
+            from academics.services.promotion_service import PromotionService
+            PromotionService.sync_promotion_notifications_for_user(request.user)
+        except Exception:
+            logger.exception('Promotion notification sync failed for user %s', request.user.pk)
+
+    # Backfill today's attendance alerts so parents/students also see absences
+    # recorded before the notification hook or through face/live capture.
+    # The sync intentionally ignores historical attendance records.
+    if getattr(request.user, 'role', None) in ['PARENT', 'STUDENT']:
+        try:
+            from attendance.services.notifications import sync_absence_notifications_for_user
+            sync_absence_notifications_for_user(request.user)
+        except Exception:
+            logger.exception('Attendance notification sync failed for user %s', request.user.pk)
+
     notifications = NotificationLog.objects.filter(
         recipient=request.user
     ).select_related('sender')
@@ -242,6 +274,26 @@ def notification_center(request):
         elif notification.category == NotificationCategory.GRADE_RELEASE and notification.reference_id:
             try:
                 notification.action_url = reverse('ai_engine:report_card_detail', args=[notification.reference_id])
+            except Exception:
+                notification.action_url = None
+        elif notification.category == NotificationCategory.PROMOTION_RESULT and notification.reference_id:
+            try:
+                notification.action_url = reverse('academics:promotion_result_detail', args=[notification.reference_id])
+            except Exception:
+                notification.action_url = None
+        elif notification.category == NotificationCategory.ATTENDANCE_ALERT and notification.reference_id:
+            try:
+                from attendance.models import Attendance
+                attendance_qs = Attendance.objects.filter(id=notification.reference_id)
+                if getattr(request.user, 'role', None) == 'PARENT':
+                    attendance_qs = attendance_qs.filter(student__parent=request.user)
+                elif getattr(request.user, 'role', None) == 'STUDENT':
+                    attendance_qs = attendance_qs.filter(student__user=request.user)
+                else:
+                    attendance_qs = attendance_qs.filter(school=getattr(request.user, 'school', None))
+                attendance = attendance_qs.first()
+                if attendance:
+                    notification.action_url = reverse('attendance:student_attendance_history', args=[attendance.student_id])
             except Exception:
                 notification.action_url = None
 

@@ -8,6 +8,8 @@ from django.db import transaction
 from django.utils import timezone
 from django.db.models import Avg, Count, Q
 import logging
+from communication.models import NotificationCategory, NotificationChannel, NotificationLog
+from communication.services import NotificationService
 
 from ..models import PromotionRule, PromotionBatch, StudentPromotion, SchoolClass
 from assessments.models import Grade, Assessment
@@ -143,7 +145,100 @@ class PromotionService:
         return True, "Meets all promotion criteria"
 
     @staticmethod
-    @transaction.atomic
+    def notify_promotion_result(promotion):
+        """Create an idempotent in-app promotion-result notification."""
+        try:
+            student = promotion.student
+            recipients = []
+            parent = getattr(student, 'parent', None)
+            student_user = getattr(student, 'user', None)
+
+            if parent and getattr(parent, 'is_active', True):
+                recipients.append(parent)
+            if student_user and student_user != parent and getattr(student_user, 'is_active', True):
+                recipients.append(student_user)
+
+            student_name = student.user.get_full_name() or student.admission_number
+            status_label = promotion.get_status_display() if promotion.status in dict(StudentPromotion.STATUS_CHOICES) else str(promotion.status).replace('_', ' ').title()
+            from_grade = promotion.from_grade_level.name if promotion.from_grade_level else 'Previous Grade'
+            to_grade = promotion.to_grade_level.name if promotion.to_grade_level else 'Next Grade'
+            average = f"{promotion.overall_average:.2f}%" if promotion.overall_average is not None else 'N/A'
+            attendance = f"{promotion.attendance_percentage:.2f}%" if promotion.attendance_percentage is not None else 'N/A'
+            subject = f"Promotion Result — {student_name}"
+            message = (
+                f"The promotion result for {student_name} is now available.\n\n"
+                f"Decision: {status_label}\n"
+                f"Grade: {from_grade} → {to_grade}\n"
+                f"Overall average: {average}\n"
+                f"Attendance: {attendance}"
+            )
+
+            for recipient in recipients:
+                exists = NotificationLog.objects.filter(
+                    recipient=recipient,
+                    category=NotificationCategory.PROMOTION_RESULT,
+                    reference_type='StudentPromotion',
+                    reference_id=str(promotion.id),
+                ).exists()
+                if exists:
+                    continue
+
+                NotificationService.trigger(
+                    recipient=recipient,
+                    category=NotificationCategory.PROMOTION_RESULT,
+                    subject=subject,
+                    message=message,
+                    channel=NotificationChannel.IN_APP,
+                    reference_id=str(promotion.id),
+                    reference_type='StudentPromotion',
+                    school=promotion.school,
+                )
+        except Exception:
+            logger.exception('Failed to create promotion result notification for %s', promotion.id)
+
+    @staticmethod
+    def notify_promotion_results(promotions):
+        for promotion in promotions:
+            PromotionService.notify_promotion_result(promotion)
+
+    @staticmethod
+    def sync_promotion_notifications_for_user(user):
+        """Backfill promotion-result notifications for an authenticated parent/student."""
+        if not user or not getattr(user, 'is_authenticated', False):
+            return 0
+        try:
+            if getattr(user, 'role', None) == 'PARENT':
+                promotions = StudentPromotion.objects.filter(
+                    student__parent=user
+                ).select_related('student__user', 'student__parent', 'from_grade_level', 'to_grade_level')
+            elif getattr(user, 'role', None) == 'STUDENT':
+                promotions = StudentPromotion.objects.filter(
+                    student__user=user
+                ).select_related('student__user', 'student__parent', 'from_grade_level', 'to_grade_level')
+            else:
+                return 0
+
+            created_before = NotificationLog.objects.filter(
+                recipient=user,
+                category=NotificationCategory.PROMOTION_RESULT,
+                reference_type='StudentPromotion',
+            ).values_list('reference_id', flat=True)
+            existing = set(created_before)
+            count = 0
+            for promotion in promotions:
+                if str(promotion.id) in existing:
+                    continue
+                PromotionService.notify_promotion_result(promotion)
+                if NotificationLog.objects.filter(
+                    recipient=user, category=NotificationCategory.PROMOTION_RESULT,
+                    reference_type='StudentPromotion', reference_id=str(promotion.id)
+                ).exists():
+                    count += 1
+            return count
+        except Exception:
+            logger.exception('Failed to sync promotion notifications for user %s', getattr(user, 'pk', None))
+            return 0
+
     def process_promotion_batch(school, from_grade_level_id, to_grade_level_id,
                                academic_term_id, promotion_rule_id=None, batch_name=None,
                                processed_by=None, mode='AUTO'):
@@ -156,7 +251,7 @@ class PromotionService:
         try:
             from_grade = GradeLevel.objects.get(id=from_grade_level_id, school=school)
             to_grade = GradeLevel.objects.get(id=to_grade_level_id, school=school)
-            academic_term = AcademicTerm.objects.get(id=academic_term_id, school=school)
+            academic_term = AcademicTerm.objects.get(id=academic_term_id, academic_year__school=school)
 
             # Get or create promotion rule
             promotion_rule = None
@@ -260,6 +355,8 @@ class PromotionService:
             batch.processed_by = processed_by
             batch.processed_at = timezone.now()
             batch.save()
+
+            PromotionService.notify_promotion_results(promotions)
 
             return {
                 'success': True,

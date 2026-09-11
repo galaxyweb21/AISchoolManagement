@@ -1,14 +1,84 @@
 {% extends 'base/base.html' %}
+
 {% block page_title %}Promotion Result{% endblock %}
+
 {% block content %}
 <style>
-.promotion-result-shell{max-width:1000px;margin:0 auto}.promotion-result-hero{background:linear-gradient(135deg,var(--surface-bg),var(--eduai-gold-soft));border:1px solid var(--surface-border)}.result-card{background:var(--surface-bg);border:1px solid var(--surface-border);border-radius:18px}.result-label{font-size:.76rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);font-weight:700}.result-value{font-size:1.05rem;font-weight:800;color:var(--text-primary)}.status-promoted{background:var(--eduai-signal-soft);color:var(--eduai-signal)}.status-conditional{background:rgba(217,119,6,.12);color:#b45309}.status-repeated{background:rgba(220,38,38,.10);color:#dc2626}@media print{.no-print{display:none!important}.promotion-result-shell{max-width:none}.promotion-result-hero,.result-card{box-shadow:none!important}}
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .text-teal { color: var(--eduai-signal, #2C7A6D) !important; }
+    .bg-teal-soft { background: var(--eduai-signal-soft, rgba(44,122,109,.10)) !important; }
+    .result-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--bs-secondary-color); font-weight: 700; }
+    .result-value { font-weight: 700; font-size: 1rem; }
 </style>
-<div class="container-fluid py-4 promotion-result-shell">
-<div class="promotion-result-hero rounded-4 shadow-sm p-4 mb-4"><div class="d-flex justify-content-between align-items-start gap-3 flex-wrap"><div><div class="d-flex align-items-center gap-2 mb-2"><i class="bi bi-mortarboard-fill text-gold fs-4"></i><span class="small fw-semibold text-muted">Promotion Result</span></div><h3 class="fw-bold mb-1">{{ student.user.get_full_name }}</h3><p class="text-muted mb-0">{{ student.admission_number }}{% if promotion.promotion_batch.academic_term %} · {{ promotion.promotion_batch.academic_term }}{% endif %}</p></div><button class="btn btn-gold no-print" type="button" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print Result</button></div></div>
-<div class="result-card p-4 mb-4"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4"><div><div class="result-label">Final decision</div><div class="result-value mt-1">{{ promotion.get_status_display }}</div></div><span class="badge rounded-pill px-3 py-2 {% if promotion.status == 'PROMOTED' %}status-promoted{% elif promotion.status == 'CONDITIONAL' %}status-conditional{% else %}status-repeated{% endif %}">{{ promotion.get_status_display }}</span></div><div class="row g-4">
-<div class="col-md-6"><div class="result-label">Previous Grade</div><div class="result-value mt-1">{{ promotion.from_grade_level.name }}</div></div><div class="col-md-6"><div class="result-label">Next Grade</div><div class="result-value mt-1">{% if promotion.to_grade_level %}{{ promotion.to_grade_level.name }}{% else %}—{% endif %}</div></div><div class="col-md-6"><div class="result-label">Previous Class</div><div class="result-value mt-1">{% if promotion.from_school_class %}{{ promotion.from_school_class.name }}{% else %}—{% endif %}</div></div><div class="col-md-6"><div class="result-label">Next Class</div><div class="result-value mt-1">{% if promotion.to_school_class %}{{ promotion.to_school_class.name }}{% else %}—{% endif %}</div></div><div class="col-md-4"><div class="result-label">Overall Average</div><div class="result-value mt-1">{% if promotion.overall_average != None %}{{ promotion.overall_average }}%{% else %}—{% endif %}</div></div><div class="col-md-4"><div class="result-label">Subjects Passed</div><div class="result-value mt-1">{{ promotion.subjects_passed }}</div></div><div class="col-md-4"><div class="result-label">Subjects Failed</div><div class="result-value mt-1">{{ promotion.subjects_failed }}</div></div><div class="col-md-4"><div class="result-label">Attendance</div><div class="result-value mt-1">{% if promotion.attendance_percentage != None %}{{ promotion.attendance_percentage }}%{% else %}—{% endif %}</div></div><div class="col-md-8"><div class="result-label">Decision Date</div><div class="result-value mt-1">{% if promotion.approved_at %}{{ promotion.approved_at|date:'F d, Y' }}{% else %}{{ promotion.updated_at|date:'F d, Y' }}{% endif %}</div></div></div></div>
-{% if promotion.failed_subjects %}<div class="result-card p-4 mb-4"><div class="result-label mb-2">Subjects requiring attention</div><div class="d-flex flex-wrap gap-2">{% for subject in promotion.failed_subjects %}<span class="badge rounded-pill bg-light text-dark border">{{ subject }}</span>{% endfor %}</div></div>{% endif %}
-{% if promotion.notes %}<div class="result-card p-4"><div class="result-label mb-2">School remarks</div><div class="text-muted">{{ promotion.notes|linebreaksbr }}</div></div>{% endif %}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+        <div>
+            <div class="text-muted small mb-1">Academics / Promotion / Result</div>
+            <h4 class="fw-bold mb-1"><i class="bi bi-mortarboard text-gold me-2"></i>Promotion Result</h4>
+            <p class="text-muted mb-0">Official promotion decision and academic summary.</p>
+        </div>
+        <button type="button" class="btn btn-gold" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print Result</button>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="result-label">Student</div>
+                    <h5 class="fw-bold mb-1">{{ student.user.get_full_name }}</h5>
+                    <div class="text-muted">Admission No.: {{ student.admission_number }}</div>
+                </div>
+                <div class="text-end">
+                    <div class="result-label">Decision</div>
+                    <span class="badge rounded-pill px-3 py-2
+                        {% if promotion.status == 'PROMOTED' %}bg-teal-soft text-teal
+                        {% elif promotion.status == 'CONDITIONAL' %}bg-warning-subtle text-warning
+                        {% elif promotion.status == 'REPEATED' %}bg-danger-subtle text-danger
+                        {% else %}bg-secondary-subtle text-secondary{% endif %}">
+                        {{ promotion.get_status_display }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-xl-3"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body p-4"><div class="result-label">Previous Grade / Class</div><div class="result-value mt-2">{{ promotion.from_grade_level.name }}{% if promotion.from_school_class %} · {{ promotion.from_school_class.name }}{% endif %}</div></div></div></div>
+        <div class="col-md-6 col-xl-3"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body p-4"><div class="result-label">Next Grade / Class</div><div class="result-value mt-2 text-teal">{{ promotion.to_grade_level.name }}{% if promotion.to_school_class %} · {{ promotion.to_school_class.name }}{% endif %}</div></div></div></div>
+        <div class="col-md-6 col-xl-3"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body p-4"><div class="result-label">Overall Average</div><div class="result-value mt-2">{% if promotion.overall_average is not None %}{{ promotion.overall_average|floatformat:2 }}%{% else %}N/A{% endif %}</div></div></div></div>
+        <div class="col-md-6 col-xl-3"><div class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body p-4"><div class="result-label">Attendance</div><div class="result-value mt-2">{% if promotion.attendance_percentage is not None %}{{ promotion.attendance_percentage|floatformat:2 }}%{% else %}N/A{% endif %}</div></div></div></div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-transparent border-0 p-4 pb-2"><h6 class="fw-bold mb-0">Academic Summary</h6></div>
+        <div class="card-body p-4 pt-2">
+            <div class="row g-3">
+                <div class="col-md-4"><div class="p-3 rounded-3 bg-teal-soft"><div class="result-label">Subjects Passed</div><div class="fs-4 fw-bold text-teal">{{ promotion.subjects_passed }}</div></div></div>
+                <div class="col-md-4"><div class="p-3 rounded-3 bg-danger-subtle"><div class="result-label">Subjects Failed</div><div class="fs-4 fw-bold text-danger">{{ promotion.subjects_failed }}</div></div></div>
+                <div class="col-md-4"><div class="p-3 rounded-3 bg-secondary-subtle"><div class="result-label">Decision Date</div><div class="fw-bold mt-2">{% if promotion.approved_at %}{{ promotion.approved_at|date:'M d, Y H:i' }}{% else %}{{ promotion.updated_at|date:'M d, Y H:i' }}{% endif %}</div></div></div>
+            </div>
+        </div>
+    </div>
+
+    {% if promotion.failed_subjects %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-transparent border-0 p-4 pb-2"><h6 class="fw-bold mb-0"><i class="bi bi-exclamation-circle text-danger me-2"></i>Failed Subjects</h6></div>
+        <div class="card-body p-4 pt-2"><div class="d-flex flex-wrap gap-2">{% for subject in promotion.failed_subjects %}<span class="badge bg-danger-subtle text-danger px-3 py-2">{{ subject }}</span>{% endfor %}</div></div>
+    </div>
+    {% endif %}
+
+    {% if promotion.notes %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4"><h6 class="fw-bold">Notes</h6><p class="text-muted mb-0">{{ promotion.notes|linebreaksbr }}</p></div></div>
+    {% endif %}
+
+    <div class="text-muted small">Promotion batch: {{ promotion.promotion_batch.name|default:'—' }}</div>
 </div>
+
+<style media="print">
+    .sidebar, .navbar, .page-header, button { display: none !important; }
+    body { background: #fff !important; }
+    .container-fluid { padding: 20px !important; }
+    .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+</style>
 {% endblock %}

@@ -341,43 +341,6 @@
         </div>
     </div>
 
-    <!-- Pagination -->
-    {% if promotions.has_other_pages %}
-    <div class="d-flex justify-content-between align-items-center mt-4">
-        <small class="text-muted">
-            Showing {{ promotions.start_index }} to {{ promotions.end_index }} of {{ promotions.paginator.count }} entries
-        </small>
-        <nav>
-            <ul class="pagination pagination-sm mb-0">
-                {% if promotions.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ promotions.previous_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}">&laquo;</a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
-                {% endif %}
-
-                {% for num in promotions.paginator.page_range %}
-                    {% if promotions.number == num %}
-                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                    {% elif num > promotions.number|add:'-3' and num < promotions.number|add:'3' %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{% if selected_status %}&status={{ selected_status }}{% endif %}">{{ num }}</a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if promotions.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ promotions.next_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}">&raquo;</a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
-                {% endif %}
-            </ul>
-        </nav>
-    </div>
-    {% endif %}
 </div>
 
 <!-- Promotion Detail Modal -->

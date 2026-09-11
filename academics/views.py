@@ -797,6 +797,9 @@ def promotion_batch_detail(request, batch_id):
         promotion_batch=batch
     ).select_related('student__user', 'from_grade_level', 'to_grade_level')
 
+    # Backfill missing promotion-result notifications for existing records.
+    PromotionService.notify_promotion_results(promotions)
+
     # Apply filters
     status_filter = request.GET.get('status')
     if status_filter:
@@ -837,51 +840,73 @@ def promotion_apply(request, promotion_id):
 
 @login_required
 def promotion_bulk_apply(request, batch_id):
-    """Apply all eligible promotions in a batch."""
+    """Apply all eligible promotions; GET returns a confirmation fragment."""
     if request.user.role not in ['SUPER_ADMIN', 'SCHOOL_ADMIN']:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': "Permission denied."}, status=403)
         messages.error(request, "You don't have permission to perform this action.")
         return redirect('academics:promotion_dashboard')
 
     school = request.user.school
-    # FIXED: Filter through academic_year__school
     batch = get_object_or_404(PromotionBatch, id=batch_id, academic_year__school=school)
 
     if request.method == 'POST':
         try:
-            # Get all promotions in batch that are eligible for application
             promotions = StudentPromotion.objects.filter(
-                promotion_batch=batch,
-                status__in=['PROMOTED', 'CONDITIONAL']
+                promotion_batch=batch, status__in=['PROMOTED', 'CONDITIONAL']
             )
-
             applied = 0
             for promotion in promotions:
                 result = PromotionService.apply_promotion(promotion.id, request.user)
                 if result['success']:
                     applied += 1
-
-            if applied > 0:
-                messages.success(request, f"Successfully applied {applied} promotions.")
-            else:
-                messages.warning(request, "No promotions were applied.")
-
+            message = f"Successfully applied {applied} promotions." if applied else "No promotions were applied."
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': message, 'redirect_url': reverse('academics:promotion_batch_detail', args=[batch.id])})
+            (messages.success if applied else messages.warning)(request, message)
         except Exception as e:
+            logger.exception('Bulk promotion application failed for batch %s', batch.id)
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': str(e)}, status=400)
             messages.error(request, f"Error: {str(e)}")
-
         return redirect('academics:promotion_batch_detail', batch_id=batch.id)
 
-    # GET - Show confirmation page
     promotions = StudentPromotion.objects.filter(
-        promotion_batch=batch,
-        status__in=['PROMOTED', 'CONDITIONAL']
-    ).select_related('student__user')
+        promotion_batch=batch, status__in=['PROMOTED', 'CONDITIONAL']
+    ).select_related('student__user', 'from_grade_level', 'to_grade_level')
 
     context = {
         'batch': batch,
         'promotions': promotions,
         'action_url': 'academics:promotion_bulk_apply',
+        'active_tab': 'academics',
     }
-    return render(request, 'academics/promotion/bulk_apply_modal.html', context)
+
+    # AJAX requests receive only the modal fragment. Direct browser visits
+    # receive a complete styled page, so Apply All never exposes raw HTML.
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'academics/promotion/bulk_apply_modal.html', context)
+    return render(request, 'academics/promotion/bulk_apply_page.html', context)
+
+
+@login_required
+def promotion_result_detail(request, promotion_id):
+    """Read-only promotion result for its linked parent/student or school administrators."""
+    promotion = get_object_or_404(
+        StudentPromotion.objects.select_related(
+            'student__user', 'student__parent', 'from_grade_level', 'from_school_class',
+            'to_grade_level', 'to_school_class', 'promotion_batch', 'approved_by'
+        ), id=promotion_id
+    )
+    user = request.user
+    if not (user.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'HOD'] or
+            promotion.student.parent_id == user.id or promotion.student.user_id == user.id):
+        messages.error(request, "You don't have permission to view this promotion result.")
+        return redirect('dashboard')
+    PromotionService.notify_promotion_result(promotion)
+    return render(request, 'academics/promotion/result_detail.html', {
+        'promotion': promotion, 'student': promotion.student, 'active_tab': 'academics'
+    })
 
 
 @login_required

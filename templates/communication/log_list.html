@@ -506,53 +506,6 @@
         </div>
     </div>
 
-    <!-- Pagination -->
-    {% if logs.has_other_pages %}
-    <div class="d-flex justify-content-between align-items-center mt-4">
-        <small class="text-muted">
-            Showing {{ logs.start_index }} to {{ logs.end_index }} of {{ logs.paginator.count }} entries
-        </small>
-        <nav>
-            <ul class="pagination pagination-sm mb-0">
-                {% if logs.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ logs.previous_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search %}&search={{ search }}{% endif %}">
-                            <i class="bi bi-chevron-left"></i>
-                        </a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link"><i class="bi bi-chevron-left"></i></span>
-                    </li>
-                {% endif %}
-
-                {% for num in logs.paginator.page_range %}
-                    {% if logs.number == num %}
-                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                    {% elif num > logs.number|add:'-3' and num < logs.number|add:'3' %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search %}&search={{ search }}{% endif %}">
-                                {{ num }}
-                            </a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if logs.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ logs.next_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search %}&search={{ search }}{% endif %}">
-                            <i class="bi bi-chevron-right"></i>
-                        </a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link"><i class="bi bi-chevron-right"></i></span>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
-    </div>
-    {% endif %}
 </div>
 
 <!-- Log Detail Modal -->

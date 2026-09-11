@@ -122,7 +122,7 @@
         {% for notification in notifications %}
         <div class="notification-row {% if notification.status == 'DELIVERED' %}unread{% endif %}" data-notification-id="{{ notification.id }}">
             <div class="d-flex gap-3 align-items-start">
-                <div class="notification-icon"><i class="bi {% if notification.category == 'OVERDUE_BALANCE' or notification.category == 'SYSTEM_ALERT' %}bi-exclamation-triangle{% elif notification.category == 'PAYMENT_RECEIPT' %}bi-receipt{% elif notification.category == 'GRADE_RELEASE' %}bi-award{% elif notification.category == 'ATTENDANCE_ALERT' %}bi-person-check{% elif notification.category == 'ANNOUNCEMENT' %}bi-megaphone{% elif notification.category == 'LEAVE_APPROVAL' %}bi-calendar-check{% else %}bi-bell{% endif %}"></i></div>
+                <div class="notification-icon"><i class="bi {% if notification.category == 'OVERDUE_BALANCE' or notification.category == 'SYSTEM_ALERT' %}bi-exclamation-triangle{% elif notification.category == 'PAYMENT_RECEIPT' %}bi-receipt{% elif notification.category == 'GRADE_RELEASE' %}bi-award{% elif notification.category == 'PROMOTION_RESULT' %}bi-mortarboard{% elif notification.category == 'ATTENDANCE_ALERT' %}bi-person-check{% elif notification.category == 'ANNOUNCEMENT' %}bi-megaphone{% elif notification.category == 'LEAVE_APPROVAL' %}bi-calendar-check{% else %}bi-bell{% endif %}"></i></div>
                 <div class="flex-grow-1 min-w-0">
                     <div class="d-flex justify-content-between gap-3 align-items-start">
                         <div class="notification-title">{{ notification.subject }}</div>
@@ -141,6 +141,10 @@
                             <i class="bi bi-receipt me-1"></i> View & Print Receipt
                             {% elif notification.category == 'GRADE_RELEASE' %}
                             <i class="bi bi-award me-1"></i> View & Print Report Card
+                            {% elif notification.category == 'ATTENDANCE_ALERT' %}
+                            <i class="bi bi-calendar-x me-1"></i> View Attendance
+                            {% elif notification.category == 'PROMOTION_RESULT' %}
+                            <i class="bi bi-mortarboard me-1"></i> View Promotion Result
                             {% else %}
                             <i class="bi bi-arrow-up-right-square me-1"></i> Open
                             {% endif %}

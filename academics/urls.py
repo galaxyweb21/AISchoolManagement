@@ -44,6 +44,7 @@ urlpatterns = [
     path('promotion/batches/create/', views.promotion_batch_create, name='promotion_batch_create'),
     path('promotion/batches/<uuid:batch_id>/', views.promotion_batch_detail, name='promotion_batch_detail'),
     path('promotion/batches/<uuid:batch_id>/apply/', views.promotion_bulk_apply, name='promotion_bulk_apply'),
+    path('promotion/results/<uuid:promotion_id>/', views.promotion_result_detail, name='promotion_result_detail'),
 
     # Promotion Actions
     path('promotion/<uuid:promotion_id>/apply/', views.promotion_apply, name='promotion_apply'),

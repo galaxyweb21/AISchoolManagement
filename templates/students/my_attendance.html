@@ -120,19 +120,6 @@
                     </tbody>
                 </table>
             </div>
-            {% if records.has_other_pages %}
-            <nav class="mt-3">
-                <ul class="pagination pagination-sm justify-content-center mb-0">
-                    {% if records.has_previous %}
-                    <li class="page-item"><a class="page-link" href="?page={{ records.previous_page_number }}">Previous</a></li>
-                    {% endif %}
-                    <li class="page-item disabled"><span class="page-link">Page {{ records.number }} of {{ records.paginator.num_pages }}</span></li>
-                    {% if records.has_next %}
-                    <li class="page-item"><a class="page-link" href="?page={{ records.next_page_number }}">Next</a></li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
             {% else %}
             <div class="text-center py-5">
                 <i class="bi bi-inbox fs-1 text-muted"></i>
@@ -200,7 +187,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-{% endblock %}
 {% include "partials/pagination.html" with page_obj=records %}
 
 {% endblock %}

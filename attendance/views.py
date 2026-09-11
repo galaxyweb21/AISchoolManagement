@@ -12,6 +12,7 @@ from django.views.decorators.http import require_POST
 from students.models import Student
 from academics.models import SchoolClass
 from staff.models import Teacher
+from core.pagination import paginate_queryset
 
 from .models import Attendance
 from .face_service import FaceRecognitionService
@@ -731,6 +732,21 @@ def api_toggle_attendance(request):
         )
     )
 
+    # Phase 1E: notify linked parent/student when the student is marked absent.
+    # This is deliberately after the existing attendance save so notification
+    # failures can never prevent attendance from being recorded.
+    if attendance.status == "ABSENT":
+        try:
+            from .services.notifications import notify_absence
+            notify_absence(attendance)
+        except Exception:
+            # Notification failures must never break the attendance workflow.
+            import logging
+            logging.getLogger(__name__).exception(
+                "Attendance absence notification failed for %s",
+                attendance.id,
+            )
+
     return JsonResponse(
         {
             "success": True,
@@ -1133,3 +1149,65 @@ def api_live_capture(request):
             ),
         }
     )
+# ============================================================
+# PARENT / STUDENT ATTENDANCE HISTORY
+# ============================================================
+
+@login_required
+def student_attendance_history(request, student_id):
+    """Secure attendance history for staff, linked parents and the student."""
+    school = get_user_school(request)
+    if not school:
+        return render(request, "attendance/student_history.html", {
+            "student": None,
+            "attendance_records": [],
+            "attendance_access_error": "Your account is not associated with a school.",
+        })
+
+    student = get_object_or_404(
+        Student.objects.select_related("user", "parent", "school_class", "grade_level"),
+        id=student_id,
+        school=school,
+    )
+
+    role = get_user_role(request.user)
+    allowed = False
+
+    if is_admin_user(request.user):
+        allowed = True
+    elif role == "TEACHER":
+        allowed = teacher_can_access_student(request.user, student, school)
+    elif role == "PARENT":
+        allowed = bool(student.parent_id and student.parent_id == request.user.id)
+    elif role == "STUDENT":
+        allowed = bool(student.user_id and student.user_id == request.user.id)
+
+    if not allowed:
+        return render(request, "attendance/student_history.html", {
+            "student": student,
+            "attendance_records": [],
+            "attendance_access_error": "You do not have permission to view this student's attendance.",
+        }, status=403)
+
+    records_qs = Attendance.objects.filter(
+        school=school,
+        student=student,
+    ).order_by("-date", "-id")
+
+    total = records_qs.count()
+    present = records_qs.filter(status__in=["PRESENT", "LATE"]).count()
+    absent = records_qs.filter(status="ABSENT").count()
+    late = records_qs.filter(status="LATE").count()
+    rate = round((present / total) * 100, 1) if total else None
+    records = paginate_queryset(records_qs, request)
+
+    return render(request, "attendance/student_history.html", {
+        "student": student,
+        "attendance_records": records,
+        "total_days": total,
+        "present_days": present,
+        "absent_days": absent,
+        "late_days": late,
+        "attendance_rate": rate,
+        "attendance_access_error": None,
+    })

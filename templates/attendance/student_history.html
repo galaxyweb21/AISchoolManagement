@@ -1,0 +1,64 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block main_content %}
+<div class="container-fluid py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <div class="text-uppercase small fw-semibold text-muted">Attendance</div>
+            {% if student %}
+            <h2 class="fw-bold mb-1">{{ student.user.get_full_name }}</h2>
+            <div class="text-muted">
+                {{ student.admission_number }}
+                {% if student.school_class %} · {{ student.school_class.name }}{% endif %}
+            </div>
+            {% else %}
+            <h2 class="fw-bold mb-1">Attendance History</h2>
+            {% endif %}
+        </div>
+        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i>Print
+        </button>
+    </div>
+
+    {% if attendance_access_error %}
+    <div class="alert alert-danger border-0 shadow-sm">
+        <i class="bi bi-shield-exclamation me-2"></i>{{ attendance_access_error }}
+    </div>
+    {% else %}
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Attendance Rate</div><div class="fs-3 fw-bold">{% if attendance_rate != None %}{{ attendance_rate }}%{% else %}—{% endif %}</div></div></div></div>
+        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Present</div><div class="fs-3 fw-bold text-success">{{ present_days }}</div></div></div></div>
+        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Absent</div><div class="fs-3 fw-bold text-danger">{{ absent_days }}</div></div></div></div>
+        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Late</div><div class="fs-3 fw-bold text-warning">{{ late_days }}</div></div></div></div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-0 py-3"><h5 class="mb-0 fw-bold">Attendance Record</h5></div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead><tr><th>Date</th><th>Status</th><th>Remarks</th></tr></thead>
+                <tbody>
+                {% for record in attendance_records %}
+                    <tr>
+                        <td>{{ record.date|date:"d M Y" }}</td>
+                        <td>
+                            {% if record.status == 'PRESENT' %}<span class="badge text-bg-success">Present</span>
+                            {% elif record.status == 'LATE' %}<span class="badge text-bg-warning">Late</span>
+                            {% elif record.status == 'ABSENT' %}<span class="badge text-bg-danger">Absent</span>
+                            {% else %}<span class="badge text-bg-secondary">{{ record.get_status_display }}</span>{% endif %}
+                        </td>
+                        <td class="text-muted">{{ record.remarks|default:"—" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="3" class="text-center text-muted py-5">No attendance records found.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "partials/pagination.html" with page_obj=attendance_records %}
+    </div>
+    {% endif %}
+</div>
+<style>@media print {.btn {display:none!important;} .card {box-shadow:none!important;}}</style>
+{% endblock %}
