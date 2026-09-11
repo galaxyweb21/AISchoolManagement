@@ -88,10 +88,14 @@ def _teacher_subjects(user, school, school_class=None):
     if user.role != 'TEACHER':
         qs = Subject.objects.filter(school=school, is_active=True)
         if school_class:
-            qs = qs.filter(
+            class_qs = qs.filter(
                 class_subjects__school_class=school_class,
                 class_subjects__is_active=True,
-            )
+            ).distinct().order_by('name')
+            # A class may not yet have ClassSubject rows. The assessment form
+            # must still be usable for administrators during school setup.
+            if class_qs.exists():
+                return class_qs
         return qs.distinct().order_by('name')
 
     try:

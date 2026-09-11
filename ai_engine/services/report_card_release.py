@@ -78,9 +78,68 @@ class ReportCardReleaseService:
             try:
                 ReportCardBatchService.finalize(card, user)
                 finalized += 1
+                cls.notify_released_card(card)
             except Exception as exc:
                 blocked.append({'student': card.student.user.get_full_name(), 'reason': str(exc)[:300]})
         return finalized, blocked
+
+    @classmethod
+    def notify_released_card(cls, card):
+        """Create idempotent in-app release notifications for the student and parent.
+
+        The report card must already be finalized.  Notification failures are
+        deliberately isolated from the release transaction so a notification
+        problem can never undo an officially finalized result.
+        """
+        if not card.is_finalized:
+            return 0
+
+        from communication.models import NotificationCategory, NotificationChannel, NotificationLog
+        from communication.services import NotificationService
+
+        recipients = []
+        parent = getattr(card.student, 'parent', None)
+        student_user = getattr(card.student, 'user', None)
+        if parent:
+            recipients.append(parent)
+        if student_user and (not parent or student_user.id != parent.id):
+            recipients.append(student_user)
+
+        student_name = (getattr(student_user, 'get_full_name', lambda: '')()
+                        or getattr(card.student, 'admission_number', 'Student'))
+        term_name = str(card.academic_term)
+        subject = f'Report Card Released - {student_name}'
+        message = (
+            f'Dear Parent/Student,\n\n'
+            f'The report card for {student_name} for {term_name} has been officially released.\n'
+            f'Your finalized academic results are now available to view and print.\n\n'
+            f'{card.school.name}'
+        )
+
+        created = 0
+        for recipient in recipients:
+            if NotificationLog.objects.filter(
+                recipient=recipient,
+                category=NotificationCategory.GRADE_RELEASE,
+                reference_id=str(card.id),
+                reference_type='ReportCardRelease',
+            ).exists():
+                continue
+            try:
+                NotificationService.trigger(
+                    recipient=recipient,
+                    category=NotificationCategory.GRADE_RELEASE,
+                    subject=subject,
+                    message=message,
+                    channel=NotificationChannel.IN_APP,
+                    reference_id=str(card.id),
+                    reference_type='ReportCardRelease',
+                    school=card.school,
+                )
+                created += 1
+            except Exception:
+                logger.exception('Failed to create report-card release notification for %s', recipient.pk)
+        return created
 
     @classmethod
     def build_print_pack(cls, school, term, release_batch=None):

@@ -26,6 +26,22 @@ def _can_view(user):
     return role_allows(user, 'reports', 'view')
 
 
+def _can_view_card(user, card):
+    """Allow staff report access plus a linked parent/student after release."""
+    if role_allows(user, 'reports', 'view'):
+        return True
+    if not getattr(card, 'is_finalized', False):
+        return False
+    student = getattr(card, 'student', None)
+    if not student:
+        return False
+    if getattr(student, 'parent_id', None) == user.id:
+        return True
+    if getattr(student, 'user_id', None) == user.id:
+        return True
+    return False
+
+
 def _teacher_scope_class_ids(user, school):
     ids = set()
     try:
@@ -208,10 +224,10 @@ def trigger_report_comment_batch(request):
 
 @login_required
 def report_card_detail(request, report_card_id):
-    if not _can_view(request.user):
-        messages.error(request, "You don't have permission to view this.")
+    card = get_object_or_404(ReportCard.objects.select_related('student__user', 'student__parent', 'student__school_class', 'student__grade_level', 'academic_term'), id=report_card_id, school=_school(request))
+    if not _can_view_card(request.user, card):
+        messages.error(request, "You don't have permission to view this report card.")
         return redirect('dashboard')
-    card = get_object_or_404(ReportCard.objects.select_related('student__user', 'student__school_class', 'student__grade_level', 'academic_term'), id=report_card_id, school=_school(request))
     # Keep report cards synchronized with authoritative TerminalResult records.
     # This fixes cards that were generated (or finalized) before Class /30 and
     # Exam /70 were entered — draft cards fully resync; finalized cards keep
@@ -307,6 +323,14 @@ def finalize_report_card(request, report_card_id):
         return redirect('ai_engine:report_card_detail', report_card_id=report_card_id)
     card = get_object_or_404(ReportCard, id=report_card_id, school=_school(request))
     ReportCardBatchService.finalize(card, request.user)
+    # Phase 1C: notify linked parent/student immediately when an individual
+    # report card is finalized. This complements the bulk release pipeline.
+    try:
+        from ai_engine.services.report_card_release import ReportCardReleaseService
+        ReportCardReleaseService.notify_released_card(card)
+    except Exception:
+        # Notification failure must never undo a successful academic finalization.
+        pass
     messages.success(request, 'Report card finalized and locked.')
     return redirect('ai_engine:report_card_detail', report_card_id=card.id)
 
@@ -338,6 +362,20 @@ def release_all_report_cards(request):
         auto_finalize=True, email_parents=True, generate_print_pack=True,
     )
     ReportCardReleaseService.run(batch, user=request.user)
+
+    # Also synchronize notifications for cards that were already finalized
+    # before this release run (for example, cards finalized individually).
+    # This makes the Notification Center complete without requiring users to
+    # unlock and re-finalize an already released report card.
+    try:
+        released_cards = ReportCard.objects.filter(
+            school=school, academic_term=term, is_finalized=True
+        ).select_related('student__user', 'student__parent')
+        for card in released_cards:
+            ReportCardReleaseService.notify_released_card(card)
+    except Exception:
+        pass
+
     if batch.status == 'COMPLETE':
         messages.success(request, f'Report-card release completed: {batch.finalized_count} finalized, {batch.emailed_count} emailed, {batch.print_pack_count} print pages generated.')
     elif batch.status == 'PARTIAL':

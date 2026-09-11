@@ -117,7 +117,48 @@ def generate_receipt_pdf(payment):
     return buffer.getvalue()
 
 
-def send_receipt_notifications(payment, send_email=True, send_sms=True):
+def create_payment_in_app_notification(payment):
+    """Create the parent-facing in-app payment receipt notification exactly once."""
+    from communication.services import NotificationService
+    from communication.models import NotificationCategory, NotificationChannel
+
+    invoice = payment.invoice
+    student = invoice.student
+    parent = student.parent
+    if not parent:
+        return None
+
+    context = build_receipt_context(payment)
+    parent_name = parent.get_full_name() or 'Parent/Guardian'
+    student_name = student.user.get_full_name()
+    subject = f"Payment Receipt - {payment.receipt_number}"
+    message = (
+        f"Dear {parent_name},\n\n"
+        f"We confirm receipt of GH¢ {payment.amount:.2f} for {student_name} "
+        f"({student.admission_number}), paid via {payment.get_method_display()} on "
+        f"{payment.paid_at.strftime('%d %b %Y')}.\n\n"
+        f"Receipt No: {payment.receipt_number}\n"
+        f"Invoice: {invoice.invoice_number}\n"
+        f"Balance remaining: GH¢ {context['balance_due']:.2f}\n\n"
+        f"Thank you.\n{invoice.school.name}"
+    )
+
+    # Idempotent: payment receipt notifications must never duplicate.
+    from communication.models import NotificationLog
+    if NotificationLog.objects.filter(
+        recipient=parent, category=NotificationCategory.PAYMENT_RECEIPT,
+        reference_id=str(payment.id), reference_type='Payment'
+    ).exists():
+        return None
+
+    return NotificationService.trigger(
+        recipient=parent, category=NotificationCategory.PAYMENT_RECEIPT,
+        subject=subject, message=message, channel=NotificationChannel.IN_APP,
+        reference_id=str(payment.id), reference_type='Payment', school=invoice.school,
+    )
+
+
+def send_receipt_notifications(payment, send_email=True, send_sms=True, create_in_app=False):
     """
     Email the PDF receipt and/or text a confirmation to the student's
     parent/guardian. Best-effort -- logs and returns a status dict rather
@@ -207,27 +248,19 @@ def send_receipt_notifications(payment, send_email=True, send_sms=True):
     elif send_sms and not send_email and not recipient_phone:
         result['reason'] = "The parent/guardian on file has no phone number to send a receipt to."
 
-    # Log it centrally too (shows up in the in-app notification center),
-    # independent of whether the email/SMS above actually went out.
-    try:
-        NotificationService.trigger(
-            recipient=parent,
-            category=NotificationCategory.PAYMENT_RECEIPT,
-            subject=subject,
-            message=message,
-            channel=NotificationChannel.IN_APP,
-            reference_id=str(payment.id),
-            reference_type='Payment',
-            school=invoice.school,
-        )
-    except Exception as exc:
-        logger.error(f"Receipt: could not log in-app notification for payment {payment.id}: {exc}")
+    # Optional for resend flows. The payment-recording flow creates the
+    # in-app notification synchronously after the accounting transaction commits.
+    if create_in_app:
+        try:
+            create_payment_in_app_notification(payment)
+        except Exception as exc:
+            logger.error(f"Receipt: could not log in-app notification for payment {payment.id}: {exc}")
 
     return result
 
 
 def send_receipt_notifications_async(payment):
-    """Fire-and-forget version so the payment API response doesn't wait on email/SMS delivery."""
-    thread = threading.Thread(target=send_receipt_notifications, args=(payment,))
+    """Fire-and-forget email/SMS receipt delivery. In-app is handled synchronously."""
+    thread = threading.Thread(target=send_receipt_notifications, args=(payment,), kwargs={'create_in_app': False})
     thread.daemon = True
     thread.start()

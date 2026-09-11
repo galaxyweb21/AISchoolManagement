@@ -326,6 +326,10 @@ if CLOUDINARY_URL:
 # process in production. It is intentionally disabled by default on UAT/free
 # Render services so report cards cannot be published unexpectedly.
 CELERY_BEAT_SCHEDULE = {
+    'notify-overdue-fee-balances-daily': {
+        'task': 'finance.tasks.notify_overdue_fee_balances',
+        'schedule': 86400.0,
+    },
     'auto-release-due-report-cards-daily': {
         'task': 'ai_engine.tasks.auto_release_due_report_cards',
         'schedule': 86400.0,

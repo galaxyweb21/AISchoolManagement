@@ -282,8 +282,12 @@ def api_record_payment(request):
 
         # Only after commit: notifications cannot roll back accounting data.
         try:
-            from .services.receipts import send_receipt_notifications_async
-            for payment in payments: send_receipt_notifications_async(payment)
+            from .services.receipts import create_payment_in_app_notification, send_receipt_notifications_async
+            for payment in payments:
+                # In-app notification is created synchronously so it is available
+                # immediately in the bell/Notification Center. Email/SMS remain async.
+                create_payment_in_app_notification(payment)
+                send_receipt_notifications_async(payment)
         except Exception as exc:
             logger.exception('Payment saved but receipt notification queue failed: %s', exc)
 
@@ -308,9 +312,21 @@ def api_record_payment(request):
 # PAYMENT RECEIPTS
 # ============================================================================
 
+def _user_can_view_payment_receipt(user, payment):
+    """Finance users, the linked parent, or the student may view their receipt."""
+    if user_can_manage_finance(user):
+        return True
+    student = payment.invoice.student
+    if getattr(student, 'parent_id', None) == user.id:
+        return True
+    if getattr(student, 'user_id', None) == user.id:
+        return True
+    return False
+
+
 @login_required
 def payment_receipt_view(request, payment_id):
-    """Printable/viewable HTML payment receipt, with Print / Download PDF / Resend actions."""
+    """Printable/viewable HTML payment receipt for finance users and the related family."""
     school = request.user.school
     payment = get_object_or_404(
         Payment.objects.select_related(
@@ -321,10 +337,14 @@ def payment_receipt_view(request, payment_id):
         invoice__school=school,
     )
 
+    if not _user_can_view_payment_receipt(request.user, payment):
+        return HttpResponse('You do not have permission to view this receipt.', status=403)
+
     from .services.receipts import build_receipt_context
     context = build_receipt_context(payment)
     context['is_pdf'] = False
     context['can_manage'] = user_can_manage_finance(request.user)
+    context['can_view_receipt'] = True
 
     return render(request, 'finance/receipt.html', context)
 
@@ -334,10 +354,13 @@ def payment_receipt_pdf(request, payment_id):
     """Download (or view inline with ?inline=1) the payment receipt as a PDF."""
     school = request.user.school
     payment = get_object_or_404(
-        Payment.objects.select_related('invoice', 'invoice__student__user', 'invoice__school'),
+        Payment.objects.select_related('invoice', 'invoice__student__user', 'invoice__student__parent', 'invoice__school'),
         id=payment_id,
         invoice__school=school,
     )
+
+    if not _user_can_view_payment_receipt(request.user, payment):
+        return HttpResponse('You do not have permission to download this receipt.', status=403)
 
     from .services.receipts import generate_receipt_pdf
     pdf_bytes = generate_receipt_pdf(payment)

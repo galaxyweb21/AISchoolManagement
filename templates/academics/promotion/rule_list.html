@@ -319,6 +319,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchEmptyState = document.getElementById('searchEmptyState');
 
     function filterRules() {
+        if (!searchInput) return;
         const query = searchInput.value.toLowerCase().trim();
         let visibleCount = 0;
 
@@ -361,30 +362,36 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(filterRules, 200);
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(filterRules, 200);
+        });
 
-    clearSearchBtn.addEventListener('click', function() {
-        searchInput.value = '';
-        filterRules();
-        searchInput.focus();
-    });
-
-    searchInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            clearSearchBtn.click();
+        if (clearSearchBtn) {
+            clearSearchBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                filterRules();
+                searchInput.focus();
+            });
         }
-    });
+
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && clearSearchBtn) {
+                clearSearchBtn.click();
+            }
+        });
+    }
 
     // Keyboard shortcut: Ctrl+F to focus search
     document.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
             if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
-                e.preventDefault();
-                searchInput.focus();
-                searchInput.select();
+                if (searchInput) {
+                    e.preventDefault();
+                    searchInput.focus();
+                    searchInput.select();
+                }
             }
         }
     });
@@ -393,6 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // RULE MODAL
     // ============================================================
     const ruleModal = document.getElementById('ruleModal');
+    if (!ruleModal) return;
     const ruleContent = ruleModal.querySelector('.modal-body');
 
     function getCSRFToken() {
@@ -402,8 +410,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     ruleModal.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
+        if (!button) return;
         const action = button.getAttribute('data-action');
         const url = button.getAttribute('data-url');
+        if (!url) {
+            ruleContent.innerHTML = '<div class=\"p-4\"><div class=\"alert alert-danger\">Unable to load the promotion rule form.</div></div>';
+            return;
+        }
 
         ruleContent.innerHTML = `
             <div class="text-center py-5">
@@ -523,7 +536,58 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     deleteBtn.addEventListener('click', function() {
-        deleteForm.submit();
+        const url = deleteForm.action;
+        if (!url) {
+            return;
+        }
+
+        const originalText = deleteBtn.innerHTML;
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(async response => {
+            const contentType = response.headers.get('content-type') || '';
+            const data = contentType.includes('application/json')
+                ? await response.json()
+                : { success: false, error: await response.text() };
+
+            if (!response.ok) {
+                throw new Error(data.error || data.message || `Delete failed (${response.status}).`);
+            }
+            return data;
+        })
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.error || data.message || 'Unable to delete the promotion rule.');
+            }
+
+            const modalInstance = bootstrap.Modal.getInstance(deleteModal);
+            if (modalInstance) modalInstance.hide();
+            window.location.reload();
+        })
+        .catch(err => {
+            console.error('Promotion rule delete error:', err);
+            const content = document.getElementById('deleteConfirmContent');
+            if (content) {
+                const existing = content.querySelector('.alert-danger');
+                if (existing) existing.remove();
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger border-0 rounded-4 mt-3';
+                alert.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i>' + (err.message || 'Unable to delete the promotion rule.');
+                content.appendChild(alert);
+            }
+            deleteBtn.innerHTML = originalText;
+            deleteBtn.disabled = false;
+        });
     });
 
     // Auto-dismiss messages

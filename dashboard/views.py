@@ -112,7 +112,11 @@ def get_admin_dashboard_context(school):
 
     total_marked = attendance["total"] or 0
     present = attendance["present"] or 0
-    attendance_rate = round((present / total_marked) * 100, 1) if total_marked else 100
+    enrolled_students = Student.objects.filter(school=school, is_active=True).count()
+    # Daily attendance is present students divided by active enrolled students.
+    # Using only marked records can incorrectly show 100% when just a few students
+    # have been marked. A day with no records is 0%, not 100%.
+    attendance_rate = round((present / enrolled_students) * 100, 1) if enrolled_students else 0
 
     # Attendance Trend (Last 5 Days)
     attendance_labels = []
@@ -124,9 +128,8 @@ def get_admin_dashboard_context(school):
             total=Count("id"),
             present=Count("id", filter=Q(status="PRESENT")),
         )
-        d_total = daily_att["total"] or 0
         d_present = daily_att["present"] or 0
-        daily_rate = round((d_present / d_total) * 100, 1) if d_total > 0 else 0
+        daily_rate = round((d_present / enrolled_students) * 100, 1) if enrolled_students else 0
         attendance_data.append(daily_rate)
 
     # Finance Chart Data
@@ -401,7 +404,8 @@ def get_secretary_dashboard_context(school):
     )
     total_marked = attendance["total"] or 0
     total_present = attendance["present"] or 0
-    attendance_rate = round((total_present / total_marked) * 100, 1) if total_marked else 0
+    enrolled_students = Student.objects.filter(school=school, is_active=True).count()
+    attendance_rate = round((total_present / enrolled_students) * 100, 1) if enrolled_students else 0
 
     outstanding_invoices = Invoice.objects.filter(school=school, status__in=['UNPAID', 'PARTIAL']).count()
     total_books = Book.objects.filter(school=school).count()

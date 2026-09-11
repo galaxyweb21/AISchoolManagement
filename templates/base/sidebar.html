@@ -952,6 +952,9 @@
                 <i class="bi bi-chat-left-text"></i><span class="eduai-label">Announcements</span>
                 <span class="eduai-badge eduai-badge-ai">Broadcast</span>
             </a></li>
+            <li><a href="{% url 'communication:notification_center' %}" class="nav-link {% if request.resolver_match.url_name == 'notification_center' %}active{% endif %}">
+                <i class="bi bi-bell"></i><span class="eduai-label">Notification Center</span>
+            </a></li>
             <li><a href="{% url 'communication:notification_preferences' %}" class="nav-link {% if request.resolver_match.url_name == 'notification_preferences' %}active{% endif %}">
                 <i class="bi bi-bell-slash"></i><span class="eduai-label">Notification Preferences</span>
             </a></li>

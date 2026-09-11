@@ -1,6 +1,7 @@
 from core.pagination import paginate_queryset
 # communication/views.py
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
@@ -11,7 +12,7 @@ from django.db.models import Q
 from django.utils import timezone
 import json
 
-from .models import Announcement, NotificationLog, NotificationStatus, UserNotificationPreference
+from .models import Announcement, NotificationLog, NotificationStatus, UserNotificationPreference, NotificationCategory
 from .services import NotificationService, AnnouncementService
 
 
@@ -156,21 +157,106 @@ def announcement_toggle_archive(request, announcement_id):
 @login_required
 @require_GET
 def notification_list(request):
-    """Get user's notifications (AJAX)."""
-    notifications = NotificationLog.objects.filter(
-        recipient=request.user
-    ).order_by('-created_at')[:50]
+    """Return the current user's latest notifications for the navbar dropdown."""
+    notifications = (
+        NotificationLog.objects
+        .filter(recipient=request.user)
+        .select_related('sender')
+        .order_by('-created_at')[:50]
+    )
+
+    unread_count = NotificationLog.objects.filter(
+        recipient=request.user,
+        status=NotificationStatus.DELIVERED,
+    ).count()
 
     data = [{
         'id': str(n.id),
         'subject': n.subject,
         'message': n.message[:200],
         'category': n.get_category_display(),
-        'created_at': n.created_at.strftime('%b %d, %Y %H:%M'),
-        'is_read': n.status == NotificationStatus.READ
+        'category_code': n.category,
+        'created_at': n.created_at.isoformat(),
+        'is_read': n.status == NotificationStatus.READ,
+        'status': n.status,
+        'reference_id': n.reference_id,
+        'reference_type': n.reference_type,
     } for n in notifications]
 
-    return JsonResponse({'success': True, 'notifications': data})
+    return JsonResponse({
+        'success': True,
+        'notifications': data,
+        'unread_count': unread_count,
+    })
+
+
+@login_required
+@require_GET
+def notification_center(request):
+    """Full notification center for the authenticated user's notifications."""
+    notifications = NotificationLog.objects.filter(
+        recipient=request.user
+    ).select_related('sender')
+
+    search = (request.GET.get('search') or '').strip()
+    category = (request.GET.get('category') or '').strip()
+    status = (request.GET.get('status') or '').strip().upper()
+
+    if search:
+        notifications = notifications.filter(
+            Q(subject__icontains=search) |
+            Q(message__icontains=search) |
+            Q(category__icontains=search)
+        )
+
+    valid_categories = {value for value, _label in NotificationCategory.choices}
+    if category in valid_categories:
+        notifications = notifications.filter(category=category)
+    else:
+        category = ''
+
+    if status == 'UNREAD':
+        notifications = notifications.filter(status=NotificationStatus.DELIVERED)
+    elif status == 'READ':
+        notifications = notifications.filter(status=NotificationStatus.READ)
+    else:
+        status = ''
+
+    total_count = NotificationLog.objects.filter(recipient=request.user).count()
+    unread_count = NotificationLog.objects.filter(
+        recipient=request.user, status=NotificationStatus.DELIVERED
+    ).count()
+    read_count = NotificationLog.objects.filter(
+        recipient=request.user, status=NotificationStatus.READ
+    ).count()
+
+    page_obj = paginate_queryset(notifications.order_by('-created_at'), request)
+
+    for notification in page_obj.object_list:
+        notification.action_url = None
+        if notification.category == NotificationCategory.PAYMENT_RECEIPT and notification.reference_id:
+            try:
+                notification.action_url = reverse('finance:payment_receipt', args=[notification.reference_id])
+            except Exception:
+                notification.action_url = None
+        elif notification.category == NotificationCategory.GRADE_RELEASE and notification.reference_id:
+            try:
+                notification.action_url = reverse('ai_engine:report_card_detail', args=[notification.reference_id])
+            except Exception:
+                notification.action_url = None
+
+    context = {
+        'notifications': page_obj,
+        'total_count': total_count,
+        'unread_count': unread_count,
+        'read_count': read_count,
+        'category_choices': NotificationCategory.choices,
+        'selected_category': category,
+        'selected_status': status,
+        'search': search,
+        'active_tab': 'communication',
+    }
+    return render(request, 'communication/notification_center.html', context)
 
 
 @login_required

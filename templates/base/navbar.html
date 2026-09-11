@@ -191,7 +191,7 @@
                         <button class="btn btn-sm btn-link p-0 text-decoration-none" id="markAllReadBtn" style="font-size:0.7rem;">
                             Mark all read
                         </button>
-                        <a href="{% url 'communication:inbox' %}" class="btn btn-sm btn-link p-0 text-decoration-none" style="font-size:0.7rem;">
+                        <a href="{% url 'communication:notification_center' %}" class="btn btn-sm btn-link p-0 text-decoration-none" style="font-size:0.7rem;">
                             View all
                         </a>
                     </div>
@@ -309,6 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                window._notificationUnreadCount = Number(data.unread_count || 0);
                 renderNotifications(data.notifications);
                 updateBadge(data.notifications);
             }
@@ -359,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (notifications.length > 15) {
             html += `
                 <li class="text-center py-2">
-                    <a href="{% url 'communication:inbox' %}" class="text-decoration-none small">View all ${notifications.length} notifications</a>
+                    <a href="{% url 'communication:notification_center' %}" class="text-decoration-none small">View all ${notifications.length} notifications</a>
                 </li>
             `;
         }

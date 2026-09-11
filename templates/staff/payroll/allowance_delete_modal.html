@@ -1,0 +1,72 @@
+{% load static %}
+
+<style>
+    .allowance-delete-modal .icon-wrap {
+        width: 72px; height: 72px; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: rgba(220, 53, 69, .10);
+    }
+    .allowance-delete-modal .detail-card {
+        border: 1px solid var(--surface-border, #e5e7eb);
+        background: var(--surface-bg, #fff);
+        border-radius: 16px;
+    }
+</style>
+
+<div class="allowance-delete-modal">
+    <div class="modal-header border-0 pt-4 px-4 pb-0">
+        <div>
+            <div class="small text-danger fw-semibold text-uppercase">Payroll · Allowances</div>
+            <h5 class="modal-title fw-bold mb-0">Delete Allowance</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+
+    <form method="post" action="{% url action_url allowance.id %}" id="allowanceDeleteForm" class="delete-form">
+        {% csrf_token %}
+        <div class="modal-body p-4">
+            <div class="text-center mb-4">
+                <div class="icon-wrap mb-3"><i class="bi bi-trash3-fill fs-2 text-danger"></i></div>
+                <h5 class="fw-bold mb-1">Are you sure?</h5>
+                <p class="text-muted mb-0">This allowance definition will be permanently deleted.</p>
+            </div>
+
+            <div class="detail-card p-3 mb-3">
+                <div class="row g-3">
+                    <div class="col-sm-7">
+                        <small class="text-muted d-block">Allowance</small>
+                        <strong>{{ allowance.name }}</strong>
+                    </div>
+                    <div class="col-sm-5">
+                        <small class="text-muted d-block">Type</small>
+                        <strong>{{ allowance.get_allowance_type_display }}</strong>
+                    </div>
+                    <div class="col-sm-6">
+                        <small class="text-muted d-block">Amount</small>
+                        <strong>
+                            {% if allowance.is_percentage %}
+                                {{ allowance.amount|floatformat:2 }}% of basic salary
+                            {% else %}
+                                GH₵ {{ allowance.amount|floatformat:2 }}
+                            {% endif %}
+                        </strong>
+                    </div>
+                    <div class="col-sm-6">
+                        <small class="text-muted d-block">Status</small>
+                        {% if allowance.is_active %}<span class="badge bg-teal-soft text-teal">Active</span>{% else %}<span class="badge bg-secondary-subtle text-secondary">Inactive</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-danger border-0 rounded-4 mb-0">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Warning:</strong> Deleting this allowance removes its definition. Existing payroll records are not recalculated by this action.
+            </div>
+        </div>
+
+        <div class="modal-footer border-0 px-4 pb-4">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle me-1"></i>Cancel</button>
+            <button type="submit" class="btn btn-danger" id="allowanceDeleteBtn"><i class="bi bi-trash me-1"></i>Delete Allowance</button>
+        </div>
+    </form>
+</div>

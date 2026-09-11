@@ -38,9 +38,19 @@ def export_exam(request, exam_id, format='pdf'):
 def export_report_card(request, report_card_id, format='pdf'):
     """Export a report card to PDF or DOC format"""
     school = request.user.school
-    if not role_allows(request.user, 'reports', 'export'):
+    report_card = get_object_or_404(
+        ReportCard.objects.select_related('student__parent', 'student__user'),
+        id=report_card_id, school=school
+    )
+    staff_allowed = role_allows(request.user, 'reports', 'export')
+    linked_recipient = (
+        report_card.is_finalized and (
+            getattr(report_card.student, 'parent_id', None) == request.user.id
+            or getattr(report_card.student, 'user_id', None) == request.user.id
+        )
+    )
+    if not (staff_allowed or linked_recipient):
         return JsonResponse({'error': 'Permission denied.'}, status=403)
-    report_card = get_object_or_404(ReportCard, id=report_card_id, school=school)
 
     if format == 'pdf':
         return ExportService.export_report_card_to_pdf(report_card)

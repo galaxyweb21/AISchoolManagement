@@ -16,6 +16,7 @@ urlpatterns = [
 
     # Notifications
     path('notifications/', views.notification_list, name='notification_list'),
+    path('notification-center/', views.notification_center, name='notification_center'),
     path('notifications/<uuid:notification_id>/read/', views.notification_mark_read, name='notification_mark_read'),
     path('notifications/mark-all-read/', views.notification_mark_all_read, name='notification_mark_all_read'),
     path('preferences/', views.notification_preferences, name='notification_preferences'),
