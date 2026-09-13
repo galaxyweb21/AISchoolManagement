@@ -398,6 +398,8 @@
     </div>
 </div>
 
+{% include "partials/pagination.html" with page_obj=staff_members %}
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // ============================================================
@@ -680,6 +682,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-{% include "partials/pagination.html" with page_obj=deductions %}
 
 {% endblock %}

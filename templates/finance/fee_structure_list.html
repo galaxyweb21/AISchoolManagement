@@ -224,6 +224,7 @@
         </div>
     </div>
 </div>
+{% include "partials/pagination.html" with page_obj=structures %}
 
 {% endblock %}
 
@@ -761,6 +762,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 </script>
-{% include "partials/pagination.html" with page_obj=structures %}
 
 {% endblock %}

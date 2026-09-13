@@ -190,6 +190,7 @@
     </div>
 </div>
 
+
 <!-- Generate Invoice Modal -->
 <div class="modal fade" id="generateInvoiceModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -315,6 +316,11 @@
         </div>
     </div>
 </div>
+
+
+{% include "partials/pagination.html" with page_obj=invoices %}
+
+{% endblock %}
 
 {% block extra_js %}
 <script>
@@ -641,6 +647,5 @@ document.addEventListener('keydown', function(e) {
     }
 });
 </script>
-{% include "partials/pagination.html" with page_obj=invoices %}
 
 {% endblock %}
