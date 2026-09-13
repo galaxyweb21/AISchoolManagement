@@ -8,7 +8,8 @@
     const state = {
         messages: [],
         isProcessing: false,
-        modalInstances: new Map()
+        modalInstances: new Map(),
+        shownMessages: new Set()
     };
 
     // ============================================================
@@ -28,6 +29,10 @@
     }
 
     function showToast(message, type = 'success', duration = 4000) {
+        message = String(message || '').replace(/\s+/g, ' ').trim();
+        if (!message || state.shownMessages.has(message)) return;
+        state.shownMessages.add(message);
+        setTimeout(() => state.shownMessages.delete(message), duration + 500);
         const container = createToastContainer();
         const toastId = 'toast-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4);
 

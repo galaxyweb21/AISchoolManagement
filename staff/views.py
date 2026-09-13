@@ -2699,10 +2699,7 @@ def salary_structure_create(request):
     # ---------------------------------------------------------
 
     staff_id = (
-        request.POST.get(
-            "staff",
-            "",
-        )
+        request.POST.get("staff") or request.POST.get("staff_member") or request.POST.get("employee") or ""
             .strip()
     )
 
@@ -2790,11 +2787,12 @@ def salary_structure_create(request):
     # for classification.
     # ---------------------------------------------------------
 
-    grade = getattr(
-        staff,
-        "staff_grade",
-        None,
-    )
+    grade_id = request.POST.get("staff_grade", "").strip()
+    grade = None
+    if grade_id:
+        grade = get_object_or_404(StaffGrade, pk=grade_id, school=school, is_active=True)
+    else:
+        grade = getattr(staff, "staff_grade", None)
 
     # ---------------------------------------------------------
     # CREATE
@@ -2960,13 +2958,13 @@ def salary_structure_edit(
     # POST
     # ---------------------------------------------------------
 
-    staff_id = (
-        request.POST.get(
-            "staff",
-            "",
-        )
-            .strip()
-    )
+    staff_id = request.POST.get("staff", "").strip()
+    if not staff_id:
+        return JsonResponse({"success": False, "error": "Please select a staff member."}, status=400)
+    staff = get_object_or_404(StaffProfile, pk=staff_id, school=school, is_active=True)
+
+    grade_id = request.POST.get("staff_grade", "").strip()
+    grade = get_object_or_404(StaffGrade, pk=grade_id, school=school, is_active=True) if grade_id else getattr(staff, "staff_grade", None)
 
     basic_salary = (
         request.POST.get(
@@ -3056,10 +3054,10 @@ def salary_structure_edit(
     # STAFF GRADE
     # ---------------------------------------------------------
 
-    grade = getattr(
-        staff,
-        "staff_grade",
-        None,
+    grade_id = request.POST.get("staff_grade", "").strip()
+    grade = (
+        get_object_or_404(StaffGrade, pk=grade_id, school=school, is_active=True)
+        if grade_id else getattr(staff, "staff_grade", None)
     )
 
     # ---------------------------------------------------------
@@ -3289,6 +3287,215 @@ def allowance_delete(request, allowance_id):
 
     allowance.delete()
     return JsonResponse({'success': True, 'message': "Allowance deleted successfully."})
+
+
+
+# ==========================================================
+# GRADE-BASED ALLOWANCE VIEWS
+# ==========================================================
+
+@login_required
+def grade_allowance_list(request):
+    if request.user.role not in ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'BURSAR']:
+        messages.error(request, "You don't have permission to view grade allowances.")
+        return redirect('dashboard:dashboard')
+
+    school = request.user.school
+
+    # ---------------------------------------------------------
+    # GRADES
+    # ---------------------------------------------------------
+    grades = list(
+        StaffGrade.objects.filter(school=school).order_by('level', 'name')
+    )
+
+    # ---------------------------------------------------------
+    # GRADE ALLOWANCES
+    # ---------------------------------------------------------
+    grade_allowances = list(
+        GradeAllowance.objects.filter(school=school)
+        .select_related('staff_grade', 'allowance')
+        .order_by('staff_grade__level', 'allowance__name')
+    )
+
+    # ---------------------------------------------------------
+    # GROUP BY GRADE
+    # ---------------------------------------------------------
+    grade_allowance_map = {}
+    for item in grade_allowances:
+        grade_allowance_map.setdefault(item.staff_grade_id, []).append(item)
+
+    # ---------------------------------------------------------
+    # TOTALS PER GRADE
+    #
+    # Each staff member assigned to a grade receives the FULL
+    # sum of that grade's active allowances. The total is NOT
+    # divided across the number of staff in the grade.
+    #
+    # Two buckets are tracked:
+    #
+    #   fixed_total   : sum of all active non-percentage (GH₵)
+    #                   allowances — this is the amount every
+    #                   staff on this grade receives in cash.
+    #
+    #   percent_items : list of active percentage allowances,
+    #                   each applied against the individual
+    #                   staff's basic salary at payroll time.
+    #                   They cannot be summed into a single
+    #                   GH₵ figure because each staff's basic
+    #                   salary may differ.
+    # ---------------------------------------------------------
+    grade_totals = {}
+
+    for grade in grades:
+
+        fixed_total = Decimal('0.00')
+        percent_items = []
+
+        for ga in grade_allowance_map.get(grade.id, []):
+
+            if not ga.is_active:
+                continue
+
+            if ga.is_percentage:
+                percent_items.append(ga)
+            else:
+                fixed_total += (
+                    ga.get_effective_amount()
+                    or Decimal('0.00')
+                )
+
+        grade_totals[grade.id] = {
+            'fixed_total': fixed_total,
+            'percent_items': percent_items,
+            'percent_count': len(percent_items),
+            'staff_count': grade.staff_members.count(),
+        }
+
+    return render(request, 'staff/payroll/grade_allowance_list.html', {
+        'grades': grades,
+        'grade_allowances': grade_allowances,
+        'grade_allowance_map': grade_allowance_map,
+        'grade_totals': grade_totals,
+        'active_tab': 'payroll',
+    })
+
+
+@login_required
+def grade_allowance_create(request):
+    if request.user.role not in ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'BURSAR']:
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+
+    school = request.user.school
+    if request.method == 'GET':
+        return render(request, 'staff/payroll/grade_allowance_form_modal.html', {
+            'mode': 'create',
+            'grades': StaffGrade.objects.filter(school=school, is_active=True).order_by('level', 'name'),
+            'allowances': Allowance.objects.filter(school=school, is_active=True).order_by('name'),
+            'prefill_grade': request.GET.get('prefill_grade', ''),
+            'action_url': 'staff:grade_allowance_create',
+        })
+
+    grade_id = request.POST.get('staff_grade', '').strip()
+    allowance_id = request.POST.get('allowance', '').strip()
+    amount = request.POST.get('amount', '').strip()
+    is_percentage = request.POST.get('is_percentage') == 'on'
+    is_active = request.POST.get('is_active') == 'on'
+
+    if not grade_id:
+        return JsonResponse({'success': False, 'error': 'Please select a staff grade.'}, status=400)
+    if not allowance_id:
+        return JsonResponse({'success': False, 'error': 'Please select an allowance.'}, status=400)
+
+    grade = get_object_or_404(StaffGrade, pk=grade_id, school=school, is_active=True)
+    allowance = get_object_or_404(Allowance, pk=allowance_id, school=school, is_active=True)
+
+    if GradeAllowance.objects.filter(school=school, staff_grade=grade, allowance=allowance).exists():
+        return JsonResponse({'success': False, 'error': 'This allowance is already assigned to the selected grade.'}, status=400)
+
+    try:
+        item = GradeAllowance.objects.create(
+            school=school,
+            staff_grade=grade,
+            allowance=allowance,
+            amount=Decimal(amount) if amount else None,
+            is_percentage=is_percentage,
+            is_active=is_active,
+        )
+        return JsonResponse({'success': True, 'message': 'Grade allowance created successfully.', 'id': str(item.pk)})
+    except Exception as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+
+
+@login_required
+def grade_allowance_edit(request, grade_allowance_id):
+    if request.user.role not in ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'BURSAR']:
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+
+    school = request.user.school
+    item = get_object_or_404(
+        GradeAllowance.objects.select_related('staff_grade', 'allowance'),
+        pk=grade_allowance_id, school=school
+    )
+
+    if request.method == 'GET':
+        return render(request, 'staff/payroll/grade_allowance_form_modal.html', {
+            'mode': 'edit',
+            'grade_allowance': item,
+            'grades': StaffGrade.objects.filter(school=school, is_active=True).order_by('level', 'name'),
+            'allowances': Allowance.objects.filter(school=school, is_active=True).order_by('name'),
+            'action_url': 'staff:grade_allowance_edit',
+        })
+
+    grade_id = request.POST.get('staff_grade', '').strip()
+    allowance_id = request.POST.get('allowance', '').strip()
+    amount = request.POST.get('amount', '').strip()
+    is_percentage = request.POST.get('is_percentage') == 'on'
+    is_active = request.POST.get('is_active') == 'on'
+
+    if not grade_id or not allowance_id:
+        return JsonResponse({'success': False, 'error': 'Staff grade and allowance are required.'}, status=400)
+
+    grade = get_object_or_404(StaffGrade, pk=grade_id, school=school, is_active=True)
+    allowance = get_object_or_404(Allowance, pk=allowance_id, school=school, is_active=True)
+    duplicate = GradeAllowance.objects.filter(
+        school=school, staff_grade=grade, allowance=allowance
+    ).exclude(pk=item.pk).exists()
+    if duplicate:
+        return JsonResponse({'success': False, 'error': 'This allowance is already assigned to the selected grade.'}, status=400)
+
+    try:
+        item.staff_grade = grade
+        item.allowance = allowance
+        item.amount = Decimal(amount) if amount else None
+        item.is_percentage = is_percentage
+        item.is_active = is_active
+        item.full_clean()
+        item.save()
+        return JsonResponse({'success': True, 'message': 'Grade allowance updated successfully.'})
+    except Exception as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+
+
+@login_required
+def grade_allowance_delete(request, grade_allowance_id):
+    if request.user.role not in ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'BURSAR']:
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+
+    school = request.user.school
+    item = get_object_or_404(
+        GradeAllowance.objects.select_related('staff_grade', 'allowance'),
+        pk=grade_allowance_id, school=school
+    )
+
+    if request.method == 'GET':
+        return render(request, 'staff/payroll/grade_allowance_delete_modal.html', {
+            'grade_allowance': item,
+            'action_url': 'staff:grade_allowance_delete',
+        })
+
+    item.delete()
+    return JsonResponse({'success': True, 'message': 'Grade allowance deleted successfully.'})
 
 
 # ==========================================================

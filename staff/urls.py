@@ -131,6 +131,14 @@ urlpatterns = [
 
 
     # ==========================================================
+    # GRADE-BASED ALLOWANCES
+    # ==========================================================
+    path('grade-allowances/', views.grade_allowance_list, name='grade_allowance_list'),
+    path('grade-allowances/create/', views.grade_allowance_create, name='grade_allowance_create'),
+    path('grade-allowances/<uuid:grade_allowance_id>/edit/', views.grade_allowance_edit, name='grade_allowance_edit'),
+    path('grade-allowances/<uuid:grade_allowance_id>/delete/', views.grade_allowance_delete, name='grade_allowance_delete'),
+
+    # ==========================================================
     # DEDUCTIONS
     # ==========================================================
     path('deductions/', views.deduction_list, name='deduction_list'),

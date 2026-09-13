@@ -165,8 +165,13 @@ def notification_list(request):
     # Notification Center. This is idempotent and only creates missing alerts.
     if getattr(request.user, 'role', None) in ['PARENT', 'STUDENT']:
         try:
-            from attendance.services.notifications import sync_absence_notifications_for_user
-            sync_absence_notifications_for_user(request.user)
+            from attendance.services.notifications import cleanup_invalid_attendance_notifications_for_user
+            cleanup_invalid_attendance_notifications_for_user(request.user)
+        except Exception:
+            logger.exception('Attendance notification cleanup failed for user %s', request.user.pk)
+        try:
+            from attendance.services.notifications import sync_attendance_notifications_for_user
+            sync_attendance_notifications_for_user(request.user)
         except Exception:
             logger.exception('Attendance notification bell sync failed for user %s', request.user.pk)
 
@@ -216,13 +221,23 @@ def notification_center(request):
         except Exception:
             logger.exception('Promotion notification sync failed for user %s', request.user.pk)
 
+    # Reconcile attendance alerts against the authoritative attendance record
+    # before loading the page. A PRESENT/LATE/EXCUSED record must never be
+    # represented by an old ABSENT notification.
+    if getattr(request.user, 'role', None) in ['PARENT', 'STUDENT']:
+        try:
+            from attendance.services.notifications import cleanup_invalid_attendance_notifications_for_user
+            cleanup_invalid_attendance_notifications_for_user(request.user)
+        except Exception:
+            logger.exception('Attendance notification cleanup failed for user %s', request.user.pk)
+
     # Backfill today's attendance alerts so parents/students also see absences
     # recorded before the notification hook or through face/live capture.
     # The sync intentionally ignores historical attendance records.
     if getattr(request.user, 'role', None) in ['PARENT', 'STUDENT']:
         try:
-            from attendance.services.notifications import sync_absence_notifications_for_user
-            sync_absence_notifications_for_user(request.user)
+            from attendance.services.notifications import sync_attendance_notifications_for_user
+            sync_attendance_notifications_for_user(request.user)
         except Exception:
             logger.exception('Attendance notification sync failed for user %s', request.user.pk)
 

@@ -732,20 +732,18 @@ def api_toggle_attendance(request):
         )
     )
 
-    # Phase 1E: notify linked parent/student when the student is marked absent.
-    # This is deliberately after the existing attendance save so notification
-    # failures can never prevent attendance from being recorded.
-    if attendance.status == "ABSENT":
-        try:
-            from .services.notifications import notify_absence
-            notify_absence(attendance)
-        except Exception:
-            # Notification failures must never break the attendance workflow.
-            import logging
-            logging.getLogger(__name__).exception(
-                "Attendance absence notification failed for %s",
-                attendance.id,
-            )
+    # Phase 1E: keep the notification synchronized with the saved status.
+    # Notification failures must never break attendance marking.
+    try:
+        from .services.notifications import notify_attendance
+        notify_attendance(attendance)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception(
+            "Attendance notification hook failed for %s",
+            attendance.id,
+        )
+
 
     return JsonResponse(
         {

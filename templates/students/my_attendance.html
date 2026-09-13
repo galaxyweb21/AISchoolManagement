@@ -97,7 +97,7 @@
             </div>
             {% if records %}
             <div class="table-responsive">
-                <table class="table align-middle" id="attendanceTable">
+                <table class="table align-middle" id="attendanceTable" data-no-pagination="true">
                     <thead>
                         <tr class="text-muted small text-uppercase">
                             <th>Date</th>
@@ -128,6 +128,7 @@
             {% endif %}
         </div>
     </div>
+    {% include "partials/pagination.html" with page_obj=records %}
 </div>
 
 <style>
@@ -187,6 +188,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-{% include "partials/pagination.html" with page_obj=records %}
-
 {% endblock %}

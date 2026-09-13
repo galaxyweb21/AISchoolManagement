@@ -763,6 +763,18 @@ class FaceRecognitionService:
                     )
                 )
 
+                # Keep the notification state synchronized when facial
+                # recognition changes an earlier ABSENT record to PRESENT.
+                try:
+                    from attendance.services.notifications import notify_attendance
+                    notify_attendance(attendance)
+                except Exception:
+                    import logging
+                    logging.getLogger(__name__).exception(
+                        "Attendance notification cleanup failed for %s",
+                        attendance.id,
+                    )
+
                 full_name = (
                     student.user.get_full_name()
                     or student.user.username

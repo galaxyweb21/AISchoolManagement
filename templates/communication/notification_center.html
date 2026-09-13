@@ -35,6 +35,17 @@
         background: var(--surface-bg); color: var(--text-primary); border-color: var(--surface-border);
     }
     .empty-state { padding: 4rem 1rem; text-align: center; color: var(--text-muted); }
+    .notification-pagination {
+        margin-top: 1.25rem;
+        padding: .9rem 1rem;
+        border: 1px solid var(--surface-border);
+        border-radius: 16px;
+        background: var(--surface-bg);
+    }
+    .notification-pagination .enterprise-pagination { margin-top: 0 !important; }
+    .notification-pagination .btn { min-width: 40px; font-weight: 600; }
+    .notification-pagination .btn-primary { background: var(--eduai-gold); border-color: var(--eduai-gold); }
+    .notification-pagination .form-select { min-width: 120px; background: var(--surface-bg); color: var(--text-primary); border-color: var(--surface-border); }
     .empty-state .empty-icon { font-size: 3rem; color: var(--eduai-gold); }
     .btn-gold { background: var(--eduai-gold); border-color: var(--eduai-gold); color: #fff; }
     .btn-gold:hover { background: color-mix(in srgb, var(--eduai-gold) 88%, #000); border-color: color-mix(in srgb, var(--eduai-gold) 88%, #000); color: #fff; }
@@ -122,7 +133,7 @@
         {% for notification in notifications %}
         <div class="notification-row {% if notification.status == 'DELIVERED' %}unread{% endif %}" data-notification-id="{{ notification.id }}">
             <div class="d-flex gap-3 align-items-start">
-                <div class="notification-icon"><i class="bi {% if notification.category == 'OVERDUE_BALANCE' or notification.category == 'SYSTEM_ALERT' %}bi-exclamation-triangle{% elif notification.category == 'PAYMENT_RECEIPT' %}bi-receipt{% elif notification.category == 'GRADE_RELEASE' %}bi-award{% elif notification.category == 'PROMOTION_RESULT' %}bi-mortarboard{% elif notification.category == 'ATTENDANCE_ALERT' %}bi-person-check{% elif notification.category == 'ANNOUNCEMENT' %}bi-megaphone{% elif notification.category == 'LEAVE_APPROVAL' %}bi-calendar-check{% else %}bi-bell{% endif %}"></i></div>
+                <div class="notification-icon"><i class="bi {% if notification.category == 'OVERDUE_BALANCE' or notification.category == 'SYSTEM_ALERT' %}bi-exclamation-triangle{% elif notification.category == 'PAYMENT_RECEIPT' %}bi-receipt{% elif notification.category == 'GRADE_RELEASE' %}bi-award{% elif notification.category == 'PROMOTION_RESULT' %}bi-mortarboard{% elif notification.category == 'ATTENDANCE_ALERT' %}bi-calendar-check{% elif notification.category == 'ANNOUNCEMENT' %}bi-megaphone{% elif notification.category == 'LEAVE_APPROVAL' %}bi-calendar-check{% else %}bi-bell{% endif %}"></i></div>
                 <div class="flex-grow-1 min-w-0">
                     <div class="d-flex justify-content-between gap-3 align-items-start">
                         <div class="notification-title">{{ notification.subject }}</div>
@@ -142,7 +153,7 @@
                             {% elif notification.category == 'GRADE_RELEASE' %}
                             <i class="bi bi-award me-1"></i> View & Print Report Card
                             {% elif notification.category == 'ATTENDANCE_ALERT' %}
-                            <i class="bi bi-calendar-x me-1"></i> View Attendance
+                            <i class="bi bi-calendar-check me-1"></i> View Attendance
                             {% elif notification.category == 'PROMOTION_RESULT' %}
                             <i class="bi bi-mortarboard me-1"></i> View Promotion Result
                             {% else %}
@@ -166,17 +177,9 @@
         {% endfor %}
     </div>
 
-    {% if notifications.has_other_pages %}
-    <nav class="mt-4" aria-label="Notification pagination">
-        <ul class="pagination justify-content-center">
-            {% if notifications.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ notifications.previous_page_number }}&search={{ search|urlencode }}&category={{ selected_category|urlencode }}&status={{ selected_status|urlencode }}">Previous</a></li>{% endif %}
-            {% for num in notifications.paginator.page_range %}
-                {% if num == notifications.number %}<li class="page-item active"><span class="page-link">{{ num }}</span></li>{% elif num >= notifications.number|add:'-2' and num <= notifications.number|add:'2' %}<li class="page-item"><a class="page-link" href="?page={{ num }}&search={{ search|urlencode }}&category={{ selected_category|urlencode }}&status={{ selected_status|urlencode }}">{{ num }}</a></li>{% endif %}
-            {% endfor %}
-            {% if notifications.has_next %}<li class="page-item"><a class="page-link" href="?page={{ notifications.next_page_number }}&search={{ search|urlencode }}&category={{ selected_category|urlencode }}&status={{ selected_status|urlencode }}">Next</a></li>{% endif %}
-        </ul>
-    </nav>
-    {% endif %}
+    <div class="notification-pagination">
+        {% include "partials/pagination.html" with page_obj=notifications %}
+    </div>
 </div>
 
 <script>

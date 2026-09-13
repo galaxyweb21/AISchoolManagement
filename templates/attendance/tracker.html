@@ -488,6 +488,10 @@
                 <i class="bi bi-search d-block mb-2 fs-3"></i>
                 <p>No students match your search.</p>
             </div>
+            <div id="attendancePagination" class="attendance-pagination d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3" aria-label="Attendance pagination">
+                <small id="attendancePageInfo" class="text-muted"></small>
+                <div id="attendancePageControls" class="btn-group btn-group-sm" role="group" aria-label="Attendance pages"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -667,6 +671,12 @@
     </div>
 </div>
 
+
+<style>
+.attendance-pagination { width: 100%; padding: .75rem .9rem; border: 1px solid var(--surface-border); border-radius: 14px; background: var(--surface-bg); }
+.attendance-pagination .btn { min-width: 38px; font-weight: 600; }
+@media (max-width: 767.98px) { .attendance-pagination > * { width: 100%; text-align: center; justify-content: center; } .attendance-pagination .btn-group { width: 100%; } .attendance-pagination .btn { flex: 1 1 auto; } }
+</style>
 <script>
 // ============================================================
 // AUTO-FILTER FUNCTIONALITY
@@ -679,28 +689,68 @@ document.addEventListener('DOMContentLoaded', function() {
     const rows = document.querySelectorAll('#attendanceTableBody .attendance-row');
     const searchEmptyState = document.getElementById('searchEmptyState');
 
-    function filterAttendance() {
-        const query = searchInput.value.toLowerCase().trim();
-        let visibleCount = 0;
+    const PAGE_SIZE = 25;
+    let currentPage = 1;
+
+    function getFilteredRows() {
+        const query = (searchInput.value || '').toLowerCase().trim();
+        return Array.from(rows).filter(function(row) {
+            const searchableText = `${row.dataset.student || ''} ${row.dataset.admission || ''} ${row.dataset.class || ''}`;
+            return !query || searchableText.includes(query);
+        });
+    }
+
+    function renderAttendancePagination(filteredRows) {
+        const pageInfo = document.getElementById('attendancePageInfo');
+        const controls = document.getElementById('attendancePageControls');
+        if (!pageInfo || !controls) return;
+
+        const total = filteredRows.length;
+        const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        currentPage = Math.min(currentPage, pages);
+        const start = total ? (currentPage - 1) * PAGE_SIZE : 0;
+        const end = Math.min(start + PAGE_SIZE, total);
 
         rows.forEach(function(row) {
-            const name = row.dataset.student || '';
-            const admission = row.dataset.admission || '';
-            const className = row.dataset.class || '';
-
-            const searchableText = `${name} ${admission} ${className}`;
-
-            if (query === '' || searchableText.includes(query)) {
-                row.classList.remove('hidden-row');
-                row.classList.add('visible-row');
-                visibleCount++;
-            } else {
-                row.classList.add('hidden-row');
-                row.classList.remove('visible-row');
-            }
+            row.classList.remove('visible-row');
+            row.classList.add('hidden-row');
+        });
+        filteredRows.slice(start, end).forEach(function(row) {
+            row.classList.remove('hidden-row');
+            row.classList.add('visible-row');
         });
 
+        pageInfo.textContent = total ? `Showing ${start + 1}–${end} of ${total} students` : 'No students found';
+        controls.innerHTML = '';
+
+        function addButton(label, target, disabled, active) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn ' + (active ? 'btn-primary' : 'btn-outline-secondary');
+            btn.textContent = label;
+            btn.disabled = disabled;
+            btn.addEventListener('click', function() { currentPage = target; renderAttendancePagination(getFilteredRows()); });
+            controls.appendChild(btn);
+        }
+
+        if (pages > 1) {
+            addButton('«', 1, currentPage === 1, false);
+            addButton('‹', Math.max(1, currentPage - 1), currentPage === 1, false);
+            for (let i = Math.max(1, currentPage - 2); i <= Math.min(pages, currentPage + 2); i++) {
+                addButton(String(i), i, false, i === currentPage);
+            }
+            addButton('›', Math.min(pages, currentPage + 1), currentPage === pages, false);
+            addButton('»', pages, currentPage === pages, false);
+        }
+    }
+
+    function filterAttendance() {
+        const query = searchInput.value.toLowerCase().trim();
+        const filteredRows = getFilteredRows();
         const total = rows.length;
+        const visibleCount = filteredRows.length;
+        currentPage = 1;
+
         if (query === '') {
             searchResultCount.textContent = `Showing all ${total} students`;
             clearSearchBtn.style.display = 'none';
@@ -712,20 +762,11 @@ document.addEventListener('DOMContentLoaded', function() {
             filterBadge.classList.add('show');
             filterBadge.classList.add('filter-active');
             setTimeout(() => filterBadge.classList.remove('filter-active'), 1500);
-
-            if (visibleCount === 0) {
-                if (searchEmptyState) searchEmptyState.style.display = '';
-            } else {
-                if (searchEmptyState) searchEmptyState.style.display = 'none';
-            }
+            if (searchEmptyState) searchEmptyState.style.display = visibleCount === 0 ? '' : 'none';
         }
-    }
 
-    let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(filterAttendance, 200);
-    });
+        renderAttendancePagination(filteredRows);
+    }
 
     clearSearchBtn.addEventListener('click', function() {
         searchInput.value = '';
@@ -757,6 +798,8 @@ document.addEventListener('DOMContentLoaded', function() {
             bsAlert.close();
         }, 5000);
     });
+
+    renderAttendancePagination(getFilteredRows());
 });
 </script>
 

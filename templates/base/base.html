@@ -351,7 +351,91 @@
     {% block content %}
     {% endblock %}
 </div>
+
+<style>
+/* Enterprise responsive foundation */
+#content-wrapper { min-width: 0; }
+#mainContent { min-width: 0; flex: 1 0 auto; }
+.table-responsive { -webkit-overflow-scrolling: touch; }
+.card, .modal-content { max-width: 100%; }
+.form-control, .form-select { min-width: 0; }
+.btn { white-space: normal; }
+.enterprise-pagination { width: 100%; }
+@media (max-width: 767.98px) {
+  #mainContent { padding: .85rem !important; }
+  .container-fluid { padding-left: .25rem !important; padding-right: .25rem !important; }
+  .card-body { padding: 1rem !important; }
+  .modal-dialog { margin: .5rem; }
+  .modal-body { max-height: 75vh; overflow-y: auto; }
+  .table { font-size: .84rem; }
+  .table th, .table td { white-space: nowrap; }
+  .enterprise-pagination { align-items: stretch !important; }
+  .enterprise-pagination > div { width: 100%; justify-content: center; }
+  .enterprise-pagination .btn-group { width: 100%; }
+  .enterprise-pagination .btn-group .btn { flex: 1 1 auto; }
+  .enterprise-pagination form { width: 100%; }
+  .enterprise-pagination select { width: 100%; }
+  .d-flex > .form-control[style*="max-width"] { max-width: 100% !important; width: 100%; }
+}
+</style>
+<footer class="eduai-global-footer">
+    <div class="eduai-footer-inner">
+        <div>
+            <strong>EduAI School Management System</strong>
+            <span class="footer-separator">•</span>
+            <span>Smart school management for Ghana</span>
+        </div>
+        <div class="eduai-footer-meta">
+            © {% now "Y" %} EduAI · All rights reserved
+        </div>
     </div>
+</footer>
+
+<style>
+.eduai-global-footer {
+    width: 100%;
+    flex: 0 0 auto;
+    margin-top: auto;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--surface-border);
+    background: var(--surface-bg);
+    color: var(--text-muted);
+    font-size: .82rem;
+    box-sizing: border-box;
+}
+.eduai-footer-inner {
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    flex-wrap: wrap;
+    box-sizing: border-box;
+}
+.eduai-global-footer strong { color: var(--text-primary); }
+.footer-separator { margin: 0 .35rem; color: var(--eduai-gold); }
+.eduai-footer-meta { white-space: nowrap; }
+@media (max-width: 767.98px) {
+    .eduai-global-footer { padding: .9rem 1rem; text-align: center; }
+    .eduai-footer-inner { justify-content: center; }
+    .eduai-footer-meta { white-space: normal; }
+}
+</style>
+
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const seen = new Set();
+  document.querySelectorAll('#mainContent > .alert[data-auto-dismiss]').forEach(function(el){
+    const text=(el.textContent||'').replace(/\s+/g,' ').trim();
+    if(seen.has(text)){ el.remove(); } else { seen.add(text); setTimeout(()=>{ if(el && el.parentNode){ el.remove(); } }, 7000); }
+  });
+});
+</script>
 
     <!-- === SCRIPTS === -->
     {% include "base/js.html" %}
@@ -381,13 +465,12 @@
 
     {% block extra_js %}{% endblock %}
 
-    <!-- Global table pagination: every table with more than 25 body rows gets
-         a lightweight local paginator. Server-paginated tables remain untouched. -->
+    <!-- Client-side table pagination is opt-in only. Server-side pagination is the default. -->
     <script>
     (function(){
       const PAGE=25;
       function initTable(table){
-        if(!table || table.dataset.paginationInitialized==='1' || table.dataset.noPagination==='true') return;
+        if(!table || table.dataset.paginationInitialized==='1' || table.dataset.noPagination==='true' || table.dataset.clientPagination!=='true') return;
         const tbody=table.tBodies && table.tBodies[0]; if(!tbody) return;
         const rows=Array.from(tbody.rows).filter(r=>!r.dataset.paginationPlaceholder);
         if(rows.length<=PAGE) return;
@@ -398,25 +481,12 @@
         const controls=document.createElement('div'); controls.className='btn-group btn-group-sm';
         nav.append(info,controls); wrapper.parentNode.insertBefore(nav,wrapper.nextSibling);
         let page=1, pages=Math.ceil(rows.length/PAGE);
-        function render(){
-          const start=(page-1)*PAGE,end=Math.min(start+PAGE,rows.length);
-          rows.forEach((r,i)=>r.style.display=(i>=start&&i<end)?'':'none');
-          info.textContent='Showing '+(start+1)+'–'+end+' of '+rows.length;
-          controls.innerHTML='';
-          [['«',1,page===1],['‹',page-1,page===1]].forEach(x=>add(x[0],x[1],x[2]));
-          const first=Math.max(1,page-2),last=Math.min(pages,page+2);
-          for(let i=first;i<=last;i++) add(String(i),i,false,i===page);
-          add('›',page+1,page===pages); add('»',pages,page===pages);
-        }
-        function add(text,target,disabled,active){
-          const b=document.createElement('button'); b.type='button'; b.className='btn '+(active?'btn-primary':'btn-outline-secondary'); b.textContent=text; b.disabled=disabled;
-          b.addEventListener('click',()=>{page=target;render();}); controls.appendChild(b);
-        }
+        function render(){ const start=(page-1)*PAGE,end=Math.min(start+PAGE,rows.length); rows.forEach((r,i)=>r.style.display=(i>=start&&i<end)?'':'none'); info.textContent='Showing '+(start+1)+'–'+end+' of '+rows.length; controls.innerHTML=''; add('«',1,page===1); add('‹',page-1,page===1); for(let i=Math.max(1,page-2);i<=Math.min(pages,page+2);i++) add(String(i),i,false,i===page); add('›',page+1,page===pages); add('»',pages,page===pages); }
+        function add(text,target,disabled,active){ const b=document.createElement('button'); b.type='button'; b.className='btn '+(active?'btn-primary':'btn-outline-secondary'); b.textContent=text; b.disabled=disabled; b.addEventListener('click',()=>{page=target;render();}); controls.appendChild(b); }
         render();
       }
-      function scan(){document.querySelectorAll('table').forEach(initTable);}
+      function scan(){document.querySelectorAll('table[data-client-pagination="true"]').forEach(initTable);}
       if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',scan); else scan();
-      new MutationObserver(()=>scan()).observe(document.body,{childList:true,subtree:true});
     })();
     </script>
 </body>

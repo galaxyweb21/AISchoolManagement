@@ -813,6 +813,33 @@ class Allowance(models.Model):
         return f"{self.name} ({self.amount})"
 
 
+class GradeAllowance(models.Model):
+    """Allowance policy assigned to a staff grade."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='grade_allowances')
+    staff_grade = models.ForeignKey(StaffGrade, on_delete=models.CASCADE, related_name='grade_allowances', help_text='The staff grade that receives this allowance')
+    allowance = models.ForeignKey(Allowance, on_delete=models.CASCADE, related_name='grade_allowances', help_text='The allowance to assign to this grade')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal('0.00'))], help_text='Custom amount for this grade (leave blank to use the default allowance amount)')
+    is_percentage = models.BooleanField(default=False, help_text='If True, amount is a percentage of basic salary')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['staff_grade__level', 'allowance__name']
+        indexes = [
+            models.Index(fields=['staff_grade', 'allowance']),
+            models.Index(fields=['staff_grade', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.staff_grade.name} - {self.allowance.name}"
+
+    def get_effective_amount(self):
+        value = self.amount if self.amount is not None else self.allowance.amount
+        return value or Decimal('0.00')
+
+
 class Deduction(models.Model):
     DEDUCTION_TYPE_CHOICES = (
         ('PAYE', 'Income Tax (PAYE)'),
