@@ -461,6 +461,13 @@
                                 {% endif %}
                             </td>
                             <td class="py-3 pe-4 text-end">
+                                {% if log.status == 'FAILED' %}
+                                <button type="button" class="btn btn-sm btn-outline-danger js-retry-notification me-1"
+                                        data-retry-url="{% url 'communication:notification_retry' log.id %}"
+                                        title="Retry notification">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                                {% endif %}
                                 <button type="button" class="btn btn-sm btn-outline-secondary"
                                         data-bs-toggle="modal" data-bs-target="#logDetailModal"
                                         data-log-id="{{ log.id }}"
@@ -702,6 +709,48 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // ============================================================
+    // FAILED NOTIFICATION RETRY
+    // ============================================================
+    document.querySelectorAll('.js-retry-notification').forEach(function(button) {
+        button.addEventListener('click', async function() {
+            if (button.disabled) return;
+
+            const confirmed = window.confirm('Retry this failed notification now?');
+            if (!confirmed) return;
+
+            button.disabled = true;
+            const original = button.innerHTML;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>';
+
+            try {
+                const response = await fetch(button.dataset.retryUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Retry could not be queued.');
+                }
+                window.location.reload();
+            } catch (error) {
+                button.disabled = false;
+                button.innerHTML = original;
+                window.alert(error.message || 'Retry could not be queued.');
+            }
+        });
+    });
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return '';
+    }
 
     // ============================================================
     // LOG DETAIL MODAL

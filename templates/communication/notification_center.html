@@ -148,7 +148,9 @@
                     {% if notification.action_url %}
                     <div class="mt-3">
                         <a href="{{ notification.action_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-gold">
-                            {% if notification.category == 'PAYMENT_RECEIPT' %}
+                            {% if notification.category == 'OVERDUE_BALANCE' %}
+                            <i class="bi bi-wallet2 me-1"></i> View Financial Account
+                            {% elif notification.category == 'PAYMENT_RECEIPT' %}
                             <i class="bi bi-receipt me-1"></i> View & Print Receipt
                             {% elif notification.category == 'GRADE_RELEASE' %}
                             <i class="bi bi-award me-1"></i> View & Print Report Card
@@ -156,6 +158,8 @@
                             <i class="bi bi-calendar-check me-1"></i> View Attendance
                             {% elif notification.category == 'PROMOTION_RESULT' %}
                             <i class="bi bi-mortarboard me-1"></i> View Promotion Result
+                            {% elif notification.category == 'LEAVE_APPROVAL' %}
+                            <i class="bi bi-calendar-check me-1"></i> View Leave Request
                             {% else %}
                             <i class="bi bi-arrow-up-right-square me-1"></i> Open
                             {% endif %}

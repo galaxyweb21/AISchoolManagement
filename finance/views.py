@@ -2607,6 +2607,29 @@ def student_fees_list_view(request):
     page_fees = list(page_obj.object_list)
 
     # ------------------------------------------------------------------
+    # Match each displayed StudentFee to its official invoice so the table
+    # can show real payments and the live balance remaining after payment.
+    # StudentFee and Invoice are linked by student + academic term.
+    # ------------------------------------------------------------------
+    invoice_map = {}
+    if page_fees:
+        student_ids = {fee.student_id for fee in page_fees}
+        term_ids = {fee.academic_term_id for fee in page_fees}
+        invoices = (
+            Invoice.objects
+            .filter(
+                school=school,
+                student_id__in=student_ids,
+                academic_term_id__in=term_ids,
+            )
+            .prefetch_related('line_items', 'payments')
+        )
+        invoice_map = {
+            (invoice.student_id, invoice.academic_term_id): invoice
+            for invoice in invoices
+        }
+
+    # ------------------------------------------------------------------
     # Identify which students are NEW for the relevant academic term.
     # ------------------------------------------------------------------
     enrollment_map = {}
@@ -2694,6 +2717,18 @@ def student_fees_list_view(request):
             + fee.new_student_addon_total
         )
 
+        # Live payment summary comes from the official invoice.
+        invoice = invoice_map.get((fee.student_id, fee.academic_term_id))
+        fee.linked_invoice = invoice
+        if invoice:
+            fee.amount_paid_display = decimal_from_value(invoice.amount_paid)
+            fee.balance_due_display = max(
+                decimal_from_value(invoice.balance_due), ZERO
+            )
+        else:
+            fee.amount_paid_display = ZERO
+            fee.balance_due_display = None
+
         total_addons += fee.new_student_addon_total
         display_total_final += fee.display_final_amount
 
@@ -2715,6 +2750,168 @@ def student_fees_list_view(request):
     }
 
     return render(request, 'finance/student_fees_list.html', context)
+
+
+# ============================================================================
+# STUDENTS OWING REPORT
+# ============================================================================
+
+
+def _owing_invoices_for_report(request):
+    """Return invoices with a positive balance for the current school."""
+    school = request.user.school
+    invoices = (
+        Invoice.objects
+        .filter(school=school, status__in=['UNPAID', 'PARTIAL'])
+        .select_related(
+            'student__user',
+            'student__school_class',
+            'student__parent',
+            'academic_term',
+        )
+        .prefetch_related('line_items', 'payments')
+        .order_by(
+            'student__school_class__name',
+            'student__user__last_name',
+            'student__user__first_name',
+        )
+    )
+
+    term_id = request.GET.get('term_id') or request.GET.get('term')
+    class_id = request.GET.get('class_id') or request.GET.get('school_class_id')
+    if term_id:
+        invoices = invoices.filter(academic_term_id=term_id)
+    if class_id:
+        invoices = invoices.filter(student__school_class_id=class_id)
+
+    owing = []
+    for invoice in invoices:
+        total = decimal_from_value(invoice.total_amount)
+        paid = decimal_from_value(invoice.amount_paid)
+        balance = max(total - paid, ZERO)
+        if balance <= ZERO:
+            continue
+        invoice.report_total = total
+        invoice.report_paid = paid
+        invoice.report_balance = balance
+        owing.append(invoice)
+    return owing
+
+
+@login_required
+def students_owing_report(request):
+    """Printable consolidated list of every student with an outstanding invoice."""
+    if not user_can_manage_finance(request.user):
+        return HttpResponseForbidden('Permission denied.')
+
+    invoices = _owing_invoices_for_report(request)
+    total_owing = sum((invoice.report_balance for invoice in invoices), ZERO)
+    context = {
+        'invoices': invoices,
+        'total_students_owing': len(invoices),
+        'total_owing': total_owing,
+        'generated_at': timezone.localtime(),
+        'selected_term': request.GET.get('term_id') or request.GET.get('term') or '',
+        'selected_class': request.GET.get('class_id') or request.GET.get('school_class_id') or '',
+    }
+    return render(request, 'finance/students_owing_report.html', context)
+
+
+@login_required
+def students_owing_report_pdf(request):
+    """Generate one consolidated PDF containing all students currently owing."""
+    if not user_can_manage_finance(request.user):
+        return HttpResponseForbidden('Permission denied.')
+
+    invoices = _owing_invoices_for_report(request)
+    if not invoices:
+        return HttpResponse('No students with outstanding balances match the selected filters.')
+
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from io import BytesIO
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=landscape(A4),
+            rightMargin=10 * mm,
+            leftMargin=10 * mm,
+            topMargin=10 * mm,
+            bottomMargin=10 * mm,
+            title='Students Owing Fee Report',
+        )
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'OwingTitle', parent=styles['Title'], alignment=TA_CENTER,
+            fontSize=16, leading=20, spaceAfter=4,
+        )
+        right_style = ParagraphStyle(
+            'OwingRight', parent=styles['BodyText'], alignment=TA_RIGHT,
+            fontSize=8, leading=10,
+        )
+        story = [
+            Paragraph('STUDENTS WITH OUTSTANDING SCHOOL FEES', title_style),
+            Paragraph(
+                f'{request.user.school.name} &nbsp; | &nbsp; Generated {timezone.localtime().strftime("%d %b %Y %H:%M")}',
+                ParagraphStyle('Sub', parent=styles['BodyText'], alignment=TA_CENTER, fontSize=9),
+            ),
+            Spacer(1, 5 * mm),
+        ]
+
+        data = [['#', 'Student / Admission No.', 'Class', 'Guardian', 'Guardian Phone',
+                 'Term', 'Total Fee', 'Paid', 'Balance Owing', 'Due Date']]
+        for i, invoice in enumerate(invoices, 1):
+            student = invoice.student
+            user = getattr(student, 'user', None)
+            parent = getattr(student, 'parent', None)
+            data.append([
+                str(i),
+                f"{user.get_full_name() if user else student}\\n{student.admission_number or 'N/A'}",
+                getattr(getattr(student, 'school_class', None), 'name', 'N/A'),
+                parent.get_full_name() if parent else 'Not linked',
+                getattr(parent, 'phone_number', '') or 'Not provided',
+                getattr(invoice.academic_term, 'name', 'N/A'),
+                f'GH¢ {invoice.report_total:,.2f}',
+                f'GH¢ {invoice.report_paid:,.2f}',
+                f'GH¢ {invoice.report_balance:,.2f}',
+                invoice.due_date.strftime('%d %b %Y') if invoice.due_date else 'N/A',
+            ])
+
+        table = Table(data, repeatRows=1, colWidths=[8*mm, 48*mm, 28*mm, 42*mm, 30*mm, 32*mm, 27*mm, 27*mm, 31*mm, 27*mm])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#946B1C')),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,-1), 7),
+            ('LEADING', (0,0), (-1,-1), 9),
+            ('GRID', (0,0), (-1,-1), 0.35, colors.HexColor('#cccccc')),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('ALIGN', (6,1), (8,-1), 'RIGHT'),
+            ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f7f4ec')]),
+            ('TOPPADDING', (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+        story.append(table)
+        story.append(Spacer(1, 5 * mm))
+        total_owing = sum((i.report_balance for i in invoices), ZERO)
+        story.append(Paragraph(
+            f'<b>{len(invoices)} students owing &nbsp; | &nbsp; Total outstanding: GH¢ {total_owing:,.2f}</b>',
+            right_style,
+        ))
+        doc.build(story)
+        pdf = buffer.getvalue()
+        buffer.close()
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="Students-Owing-{timezone.localdate().isoformat()}.pdf"'
+        return response
+    except Exception:
+        return HttpResponse('Could not generate the students owing PDF right now.', status=500)
 
 
 # ============================================================================

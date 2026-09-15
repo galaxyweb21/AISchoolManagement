@@ -271,6 +271,12 @@
                         <i class="bi bi-gear me-1"></i> Fee Preparation
                     </a>
                     {% endif %}
+                    <a href="{% url 'finance:students_owing_report' %}" target="_blank" class="btn btn-outline-gold">
+                        <i class="bi bi-person-lines-fill me-1"></i> Students Owing
+                    </a>
+                    <a href="{% url 'finance:students_owing_report_pdf' %}" target="_blank" class="btn btn-outline-secondary">
+                        <i class="bi bi-file-earmark-pdf me-1"></i> Owing PDF
+                    </a>
                     <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
                         <i class="bi bi-printer me-1"></i> Print
                     </button>
@@ -551,6 +557,12 @@
                         <th class="text-uppercase fw-bold text-muted small border-bottom pb-2 text-end" style="min-width: 130px;">
                             <i class="bi bi-check-circle me-1"></i>Final Amount
                         </th>
+                        <th class="text-uppercase fw-bold text-muted small border-bottom pb-2 text-end" style="min-width: 125px;">
+                            <i class="bi bi-cash-coin me-1"></i>Paid
+                        </th>
+                        <th class="text-uppercase fw-bold text-muted small border-bottom pb-2 text-end" style="min-width: 135px;">
+                            <i class="bi bi-wallet2 me-1"></i>Balance Owing
+                        </th>
                         <th class="text-uppercase fw-bold text-muted small border-bottom pb-2 text-center" style="min-width: 110px;">
                             <i class="bi bi-tag me-1"></i>Status
                         </th>
@@ -599,6 +611,24 @@
                         <!-- NEW STUDENTS ONLY: Final Amount = Base Amount + Class Add-ons; Returning/Existing = Base Amount -->
                         <td class="py-3 text-end fee-amount fee-amount-total">
                             GH¢ {{ fee.display_final_amount|floatformat:2 }}
+                        </td>
+
+                        <!-- Paid -->
+                        <td class="py-3 text-end fee-amount text-teal">
+                            {% if fee.linked_invoice %}
+                                GH¢ {{ fee.amount_paid_display|floatformat:2 }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Balance Owing -->
+                        <td class="py-3 text-end fee-amount fw-bold {% if fee.balance_due_display and fee.balance_due_display > 0 %}text-danger{% else %}text-teal{% endif %}">
+                            {% if fee.linked_invoice %}
+                                GH¢ {{ fee.balance_due_display|floatformat:2 }}
+                            {% else %}
+                                <span class="text-muted">Not invoiced</span>
+                            {% endif %}
                         </td>
 
                         <!-- Status -->
@@ -755,6 +785,8 @@
     </div>
 </div>
 
+
+{% include "partials/pagination.html" with page_obj=student_fees %}
 {% endblock %}
 
 {% block extra_js %}
@@ -1141,6 +1173,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-{% include "partials/pagination.html" with page_obj=student_fees %}
 
 {% endblock %}

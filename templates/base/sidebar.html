@@ -940,6 +940,43 @@
         {% endif %}
 
         <!-- ============================================= -->
+        <!-- STAFF SELF-SERVICE LEAVE - Staff Roles        -->
+        <!-- ============================================= -->
+        {% if user.role in 'TEACHER,HOD,SECRETARY,REGISTRAR,HR,HR_ADMIN' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow">
+            <i class="bi bi-calendar-check me-1"></i> My Leave
+        </div>
+        <ul>
+            <li>
+                <a href="{% url 'staff:leave_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'leave_dashboard' %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span class="eduai-label">Leave Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'staff:leave_dashboard' %}?open=request" class="nav-link {% if request.resolver_match.url_name == 'leave_request_create' %}active{% endif %}">
+                    <i class="bi bi-calendar-plus"></i>
+                    <span class="eduai-label">Request Leave</span>
+                    <span class="eduai-badge eduai-badge-hr">Apply</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'staff:leave_list' %}" class="nav-link {% if request.resolver_match.url_name == 'leave_list' %}active{% endif %}">
+                    <i class="bi bi-list-check"></i>
+                    <span class="eduai-label">My Leave Requests</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'staff:leave_balance' %}" class="nav-link {% if request.resolver_match.url_name == 'leave_balance' %}active{% endif %}">
+                    <i class="bi bi-wallet2"></i>
+                    <span class="eduai-label">My Leave Balance</span>
+                </a>
+            </li>
+        </ul>
+        {% endif %}
+
+        <!-- ============================================= -->
         <!-- COMMUNICATION - Admin & Super Admin           -->
         <!-- ============================================= -->
         {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}
@@ -948,6 +985,10 @@
             <i class="bi bi-bell me-1"></i> Communication
         </div>
         <ul>
+            <li><a href="{% url 'communication:announcement_management' %}" class="nav-link {% if request.resolver_match.url_name == 'announcement_management' %}active{% endif %}">
+                <i class="bi bi-megaphone"></i><span class="eduai-label">Announcement Management</span>
+                <span class="eduai-badge eduai-badge-hr">Manage</span>
+            </a></li>
             <li><a href="{% url 'communication:inbox' %}" class="nav-link {% if request.resolver_match.url_name == 'inbox' %}active{% endif %}">
                 <i class="bi bi-chat-left-text"></i><span class="eduai-label">Announcements</span>
                 <span class="eduai-badge eduai-badge-ai">Broadcast</span>
@@ -957,6 +998,10 @@
             </a></li>
             <li><a href="{% url 'communication:notification_preferences' %}" class="nav-link {% if request.resolver_match.url_name == 'notification_preferences' %}active{% endif %}">
                 <i class="bi bi-bell-slash"></i><span class="eduai-label">Notification Preferences</span>
+            </a></li>
+            <li><a href="{% url 'communication:notification_analytics' %}" class="nav-link {% if request.resolver_match.url_name == 'notification_analytics' %}active{% endif %}">
+                <i class="bi bi-graph-up-arrow"></i><span class="eduai-label">Delivery Analytics</span>
+                <span class="eduai-badge eduai-badge-ai">Insights</span>
             </a></li>
             <li><a href="{% url 'communication:notification_log_list' %}" class="nav-link {% if request.resolver_match.url_name == 'notification_log_list' %}active{% endif %}">
                 <i class="bi bi-clipboard-data"></i><span class="eduai-label">Notification Logs</span>

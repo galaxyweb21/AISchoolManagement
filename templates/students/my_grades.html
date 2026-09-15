@@ -1,6 +1,7 @@
 {% extends 'base/base.html' %}
 
-{% block page_title %}My Grades{% endblock %}
+{% block page_title %}My Grades
+{% endblock %}
 
 {% block content %}
 <style>
@@ -134,6 +135,9 @@
     }
 </style>
 
+{% include "partials/pagination.html" with page_obj=grades %}
+{% endblock %}
+
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -182,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-{% include "partials/pagination.html" with page_obj=grades %}
+
+
 
 {% endblock %}

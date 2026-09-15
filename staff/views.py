@@ -5602,6 +5602,12 @@ def leave_request_create(request):
         return redirect('staff:leave_dashboard')
 
     if request.method == "GET":
+        # The leave request form is a dashboard modal. Keep this endpoint
+        # available for AJAX modal loading, but do not expose the raw form
+        # as a standalone page.
+        if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+            return redirect('staff:leave_dashboard')
+
         leave_types = LeaveType.objects.filter(school=school, is_active=True).order_by("category", "name")
         replacement_staff = StaffProfile.objects.filter(
             school=school, is_active=True
@@ -5941,6 +5947,53 @@ def leave_approve(request, leave_id):
     try:
         leave.approve(request.user, note=request.POST.get("approval_note", "").strip())
 
+        # ------------------------------------------------------
+        # Notify the staff member who submitted the leave request
+        # ------------------------------------------------------
+        # Approval notifications are written directly to NotificationLog
+        # so the staff user's in-app notification is immediate and
+        # independent of email/SMS dispatch or notification preferences.
+        try:
+            from communication.models import (
+                NotificationLog,
+                NotificationCategory,
+                NotificationStatus,
+                NotificationChannel,
+            )
+            from staff.services.leave_lifecycle import LeaveLifecycleService
+
+            staff_profile = getattr(leave, "staff", None)
+            staff_user_id = getattr(staff_profile, "user_id", None)
+
+            if staff_user_id and staff_user_id != request.user.id:
+                leave_type = getattr(leave.leave_type, "name", "Leave")
+                days = LeaveLifecycleService._get_requested_days(leave)
+                approval_note = request.POST.get("approval_note", "").strip()
+
+                NotificationLog.objects.get_or_create(
+                    recipient_id=staff_user_id,
+                    category=NotificationCategory.LEAVE_APPROVAL,
+                    reference_id=str(leave.id),
+                    reference_type="LeaveRequest",
+                    defaults={
+                        "school": school,
+                        "sender": request.user,
+                        "channel": NotificationChannel.IN_APP,
+                        "subject": "Leave Request Approved",
+                        "message": (
+                            f"Your {leave_type} leave request for {days:g} day(s) "
+                            "has been approved.\n\n"
+                            + (f"Approval note: {approval_note}\n\n" if approval_note else "")
+                            + "Please open the leave request to view the full details."
+                        ),
+                        "status": NotificationStatus.DELIVERED,
+                        "sent_at": timezone.now(),
+                    },
+                )
+        except Exception:
+            # Notification failure must never undo a successful approval.
+            logger.exception("Leave approval notification failed for %s", leave_id)
+
         # Check if AJAX request
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
@@ -6005,6 +6058,54 @@ def leave_reject(request, leave_id):
     try:
         leave.reject(request.user, reason=reason)
 
+        # ------------------------------------------------------
+        # Notify the staff member who submitted the leave request
+        # ------------------------------------------------------
+        # Write the in-app notification directly to NotificationLog.
+        # This is deliberately independent of email/SMS dispatch and
+        # guarantees that the staff user's own account receives the
+        # rejection notification immediately.
+        try:
+            from communication.models import (
+                NotificationLog,
+                NotificationCategory,
+                NotificationStatus,
+                NotificationChannel,
+            )
+            from staff.services.leave_lifecycle import LeaveLifecycleService
+
+            staff_profile = getattr(leave, 'staff', None)
+            staff_user_id = getattr(staff_profile, 'user_id', None)
+
+            if staff_user_id and staff_user_id != request.user.id:
+                leave_type = getattr(leave.leave_type, 'name', 'Leave')
+                days = LeaveLifecycleService._get_requested_days(leave)
+                reason_text = reason or 'No reason was provided.'
+
+                NotificationLog.objects.get_or_create(
+                    recipient_id=staff_user_id,
+                    category=NotificationCategory.LEAVE_APPROVAL,
+                    reference_id=str(leave.id),
+                    reference_type='LeaveRequest',
+                    defaults={
+                        'school': school,
+                        'sender': request.user,
+                        'channel': NotificationChannel.IN_APP,
+                        'subject': 'Leave Request Rejected',
+                        'message': (
+                            f'Your {leave_type} leave request for {days:g} day(s) '
+                            'has been rejected.\n\n'
+                            f'Reason: {reason_text}\n\n'
+                            'Please open the leave request to view the full details.'
+                        ),
+                        'status': NotificationStatus.DELIVERED,
+                        'sent_at': timezone.now(),
+                    },
+                )
+        except Exception:
+            # Notification failure must never undo a successful rejection.
+            logger.exception('Leave rejection notification failed for %s', leave_id)
+
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 "success": True,
@@ -6020,15 +6121,20 @@ def leave_reject(request, leave_id):
             return redirect(referer)
         return redirect('staff:leave_detail', leave_id=leave.id)
 
-    except ValueError as exc:
+    except (ValueError, ValidationError) as exc:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({"success": False, "error": str(exc)}, status=400)
         messages.error(request, str(exc))
         return redirect('staff:leave_detail', leave_id=leave.id)
     except Exception as exc:
+        logger.exception("Leave rejection failed for %s", leave_id)
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({"success": False, "error": "Unable to reject the leave request."}, status=500)
-        messages.error(request, "Unable to reject the leave request.")
+            return JsonResponse({
+                "success": False,
+                "error": "Unable to reject the leave request.",
+                "detail": str(exc),
+            }, status=500)
+        messages.error(request, f"Unable to reject the leave request: {exc}")
         return redirect('staff:leave_detail', leave_id=leave.id)
 
 

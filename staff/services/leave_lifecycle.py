@@ -633,11 +633,14 @@ class LeaveLifecycleService:
         # The requested days MUST already be reserved.
         # ------------------------------------------------------
 
-        if balance.pending < requested:
-            raise ValidationError(
-                "The requested leave days are not currently "
-                "reserved."
-            )
+        # Some older leave requests were created by the legacy leave
+        # service before the centralized lifecycle service was introduced.
+        # Those requests can legitimately be PENDING while their balance
+        # no longer contains the reservation (for example after a balance
+        # was rebuilt).  Rejection must still be possible in that case.
+        # Only release days that are actually reserved; never allow the
+        # balance to become negative.
+        reserved_to_release = min(balance.pending, requested)
 
         before = (
             LeaveLifecycleService._balance_snapshot(
@@ -775,11 +778,10 @@ class LeaveLifecycleService:
             balance.pending
         )
 
-        if balance.pending < requested:
-            raise ValidationError(
-                "The requested leave days are not currently "
-                "reserved."
-            )
+        # Legacy requests may be pending even when their balance no longer
+        # contains the original reservation.  Rejection must still be allowed.
+        # Release only what is actually reserved and never let pending go below zero.
+        reserved_to_release = min(balance.pending, requested)
 
         before = (
             LeaveLifecycleService._balance_snapshot(
@@ -791,7 +793,7 @@ class LeaveLifecycleService:
         # Release pending reservation
         # ------------------------------------------------------
 
-        balance.pending -= requested
+        balance.pending -= reserved_to_release
 
         balance.calculate_remaining()
 
@@ -830,7 +832,7 @@ class LeaveLifecycleService:
             leave_request=leave_request,
             balance=balance,
             action="RELEASE",
-            days=requested,
+            days=reserved_to_release,
             performed_by=user,
             notes=(
                 reason

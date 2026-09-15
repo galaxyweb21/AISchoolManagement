@@ -631,7 +631,17 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     const modalInstance = bootstrap.Modal.getInstance(modal);
-                    modalInstance.hide();
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+
+                    // The sidebar uses ?open=request to open this modal.
+                    // Remove that flag before reloading so a successful
+                    // submission never reopens the form.
+                    const cleanUrl = new URL(window.location.href);
+                    cleanUrl.searchParams.delete('open');
+                    window.history.replaceState({}, document.title, cleanUrl.toString());
+
                     window.location.reload();
                 } else {
                     showError(data.error || 'An error occurred while submitting.');
@@ -666,6 +676,15 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
     });
+
+    // Sidebar links can open the dashboard with ?open=request.
+    // Automatically open the same modal without creating a separate
+    // standalone leave-request page.
+    const openParam = new URLSearchParams(window.location.search).get('open');
+    if (openParam === 'request') {
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modal);
+        modalInstance.show();
+    }
 
     // Auto-dismiss messages
     document.querySelectorAll('.alert-dismissible').forEach(function(alert) {

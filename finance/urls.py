@@ -31,6 +31,8 @@ from .views import (
     # Student Fees List
     student_fees_list_view,
     api_student_fee_bulk_approve,
+    students_owing_report,
+    students_owing_report_pdf,
 
     # Fee Waivers
     waiver_list,
@@ -94,6 +96,8 @@ urlpatterns = [
     # Student Fees List
     path('student-fees/', student_fees_list_view, name='student_fees_list'),
     path('api/student-fees/bulk-approve/', api_student_fee_bulk_approve, name='api_student_fee_bulk_approve'),
+    path('students-owing/', students_owing_report, name='students_owing_report'),
+    path('students-owing/pdf/', students_owing_report_pdf, name='students_owing_report_pdf'),
 
     # Fee Waivers
     path('waivers/', waiver_list, name='waiver_list'),

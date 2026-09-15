@@ -8,8 +8,9 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.decorators import user_passes_test
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 import json
 import logging
 
@@ -81,20 +82,29 @@ def api_post_announcement(request):
                 'error': 'No school associated with your account.'
             }, status=400)
 
-        # Parse dates if provided
-        publish_date = None
-        expire_date = None
-        if publish_at:
-            try:
-                publish_date = timezone.datetime.fromisoformat(publish_at.replace('Z', '+00:00'))
-            except (ValueError, AttributeError):
-                pass
+        # Parse browser datetime-local values safely. datetime-local sends
+        # a naive datetime (no timezone offset), while timezone.now() is
+        # timezone-aware when USE_TZ=True. Normalize both before any
+        # comparisons so scheduled announcements work reliably.
+        def parse_form_datetime(value):
+            if not value:
+                return None
+            parsed = parse_datetime(str(value).strip())
+            if parsed is None:
+                raise ValueError('Invalid date/time value.')
+            if timezone.is_naive(parsed):
+                parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+            return parsed
 
-        if expires_at:
-            try:
-                expire_date = timezone.datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
-            except (ValueError, AttributeError):
-                pass
+        publish_date = parse_form_datetime(publish_at)
+        expire_date = parse_form_datetime(expires_at)
+
+        now = timezone.now()
+        if publish_date is not None and expire_date is not None and expire_date <= publish_date:
+            return JsonResponse({
+                'success': False,
+                'error': 'Expiry date/time must be later than the publish date/time.'
+            }, status=400)
 
         announcement = AnnouncementService.create_announcement(
             school=school,
@@ -112,7 +122,7 @@ def api_post_announcement(request):
             'id': str(announcement.id),
             'title': announcement.title,
             'created_at': announcement.created_at.strftime('%b %d, %Y'),
-            'message': 'Announcement published successfully.'
+            'message': ('Announcement scheduled successfully.' if not announcement.is_published else 'Announcement published successfully.')
         })
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON data.'}, status=400)
@@ -157,6 +167,106 @@ def announcement_toggle_archive(request, announcement_id):
     })
 
 
+
+@login_required
+@user_passes_test(lambda u: u.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+def announcement_management(request):
+    """Admin lifecycle view for school announcements, including scheduled items."""
+    school = request.user.school
+    if not school:
+        messages.error(request, "No school associated with your account.")
+        return redirect('dashboard')
+
+    qs = Announcement.objects.filter(school=school).select_related('sender').order_by('-created_at')
+    query = request.GET.get('q', '').strip()
+    status = request.GET.get('status', 'all').strip().lower()
+    priority = request.GET.get('priority', '').strip().upper()
+
+    if query:
+        qs = qs.filter(Q(title__icontains=query) | Q(content__icontains=query))
+    if priority:
+        qs = qs.filter(priority=priority)
+
+    now = timezone.now()
+    if status == 'published':
+        qs = qs.filter(is_published=True, is_archived=False, publish_at__lte=now).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        )
+    elif status == 'scheduled':
+        qs = qs.filter(is_published=False, publish_at__gt=now, is_archived=False)
+    elif status == 'expired':
+        qs = qs.filter(is_published=True, expires_at__isnull=False, expires_at__lte=now)
+    elif status == 'archived':
+        qs = qs.filter(is_archived=True)
+
+    page_obj = paginate_queryset(qs, request)
+    all_qs = Announcement.objects.filter(school=school)
+    context = {
+        'announcements': page_obj,
+        'total_count': all_qs.count(),
+        'published_count': all_qs.filter(is_published=True, is_archived=False, publish_at__lte=now).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now)).count(),
+        'scheduled_count': all_qs.filter(is_published=False, publish_at__gt=now, is_archived=False).count(),
+        'expired_count': all_qs.filter(is_published=True, expires_at__isnull=False, expires_at__lte=now).count(),
+        'archived_count': all_qs.filter(is_archived=True).count(),
+        'now': now,
+        'query': query,
+        'status': status,
+        'priority': priority,
+        'priority_choices': Announcement.PRIORITY_CHOICES,
+        'active_tab': 'communication',
+    }
+    return render(request, 'communication/announcement_management.html', context)
+
+
+@login_required
+@user_passes_test(lambda u: u.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@require_POST
+def announcement_publish(request, announcement_id):
+    """Publish a scheduled announcement immediately."""
+    school = request.user.school
+    announcement = get_object_or_404(Announcement, id=announcement_id, school=school)
+    announcement.is_published = True
+    announcement.publish_at = timezone.now()
+    announcement.is_archived = False
+    announcement.save(update_fields=['is_published', 'publish_at', 'is_archived', 'updated_at'])
+    notification_count = AnnouncementService.notify_announcement(announcement)
+    return JsonResponse({
+        'success': True,
+        'message': 'Announcement published successfully.',
+        'notifications_created': notification_count,
+    })
+
+def _sync_announcement_notifications_for_user(user):
+    """Backfill published announcement notifications for the current user."""
+    if getattr(user, 'role', None) not in ['PARENT', 'STUDENT']:
+        return 0
+    if not getattr(user, 'school_id', None):
+        return 0
+
+    now = timezone.now()
+    announcements = Announcement.objects.filter(
+        school_id=user.school_id,
+        is_published=True,
+        is_archived=False,
+        publish_at__lte=now,
+    ).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+
+    if user.role == 'PARENT':
+        announcements = announcements.filter(Q(audience='ALL') | Q(audience='PARENTS'))
+    else:
+        announcements = announcements.filter(Q(audience='ALL') | Q(audience='STUDENTS'))
+
+    created = 0
+    for announcement in announcements.select_related('school', 'sender').iterator():
+        # Use a user-specific path here. It deliberately does not depend on the
+        # parent's User.school field when the parent is linked to the school via
+        # Student.parent. This repairs older demo records as soon as the parent
+        # opens the bell or Notification Center.
+        if AnnouncementService.ensure_announcement_notification_for_user(announcement, user):
+            created += 1
+    return created
+
+
 @login_required
 @require_GET
 def notification_list(request):
@@ -174,6 +284,11 @@ def notification_list(request):
             sync_attendance_notifications_for_user(request.user)
         except Exception:
             logger.exception('Attendance notification bell sync failed for user %s', request.user.pk)
+
+    try:
+        _sync_announcement_notifications_for_user(request.user)
+    except Exception:
+        logger.exception('Announcement notification sync failed for user %s', request.user.pk)
 
     notifications = (
         NotificationLog.objects
@@ -241,6 +356,11 @@ def notification_center(request):
         except Exception:
             logger.exception('Attendance notification sync failed for user %s', request.user.pk)
 
+    try:
+        _sync_announcement_notifications_for_user(request.user)
+    except Exception:
+        logger.exception('Announcement notification sync failed for user %s', request.user.pk)
+
     notifications = NotificationLog.objects.filter(
         recipient=request.user
     ).select_related('sender')
@@ -281,7 +401,21 @@ def notification_center(request):
 
     for notification in page_obj.object_list:
         notification.action_url = None
-        if notification.category == NotificationCategory.PAYMENT_RECEIPT and notification.reference_id:
+        if notification.category == NotificationCategory.OVERDUE_BALANCE and notification.reference_id:
+            try:
+                from finance.models import Invoice
+                invoice = Invoice.objects.select_related('student').filter(
+                    id=notification.reference_id,
+                    student__parent=request.user,
+                ).first()
+                if invoice:
+                    notification.action_url = reverse(
+                        'finance:student_financial_account',
+                        args=[invoice.student_id]
+                    )
+            except Exception:
+                notification.action_url = None
+        elif notification.category == NotificationCategory.PAYMENT_RECEIPT and notification.reference_id:
             try:
                 notification.action_url = reverse('finance:payment_receipt', args=[notification.reference_id])
             except Exception:
@@ -294,6 +428,14 @@ def notification_center(request):
         elif notification.category == NotificationCategory.PROMOTION_RESULT and notification.reference_id:
             try:
                 notification.action_url = reverse('academics:promotion_result_detail', args=[notification.reference_id])
+            except Exception:
+                notification.action_url = None
+        elif notification.category == NotificationCategory.LEAVE_APPROVAL and notification.reference_id:
+            try:
+                notification.action_url = reverse(
+                    'staff:leave_detail',
+                    args=[notification.reference_id]
+                )
             except Exception:
                 notification.action_url = None
         elif notification.category == NotificationCategory.ATTENDANCE_ALERT and notification.reference_id:
@@ -309,6 +451,21 @@ def notification_center(request):
                 attendance = attendance_qs.first()
                 if attendance:
                     notification.action_url = reverse('attendance:student_attendance_history', args=[attendance.student_id])
+            except Exception:
+                notification.action_url = None
+
+        elif notification.category == NotificationCategory.ANNOUNCEMENT and notification.reference_id:
+            try:
+                announcement = Announcement.objects.filter(
+                    id=notification.reference_id,
+                    school=getattr(request.user, 'school', None),
+                    is_archived=False,
+                ).first()
+                if announcement:
+                    notification.action_url = reverse(
+                        'communication:announcement_detail',
+                        args=[announcement.id]
+                    )
             except Exception:
                 notification.action_url = None
 
@@ -425,40 +582,206 @@ def notification_preferences(request):
 @login_required
 @user_passes_test(lambda u: u.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'])
 def notification_log_list(request):
-    """View notification logs (admin only)."""
+    """View and manage notification delivery logs for the current school."""
     school = request.user.school
+    if not school:
+        messages.error(request, "No school associated with your account.")
+        return redirect('dashboard')
 
-    # Apply filters
-    logs = NotificationLog.objects.filter(school=school).select_related('recipient', 'sender')
+    logs = (
+        NotificationLog.objects
+        .filter(school=school)
+        .select_related('recipient', 'sender')
+        .order_by('-created_at')
+    )
 
-    status_filter = request.GET.get('status')
-    if status_filter:
+    status_filter = (request.GET.get('status') or '').strip().upper()
+    category_filter = (request.GET.get('category') or '').strip().upper()
+    search = (request.GET.get('search') or '').strip()
+
+    valid_statuses = {value for value, _label in NotificationStatus.choices}
+    valid_categories = {value for value, _label in NotificationCategory.choices}
+
+    if status_filter in valid_statuses:
         logs = logs.filter(status=status_filter)
+    else:
+        status_filter = ''
 
-    category_filter = request.GET.get('category')
-    if category_filter:
+    if category_filter in valid_categories:
         logs = logs.filter(category=category_filter)
+    else:
+        category_filter = ''
 
-    # Search
-    search = request.GET.get('search')
     if search:
         logs = logs.filter(
             Q(subject__icontains=search) |
             Q(message__icontains=search) |
             Q(recipient__username__icontains=search) |
+            Q(recipient__first_name__icontains=search) |
+            Q(recipient__last_name__icontains=search) |
             Q(recipient__email__icontains=search)
         )
 
+    # Dashboard counts intentionally use the current school's complete log set,
+    # not the filtered queryset, so administrators can see the real delivery
+    # health while investigating a filtered result set.
+    school_logs = NotificationLog.objects.filter(school=school)
+    total_logs = school_logs.count()
+    sent_count = school_logs.filter(status__in=[NotificationStatus.SENT, NotificationStatus.DELIVERED]).count()
+    pending_count = school_logs.filter(status__in=[NotificationStatus.PENDING, NotificationStatus.QUEUED]).count()
+    failed_count = school_logs.filter(status=NotificationStatus.FAILED).count()
+    read_count = school_logs.filter(status=NotificationStatus.READ).count()
+
     page_obj = paginate_queryset(logs, request)
-    paginator = page_obj.paginator
 
     context = {
         'logs': page_obj,
-        'status_choices': NotificationLog._meta.get_field('status').choices,
-        'category_choices': NotificationLog._meta.get_field('category').choices,
+        'status_choices': NotificationStatus.choices,
+        'category_choices': NotificationCategory.choices,
         'selected_status': status_filter,
         'selected_category': category_filter,
         'search': search,
-        'active_tab': 'communication'
+        'total_logs': total_logs,
+        'sent_count': sent_count,
+        'pending_count': pending_count,
+        'failed_count': failed_count,
+        'read_count': read_count,
+        'active_tab': 'communication',
     }
     return render(request, 'communication/log_list.html', context)
+
+
+@login_required
+@user_passes_test(lambda u: u.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+def notification_analytics(request):
+    """Admin notification delivery health dashboard for the current school."""
+    school = request.user.school
+    if not school:
+        messages.error(request, "No school associated with your account.")
+        return redirect('dashboard')
+
+    now = timezone.now()
+    recent_start = now - timezone.timedelta(days=30)
+    logs = NotificationLog.objects.filter(school=school)
+    recent_logs = logs.filter(created_at__gte=recent_start)
+
+    total = logs.count()
+    recent_total = recent_logs.count()
+    delivered = logs.filter(status__in=[NotificationStatus.SENT, NotificationStatus.DELIVERED, NotificationStatus.READ]).count()
+    failed = logs.filter(status=NotificationStatus.FAILED).count()
+    pending = logs.filter(status__in=[NotificationStatus.PENDING, NotificationStatus.QUEUED]).count()
+    read = logs.filter(status=NotificationStatus.READ).count()
+
+    delivery_rate = round((delivered / total) * 100, 1) if total else 0
+    failure_rate = round((failed / total) * 100, 1) if total else 0
+    read_rate = round((read / delivered) * 100, 1) if delivered else 0
+
+    category_rows = list(
+        recent_logs.values('category')
+        .annotate(total=Count('id'))
+        .order_by('-total')
+    )
+    category_labels = dict(NotificationCategory.choices)
+    max_category = max((row['total'] for row in category_rows), default=1)
+    for row in category_rows:
+        row['label'] = category_labels.get(row['category'], row['category'])
+        row['percent'] = round((row['total'] / max_category) * 100, 1)
+
+    channel_rows = list(
+        recent_logs.values('channel')
+        .annotate(total=Count('id'))
+        .order_by('-total')
+    )
+    channel_labels = dict(NotificationLog._meta.get_field('channel').choices)
+    max_channel = max((row['total'] for row in channel_rows), default=1)
+    for row in channel_rows:
+        row['label'] = channel_labels.get(row['channel'], row['channel'])
+        row['percent'] = round((row['total'] / max_channel) * 100, 1)
+
+    daily_rows = []
+    for offset in range(6, -1, -1):
+        day = (now - timezone.timedelta(days=offset)).date()
+        count = recent_logs.filter(created_at__date=day).count()
+        failed_day = recent_logs.filter(created_at__date=day, status=NotificationStatus.FAILED).count()
+        daily_rows.append({
+            'date': day,
+            'label': day.strftime('%a'),
+            'total': count,
+            'failed': failed_day,
+        })
+    max_daily = max((row['total'] for row in daily_rows), default=1)
+    for row in daily_rows:
+        row['height'] = round((row['total'] / max_daily) * 100, 1) if row['total'] else 4
+
+    recent_failures = logs.filter(status=NotificationStatus.FAILED).select_related('recipient').order_by('-created_at')[:8]
+
+    context = {
+        'active_tab': 'communication',
+        'total': total,
+        'recent_total': recent_total,
+        'delivered': delivered,
+        'failed': failed,
+        'pending': pending,
+        'read': read,
+        'delivery_rate': delivery_rate,
+        'failure_rate': failure_rate,
+        'read_rate': read_rate,
+        'category_rows': category_rows,
+        'channel_rows': channel_rows,
+        'daily_rows': daily_rows,
+        'recent_failures': recent_failures,
+        'recent_start': recent_start,
+        'now': now,
+    }
+    return render(request, 'communication/notification_analytics.html', context)
+
+
+@login_required
+@user_passes_test(lambda u: u.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@require_POST
+def notification_retry(request, notification_id):
+    """Retry one failed notification from the current school's delivery log."""
+    school = request.user.school
+    if not school:
+        return JsonResponse({'success': False, 'error': 'No school associated with your account.'}, status=400)
+
+    notification = get_object_or_404(
+        NotificationLog.objects.select_related('recipient', 'school'),
+        id=notification_id,
+        school=school,
+    )
+
+    if notification.status != NotificationStatus.FAILED:
+        return JsonResponse({
+            'success': False,
+            'error': 'Only failed notifications can be retried.'
+        }, status=400)
+
+    # Re-check the current preference before retrying. The service will also
+    # enforce this during dispatch, preventing a stale log from bypassing
+    # the user's latest notification settings.
+    if not NotificationService.should_send_notification(notification.recipient, notification.category):
+        return JsonResponse({
+            'success': False,
+            'error': 'The recipient has disabled this notification category.'
+        }, status=400)
+
+    notification.status = NotificationStatus.QUEUED
+    notification.error_message = ''
+    notification.sent_at = None
+    notification.save(update_fields=['status', 'error_message', 'sent_at'])
+
+    # Keep the retry lightweight and compatible with the existing application
+    # architecture; the service already handles email/SMS/in-app dispatch.
+    import threading
+    thread = threading.Thread(
+        target=NotificationService.dispatch_notification,
+        args=(notification.id,),
+        daemon=True,
+    )
+    thread.start()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Notification retry queued successfully.'
+    })

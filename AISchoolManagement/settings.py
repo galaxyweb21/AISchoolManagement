@@ -338,4 +338,8 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'ai_engine.tasks.retry_failed_report_card_deliveries',
         'schedule': 900.0,
     },
+    'publish-scheduled-announcements-hourly': {
+        'task': 'communication.tasks.publish_scheduled_announcements',
+        'schedule': 3600.0,
+    },
 }

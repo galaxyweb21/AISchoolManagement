@@ -1,0 +1,57 @@
+{% extends "base/base.html" %}
+{% load static %}
+{% block content %}
+<style>
+.owing-report-wrap{max-width:1500px;margin:auto}.owing-print-actions{display:flex;gap:.5rem;flex-wrap:wrap}.owing-table th{white-space:nowrap}.owing-table td{vertical-align:middle}.owing-balance{font-weight:800}.owing-summary{background:var(--surface-card,#fff);border-radius:1rem;padding:1rem;box-shadow:0 4px 18px rgba(0,0,0,.06)}
+@media print{#sidebar,.sidebar,.navbar,.eduai-global-footer,.no-print{display:none!important}.owing-report-wrap{max-width:none}.card,.owing-summary{box-shadow:none!important;border:0!important}.owing-table{font-size:11px}}
+</style>
+<div class="owing-report-wrap py-3">
+  <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4">
+      <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+        <div>
+          <span class="badge badge-gold rounded-pill px-3 py-2"><i class="bi bi-exclamation-circle me-1"></i> FINANCE</span>
+          <h4 class="fw-bold mt-2 mb-1">Students Owing School Fees</h4>
+          <p class="text-muted mb-0">Consolidated list for manual follow-up with students and their guardians.</p>
+        </div>
+        <div class="owing-print-actions no-print">
+          <button class="btn btn-gold" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print Report</button>
+          <a class="btn btn-outline-secondary" target="_blank" href="{% url 'finance:students_owing_report_pdf' %}{% if selected_term %}?term_id={{ selected_term }}{% if selected_class %}&{% endif %}{% endif %}{% if selected_class %}{% if not selected_term %}?{% endif %}class_id={{ selected_class }}{% endif %}"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</a>
+          <a class="btn btn-outline-secondary" href="{% url 'finance:student_fees_list' %}"><i class="bi bi-arrow-left me-1"></i> Back to Fees</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row g-3 mb-4">
+    <div class="col-md-6"><div class="owing-summary"><small class="text-muted text-uppercase fw-semibold">Students Owing</small><div class="fs-3 fw-bold text-danger">{{ total_students_owing }}</div></div></div>
+    <div class="col-md-6"><div class="owing-summary"><small class="text-muted text-uppercase fw-semibold">Total Outstanding</small><div class="fs-3 fw-bold text-gold">GH¢ {{ total_owing|floatformat:2 }}</div></div></div>
+  </div>
+  <div class="card border-0 shadow-sm rounded-4">
+    <div class="table-responsive">
+      <table class="table table-hover owing-table mb-0">
+        <thead><tr><th>#</th><th>Student / Admission</th><th>Class</th><th>Guardian</th><th>Guardian Phone</th><th>Term</th><th class="text-end">Total Fee</th><th class="text-end">Paid</th><th class="text-end">Balance Owing</th><th>Due Date</th></tr></thead>
+        <tbody>
+        {% for invoice in invoices %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td><strong>{{ invoice.student.user.get_full_name }}</strong><br><small class="text-muted">{{ invoice.student.admission_number }}</small></td>
+            <td>{{ invoice.student.school_class.name|default:"N/A" }}</td>
+            <td>{% if invoice.student.parent %}{{ invoice.student.parent.get_full_name }}{% else %}<span class="text-muted">Not linked</span>{% endif %}</td>
+            <td>{{ invoice.student.parent.phone_number|default:"Not provided" }}</td>
+            <td>{{ invoice.academic_term.name|default:"N/A" }}</td>
+            <td class="text-end">GH¢ {{ invoice.report_total|floatformat:2 }}</td>
+            <td class="text-end text-teal">GH¢ {{ invoice.report_paid|floatformat:2 }}</td>
+            <td class="text-end text-danger owing-balance">GH¢ {{ invoice.report_balance|floatformat:2 }}</td>
+            <td>{{ invoice.due_date|date:"d M Y" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="10" class="text-center py-5 text-muted"><i class="bi bi-check-circle fs-2 d-block mb-2"></i>No students currently owe fees for the selected filters.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+{% endblock %}

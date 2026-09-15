@@ -7,11 +7,13 @@ from django.utils import timezone
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.db import transaction
-from django.db import models  # <-- ADD THIS IMPORT
+from django.db import models
+from django.contrib.auth import get_user_model
 from .models import NotificationLog, NotificationStatus, NotificationChannel, NotificationCategory, \
     UserNotificationPreference, Announcement
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 class NotificationService:
@@ -112,22 +114,53 @@ class NotificationService:
             return None
 
     @classmethod
-    def should_send_notification(cls, user, category):
-        """Check if user has opted in for this notification category."""
+    def get_notification_preferences(cls, user):
+        """Return the user's notification preferences, or safe defaults."""
         try:
-            prefs = UserNotificationPreference.objects.get(user=user)
-            category_map = {
-                NotificationCategory.OVERDUE_BALANCE: prefs.overdue_balance_enabled,
-                NotificationCategory.TIMETABLE_UPDATE: prefs.timetable_update_enabled,
-                NotificationCategory.GRADE_RELEASE: prefs.grade_release_enabled,
-                NotificationCategory.ANNOUNCEMENT: prefs.announcement_enabled,
-                NotificationCategory.ATTENDANCE_ALERT: prefs.attendance_alert_enabled,
-                NotificationCategory.PROMOTION_RESULT: prefs.promotion_result_enabled,
-                NotificationCategory.LEAVE_APPROVAL: prefs.leave_approval_enabled,
-            }
-            return category_map.get(category, True)
+            return UserNotificationPreference.objects.get(user=user)
         except UserNotificationPreference.DoesNotExist:
-            return True  # Default to sending if no preferences set
+            return None
+
+    @classmethod
+    def should_send_notification(cls, user, category):
+        """Check whether the user has enabled this notification category."""
+        prefs = cls.get_notification_preferences(user)
+        if prefs is None:
+            return True
+
+        category_map = {
+            NotificationCategory.OVERDUE_BALANCE: prefs.overdue_balance_enabled,
+            NotificationCategory.TIMETABLE_UPDATE: prefs.timetable_update_enabled,
+            NotificationCategory.GRADE_RELEASE: prefs.grade_release_enabled,
+            NotificationCategory.ANNOUNCEMENT: prefs.announcement_enabled,
+            NotificationCategory.ATTENDANCE_ALERT: prefs.attendance_alert_enabled,
+            NotificationCategory.PROMOTION_RESULT: prefs.promotion_result_enabled,
+            NotificationCategory.LEAVE_APPROVAL: prefs.leave_approval_enabled,
+        }
+        return category_map.get(category, True)
+
+    @classmethod
+    def effective_channel(cls, user, channel):
+        """Resolve a requested channel against the user's channel preferences."""
+        prefs = cls.get_notification_preferences(user)
+        if prefs is None:
+            return channel
+
+        enabled = []
+        if channel in (NotificationChannel.EMAIL, NotificationChannel.BOTH, NotificationChannel.ALL) and prefs.email_enabled:
+            enabled.append(NotificationChannel.EMAIL)
+        if channel in (NotificationChannel.SMS, NotificationChannel.BOTH, NotificationChannel.ALL) and prefs.sms_enabled:
+            enabled.append(NotificationChannel.SMS)
+        if channel in (NotificationChannel.IN_APP, NotificationChannel.ALL) and prefs.in_app_enabled:
+            enabled.append(NotificationChannel.IN_APP)
+
+        if not enabled:
+            return None
+        if len(enabled) == 3:
+            return NotificationChannel.ALL
+        if set(enabled) == {NotificationChannel.EMAIL, NotificationChannel.SMS}:
+            return NotificationChannel.BOTH
+        return enabled[0]
 
     @classmethod
     def dispatch_notification(cls, log_id):
@@ -226,13 +259,21 @@ class NotificationService:
         if not school and hasattr(recipient, 'school'):
             school = recipient.school
 
+        # Respect both category and channel preferences before queuing.
+        if not cls.should_send_notification(recipient, category):
+            return None
+
+        effective_channel = cls.effective_channel(recipient, channel)
+        if effective_channel is None:
+            return None
+
         # Create notification log
         log = NotificationLog.objects.create(
             school=school or getattr(recipient, 'school', None),
             recipient=recipient,
             sender=sender,
             category=category,
-            channel=channel,
+            channel=effective_channel,
             subject=subject,
             message=message,
             reference_id=reference_id,
@@ -240,11 +281,11 @@ class NotificationService:
             status=NotificationStatus.QUEUED
         )
 
-        # For in-app only, mark as delivered immediately
-        if channel == NotificationChannel.IN_APP:
+        # For in-app only, mark as delivered immediately.
+        if effective_channel == NotificationChannel.IN_APP:
             log.status = NotificationStatus.DELIVERED
             log.sent_at = timezone.now()
-            log.save()
+            log.save(update_fields=['status', 'sent_at'])
             return log
 
         # Run dispatch in thread for other channels
@@ -341,6 +382,15 @@ class AnnouncementService:
 
         if publish_at is None:
             publish_at = timezone.now()
+        elif timezone.is_naive(publish_at):
+            publish_at = timezone.make_aware(publish_at, timezone.get_current_timezone())
+
+        if expires_at is not None and timezone.is_naive(expires_at):
+            expires_at = timezone.make_aware(expires_at, timezone.get_current_timezone())
+
+        now = timezone.now()
+        if expires_at is not None and expires_at <= publish_at:
+            raise ValueError('Expiry date/time must be later than the publish date/time.')
 
         announcement = Announcement.objects.create(
             school=school,
@@ -351,7 +401,162 @@ class AnnouncementService:
             priority=priority,
             publish_at=publish_at,
             expires_at=expires_at,
-            is_published=True if publish_at <= timezone.now() else False
+            is_published=True if publish_at <= now else False
         )
 
+        if announcement.is_published:
+            AnnouncementService.notify_announcement(announcement)
+
         return announcement
+
+    @staticmethod
+    def get_announcement_recipients(announcement):
+        """Return active school users matching the announcement audience."""
+        personnel_roles = [
+            'SUPER_ADMIN', 'SCHOOL_ADMIN', 'BURSAR', 'REGISTRAR',
+            'HOD', 'SECRETARY', 'TEACHER',
+        ]
+
+        if announcement.audience == 'PARENTS':
+            roles = ['PARENT']
+        elif announcement.audience == 'TEACHERS':
+            roles = ['TEACHER', 'HOD']
+        elif announcement.audience == 'STAFF':
+            roles = personnel_roles
+        elif announcement.audience == 'ADMIN':
+            roles = ['SUPER_ADMIN', 'SCHOOL_ADMIN']
+        elif announcement.audience == 'STUDENTS':
+            roles = ['STUDENT']
+        else:
+            # The UI label for ALL is "All Personnel & Parents".
+            roles = personnel_roles + ['PARENT']
+
+        qs = User.objects.filter(
+            role__in=roles,
+            is_active=True,
+        ).filter(
+            models.Q(school=announcement.school)
+            | models.Q(role='PARENT', children__school=announcement.school)
+        ).distinct()
+
+        # Parent accounts are normally linked directly to the school, but older
+        # demo/production data can have a parent whose school field is empty or
+        # stale while the parent's Student records correctly identify the school.
+        # The child relationship is therefore an intentional second tenant link.
+        return qs
+
+    @staticmethod
+    def ensure_announcement_notification_for_user(announcement, recipient):
+        """Create one in-app announcement notification for a specific user.
+
+        This path is intentionally independent of the recipient discovery query.
+        It is used when a parent is viewing the notification UI so a valid parent
+        cannot miss a published school announcement because of stale tenant data.
+        """
+        if not announcement.is_published or announcement.is_archived:
+            return False
+
+        if not recipient.is_active:
+            return False
+
+        # A parent may be associated with the school either directly on User or
+        # through one of the Student records linked to that parent.
+        if announcement.audience in ('PARENTS', 'ALL') and recipient.role == 'PARENT':
+            belongs_to_school = (
+                getattr(recipient, 'school_id', None) == announcement.school_id
+                or recipient.children.filter(school_id=announcement.school_id).exists()
+            )
+            if not belongs_to_school:
+                return False
+        elif getattr(recipient, 'school_id', None) != announcement.school_id:
+            return False
+
+        if not NotificationService.should_send_notification(
+            recipient, NotificationCategory.ANNOUNCEMENT
+        ):
+            return False
+
+        reference_id = str(announcement.id)
+        log, created = NotificationLog.objects.get_or_create(
+            school=announcement.school,
+            recipient=recipient,
+            category=NotificationCategory.ANNOUNCEMENT,
+            reference_id=reference_id,
+            reference_type='Announcement',
+            defaults={
+                'sender': announcement.sender,
+                'channel': NotificationChannel.IN_APP,
+                'subject': f'New Announcement: {announcement.title}',
+                'message': (announcement.content or '').strip(),
+                'status': NotificationStatus.DELIVERED,
+                'sent_at': timezone.now(),
+            },
+        )
+
+        if not created and log.status != NotificationStatus.READ:
+            changed = []
+            if log.channel != NotificationChannel.IN_APP:
+                log.channel = NotificationChannel.IN_APP
+                changed.append('channel')
+            if log.status != NotificationStatus.DELIVERED:
+                log.status = NotificationStatus.DELIVERED
+                changed.append('status')
+            if not log.sent_at:
+                log.sent_at = timezone.now()
+                changed.append('sent_at')
+            if changed:
+                log.save(update_fields=changed)
+
+        return True
+
+    @staticmethod
+    def notify_announcement(announcement):
+        """
+        Create a reliable in-app notification for every eligible announcement
+        recipient. Announcement delivery is stored directly as DELIVERED so it
+        does not depend on the background email/SMS dispatcher.
+        """
+        if not announcement.is_published or announcement.is_archived:
+            return 0
+
+        created = 0
+        subject = f'New Announcement: {announcement.title}'
+        message = (announcement.content or '').strip()
+        reference_id = str(announcement.id)
+
+        for recipient in AnnouncementService.get_announcement_recipients(announcement).iterator():
+            if not NotificationService.should_send_notification(
+                recipient, NotificationCategory.ANNOUNCEMENT
+            ):
+                continue
+
+            log, was_created = NotificationLog.objects.get_or_create(
+                school=announcement.school,
+                recipient=recipient,
+                category=NotificationCategory.ANNOUNCEMENT,
+                reference_id=reference_id,
+                reference_type='Announcement',
+                defaults={
+                    'sender': announcement.sender,
+                    'channel': NotificationChannel.IN_APP,
+                    'subject': subject,
+                    'message': message,
+                    'status': NotificationStatus.DELIVERED,
+                    'sent_at': timezone.now(),
+                },
+            )
+
+            if not was_created and log.status in {
+                NotificationStatus.PENDING,
+                NotificationStatus.QUEUED,
+                NotificationStatus.SENT,
+            }:
+                log.channel = NotificationChannel.IN_APP
+                log.status = NotificationStatus.DELIVERED
+                log.sent_at = log.sent_at or timezone.now()
+                log.save(update_fields=['channel', 'status', 'sent_at'])
+
+            if was_created:
+                created += 1
+
+        return created
