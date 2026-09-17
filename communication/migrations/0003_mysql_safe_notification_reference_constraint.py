@@ -11,22 +11,21 @@ def drop_existing_constraint_if_present(apps, schema_editor):
     model = apps.get_model('communication', 'NotificationLog')
     constraint_name = 'uniq_notification_reference_per_recipient'
 
-    # Phase 1N originally created a conditional unique constraint. PostgreSQL
-    # can have that constraint in the database, while the replacement in this
-    # migration is an unconditional unique constraint.
-    #
-    # IMPORTANT: _delete_constraint_sql() requires BOTH the model and the
-    # constraint name on Django 4.2. Passing the introspection dictionary entry
-    # here causes Render/PostgreSQL to fail with:
-    #   missing 2 required positional arguments: 'model' and 'name'
-    #
-    # Use Django's schema-editor constraint lookup so this remains backend-
-    # aware instead of constructing raw SQL.
-    existing_names = schema_editor._constraint_names(model, name=constraint_name)
-    for existing_name in existing_names:
-        schema_editor.execute(
-            schema_editor._delete_constraint_sql(model, existing_name)
+    # Use backend introspection instead of Django's private _constraint_names()
+    # because Django 4.2 does not accept 'name=' there. This is required for
+    # Render/PostgreSQL deployments and keeps the migration backend-aware.
+    with schema_editor.connection.cursor() as cursor:
+        constraints = schema_editor.connection.introspection.get_constraints(
+            cursor,
+            model._meta.db_table,
         )
+
+    if constraint_name not in constraints:
+        return
+
+    schema_editor.execute(
+        schema_editor._delete_constraint_sql(model, constraint_name)
+    )
 
 
 class Migration(migrations.Migration):
@@ -38,7 +37,10 @@ class Migration(migrations.Migration):
         migrations.RunPython(normalize_empty_references, migrations.RunPython.noop),
         migrations.SeparateDatabaseAndState(
             database_operations=[
-                migrations.RunPython(drop_existing_constraint_if_present, migrations.RunPython.noop),
+                migrations.RunPython(
+                    drop_existing_constraint_if_present,
+                    migrations.RunPython.noop,
+                ),
                 migrations.AddConstraint(
                     model_name='notificationlog',
                     constraint=models.UniqueConstraint(
