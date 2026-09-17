@@ -24,6 +24,8 @@ from django.db import OperationalError, ProgrammingError
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
+from .audit_context import get_current_user, get_client_ip
+
 
 logger = logging.getLogger(__name__)
 
@@ -305,7 +307,9 @@ def _create_activity_log(
     # ------------------------------------------------------------------
 
     school = _get_school(instance)
-    user = _get_user(instance)
+    # Web requests have the most accurate actor information.
+    user = get_current_user() or _get_user(instance)
+    ip_address = get_client_ip()
 
     # ------------------------------------------------------------------
     # Import lazily.
@@ -329,17 +333,54 @@ def _create_activity_log(
 
     try:
 
+        description = _build_description(
+            action=action,
+            instance=instance,
+            sender=sender,
+        )
+
+        # Student records get a business-readable message.
+        # Example: "Admin created a new student Ama Owusu, class K.G 1
+        # (K.G 1), student ID 33442."
+        if getattr(sender._meta, "model_name", "") == "student":
+            try:
+                full_name = instance.user.get_full_name().strip()
+            except Exception:
+                full_name = str(getattr(instance, "user", "Student"))
+            admission = getattr(instance, "admission_number", None) or getattr(instance, "pk", "")
+            try:
+                grade = str(instance.grade_level) if instance.grade_level else "Unassigned"
+            except Exception:
+                grade = "Unassigned"
+            try:
+                school_class = str(instance.school_class) if instance.school_class else "Unassigned"
+            except Exception:
+                school_class = "Unassigned"
+
+            if action == "CREATE":
+                description = (
+                    f"created a new student {full_name}, class {school_class} "
+                    f"({grade}), student ID {admission}."
+                )
+            elif action == "UPDATE":
+                description = (
+                    f"updated student {full_name}, class {school_class} "
+                    f"({grade}), student ID {admission}."
+                )
+            elif action == "DELETE":
+                description = (
+                    f"deleted student {full_name}, class {school_class} "
+                    f"({grade}), student ID {admission}."
+                )
+
         ActivityLog.objects.create(
             school=school,
             user=user,
             content_type=content_type,
             object_id=object_id,
             action=action,
-            description=_build_description(
-                action=action,
-                instance=instance,
-                sender=sender,
-            ),
+            description=description,
+            ip_address=ip_address,
         )
 
     except (

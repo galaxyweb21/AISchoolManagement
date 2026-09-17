@@ -200,6 +200,18 @@
             const form = modal.querySelector('form');
             if (!form) return;
 
+            // Some forms intentionally manage their own submission instead of
+            // being AJAX-ified here — e.g. the payment/receipt flow, which
+            // relies on a real browser POST (target="_blank") so Django can
+            // navigate a newly opened tab straight to the printable receipt.
+            // Hijacking that submit into a fetch() call (as bindForm() below
+            // does) would silently swallow the native navigation and the
+            // receipt tab would never open. Forms opt out via target="_blank"
+            // or an explicit data-native-submit attribute.
+            if (form.hasAttribute('data-native-submit') || form.getAttribute('target') === '_blank') {
+                return;
+            }
+
             // Store config
             this.modals.set(modalId, {
                 modal: modal,

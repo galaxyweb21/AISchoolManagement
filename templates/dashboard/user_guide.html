@@ -1,0 +1,130 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% block page_title %}Product Guide{% endblock %}
+{% block content %}
+<style>
+.guide-shell{max-width:1500px;margin:0 auto;padding:1.5rem}
+.guide-hero{background:linear-gradient(135deg,var(--surface-bg),var(--eduai-gold-soft));border:1px solid var(--surface-border);border-radius:22px}
+.guide-step{height:100%;border:1px solid var(--surface-border);background:var(--surface-bg);border-radius:18px;transition:.18s ease}
+.guide-step:hover{transform:translateY(-2px);border-color:var(--eduai-gold);box-shadow:0 8px 24px rgba(0,0,0,.06)}
+.guide-number{width:38px;height:38px;border-radius:12px;background:var(--eduai-gold-soft);color:var(--eduai-gold);display:flex;align-items:center;justify-content:center;font-weight:800;flex:0 0 auto}
+.guide-icon{width:44px;height:44px;border-radius:13px;background:var(--eduai-signal-soft);color:var(--eduai-signal);display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+.guide-step a{text-decoration:none}
+.guide-progress{height:8px;border-radius:20px;background:var(--surface-border);overflow:hidden}.guide-progress-bar{height:100%;width:0;background:var(--eduai-gold);transition:width .25s ease}
+.tour-step{display:none}.tour-step.active{display:block}.tour-index{font-size:.8rem;color:var(--text-muted);font-weight:700}
+</style>
+
+<div class="guide-shell">
+  <div class="guide-hero p-4 p-lg-5 mb-4 shadow-sm">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+      <div>
+        <span class="badge badge-gold rounded-pill px-3 py-2"><i class="bi bi-compass me-1"></i> PRODUCT GUIDE</span>
+        <h2 class="fw-bold mt-3 mb-2">Welcome to EduAI School Management</h2>
+        <p class="text-muted mb-0" style="max-width:820px">Follow the recommended workflow for your role. Use the guided tour for a quick walkthrough, or open each page directly from the steps below.</p>
+      </div>
+      <button class="btn btn-gold btn-lg" id="startTourBtn" type="button"><i class="bi bi-play-circle me-2"></i>Start Guided Tour</button>
+    </div>
+  </div>
+
+  {% if user_role == 'SUPER_ADMIN' or user_role == 'SCHOOL_ADMIN' %}
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3"><div><h4 class="fw-bold mb-1">Administrator workflow</h4><p class="text-muted mb-0">Set up the school first, then manage people, academics, finance, communication and AI.</p></div></div>
+  <div class="row g-3">
+    {% include 'dashboard/guide_step.html' with n='1' icon='bi-building' title='Set up the school' text='Configure the school, academic year and terms before daily operations.' url='school:school_dashboard' label='School Settings' %}
+    {% include 'dashboard/guide_step.html' with n='2' icon='bi-people' title='Add students and staff' text='Create student records, staff profiles, classes and departments.' url='students:student_list' label='Students' %}
+    {% include 'dashboard/guide_step.html' with n='3' icon='bi-journal' title='Configure academics' text='Create subjects, classes, teacher assignments, rooms and timetable.' url='academics:subject_list' label='Academic Setup' %}
+    {% include 'dashboard/guide_step.html' with n='4' icon='bi-cash-coin' title='Prepare fees' text='Configure fee categories and structures, then prepare class fees.' url='finance:fee_preparation' label='Fee Preparation' %}
+    {% include 'dashboard/guide_step.html' with n='5' icon='bi-receipt' title='Manage billing' text='Review invoices, student fees, payments and outstanding balances.' url='finance:billing_dashboard' label='Billing Dashboard' %}
+    {% include 'dashboard/guide_step.html' with n='6' icon='bi-calendar-check' title='Run attendance' text='Teachers record attendance and the system generates relevant notifications.' url='attendance:attendance_tracker' label='Attendance' %}
+    {% include 'dashboard/guide_step.html' with n='7' icon='bi-pencil-square' title='Enter results' text='Enter grades and terminal results, then review report-card data.' url='assessments:grading_portal' label='Grade Entry' %}
+    {% include 'dashboard/guide_step.html' with n='8' icon='bi-file-earmark-text' title='Generate report cards' text='Generate, review, finalize and release report cards for students.' url='ai_engine:report_card_dashboard' label='Report Cards' %}
+    {% include 'dashboard/guide_step.html' with n='9' icon='bi-megaphone' title='Communicate' text='Publish announcements and monitor notification delivery, preferences and read status.' url='communication:announcement_management' label='Communication' %}
+    {% include 'dashboard/guide_step.html' with n='10' icon='bi-stars' title='Use AI assistance' text='Ask Copilot about school data and use AI insights for finance, risk and operations.' url='ai_engine:ai_copilot' label='AI Copilot' %}
+  </div>
+  {% elif user_role == 'BURSAR' %}
+  <div class="row g-3">
+    {% include 'dashboard/guide_step.html' with n='1' icon='bi-wallet2' title='Review billing' text='Start from the finance dashboard to see invoices, collections and receivables.' url='finance:billing_dashboard' label='Billing Dashboard' %}
+    {% include 'dashboard/guide_step.html' with n='2' icon='bi-clipboard-check' title='Prepare student fees' text='Prepare or review class fees before invoices are generated.' url='finance:fee_preparation' label='Fee Preparation' %}
+    {% include 'dashboard/guide_step.html' with n='3' icon='bi-file-earmark-text' title='Review student fees' text='Check prepared fees, status, final amounts and outstanding balances.' url='finance:student_fees_list' label='Student Fees' %}
+    {% include 'dashboard/guide_step.html' with n='4' icon='bi-receipt' title='Manage invoices' text='Generate and review invoices, statements and payment history.' url='finance:invoice_list' label='Invoices' %}
+    {% include 'dashboard/guide_step.html' with n='5' icon='bi-person-exclamation' title='Follow up owing students' text='Use the consolidated outstanding-balance report for collection follow-up.' url='finance:students_owing_report' label='Students Owing' %}
+    {% include 'dashboard/guide_step.html' with n='6' icon='bi-bell' title='Check notifications' text='Review finance and delivery notifications and mark completed items as read.' url='communication:notification_center' label='Notification Center' %}
+  </div>
+  {% elif user_role == 'TEACHER' %}
+  <div class="row g-3">
+    {% include 'dashboard/guide_step.html' with n='1' icon='bi-speedometer2' title='Start at Dashboard' text='Review your teaching overview and important school activity.' url='dashboard:dashboard' label='Dashboard' %}
+    {% include 'dashboard/guide_step.html' with n='2' icon='bi-people' title='Review students' text='Open the student list to view the learners assigned to your work.' url='students:student_list' label='Students' %}
+    {% include 'dashboard/guide_step.html' with n='3' icon='bi-calendar-check' title='Record attendance' text='Record Present, Late or Absent status for your classes.' url='attendance:attendance_tracker' label='Attendance' %}
+    {% include 'dashboard/guide_step.html' with n='4' icon='bi-pencil-square' title='Enter grades' text='Enter continuous assessment and examination results.' url='assessments:grading_portal' label='Grade Entry' %}
+    {% include 'dashboard/guide_step.html' with n='5' icon='bi-table' title='Review terminal results' text='Review the final results register and student reports.' url='assessments:terminal_results_register' label='Terminal Results' %}
+    {% include 'dashboard/guide_step.html' with n='6' icon='bi-calendar2-week' title='Check timetable' text='Use the timetable workspace to review teaching schedules.' url='academics:timetable_workspace' label='Timetabler' %}
+    {% include 'dashboard/guide_step.html' with n='7' icon='bi-calendar2-check' title='Manage leave' text='Submit leave requests and track your leave balance and status.' url='staff:leave_dashboard' label='Leave Dashboard' %}
+    {% include 'dashboard/guide_step.html' with n='8' icon='bi-chat-dots' title='Ask AI Copilot' text='Use Copilot for school-data questions and operational assistance.' url='ai_engine:ai_copilot' label='AI Copilot' %}
+  </div>
+  {% elif user_role == 'PARENT' %}
+  <div class="row g-3">
+    {% include 'dashboard/guide_step.html' with n='1' icon='bi-speedometer2' title='Start at Dashboard' text='See your family overview and key student information.' url='dashboard:dashboard' label='Dashboard' %}
+    {% include 'dashboard/guide_step.html' with n='2' icon='bi-bell' title='Check notifications' text='Read attendance, fee, report-card, promotion and announcement notifications.' url='communication:notification_center' label='Notification Center' %}
+    {% include 'dashboard/guide_step.html' with n='3' icon='bi-chat-heart' title='Use Family Assistant' text='Ask questions and interact with the AI assistant about your children.' url='ai_engine:parent_children_list' label='Family Assistant' %}
+    {% include 'dashboard/guide_step.html' with n='4' icon='bi-wallet2' title='Review fees' text='Check invoices, balances and payment information for your children.' url='students:my_fees' label='My Fees' %}
+    {% include 'dashboard/guide_step.html' with n='5' icon='bi-calendar-check' title='Review attendance' text='Check your child's attendance history and alerts.' url='students:my_attendance' label='Attendance' %}
+    {% include 'dashboard/guide_step.html' with n='6' icon='bi-journal-check' title='Review grades' text='Review available academic results and report cards.' url='students:my_grades' label='My Grades' %}
+  </div>
+  {% elif user_role == 'STUDENT' %}
+  <div class="row g-3">
+    {% include 'dashboard/guide_step.html' with n='1' icon='bi-speedometer2' title='Start at Dashboard' text='Review your academic and school overview.' url='dashboard:dashboard' label='Dashboard' %}
+    {% include 'dashboard/guide_step.html' with n='2' icon='bi-calendar-check' title='Check attendance' text='Review your attendance history and records.' url='students:my_attendance' label='My Attendance' %}
+    {% include 'dashboard/guide_step.html' with n='3' icon='bi-journal-check' title='Check grades' text='Review your available academic results.' url='students:my_grades' label='My Grades' %}
+    {% include 'dashboard/guide_step.html' with n='4' icon='bi-wallet2' title='Check fees' text='Review your fee and invoice information.' url='students:my_fees' label='My Fees' %}
+    {% include 'dashboard/guide_step.html' with n='5' icon='bi-bell' title='Read notifications' text='Stay informed about announcements and school updates.' url='communication:notification_center' label='Notification Center' %}
+  </div>
+  {% else %}
+  <div class="row g-3">
+    {% include 'dashboard/guide_step.html' with n='1' icon='bi-speedometer2' title='Start at Dashboard' text='Begin from your role-based dashboard.' url='dashboard:dashboard' label='Dashboard' %}
+    {% include 'dashboard/guide_step.html' with n='2' icon='bi-bell' title='Check notifications' text='Review messages and important system updates.' url='communication:notification_center' label='Notification Center' %}
+    {% include 'dashboard/guide_step.html' with n='3' icon='bi-person-circle' title='Check your profile' text='Keep your account information current.' url='accounts:profile' label='Profile' %}
+  </div>
+  {% endif %}
+
+
+  <div class="card border-0 shadow-sm rounded-4 mt-4" id="guidedWorkflows">
+    <div class="card-body p-4 p-lg-5">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+        <div><span class="badge badge-gold rounded-pill px-3 py-2"><i class="bi bi-signpost-2 me-1"></i> GUIDED WORKFLOWS</span><h4 class="fw-bold mt-3 mb-1">Learn the common tasks step by step</h4><p class="text-muted mb-0">Each workflow takes you to the real page and highlights the exact control or menu you need next. You can move between pages without losing your place.</p></div>
+      </div>
+      <div class="row g-3">
+        {% if user_role == 'SUPER_ADMIN' or user_role == 'SCHOOL_ADMIN' or user_role == 'REGISTRAR' or user_role == 'SECRETARY' %}
+<div class="col-md-6 col-xl-4"><div class="guide-step p-3 h-100"><div class="guide-icon mb-3"><i class="bi bi-person-plus"></i></div><h6 class="fw-bold">How to enroll a student</h6><p class="text-muted small">Create a learner record and verify it in the register.</p><button type="button" class="btn btn-sm btn-outline-gold" data-eduai-start-workflow="enrollment"><i class="bi bi-play-circle me-1"></i>Start workflow</button></div></div>
+{% endif %}
+        {% if user_role == 'SUPER_ADMIN' or user_role == 'SCHOOL_ADMIN' or user_role == 'BURSAR' %}
+<div class="col-md-6 col-xl-4"><div class="guide-step p-3 h-100"><div class="guide-icon mb-3"><i class="bi bi-clipboard-check"></i></div><h6 class="fw-bold">How to prepare fees</h6><p class="text-muted small">Select a term and class, prepare fees and verify the result.</p><button type="button" class="btn btn-sm btn-outline-gold" data-eduai-start-workflow="fees"><i class="bi bi-play-circle me-1"></i>Start workflow</button></div></div>
+{% endif %}
+        {% if user_role == 'SUPER_ADMIN' or user_role == 'SCHOOL_ADMIN' or user_role == 'BURSAR' %}
+<div class="col-md-6 col-xl-4"><div class="guide-step p-3 h-100"><div class="guide-icon mb-3"><i class="bi bi-cash-coin"></i></div><h6 class="fw-bold">How to record a payment</h6><p class="text-muted small">Find an outstanding invoice, record payment and verify the receipt and balance.</p><button type="button" class="btn btn-sm btn-outline-gold" data-eduai-start-workflow="payment"><i class="bi bi-play-circle me-1"></i>Start workflow</button></div></div>
+{% endif %}
+        {% if user_role == 'SUPER_ADMIN' or user_role == 'SCHOOL_ADMIN' or user_role == 'TEACHER' or user_role == 'HOD' %}
+<div class="col-md-6 col-xl-4"><div class="guide-step p-3 h-100"><div class="guide-icon mb-3"><i class="bi bi-pencil-square"></i></div><h6 class="fw-bold">How to enter results</h6><p class="text-muted small">Select the academic context, enter marks and save the results.</p><button type="button" class="btn btn-sm btn-outline-gold" data-eduai-start-workflow="results"><i class="bi bi-play-circle me-1"></i>Start workflow</button></div></div>
+{% endif %}
+        {% if user_role == 'SUPER_ADMIN' or user_role == 'SCHOOL_ADMIN' or user_role == 'TEACHER' or user_role == 'HOD' %}
+<div class="col-md-6 col-xl-4"><div class="guide-step p-3 h-100"><div class="guide-icon mb-3"><i class="bi bi-calendar-check"></i></div><h6 class="fw-bold">How to manage attendance</h6><p class="text-muted small">Choose the day, review your class and complete the daily roll call.</p><button type="button" class="btn btn-sm btn-outline-gold" data-eduai-start-workflow="attendance"><i class="bi bi-play-circle me-1"></i>Start workflow</button></div></div>
+{% endif %}
+        {% if user_role in 'SUPER_ADMIN,SCHOOL_ADMIN,TEACHER,HOD,SECRETARY,BURSAR,REGISTRAR' %}
+<div class="col-md-6 col-xl-4"><div class="guide-step p-3 h-100"><div class="guide-icon mb-3"><i class="bi bi-stars"></i></div><h6 class="fw-bold">How to use AI Copilot</h6><p class="text-muted small">Open Copilot, ask a school-data question and review the response.</p><button type="button" class="btn btn-sm btn-outline-gold" data-eduai-start-workflow="copilot"><i class="bi bi-play-circle me-1"></i>Start workflow</button></div></div>
+{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-4 mt-4">
+    <div class="card-body p-4">
+      <h5 class="fw-bold"><i class="bi bi-lightbulb text-gold me-2"></i>Recommended daily routine</h5>
+      <div class="row g-3 mt-1">
+        <div class="col-md-3"><div class="p-3 rounded-4 bg-light-subtle h-100"><strong>1. Start</strong><p class="text-muted small mb-0 mt-1">Open Dashboard and review alerts.</p></div></div>
+        <div class="col-md-3"><div class="p-3 rounded-4 bg-light-subtle h-100"><strong>2. Work</strong><p class="text-muted small mb-0 mt-1">Complete your role's daily task: attendance, finance, academics or administration.</p></div></div>
+        <div class="col-md-3"><div class="p-3 rounded-4 bg-light-subtle h-100"><strong>3. Verify</strong><p class="text-muted small mb-0 mt-1">Check results, balances, approvals and notifications before finishing.</p></div></div>
+        <div class="col-md-3"><div class="p-3 rounded-4 bg-light-subtle h-100"><strong>4. Ask AI</strong><p class="text-muted small mb-0 mt-1">Use Copilot when you need school-data answers or operational help.</p></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

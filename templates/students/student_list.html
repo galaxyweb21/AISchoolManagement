@@ -120,7 +120,7 @@
             </div>
             <div class="d-flex gap-2 flex-wrap">
                 {% if can_edit %}
-                <a href="{% url 'students:create_student' %}" class="btn btn-gold">
+                <a href="{% url 'students:create_student' %}" id="eduaiAddStudentBtn" data-eduai-tour="student-add" class="btn btn-gold">
                     <i class="bi bi-plus-lg me-1"></i>Add Student
                 </a>
                 <a href="{% url 'students:bulk_face_registration' %}" class="btn btn-outline-success">

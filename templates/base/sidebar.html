@@ -640,7 +640,7 @@
         <!-- ============================================= -->
         <div class="eduai-eyebrow">Overview</div>
         <ul>
-            <li><a href="{% url 'dashboard:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'admin_dashboard' or request.resolver_match.url_name == 'teacher_dashboard' or request.resolver_match.url_name == 'parent_dashboard' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span class="eduai-label">Dashboard</span></a></li>
+            <li><a href="{% url 'dashboard:dashboard' %}" id="eduaiDashboardMenu" data-guide-target="dashboard" data-eduai-tour="dashboard-menu" class="nav-link {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'admin_dashboard' or request.resolver_match.url_name == 'teacher_dashboard' or request.resolver_match.url_name == 'parent_dashboard' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span class="eduai-label">Dashboard</span></a></li>
         </ul>
 
         <!-- ============================================= -->
@@ -764,7 +764,7 @@
         </div>
         <ul>
             <li><a href="{% url 'ai_engine:ai_command_center' %}" class="nav-link {% if request.resolver_match.url_name == 'ai_command_center' %}active{% endif %}"><i class="bi bi-cpu"></i><span class="eduai-label">Command Center</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
-            <li><a href="{% url 'ai_engine:ai_copilot' %}" class="nav-link {% if request.resolver_match.url_name == 'ai_copilot' %}active{% endif %}"><i class="bi bi-chat-dots"></i><span class="eduai-label">AI Copilot</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            <li><a href="{% url 'ai_engine:ai_copilot' %}" id="eduaiCopilotMenu" data-guide-target="copilot" data-eduai-tour="copilot-menu" class="nav-link {% if request.resolver_match.url_name == 'ai_copilot' %}active{% endif %}"><i class="bi bi-chat-dots"></i><span class="eduai-label">AI Copilot</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
             {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,TEACHER,HOD' %}
             <li><a href="{% url 'ai_engine:intervention_center' %}" class="nav-link {% if request.resolver_match.url_name == 'intervention_center' %}active{% endif %}"><i class="bi bi-shield-exclamation"></i><span class="eduai-label">Intervention Center</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
             <li><a href="{% url 'ai_engine:risk_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'risk_dashboard' %}active{% endif %}"><i class="bi bi-graph-up-arrow"></i><span class="eduai-label">Risk Engine</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
@@ -952,7 +952,7 @@
                 <i class="bi bi-chat-left-text"></i><span class="eduai-label">Announcements</span>
                 <span class="eduai-badge eduai-badge-ai">Broadcast</span>
             </a></li>
-            <li><a href="{% url 'communication:notification_center' %}" class="nav-link {% if request.resolver_match.url_name == 'notification_center' %}active{% endif %}">
+            <li><a href="{% url 'communication:notification_center' %}" id="eduaiNotificationsMenu" data-guide-target="notifications" data-eduai-tour="notifications-menu" class="nav-link {% if request.resolver_match.url_name == 'notification_center' %}active{% endif %}">
                 <i class="bi bi-bell"></i><span class="eduai-label">Notification Center</span>
             </a></li>
             <li><a href="{% url 'communication:notification_preferences' %}" class="nav-link {% if request.resolver_match.url_name == 'notification_preferences' %}active{% endif %}">
@@ -975,6 +975,7 @@
         </div>
         <ul>
             <li><a href="{% url 'school:school_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'school_dashboard' %}active{% endif %}"><i class="bi bi-building"></i><span class="eduai-label">School Settings</span></a></li>
+            <li><a href="{% url 'core:activity_log' %}" id="eduaiActivityLogMenu" data-guide-target="activity-log" class="nav-link {% if request.resolver_match.url_name == 'activity_log' %}active{% endif %}"><i class="bi bi-clock-history"></i><span class="eduai-label">Activity Log</span><span class="eduai-badge eduai-badge-hr">Audit</span></a></li>
         </ul>
         {% endif %}
 
@@ -987,7 +988,7 @@
             <i class="bi bi-people me-1"></i> Student &amp; Academics
         </div>
         <ul>
-            <li><a href="{% url 'students:student_list' %}" class="nav-link {% if request.resolver_match.url_name == 'student_list' %}active{% endif %}"><i class="bi bi-people"></i><span class="eduai-label">Students</span></a></li>
+            <li><a href="{% url 'students:student_list' %}" id="eduaiStudentsMenu" data-guide-target="students" data-eduai-tour="students-menu" class="nav-link {% if request.resolver_match.url_name == 'student_list' %}active{% endif %}"><i class="bi bi-people"></i><span class="eduai-label">Students</span></a></li>
             {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}
             <li><a href="{% url 'students:bulk_face_registration' %}" class="nav-link {% if request.resolver_match.url_name == 'bulk_face_registration' %}active{% endif %}"><i class="bi bi-person-bounding-box"></i><span class="eduai-label">Bulk Face Registration</span></a></li>
             {% endif %}
@@ -995,10 +996,10 @@
             {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}
             <li><a href="{% url 'academics:promotion_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'promotion_dashboard' or request.resolver_match.url_name == 'promotion_batch_list' or request.resolver_match.url_name == 'promotion_batch_detail' or request.resolver_match.url_name == 'promotion_rule_list' %}active{% endif %}"><i class="bi bi-arrow-up-circle"></i><span class="eduai-label">Promotions</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
             {% endif %}
-            <li><a href="{% url 'attendance:attendance_tracker' %}" class="nav-link {% if request.resolver_match.url_name == 'attendance_tracker' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">Attendance</span></a></li>
+            <li><a href="{% url 'attendance:attendance_tracker' %}" id="eduaiAttendanceMenu" data-guide-target="attendance" data-eduai-tour="attendance-menu" class="nav-link {% if request.resolver_match.url_name == 'attendance_tracker' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">Attendance</span></a></li>
             {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,HOD' %}
-            <li><a href="{% url 'assessments:grading_portal' %}" class="nav-link {% if request.resolver_match.url_name == 'grading_portal' %}active{% endif %}"><i class="bi bi-pencil-square"></i><span class="eduai-label">Grade Entry</span></a></li>
-            <li><a href="{% url 'assessments:terminal_results_register' %}" class="nav-link {% if request.resolver_match.url_name == 'terminal_results_register' or request.resolver_match.url_name == 'terminal_student_report' %}active{% endif %}"><i class="bi bi-table"></i><span class="eduai-label">Terminal Results</span></a></li>
+            <li><a href="{% url 'assessments:grading_portal' %}" id="eduaiGradeEntryMenu" data-guide-target="grade-entry" data-eduai-tour="grade-entry-menu" class="nav-link {% if request.resolver_match.url_name == 'grading_portal' %}active{% endif %}"><i class="bi bi-pencil-square"></i><span class="eduai-label">Grade Entry</span></a></li>
+            <li><a href="{% url 'assessments:terminal_results_register' %}" id="eduaiTerminalResultsMenu" data-guide-target="terminal-results" data-eduai-tour="terminal-results-menu" class="nav-link {% if request.resolver_match.url_name == 'terminal_results_register' or request.resolver_match.url_name == 'terminal_student_report' %}active{% endif %}"><i class="bi bi-table"></i><span class="eduai-label">Terminal Results</span></a></li>
             {% endif %}
         </ul>
         {% endif %}
@@ -1030,10 +1031,10 @@
             <i class="bi bi-wallet me-1"></i> Finance
         </div>
         <ul>
-            <li><a href="{% url 'finance:billing_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'billing_dashboard' %}active{% endif %}"><i class="bi bi-wallet2"></i><span class="eduai-label">Billing Dashboard</span></a></li>
-            <li><a href="{% url 'finance:fee_preparation' %}" class="nav-link {% if request.resolver_match.url_name == 'fee_preparation' %}active{% endif %}"><i class="bi bi-clipboard-check"></i><span class="eduai-label">Fee Preparation</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
-            <li><a href="{% url 'finance:student_fees_list' %}" class="nav-link {% if request.resolver_match.url_name == 'student_fees_list' %}active{% endif %}"><i class="bi bi-file-earmark-text"></i><span class="eduai-label">Student Fees</span></a></li>
-            <li><a href="{% url 'finance:invoice_list' %}" class="nav-link {% if request.resolver_match.url_name == 'invoice_list' %}active{% endif %}"><i class="bi bi-file-earmark-text"></i><span class="eduai-label">Invoices</span></a></li>
+            <li><a href="{% url 'finance:billing_dashboard' %}" id="eduaiBillingMenu" data-guide-target="billing" data-eduai-tour="billing-menu" class="nav-link {% if request.resolver_match.url_name == 'billing_dashboard' %}active{% endif %}"><i class="bi bi-wallet2"></i><span class="eduai-label">Billing Dashboard</span></a></li>
+            <li><a href="{% url 'finance:fee_preparation' %}" id="eduaiFeePreparationMenu" data-guide-target="fee-preparation" data-eduai-tour="fee-preparation-menu" class="nav-link {% if request.resolver_match.url_name == 'fee_preparation' %}active{% endif %}"><i class="bi bi-clipboard-check"></i><span class="eduai-label">Fee Preparation</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
+            <li><a href="{% url 'finance:student_fees_list' %}" id="eduaiStudentFeesMenu" data-guide-target="student-fees" data-eduai-tour="student-fees-menu" class="nav-link {% if request.resolver_match.url_name == 'student_fees_list' %}active{% endif %}"><i class="bi bi-file-earmark-text"></i><span class="eduai-label">Student Fees</span></a></li>
+            <li><a href="{% url 'finance:invoice_list' %}" id="eduaiInvoicesMenu" data-guide-target="invoices" data-eduai-tour="invoices-menu" class="nav-link {% if request.resolver_match.url_name == 'invoice_list' %}active{% endif %}"><i class="bi bi-file-earmark-text"></i><span class="eduai-label">Invoices</span></a></li>
             <li><a href="{% url 'finance:fee_category_list' %}" class="nav-link {% if request.resolver_match.url_name == 'fee_category_list' %}active{% endif %}"><i class="bi bi-tags"></i><span class="eduai-label">Fee Categories</span></a></li>
             <li><a href="{% url 'finance:fee_structure_list' %}" class="nav-link {% if request.resolver_match.url_name == 'fee_structure_list' %}active{% endif %}"><i class="bi bi-list-ul"></i><span class="eduai-label">Fee Structures</span></a></li>
             <li><a href="{% url 'finance:waiver_list' %}" class="nav-link {% if request.resolver_match.url_name == 'waiver_list' %}active{% endif %}"><i class="bi bi-percent"></i><span class="eduai-label">Fee Waivers</span></a></li>
@@ -1065,10 +1066,10 @@
             <i class="bi bi-chalkboard me-1"></i> Teaching
         </div>
         <ul>
-            <li><a href="{% url 'students:student_list' %}" class="nav-link {% if request.resolver_match.url_name == 'student_list' %}active{% endif %}"><i class="bi bi-people"></i><span class="eduai-label">Students</span></a></li>
-            <li><a href="{% url 'assessments:grading_portal' %}" class="nav-link {% if request.resolver_match.url_name == 'grading_portal' %}active{% endif %}"><i class="bi bi-pencil-square"></i><span class="eduai-label">Grade Entry</span></a></li>
-            <li><a href="{% url 'assessments:terminal_results_register' %}" class="nav-link {% if request.resolver_match.url_name == 'terminal_results_register' or request.resolver_match.url_name == 'terminal_student_report' %}active{% endif %}"><i class="bi bi-table"></i><span class="eduai-label">Terminal Results</span></a></li>
-            <li><a href="{% url 'attendance:attendance_tracker' %}" class="nav-link {% if request.resolver_match.url_name == 'attendance_tracker' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">Attendance</span></a></li>
+            <li><a href="{% url 'students:student_list' %}" data-eduai-tour="students-menu" class="nav-link {% if request.resolver_match.url_name == 'student_list' %}active{% endif %}"><i class="bi bi-people"></i><span class="eduai-label">Students</span></a></li>
+            <li><a href="{% url 'assessments:grading_portal' %}" id="eduaiGradeEntryMenu" data-guide-target="grade-entry" data-eduai-tour="grade-entry-menu" class="nav-link {% if request.resolver_match.url_name == 'grading_portal' %}active{% endif %}"><i class="bi bi-pencil-square"></i><span class="eduai-label">Grade Entry</span></a></li>
+            <li><a href="{% url 'assessments:terminal_results_register' %}" id="eduaiTerminalResultsMenu" data-guide-target="terminal-results" data-eduai-tour="terminal-results-menu" class="nav-link {% if request.resolver_match.url_name == 'terminal_results_register' or request.resolver_match.url_name == 'terminal_student_report' %}active{% endif %}"><i class="bi bi-table"></i><span class="eduai-label">Terminal Results</span></a></li>
+            <li><a href="{% url 'attendance:attendance_tracker' %}" id="eduaiAttendanceMenu" data-guide-target="attendance" data-eduai-tour="attendance-menu" class="nav-link {% if request.resolver_match.url_name == 'attendance_tracker' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">Attendance</span></a></li>
             <li><a href="{% url 'academics:timetable_workspace' %}" class="nav-link {% if request.resolver_match.url_name == 'timetable_workspace' %}active{% endif %}"><i class="bi bi-magic"></i><span class="eduai-label">Timetabler</span><span class="eduai-badge eduai-badge-ai">AI</span></a></li>
         </ul>
         {% endif %}
@@ -1103,7 +1104,8 @@
     </nav>
 
     <div class="eduai-sidebar-footer">
-        <button type="button" class="eduai-collapse-btn" id="eduaiCollapseBtn" title="Collapse sidebar">
+        <button type="button" class="eduai-guide-btn" id="eduaiGuideBtn" data-guide-target="product-guide" data-eduai-tour="product-guide" title="Open Product Guide"><i class="bi bi-compass"></i><span class="collapse-label">Product Guide</span></button>
+<button type="button" class="eduai-collapse-btn" id="eduaiCollapseBtn" title="Collapse sidebar">
             <i class="bi bi-chevron-left" id="collapseIcon"></i><span class="collapse-label">Collapse</span>
         </button>
         <div class="eduai-profile">

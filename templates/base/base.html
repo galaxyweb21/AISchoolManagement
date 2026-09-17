@@ -4,6 +4,8 @@
 <head>
     <!-- === HEADER (Meta, Bootstrap, Fonts) === -->
     {% include "base/header.html" %}
+    <!-- EduAI Product Guide styles -->
+    <link rel="stylesheet" href="{% static 'css/tour.css' %}?v=7.1">
 
     <!-- === CUSTOM ENTERPRISE STYLES (Light/Dark Patch) === -->
      <style>
@@ -316,6 +318,12 @@
     <!-- === SIDEBAR === -->
     {% include "base/sidebar.html" %}
 
+    <!-- EduAI Product Guide launcher: always available -->
+    <button type="button" id="eduaiFloatingGuideBtn" class="eduai-floating-guide"
+            aria-label="Open EduAI Product Guide" title="Open EduAI Product Guide">
+        <i class="bi bi-compass"></i><span>Product Guide</span>
+    </button>
+
     <!-- === MOBILE SCRIM === -->
     <div class="eduai-scrim" id="eduaiScrim"></div>
 
@@ -439,6 +447,32 @@ document.addEventListener('DOMContentLoaded', function(){
 
     <!-- === SCRIPTS === -->
     {% include "base/js.html" %}
+
+    <!-- Product Guide bootstrap fallback. This intentionally runs after all global scripts. -->
+    <script>
+    (function(){
+      function wireEduAIGuide(){
+        var btn=document.getElementById('eduaiFloatingGuideBtn');
+        if(btn && window.eduAIStartProductTour){
+          btn.onclick=function(){ window.eduAIStartProductTour(); };
+          return true;
+        }
+        if(btn && window.eduAIStartTour){
+          btn.onclick=function(){ window.eduAIStartTour(); };
+          return true;
+        }
+        return false;
+      }
+      function boot(){
+        if(wireEduAIGuide()) return;
+        setTimeout(wireEduAIGuide,150);
+        setTimeout(wireEduAIGuide,500);
+        setTimeout(wireEduAIGuide,1200);
+      }
+      if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
+      else boot();
+    })();
+    </script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {

@@ -427,45 +427,60 @@ function openPaymentModal(invoiceId, studentName, totalAmount, amountPaid) {
     document.getElementById('modalReference').value = '';
 }
 
-async function submitPaymentDetail() {
+function submitPaymentDetail() {
     const invoiceId = document.getElementById('modalInvoiceId').value;
     const amount = document.getElementById('modalPaymentAmount').value;
     const method = document.getElementById('modalPaymentMethod').value;
     const reference = document.getElementById('modalReference').value;
-    const receiptWindow = window.open('about:blank', '_blank');
 
     if (!amount || parseFloat(amount) <= 0) {
         alert("Please enter a valid payment amount.");
         return;
     }
 
-    try {
-        const response = await fetch('{% url "finance:api_record_payment" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({
-                invoice_id: invoiceId,
-                amount: amount,
-                method: method,
-                reference_number: reference
-            })
-        });
-        const data = await response.json();
-        if (response.ok && data.success) {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
-            modal.hide();
-            if (receiptWindow && !receiptWindow.closed) { receiptWindow.location.href = data.receipt_url; } else { window.open(data.receipt_url, '_blank'); }
-            window.location.reload();
-        } else {
-            alert("Payment Failed: " + (data.error || "Unknown error."));
-        }
-    } catch (err) {
-        console.error(err);
-        alert("An error occurred while processing the payment.");
+    const receiptWindowName = 'paymentReceipt_' + Date.now();
+    const receiptWindow = window.open('about:blank', receiptWindowName, 'width=1000,height=800,scrollbars=yes,resizable=yes');
+    if (!receiptWindow) {
+        alert('Your browser blocked the receipt pop-up. Please allow pop-ups for this site and try again.');
+        return;
     }
+
+    try {
+        receiptWindow.document.open();
+        receiptWindow.document.write('<!doctype html><html><head><title>Payment Receipt</title></head><body style="font-family:Arial,sans-serif;padding:40px;text-align:center"><h3>Processing payment...</h3><p>Please wait while your receipt is prepared.</p></body></html>');
+        receiptWindow.document.close();
+    } catch (_) {}
+
+    // Use a native POST so Django can redirect this already-open tab to the receipt.
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{% url "finance:api_record_payment" %}';
+    form.target = receiptWindowName;
+    form.style.display = 'none';
+
+    const csrf = document.querySelector('[name="csrfmiddlewaretoken"]');
+    const fields = {
+        'csrfmiddlewaretoken': csrf ? csrf.value : '',
+        'invoice_ids': invoiceId,
+        'amount': amount,
+        'method': method,
+        'reference_number': reference,
+        'notes': '',
+        'open_receipt': '1'
+    };
+    Object.keys(fields).forEach(function(name) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = fields[name];
+        form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+    form.remove();
+
+    setTimeout(function() { window.location.reload(); }, 2500);
 }
 </script>
 {% endblock %}

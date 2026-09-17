@@ -1,3 +1,5 @@
+
+
 <style>
 #paymentForm{--pay-accent:var(--eduai-gold,#946B1C)}
 .payment-shell{background:var(--bs-body-bg);border-radius:18px}
@@ -12,8 +14,9 @@
 </style>
 
 <div class="payment-shell">
-<form id="paymentForm" method="post" action="{% url 'finance:api_record_payment' %}" novalidate>
+<form id="paymentForm" method="post" action="{% url 'finance:api_record_payment' %}" target="_blank" data-native-submit="1">
 {% csrf_token %}
+<input type="hidden" name="open_receipt" value="1">
 <div class="payment-header d-flex justify-content-between align-items-center">
   <div><div class="fw-bold fs-5"><i class="bi bi-cash-coin me-2 text-success"></i>Record Payment</div><small class="text-muted">Select an invoice, enter the amount and save the payment.</small></div>
   <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -81,22 +84,44 @@
     document.getElementById('paymentSelectAll')?.addEventListener('click',()=>{const should=boxes.some(b=>!b.checked);boxes.forEach(b=>b.checked=should);refresh();});
     document.getElementById('paymentFull')?.addEventListener('click',()=>{const chosen=boxes.filter(b=>b.checked);if(!chosen.length){boxes.forEach(b=>b.checked=true);refresh();} const total=boxes.filter(b=>b.checked).reduce((s,b)=>s+(parseFloat(b.dataset.balance)||0),0);amount.value=total.toFixed(2);refresh();});
     amount.addEventListener('input',refresh);
-    form.addEventListener('submit',async function(e){
-      e.preventDefault(); alertBox.classList.add('d-none'); const chosen=boxes.filter(b=>b.checked), value=parseFloat(amount.value)||0, total=chosen.reduce((s,b)=>s+(parseFloat(b.dataset.balance)||0),0);
-      if(!chosen.length){invoiceError.classList.remove('d-none');show('Please select an invoice.');return;}
-      if(value<=0){show('Enter a payment amount greater than zero.');amount.focus();return;}
-      if(value>total+0.005){show('Payment cannot exceed the selected invoices outstanding balance of GH¢ '+total.toFixed(2)+'.');return;}
-      if(!method.value){show('Please select a payment method.');method.focus();return;}
-      const btn=document.getElementById('paymentSubmitBtn'), old=btn.innerHTML;btn.disabled=true;btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-      try{
-        const payload={invoice_ids:chosen.map(b=>b.value),amount:value.toFixed(2),method:method.value,reference_number:document.getElementById('paymentReference').value.trim(),notes:document.getElementById('paymentNotes').value.trim()}; const receiptWindow=window.open('about:blank','_blank');
-        const response=await fetch(form.action,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRFToken':csrf(),'X-Requested-With':'XMLHttpRequest'},body:JSON.stringify(payload)});
-        let data={}; try{data=await response.json()}catch(_){throw new Error('The server returned an invalid response.');}
-        if(!response.ok || !data.success) throw new Error(data.error||'Payment could not be recorded.');
-        show(data.message||'Payment recorded successfully.','success');
-        if(receiptWindow && !receiptWindow.closed){ receiptWindow.location.href=data.receipt_url; } else { window.open(data.receipt_url,'_blank'); }
-        setTimeout(()=>window.location.reload(),500);
-      }catch(err){show(err.message||'Payment could not be recorded.');btn.disabled=false;btn.innerHTML=old;}
+    // IMPORTANT: payment submission is intentionally native HTML.
+    // The browser submits this form to Django with target="_blank".
+    // Do not use fetch(), AJAX, window.open(), or form.submit() here.
+    form.addEventListener('submit',function(e){
+      const chosen=boxes.filter(b=>b.checked), value=parseFloat(amount.value)||0,
+            total=chosen.reduce((s,b)=>s+(parseFloat(b.dataset.balance)||0),0);
+      if(!chosen.length){
+        e.preventDefault();
+        invoiceError.classList.remove('d-none');
+        show('Please select an invoice.');
+        return false;
+      }
+      if(value<=0){
+        e.preventDefault();
+        show('Enter a payment amount greater than zero.');
+        amount.focus();
+        return false;
+      }
+      if(value>total+0.005){
+        e.preventDefault();
+        show('Payment cannot exceed the selected invoices outstanding balance of GH¢ '+total.toFixed(2)+'.');
+        return false;
+      }
+      if(!method.value){
+        e.preventDefault();
+        show('Please select a payment method.');
+        method.focus();
+        return false;
+      }
+      // Valid: deliberately do not preventDefault(). The browser performs
+      // the normal POST and opens/navigates the new tab (target="_blank")
+      // to the receipt on its own — nothing here waits on that. This page
+      // just refreshes shortly after so the invoice list reflects the new
+      // payment; the reload itself clears the modal, same as every other
+      // save flow in this app.
+      const btn=document.getElementById('paymentSubmitBtn');
+      if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Saving...';}
+      setTimeout(function(){ window.location.reload(); }, 1200);
     });
     if(boxes.length===1){boxes[0].checked=true;}
     refresh();

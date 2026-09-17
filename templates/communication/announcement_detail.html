@@ -1,0 +1,44 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Announcement{% endblock %}
+
+{% block content %}
+<style>
+.ad-wrap{max-width:980px;margin:0 auto}.ad-card{border:0;border-radius:1.25rem;box-shadow:0 .4rem 1.5rem rgba(0,0,0,.07)}
+.ad-priority{font-size:.72rem;letter-spacing:.04em;text-transform:uppercase}.ad-content{white-space:pre-line;line-height:1.8}
+.ad-meta{background:rgba(148,107,28,.08);border-radius:1rem}
+</style>
+<div class="ad-wrap py-4">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <a href="{% url 'communication:inbox' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to Communication</a>
+    {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+      <a href="{% url 'communication:announcement_management' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-megaphone me-1"></i>Manage Announcements</a>
+    {% endif %}
+  </div>
+  <article class="card ad-card">
+    <div class="card-body p-4 p-lg-5">
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="badge ad-priority {% if announcement.priority == 'URGENT' %}bg-danger{% elif announcement.priority == 'HIGH' %}bg-warning text-dark{% elif announcement.priority == 'LOW' %}bg-secondary{% else %}bg-light text-dark{% endif %}">{{ announcement.get_priority_display }}</span>
+        <span class="badge bg-light text-dark"><i class="bi bi-people me-1"></i>{{ announcement.get_audience_display }}</span>
+        {% if announcement.is_archived %}<span class="badge bg-secondary">Archived</span>{% endif %}
+      </div>
+      <h2 class="fw-bold mb-2">{{ announcement.title }}</h2>
+      <div class="text-muted small mb-4">
+        <i class="bi bi-person me-1"></i>{{ announcement.sender.get_full_name|default:announcement.sender.username|default:'School Administration' }}
+        <span class="mx-2">•</span>
+        <i class="bi bi-calendar3 me-1"></i>{{ announcement.publish_at|date:"d M Y, H:i" }}
+        <span class="mx-2">•</span>
+        <i class="bi bi-eye me-1"></i>{{ announcement.views_count }} view{{ announcement.views_count|pluralize }}
+      </div>
+      {% if announcement.summary %}
+        <div class="ad-meta p-3 mb-4"><strong>Summary</strong><div class="text-muted mt-1">{{ announcement.summary }}</div></div>
+      {% endif %}
+      <div class="ad-content">{{ announcement.content }}</div>
+      {% if announcement.expires_at %}
+        <hr class="my-4">
+        <div class="small text-muted"><i class="bi bi-hourglass-split me-1"></i>Expires {{ announcement.expires_at|date:"d M Y, H:i" }}</div>
+      {% endif %}
+    </div>
+  </article>
+</div>
+{% endblock %}

@@ -208,16 +208,40 @@ def api_record_payment(request):
     """Persist a payment and keep invoice + ledger accounting consistent."""
     import logging
     logger = logging.getLogger(__name__)
+
+    # The payment modal submits as a native browser POST (target="_blank",
+    # hidden "open_receipt" field) so Django can navigate the newly opened
+    # tab straight to the printable receipt. AJAX/JSON callers are untouched
+    # and keep receiving the JSON contract below.
+    is_ajax = (request.headers.get('X-Requested-With') or '').lower() == 'xmlhttprequest'
+    accepts_html = 'text/html' in (request.headers.get('Accept') or '').lower()
+    is_native_submit = (request.POST.get('open_receipt') == '1' or accepts_html) and not is_ajax
+
+    def respond_error(message, status=400):
+        """Native submissions get a normal redirect with a Django message so
+        a validation failure shows a real page in the new tab instead of raw
+        JSON text; AJAX/JSON callers keep the existing JSON error contract."""
+        if is_native_submit:
+            messages.error(request, message)
+            fallback = request.META.get('HTTP_REFERER') or reverse('finance:billing_dashboard')
+            return redirect(fallback)
+        return json_error(message, status)
+
     if not user_can_manage_finance(request.user):
-        return json_error('Permission denied.', 403)
+        return respond_error('Permission denied.', 403)
     if not getattr(request.user, 'school', None):
-        return json_error('Your account is not linked to a school.', 403)
+        return respond_error('Your account is not linked to a school.', 403)
     try:
         if request.content_type and 'application/json' in request.content_type:
             data = json.loads(request.body or '{}')
         else:
             data = request.POST.dict()
-        invoice_ids = data.get('invoice_ids', [])
+        if request.content_type and 'application/json' in request.content_type:
+            invoice_ids = data.get('invoice_ids', [])
+        else:
+            invoice_ids = request.POST.getlist('invoice_ids')
+            if not invoice_ids:
+                invoice_ids = data.get('invoice_ids', [])
         if isinstance(invoice_ids, str):
             try:
                 parsed = json.loads(invoice_ids)
@@ -231,11 +255,11 @@ def api_record_payment(request):
         method = str(data.get('method') or 'CASH').strip().upper()
         reference_number = str(data.get('reference_number') or '').strip()
         notes = str(data.get('notes') or '').strip()
-        if not invoice_ids: return json_error('At least one invoice is required.')
-        if payment_amount <= ZERO: return json_error('Payment amount must be greater than zero.')
-        if method not in dict(Payment.METHOD_CHOICES): return json_error('Invalid payment method.')
-        if len(reference_number) > 100: return json_error('Reference number is too long (maximum 100 characters).')
-        if len(notes) > 200: return json_error('Notes are too long (maximum 200 characters).')
+        if not invoice_ids: return respond_error('At least one invoice is required.')
+        if payment_amount <= ZERO: return respond_error('Payment amount must be greater than zero.')
+        if method not in dict(Payment.METHOD_CHOICES): return respond_error('Invalid payment method.')
+        if len(reference_number) > 100: return respond_error('Reference number is too long (maximum 100 characters).')
+        if len(notes) > 200: return respond_error('Notes are too long (maximum 200 characters).')
 
         school = request.user.school
         payments, updated_invoices = [], []
@@ -244,7 +268,7 @@ def api_record_payment(request):
             invoices = list(Invoice.objects.filter(school=school, id__in=invoice_ids)
                             .exclude(status='VOID').select_for_update()
                             .order_by('due_date', 'created_at'))
-            if not invoices: return json_error('No valid unpaid invoices were found.', 404)
+            if not invoices: return respond_error('No valid unpaid invoices were found.', 404)
             balances, total_outstanding = {}, ZERO
             for invoice in invoices:
                 total_amount = invoice.line_items.aggregate(total=Sum('amount'))['total'] or ZERO
@@ -252,9 +276,9 @@ def api_record_payment(request):
                 balance = total_amount - paid
                 balances[invoice.pk] = (total_amount, paid, balance)
                 if balance > ZERO: total_outstanding += balance
-            if total_outstanding <= ZERO: return json_error('All selected invoices are already fully paid.')
+            if total_outstanding <= ZERO: return respond_error('All selected invoices are already fully paid.')
             if payment_amount > total_outstanding:
-                return json_error(f'Payment amount (GH¢ {payment_amount:.2f}) exceeds total outstanding (GH¢ {total_outstanding:.2f}).')
+                return respond_error(f'Payment amount (GH¢ {payment_amount:.2f}) exceeds total outstanding (GH¢ {total_outstanding:.2f}).')
             remaining = payment_amount
             for invoice in invoices:
                 if remaining <= ZERO: break
@@ -292,6 +316,18 @@ def api_record_payment(request):
             logger.exception('Payment saved but receipt notification queue failed: %s', exc)
 
         first = updated_invoices[0]
+        receipt_url = reverse('finance:payment_receipt', args=[payments[0].id])
+        receipt_pdf_url = reverse('finance:payment_receipt_pdf', args=[payments[0].id])
+
+        # Native browser form submissions (the payment modal's
+        # target="_blank" POST) must navigate the newly opened tab straight
+        # to the receipt. Redirecting is intentionally simple and reliable:
+        # the browser follows this redirect inside the tab created by
+        # <form target="_blank">. AJAX/JSON callers continue to receive the
+        # existing JSON response below.
+        if is_native_submit:
+            return redirect(receipt_url)
+
         return JsonResponse({'success': True,
             'message': f'Payment of GH¢ {total_paid:.2f} recorded successfully across {len(payments)} invoice(s).',
             'payment_id': str(payments[0].id), 'receipt_number': payments[0].receipt_number,
@@ -299,13 +335,13 @@ def api_record_payment(request):
             'new_status': first['new_status'], 'new_amount_paid': first['new_paid'],
             'new_balance': first['new_balance'], 'remaining_balance': str(max(total_outstanding-total_paid, ZERO)),
             'updated_invoices': updated_invoices,
-            'receipt_url': reverse('finance:payment_receipt', args=[payments[0].id]),
-            'receipt_pdf_url': reverse('finance:payment_receipt_pdf', args=[payments[0].id])})
+            'receipt_url': receipt_url,
+            'receipt_pdf_url': receipt_pdf_url})
     except json.JSONDecodeError:
-        return json_error('Invalid JSON request.')
+        return respond_error('Invalid JSON request.')
     except Exception as exc:
         logger.exception('Record payment failed: %s', exc)
-        return json_error(f'Payment was not saved: {str(exc)[:500]}', 400)
+        return respond_error(f'Payment was not saved: {str(exc)[:500]}', 400)
 
 
 # ============================================================================

@@ -6,5 +6,8 @@
 <script src="{% static 'js/cdn.min.js' %}"></script>
 <script src="{% static 'js/global-handler.js' %}"></script>
 
+<script>window.EDUAI_TOUR_ROUTES={dashboard:"{% url 'dashboard:dashboard' %}",students:"{% url 'students:student_list' %}",student_create:"{% url 'students:create_student' %}",fee_preparation:"{% url 'finance:fee_preparation' %}",billing:"{% url 'finance:billing_dashboard' %}",grading:"{% url 'assessments:grading_portal' %}",terminal_results:"{% url 'assessments:terminal_results_register' %}",attendance:"{% url 'attendance:attendance_tracker' %}",copilot:"{% url 'ai_engine:ai_copilot' %}"};</script>
+<script src="{% static 'js/tour.js' %}?v=7.1"></script>
+
 {% block script %}
 {% endblock %}
