@@ -7,44 +7,74 @@ CONSTRAINT_NAME = 'uniq_notification_reference_per_recipient'
 def normalize_empty_references(apps, schema_editor):
     NotificationLog = apps.get_model('communication', 'NotificationLog')
 
-    # Convert empty strings to NULL so that optional references remain
-    # consistent across database backends.
-    NotificationLog.objects.filter(reference_id='').update(reference_id=None)
-    NotificationLog.objects.filter(reference_type='').update(reference_type=None)
+    NotificationLog.objects.filter(
+        reference_id=''
+    ).update(reference_id=None)
+
+    NotificationLog.objects.filter(
+        reference_type=''
+    ).update(reference_type=None)
 
 
 def drop_existing_constraint_if_present(apps, schema_editor):
-    NotificationLog = apps.get_model('communication', 'NotificationLog')
+    """
+    Migration 0002 created a conditional UniqueConstraint.
 
-    # Check whether the old conditional constraint exists in the database.
-    # Database introspection is backend-aware and works with PostgreSQL and
-    # MySQL-compatible databases.
-    with schema_editor.connection.cursor() as cursor:
-        constraints = schema_editor.connection.introspection.get_constraints(
+    On PostgreSQL, Django represents a conditional UniqueConstraint as a
+    unique index, not as an ALTER TABLE constraint. Therefore it must be
+    removed with DROP INDEX rather than remove_constraint().
+    """
+    NotificationLog = apps.get_model('communication', 'NotificationLog')
+    table_name = NotificationLog._meta.db_table
+    connection = schema_editor.connection
+
+    with connection.cursor() as cursor:
+        constraints = connection.introspection.get_constraints(
             cursor,
-            NotificationLog._meta.db_table,
+            table_name,
         )
 
-    if CONSTRAINT_NAME not in constraints:
+    existing_constraint = constraints.get(CONSTRAINT_NAME)
+
+    if not existing_constraint:
         return
 
-    # Use Django's public schema-editor API. Do not call private methods such
-    # as _constraint_names() or _delete_constraint_sql(), because their
-    # signatures vary between Django/database backends.
-    existing_constraint = models.UniqueConstraint(
-        fields=(
-            'recipient',
-            'category',
-            'reference_id',
-            'reference_type',
-        ),
-        name=CONSTRAINT_NAME,
-    )
+    # The conditional unique constraint from migration 0002 is a PostgreSQL
+    # unique index. Drop the index safely if it exists.
+    if connection.vendor == 'postgresql':
+        schema_editor.execute(
+            'DROP INDEX IF EXISTS %s'
+            % schema_editor.quote_name(CONSTRAINT_NAME)
+        )
+        return
 
-    schema_editor.remove_constraint(
-        NotificationLog,
-        existing_constraint,
-    )
+    # This branch is retained for database backends where Django reports the
+    # object as a regular table constraint.
+    if existing_constraint.get('index') is False:
+        schema_editor.execute(
+            'ALTER TABLE %s DROP CONSTRAINT %s'
+            % (
+                schema_editor.quote_name(table_name),
+                schema_editor.quote_name(CONSTRAINT_NAME),
+            )
+        )
+        return
+
+    # Generic index fallback for other supported database backends.
+    if existing_constraint.get('unique') or existing_constraint.get('index'):
+        if connection.vendor == 'mysql':
+            schema_editor.execute(
+                'DROP INDEX %s ON %s'
+                % (
+                    schema_editor.quote_name(CONSTRAINT_NAME),
+                    schema_editor.quote_name(table_name),
+                )
+            )
+        else:
+            schema_editor.execute(
+                'DROP INDEX IF EXISTS %s'
+                % schema_editor.quote_name(CONSTRAINT_NAME)
+            )
 
 
 class Migration(migrations.Migration):
