@@ -3479,25 +3479,49 @@
             updateCharCount();
 
             /*
-             * Do NOT blindly trust the first sidebar item.
-             *
-             * We explicitly load it through the API.
+             * Dashboard hand-off:
+             * /dashboard/?q=... opens the same full Copilot page and
+             * automatically submits the question there. This avoids a
+             * second, weaker dashboard chat implementation.
              */
+            const queryParams = new URLSearchParams(window.location.search);
+            const launchQuestion = (queryParams.get("q") || "").trim();
 
-            const first =
-                document.querySelector(
-                    ".copilot-conv-item"
-                );
-
-            if (first) {
-
-                await loadConversation(
-                    first.dataset.conversationId
-                );
-
-            } else {
-
+            if (launchQuestion) {
                 clearCurrentConversation();
+                input.value = launchQuestion;
+                updateCharCount();
+
+                /*
+                 * Remove the query string so refresh does not submit the
+                 * same question again.
+                 */
+                window.history.replaceState(
+                    {},
+                    document.title,
+                    window.location.pathname
+                );
+
+                setTimeout(function () {
+                    sendQuestion();
+                }, 150);
+            } else {
+                /*
+                 * Do NOT blindly trust the first sidebar item.
+                 * We explicitly load it through the API.
+                 */
+                const first =
+                    document.querySelector(
+                        ".copilot-conv-item"
+                    );
+
+                if (first) {
+                    await loadConversation(
+                        first.dataset.conversationId
+                    );
+                } else {
+                    clearCurrentConversation();
+                }
             }
 
             document.addEventListener(

@@ -81,6 +81,20 @@ class RoleBasedDashboardView(LoginRequiredMixin, TemplateView):
 # ADMIN DASHBOARD CONTEXT
 # ============================================================
 
+def _attendance_status(rate):
+    """Map an attendance rate (%) to a (label, badge_class) pair for the
+    AI Intelligence Dashboard's Attendance card. A day with no attendance
+    records at all comes back as rate == 0 and must read "Bad", not the
+    old hardcoded "Good" the template used to show regardless of rate."""
+    if rate <= 0:
+        return "Bad", "badge-soft-danger"
+    if rate < 60:
+        return "Low", "badge-soft-warning"
+    if rate < 85:
+        return "High", "badge-soft-info"
+    return "Good", "badge-teal"
+
+
 def get_admin_dashboard_context(school):
     """Get context data for admin dashboard."""
     today = localdate()
@@ -117,6 +131,7 @@ def get_admin_dashboard_context(school):
     # Using only marked records can incorrectly show 100% when just a few students
     # have been marked. A day with no records is 0%, not 100%.
     attendance_rate = round((present / enrolled_students) * 100, 1) if enrolled_students else 0
+    attendance_status, attendance_badge_class = _attendance_status(attendance_rate)
 
     # Attendance Trend (Last 5 Days)
     attendance_labels = []
@@ -165,6 +180,8 @@ def get_admin_dashboard_context(school):
         "total_collected": total_collected,
         "total_receivables": total_receivables,
         "attendance_rate": attendance_rate,
+        "attendance_status": attendance_status,
+        "attendance_badge_class": attendance_badge_class,
         "attendance_labels": attendance_labels,
         "attendance_data": attendance_data,
         "finance_chart_data": finance_chart_data,

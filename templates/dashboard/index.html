@@ -226,15 +226,15 @@
                 <p class="text-muted mb-4">
                     Your AI assistant continuously monitors attendance, academic performance, finance, examinations and operational activities across the school.
                 </p>
-                <div class="input-group input-group-lg">
+                <form method="get" action="{% url 'ai_engine:ai_copilot' %}" class="input-group input-group-lg" id="dashboardCopilotLauncher">
                     <span class="input-group-text bg-light border-end-0">
                         <i class="bi bi-search"></i>
                     </span>
-                    <input type="text" class="form-control border-start-0" id="dashboardCopilotInput" placeholder="Ask AI anything..." onkeydown="if(event.key==='Enter'){event.preventDefault();openDashboardCopilotModal();}">
-                    <button class="btn btn-gold" onclick="openDashboardCopilotModal()">
+                    <input type="text" name="q" class="form-control border-start-0" id="dashboardCopilotInput" placeholder="Ask AI anything..." autocomplete="off" aria-label="Ask AI anything">
+                    <button type="submit" class="btn btn-gold" id="dashboardCopilotAskBtn">
                         <i class="bi bi-stars me-2"></i>Ask AI
                     </button>
-                </div>
+                </form>
             </div>
             <div class="col-lg-4">
                 <div class="row g-3">
@@ -349,7 +349,7 @@
                         <div class="border rounded-4 p-3 h-100">
                             <div class="d-flex justify-content-between">
                                 <i class="bi bi-person-check fs-2 text-teal"></i>
-                                <span class="badge badge-teal">Good</span>
+                                <span class="badge {{ attendance_badge_class|default:'badge-soft-danger' }}">{{ attendance_status|default:"Bad" }}</span>
                             </div>
                             <h6 class="mt-3">Attendance</h6>
                             <h3 class="fw-bold">{{ attendance_rate }}%</h3>
@@ -536,13 +536,13 @@
                         </a>
                     </div>
                     <div class="col-6">
-                        <button class="text-decoration-none w-100 border-0 bg-transparent" onclick="openDashboardCopilotModal()">
+                        <a href="{% url 'ai_engine:ai_copilot' %}" class="text-decoration-none d-block w-100" aria-label="Open AI Copilot">
                             <div class="border rounded-4 p-3 text-center h-100 ai-card bg-gold-soft">
                                 <i class="bi bi-cpu fs-2 text-gold"></i>
                                 <div class="fw-semibold mt-2">Ask AI</div>
-                                <small class="text-muted">Command Center</small>
+                                <small class="text-muted">Open AI Copilot</small>
                             </div>
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -553,7 +553,7 @@
             <div class="card-header bg-transparent border-0">
                 <h6 class="fw-bold mb-0"><i class="bi bi-clock-history text-gold me-2"></i>Recent Activity Log</h6>
             </div>
-            <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
                 <div class="list-group list-group-flush rounded-bottom">
                     {% for log in recent_activities %}
                         <div class="list-group-item bg-transparent border-bottom py-3 px-4 d-flex align-items-start gap-3">
@@ -728,32 +728,40 @@ document.addEventListener("DOMContentLoaded", function(){
     // ==========================================
     // DASHBOARD COPILOT MODAL FUNCTIONS
     // ==========================================
+    /*
+     * Dashboard "Ask AI" is intentionally a launcher for the full
+     * enterprise Copilot. The old dashboard modal posted to the Copilot
+     * page URL (GET endpoint) instead of the Copilot API (POST endpoint),
+     * which caused an HTML/405 response and was displayed as a network
+     * error. Passing the question to the full Copilot gives users the
+     * complete conversation history, research, sources, Markdown and
+     * school-data safeguards in one place.
+     */
     window.openDashboardCopilotModal = function() {
-        const inputField = document.getElementById('dashboardCopilotInput');
-        const question = inputField ? inputField.value.trim() : '';
-
-        const modal = new bootstrap.Modal(document.getElementById('dashboardCopilotModal'));
-
-        const questionArea = document.getElementById('dashboardCopilotQuestion');
-        if (question) {
-            questionArea.value = question;
+        const form = document.getElementById('dashboardCopilotLauncher');
+        const input = document.getElementById('dashboardCopilotInput');
+        if (form) {
+            form.requestSubmit();
+            return;
         }
-
-        document.getElementById('dashboardCopilotResponseArea').style.display = 'none';
-        document.getElementById('dashboardCopilotLoading').style.display = 'none';
-
-        modal.show();
-
-        setTimeout(() => {
-            questionArea.focus();
-            if (questionArea.value) {
-                questionArea.setSelectionRange(questionArea.value.length, questionArea.value.length);
-            }
-        }, 500);
+        window.location.href = '{% url "ai_engine:ai_copilot" %}';
     };
 
     window.sendDashboardCopilotQuestion = function() {
         const question = document.getElementById('dashboardCopilotQuestion').value.trim();
+        if (!question) {
+            alert('Please enter a question.');
+            return;
+        }
+
+        window.location.href =
+            '{% url "ai_engine:ai_copilot" %}?q=' +
+            encodeURIComponent(question);
+    };
+
+    /* Legacy dashboard modal AJAX code intentionally removed.
+       The dashboard is now a direct launcher for the full Copilot. */
+    /*
         if (!question) {
             alert('Please enter a question.');
             return;
@@ -803,7 +811,7 @@ document.addEventListener("DOMContentLoaded", function(){
             responseArea.style.display = 'block';
         });
     };
-
+ */
     const questionInput = document.getElementById('dashboardCopilotQuestion');
     if (questionInput) {
         questionInput.addEventListener('keydown', function(e) {
@@ -814,13 +822,12 @@ document.addEventListener("DOMContentLoaded", function(){
         });
     }
 
-    const mainInput = document.getElementById('dashboardCopilotInput');
-    if (mainInput) {
-        mainInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                openDashboardCopilotModal();
-            }
+    const dashboardLauncher = document.getElementById('dashboardCopilotLauncher');
+    const dashboardAskBtn = document.getElementById('dashboardCopilotAskBtn');
+    if (dashboardLauncher && dashboardAskBtn) {
+        dashboardLauncher.addEventListener('submit', function() {
+            dashboardAskBtn.disabled = true;
+            dashboardAskBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Opening...';
         });
     }
 });
