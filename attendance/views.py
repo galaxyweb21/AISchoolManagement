@@ -1153,22 +1153,59 @@ def api_live_capture(request):
 
 @login_required
 def student_attendance_history(request, student_id):
-    """Secure attendance history for staff, linked parents and the student."""
-    school = get_user_school(request)
-    if not school:
-        return render(request, "attendance/student_history.html", {
-            "student": None,
-            "attendance_records": [],
-            "attendance_access_error": "Your account is not associated with a school.",
-        })
+    """Display a student's attendance history with role-safe access.
 
-    student = get_object_or_404(
-        Student.objects.select_related("user", "parent", "school_class", "grade_level"),
-        id=student_id,
-        school=school,
-    )
-
+    The student is resolved from the authenticated user's relationship first.
+    This is important for parents because a parent account may not have the
+    school field populated even though the linked Student record does.
+    """
     role = get_user_role(request.user)
+
+    # ------------------------------------------------------------
+    # Resolve the student using the strongest relationship available
+    # for the current role.  Do NOT require request.user.school first.
+    # ------------------------------------------------------------
+    if role == "PARENT":
+        student = get_object_or_404(
+            Student.objects.select_related(
+                "user", "parent", "school", "school_class", "grade_level"
+            ),
+            id=student_id,
+            parent=request.user,
+        )
+    elif role == "STUDENT":
+        student = get_object_or_404(
+            Student.objects.select_related(
+                "user", "parent", "school", "school_class", "grade_level"
+            ),
+            id=student_id,
+            user=request.user,
+        )
+    else:
+        # Staff users remain restricted to their own school.
+        school = get_user_school(request)
+        if not school:
+            return render(request, "attendance/student_history.html", {
+                "student": None,
+                "attendance_records": [],
+                "total_days": 0,
+                "present_days": 0,
+                "absent_days": 0,
+                "late_days": 0,
+                "attendance_rate": None,
+                "attendance_access_error": "Your account is not associated with a school.",
+            })
+
+        student = get_object_or_404(
+            Student.objects.select_related(
+                "user", "parent", "school", "school_class", "grade_level"
+            ),
+            id=student_id,
+            school=school,
+        )
+
+    # The student's school is the authoritative tenant boundary.
+    school = student.school
     allowed = False
 
     if is_admin_user(request.user):
@@ -1176,36 +1213,59 @@ def student_attendance_history(request, student_id):
     elif role == "TEACHER":
         allowed = teacher_can_access_student(request.user, student, school)
     elif role == "PARENT":
-        allowed = bool(student.parent_id and student.parent_id == request.user.id)
+        allowed = student.parent_id == request.user.id
     elif role == "STUDENT":
-        allowed = bool(student.user_id and student.user_id == request.user.id)
+        allowed = student.user_id == request.user.id
 
     if not allowed:
-        return render(request, "attendance/student_history.html", {
-            "student": student,
-            "attendance_records": [],
-            "attendance_access_error": "You do not have permission to view this student's attendance.",
-        }, status=403)
+        return render(
+            request,
+            "attendance/student_history.html",
+            {
+                "student": student,
+                "attendance_records": [],
+                "total_days": 0,
+                "present_days": 0,
+                "absent_days": 0,
+                "late_days": 0,
+                "attendance_rate": None,
+                "attendance_access_error": "You do not have permission to view this student's attendance.",
+            },
+            status=403,
+        )
 
-    records_qs = Attendance.objects.filter(
-        school=school,
-        student=student,
-    ).order_by("-date", "-id")
+    # ------------------------------------------------------------
+    # Attendance records
+    # ------------------------------------------------------------
+    records_qs = (
+        Attendance.objects
+        .filter(student_id=student.id)
+        .order_by("-date", "-id")
+    )
 
     total = records_qs.count()
-    present = records_qs.filter(status__in=["PRESENT", "LATE"]).count()
-    absent = records_qs.filter(status="ABSENT").count()
+    present = records_qs.filter(status="PRESENT").count()
     late = records_qs.filter(status="LATE").count()
-    rate = round((present / total) * 100, 1) if total else None
-    records = paginate_queryset(records_qs, request)
+    absent = records_qs.filter(status="ABSENT").count()
 
-    return render(request, "attendance/student_history.html", {
-        "student": student,
-        "attendance_records": records,
-        "total_days": total,
-        "present_days": present,
-        "absent_days": absent,
-        "late_days": late,
-        "attendance_rate": rate,
-        "attendance_access_error": None,
-    })
+    # Attendance rate follows the existing student attendance page: only
+    # PRESENT counts as present. LATE remains a separate statistic.
+    rate = round((present / total) * 100, 1) if total else None
+
+    page_obj = paginate_queryset(records_qs, request)
+
+    return render(
+        request,
+        "attendance/student_history.html",
+        {
+            "student": student,
+            "attendance_records": page_obj,
+            "total_days": total,
+            "present_days": present,
+            "absent_days": absent,
+            "late_days": late,
+            "attendance_rate": rate,
+            "attendance_access_error": None,
+        },
+    )
+

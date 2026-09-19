@@ -4,18 +4,11 @@
 
 {% block content %}
 <style>
-    .text-gold {
-        color: var(--eduai-gold, #946B1C) !important;
-    }
-    .text-teal {
-        color: var(--eduai-signal, #2C7A6D) !important;
-    }
-    .bg-gold-soft {
-        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
-    }
-    .bg-teal-soft {
-        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
-    }
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .text-teal { color: var(--eduai-signal, #2C7A6D) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+    .bg-teal-soft { background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important; }
+
     .page-description {
         background: var(--bs-tertiary-bg);
         border-radius: 12px;
@@ -23,25 +16,59 @@
         margin-bottom: 1.5rem;
         border-left: 4px solid var(--eduai-gold, #946B1C);
     }
-    .page-description .icon {
-        color: var(--eduai-gold, #946B1C);
-        font-size: 1.25rem;
-        margin-right: 0.75rem;
+    .page-description .icon { color: var(--eduai-gold, #946B1C); font-size: 1.25rem; margin-right: 0.75rem; }
+    .page-description .title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.15rem; }
+    .page-description .text { font-size: 0.85rem; color: var(--bs-secondary-color); margin-bottom: 0; }
+
+    .kpi-hero-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
     }
-    .page-description .title {
-        font-weight: 600;
-        font-size: 0.9rem;
-        margin-bottom: 0.15rem;
+    @media (max-width: 768px) { .kpi-hero-grid { grid-template-columns: 1fr; } }
+
+    .kpi-hero {
+        background: var(--bs-body-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 14px;
+        padding: 1.1rem 1.25rem;
     }
-    .page-description .text {
-        font-size: 0.85rem;
-        color: var(--bs-secondary-color);
-        margin-bottom: 0;
+    .kpi-hero-label {
+        font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em;
+        text-transform: uppercase; color: var(--bs-secondary-color);
+        margin-bottom: 6px;
     }
+    .kpi-hero-value {
+        font-size: 1.6rem; font-weight: 700; line-height: 1.1;
+        font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+    }
+
+    .modern-table thead th {
+        font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+        font-weight: 700; color: var(--bs-secondary-color);
+        background: var(--bs-tertiary-bg);
+        border-bottom: 1px solid var(--bs-border-color);
+        padding: 0.75rem 1rem; white-space: nowrap;
+    }
+    .modern-table tbody td {
+        padding: 0.85rem 1rem; vertical-align: middle; border-color: var(--bs-border-color);
+    }
+    .modern-table tbody tr { transition: background 0.15s ease; }
+    .modern-table tbody tr:hover { background: rgba(148, 107, 28, 0.04); }
+
+    .status-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 0.72rem; font-weight: 700;
+        padding: 0.25rem 0.7rem; border-radius: 20px;
+    }
+    .status-chip.paid    { background: var(--eduai-signal-soft); color: var(--eduai-signal); }
+    .status-chip.partial { background: rgba(255,193,7,0.16); color: #b8860b; }
+    .status-chip.unpaid  { background: rgba(220,53,69,0.14); color: #dc3545; }
+    .status-chip.void    { background: rgba(108,117,125,0.14); color: #6c757d; }
 </style>
 
 <div class="container-fluid py-4">
-    <!-- Header Card -->
     <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
@@ -54,7 +81,6 @@
         </div>
     </div>
 
-    <!-- How Fees Work -->
     <div class="page-description">
         <div class="d-flex align-items-start">
             <i class="bi bi-info-circle-fill icon"></i>
@@ -71,37 +97,23 @@
         </div>
     </div>
 
-    <!-- Summary Cards -->
-    <div class="row g-4 mb-4">
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-4">
-                    <small class="text-muted d-block">Total Billed</small>
-                    <h4 class="fw-bold mb-0">GHS {{ total_billed|floatformat:2 }}</h4>
-                </div>
-            </div>
+    <div class="kpi-hero-grid">
+        <div class="kpi-hero">
+            <div class="kpi-hero-label">Total Billed</div>
+            <div class="kpi-hero-value">GHS {{ total_billed|floatformat:2 }}</div>
         </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-4">
-                    <small class="text-muted d-block">Total Paid</small>
-                    <h4 class="fw-bold text-teal mb-0">GHS {{ total_paid|floatformat:2 }}</h4>
-                </div>
-            </div>
+        <div class="kpi-hero">
+            <div class="kpi-hero-label">Total Paid</div>
+            <div class="kpi-hero-value text-teal">GHS {{ total_paid|floatformat:2 }}</div>
         </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-4">
-                    <small class="text-muted d-block">Outstanding Balance</small>
-                    <h4 class="fw-bold {% if outstanding > 0 %}text-danger{% else %}text-teal{% endif %} mb-0">
-                        GHS {{ outstanding|floatformat:2 }}
-                    </h4>
-                </div>
+        <div class="kpi-hero">
+            <div class="kpi-hero-label">Outstanding Balance</div>
+            <div class="kpi-hero-value {% if outstanding > 0 %}text-danger{% else %}text-teal{% endif %}">
+                GHS {{ outstanding|floatformat:2 }}
             </div>
         </div>
     </div>
 
-    <!-- Invoices Table -->
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-body p-4">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -116,9 +128,9 @@
             </div>
             {% if invoices %}
             <div class="table-responsive">
-                <table class="table align-middle" id="invoicesTable">
+                <table class="table modern-table align-middle mb-0" id="invoicesTable">
                     <thead>
-                        <tr class="text-muted small text-uppercase">
+                        <tr>
                             <th>Invoice</th>
                             <th>Term</th>
                             <th>Due Date</th>
@@ -138,7 +150,7 @@
                             <td>GHS {{ invoice.amount_paid|floatformat:2 }}</td>
                             <td>GHS {{ invoice.balance_due|floatformat:2 }}</td>
                             <td>
-                                <span class="badge bg-{% if invoice.status == 'PAID' %}teal-soft text-teal{% elif invoice.status == 'PARTIAL' %}warning-subtle text-warning{% elif invoice.status == 'VOID' %}secondary-subtle text-secondary{% else %}danger-subtle text-danger{% endif %}">
+                                <span class="status-chip {% if invoice.status == 'PAID' %}paid{% elif invoice.status == 'PARTIAL' %}partial{% elif invoice.status == 'VOID' %}void{% else %}unpaid{% endif %}">
                                     {{ invoice.get_status_display }}
                                 </span>
                             </td>
@@ -156,22 +168,12 @@
         </div>
     </div>
 </div>
-
-<style>
-    .bg-teal-soft {
-        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
-    }
-    .text-teal {
-        color: var(--eduai-signal, #2C7A6D) !important;
-    }
-</style>
+{% include "partials/pagination.html" with page_obj=invoices %}
+{% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // ============================================================
-    // SEARCH / AUTO FILTER
-    // ============================================================
     const invoiceSearchInput = document.getElementById('invoiceSearchInput');
     const filterStatus = document.getElementById('filterStatus');
     const invoiceCount = document.getElementById('invoiceCount');
@@ -189,31 +191,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isVisible) visibleCount++;
             });
 
-            // Update count
             if (invoiceCount) {
                 if (query) {
                     invoiceCount.textContent = visibleCount;
-                    if (filterStatus) {
-                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
-                    }
+                    if (filterStatus) filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
                 } else {
                     invoiceCount.textContent = allRows.length;
-                    if (filterStatus) {
-                        filterStatus.textContent = '';
-                    }
+                    if (filterStatus) filterStatus.textContent = '';
                 }
             }
         });
 
-        // Clear filter status on blur if empty
         invoiceSearchInput.addEventListener('blur', function() {
-            if (!this.value && filterStatus) {
-                filterStatus.textContent = '';
-            }
+            if (!this.value && filterStatus) filterStatus.textContent = '';
         });
     }
 });
 </script>
-{% include "partials/pagination.html" with page_obj=invoices %}
-
 {% endblock %}

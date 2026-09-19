@@ -1,95 +1,171 @@
 <!-- students/templates/students/bulk_face_registration_modal_content.html -->
 <style>
-    .text-gold {
-        color: var(--eduai-gold, #946B1C) !important;
-    }
-    .bg-gold-soft {
-        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
-    }
-    .bg-teal-soft {
-        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
-    }
-    .text-teal {
-        color: var(--eduai-signal, #2C7A6D) !important;
-    }
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+    .bg-teal-soft { background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important; }
+    .text-teal { color: var(--eduai-signal, #2C7A6D) !important; }
     .btn-gold {
         background-color: var(--eduai-gold, #946B1C) !important;
         border-color: var(--eduai-gold, #946B1C) !important;
         color: #fff !important;
     }
-    .btn-gold:hover {
-        background-color: #7a5917 !important;
-        border-color: #7a5917 !important;
-        color: #fff !important;
+    .btn-gold:hover { background-color: #7a5917 !important; border-color: #7a5917 !important; color: #fff !important; }
+    .btn-outline-gold { color: var(--eduai-gold, #946B1C) !important; border-color: var(--eduai-gold, #946B1C) !important; }
+    .btn-outline-gold:hover { background-color: var(--eduai-gold, #946B1C) !important; border-color: var(--eduai-gold, #946B1C) !important; color: #fff !important; }
+    .badge-gold { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; color: var(--eduai-gold, #946B1C) !important; }
+    .badge-teal { background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important; color: var(--eduai-signal, #2C7A6D) !important; }
+
+    /* -------- Modern table -------- */
+    .bulk-reg-table thead th {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 700;
+        color: var(--bs-secondary-color);
+        background: var(--bs-tertiary-bg);
+        border-bottom: 1px solid var(--bs-border-color);
+        padding: 0.75rem 1rem;
+        white-space: nowrap;
     }
-    .btn-outline-gold {
-        color: var(--eduai-gold, #946B1C) !important;
-        border-color: var(--eduai-gold, #946B1C) !important;
+    .bulk-reg-table tbody td {
+        padding: 0.85rem 1rem;
+        vertical-align: middle;
+        border-color: var(--bs-border-color);
     }
-    .btn-outline-gold:hover {
-        background-color: var(--eduai-gold, #946B1C) !important;
-        border-color: var(--eduai-gold, #946B1C) !important;
-        color: #fff !important;
+    .bulk-reg-table tbody tr { transition: background 0.15s ease; }
+    .bulk-reg-table tbody tr:hover { background: rgba(148, 107, 28, 0.04); }
+
+    .student-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, rgba(148,107,28,0.14), rgba(44,122,109,0.14));
+        color: var(--eduai-gold, #946B1C);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.85rem;
+        margin-right: 0.6rem;
+        flex-shrink: 0;
     }
-    .badge-gold {
-        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
-        color: var(--eduai-gold, #946B1C) !important;
+    .student-name-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
-    .badge-teal {
-        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
-        color: var(--eduai-signal, #2C7A6D) !important;
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 0.22rem 0.6rem;
+        border-radius: 8px;
+        line-height: 1.2;
+    }
+    .chip-grade {
+        background: rgba(148, 107, 28, 0.12);
+        color: var(--eduai-gold, #946B1C);
+    }
+    .chip-class {
+        background: rgba(44, 122, 109, 0.12);
+        color: var(--eduai-signal, #2C7A6D);
+    }
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 0.28rem 0.65rem;
+        border-radius: 20px;
+        background: rgba(108, 117, 125, 0.12);
+        color: #6c757d;
+        white-space: nowrap;
+    }
+    .status-pill.registered { background: var(--eduai-signal-soft); color: var(--eduai-signal); }
+    .status-pill.failed { background: rgba(220, 53, 69, 0.12); color: #dc3545; }
+
+    .select-all-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .selection-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        margin-top: 1rem;
     }
 </style>
 
 <div id="bulkRegistrationContent">
-    <div class="mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <h6 class="fw-bold">
+    <div class="mb-4 d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h6 class="fw-bold mb-1">
                 <i class="bi bi-people text-gold me-2"></i>
-                Unregistered Students ({{ total_unregistered }})
+                Unregistered Students
+                <span class="badge bg-light text-muted ms-2">{{ total_unregistered }}</span>
             </h6>
-            <button class="btn btn-sm btn-gold" onclick="startBulkRegistration()"
-                    {% if total_unregistered == 0 %}disabled{% endif %}>
-                <i class="bi bi-play-circle me-1"></i> Start Bulk Registration
-            </button>
+            <p class="text-muted small mb-0">Select students and register their faces one by one.</p>
         </div>
-        <p class="text-muted small">Select students and register their faces one by one.</p>
+        <button class="btn btn-sm btn-gold" onclick="startBulkRegistration()"
+                {% if total_unregistered == 0 %}disabled{% endif %}>
+            <i class="bi bi-play-circle me-1"></i> Start Bulk Registration
+        </button>
     </div>
 
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table bulk-reg-table align-middle mb-0">
             <thead>
                 <tr>
-                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3" style="width: 40px;">
+                    <th style="width: 40px;">
                         <input type="checkbox" id="selectAllStudents" onchange="toggleAllStudents(this)">
                     </th>
-                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Student</th>
-                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Admission</th>
-                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Grade/Class</th>
-                    <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Status</th>
+                    <th>Student</th>
+                    <th>Admission</th>
+                    <th>Grade / Class</th>
+                    <th class="text-center">Status</th>
                 </tr>
             </thead>
-            <tbody class="border-top-0">
+            <tbody>
                 {% for student in students %}
-                <tr id="student-row-{{ student.id }}" class="border-bottom">
-                    <td class="py-3">
+                <tr id="student-row-{{ student.id }}">
+                    <td>
                         <input type="checkbox" class="student-checkbox" value="{{ student.id }}"
                                data-name="{{ student.user.get_full_name }}"
                                onchange="updateSelectedCount()">
                     </td>
-                    <td class="py-3 ps-0">
-                        <span class="fw-bold d-block">{{ student.user.get_full_name }}</span>
-                        <small class="text-muted">{{ student.user.email }}</small>
+                    <td>
+                        <div class="student-name-cell">
+                            <span class="student-avatar">
+                                {{ student.user.first_name|first|upper }}{{ student.user.last_name|first|upper }}
+                            </span>
+                            <div>
+                                <div class="fw-semibold">{{ student.user.get_full_name }}</div>
+                                <small class="text-muted">{{ student.user.email|default:"—" }}</small>
+                            </div>
+                        </div>
                     </td>
-                    <td class="py-3">
-                        <code class="text-muted small">{{ student.admission_number }}</code>
+                    <td>
+                        <code class="text-muted small bg-light px-2 py-1 rounded-2 border">{{ student.admission_number }}</code>
                     </td>
-                    <td class="py-3">
-                        <span class="badge badge-gold px-2 py-1 rounded-pill">{{ student.grade_level.name }}</span>
-                        <span class="badge bg-primary-subtle text-primary px-2 py-1 rounded-pill ms-1">{{ student.school_class.name }}</span>
+                    <td>
+                        {% if student.grade_level %}
+                            <span class="chip chip-grade">{{ student.grade_level.name }}</span>
+                        {% endif %}
+                        {% if student.school_class %}
+                            <span class="chip chip-class ms-1">{{ student.school_class.name }}</span>
+                        {% endif %}
                     </td>
-                    <td class="text-center py-3">
-                        <span id="status-{{ student.id }}" class="badge bg-secondary-subtle text-secondary">
+                    <td class="text-center">
+                        <span id="status-{{ student.id }}" class="status-pill">
                             <i class="bi bi-clock me-1"></i> Pending
                         </span>
                     </td>
@@ -106,15 +182,11 @@
         </table>
     </div>
 
-    <div class="mt-3 d-flex justify-content-between align-items-center">
-        <div>
-            <span id="selectedCount" class="text-muted small">0 students selected</span>
-        </div>
-        <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-secondary" onclick="deselectAll()">
-                <i class="bi bi-x-circle me-1"></i> Deselect All
-            </button>
-        </div>
+    <div class="selection-bar">
+        <span id="selectedCount" class="text-muted small">0 students selected</span>
+        <button class="btn btn-sm btn-outline-secondary" onclick="deselectAll()">
+            <i class="bi bi-x-circle me-1"></i> Deselect All
+        </button>
     </div>
 </div>
 
@@ -155,42 +227,37 @@ function startBulkRegistration() {
     registrationQueue = [...selectedStudents];
     currentRegistrationIndex = 0;
 
-    // Start the registration process
     registerNextStudent();
 }
 
 function registerNextStudent() {
     if (currentRegistrationIndex >= registrationQueue.length) {
-        // All done
         showRegistrationComplete();
         return;
     }
 
     const student = registrationQueue[currentRegistrationIndex];
-    // Open the face registration modal for this student
     openFaceRegistration(student.id, student.name, true);
 }
 
 function onFaceRegistered(studentId, success) {
-    // Update status
     const statusSpan = document.getElementById(`status-${studentId}`);
     if (statusSpan) {
         if (success) {
-            statusSpan.className = 'badge badge-teal';
+            statusSpan.className = 'status-pill registered';
             statusSpan.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Registered';
         } else {
-            statusSpan.className = 'badge bg-danger-subtle text-danger';
+            statusSpan.className = 'status-pill failed';
             statusSpan.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Failed';
         }
     }
 
-    // Move to next student
     currentRegistrationIndex++;
     setTimeout(registerNextStudent, 1000);
 }
 
 function showRegistrationComplete() {
-    const successCount = document.querySelectorAll('.badge.badge-teal').length;
+    const successCount = document.querySelectorAll('.status-pill.registered').length;
     const totalCount = registrationQueue.length;
     const failedCount = totalCount - successCount;
 

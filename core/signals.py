@@ -22,6 +22,7 @@ import logging
 from django.contrib.contenttypes.models import ContentType
 from django.db import OperationalError, ProgrammingError
 from django.db.models.signals import post_delete, post_save
+from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.dispatch import receiver
 
 from .audit_context import get_current_user, get_client_ip
@@ -490,3 +491,60 @@ def log_model_delete(
         instance=instance,
         action="DELETE",
     )
+
+# ============================================================================
+# AUTHENTICATION EVENTS
+# ============================================================================
+
+
+def _create_auth_activity_log(user, action, request=None):
+    """Record login/logout events without affecting authentication itself."""
+    if not user or not getattr(user, "pk", None):
+        return
+
+    try:
+        from .models import ActivityLog
+        from django.contrib.contenttypes.models import ContentType
+
+        content_type = ContentType.objects.get_for_model(
+            user,
+            for_concrete_model=False,
+        )
+
+        ip_address = None
+        if request is not None:
+            try:
+                forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
+                ip_address = (
+                    forwarded.split(",")[0].strip()
+                    if forwarded
+                    else request.META.get("REMOTE_ADDR")
+                )
+            except Exception:
+                ip_address = None
+
+        ActivityLog.objects.create(
+            school=getattr(user, "school", None),
+            user=user,
+            content_type=content_type,
+            object_id=str(user.pk),
+            action=action,
+            description=(
+                f"{action}: user '{getattr(user, 'username', user)}' "
+                f"{action.lower()} successfully."
+            ),
+            ip_address=ip_address,
+        )
+    except Exception:
+        # Authentication must never fail because audit logging failed.
+        logger.debug("Authentication audit logging failed for %s.", action, exc_info=True)
+
+
+@receiver(user_logged_in, dispatch_uid="core_activity_log_user_logged_in")
+def log_user_login(sender, request, user, **kwargs):
+    _create_auth_activity_log(user, "LOGIN", request=request)
+
+
+@receiver(user_logged_out, dispatch_uid="core_activity_log_user_logged_out")
+def log_user_logout(sender, request, user, **kwargs):
+    _create_auth_activity_log(user, "LOGOUT", request=request)

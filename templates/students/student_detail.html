@@ -2701,68 +2701,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ============================================================
        FACE REGISTRATION
+       ============================================================
+       NOTE: openFaceRegistration(id, name, bulkMode) is defined once,
+       globally, in students/face_capture_modal.html (included above).
+       It is the ONLY place that should ever set currentStudentId /
+       currentStudentName / capturedImageData and kick off the camera.
+       Do NOT redefine window.openFaceRegistration here or on any other
+       page that includes the modal partial -- a second definition
+       silently shadows the first, so currentStudentId stops being
+       updated per-student and registerFace() ends up POSTing a newly
+       captured photo to whatever student ID happens to still be
+       cached from the last time the canonical function ran (i.e. one
+       student's face gets saved onto a different student's record).
+       If a page-specific hook is ever needed, wrap the canonical
+       function instead of replacing it, e.g.:
+         const _openFaceRegistration = window.openFaceRegistration;
+         window.openFaceRegistration = function (id, name, bulk) {
+             _openFaceRegistration(id, name, bulk);
+             // page-specific extras here
+         };
        ============================================================ */
-
-    window.openFaceRegistration =
-        function (
-            id,
-            name
-        ) {
-
-            const modal =
-                document.getElementById(
-                    'faceCaptureModal'
-                );
-
-
-            if (!modal) {
-
-                alert(
-                    'Face registration modal not found.'
-                );
-
-                return;
-
-            }
-
-
-            const studentInput =
-                document.getElementById(
-                    'faceStudentId'
-                );
-
-
-            const studentName =
-                document.getElementById(
-                    'faceStudentName'
-                );
-
-
-            if (studentInput) {
-
-                studentInput.value =
-                    id;
-
-            }
-
-
-            if (studentName) {
-
-                studentName.textContent =
-                    name;
-
-            }
-
-
-            const modalInstance =
-                bootstrap.Modal.getOrCreateInstance(
-                    modal
-                );
-
-
-            modalInstance.show();
-
-        };
 
 
     /* ============================================================

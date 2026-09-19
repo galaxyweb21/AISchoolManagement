@@ -158,11 +158,20 @@ class NotificationLog(models.Model):
     def __str__(self):
         return f"{self.category} → {self.recipient.username} [{self.status}]"
 
+    @property
+    def is_unread(self):
+        """Return True when the notification is waiting for the user to read it."""
+        return self.status == NotificationStatus.DELIVERED
+
     def mark_as_read(self):
-        """Mark notification as read."""
+        """Mark the notification as read without changing an existing read timestamp."""
+        if self.status == NotificationStatus.READ:
+            return False
+
         self.status = NotificationStatus.READ
-        self.read_at = timezone.now()
+        self.read_at = self.read_at or timezone.now()
         self.save(update_fields=['status', 'read_at'])
+        return True
 
 
 class UserNotificationPreference(models.Model):

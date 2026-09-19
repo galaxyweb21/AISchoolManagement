@@ -4,41 +4,119 @@
 
 {% block content %}
 <style>
-.ad-wrap{max-width:980px;margin:0 auto}.ad-card{border:0;border-radius:1.25rem;box-shadow:0 .4rem 1.5rem rgba(0,0,0,.07)}
-.ad-priority{font-size:.72rem;letter-spacing:.04em;text-transform:uppercase}.ad-content{white-space:pre-line;line-height:1.8}
-.ad-meta{background:rgba(148,107,28,.08);border-radius:1rem}
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+    .bg-teal-soft { background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important; }
+    .text-teal { color: var(--eduai-signal, #2C7A6D) !important; }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon { color: var(--eduai-gold, #946B1C); font-size: 1.25rem; margin-right: 0.75rem; }
+    .page-description .title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.15rem; }
+    .page-description .text { font-size: 0.85rem; color: var(--bs-secondary-color); margin-bottom: 0; }
+    .page-description .badge-role { background-color: var(--eduai-gold-soft); color: var(--eduai-gold, #946B1C); font-weight: 500; }
+
+    .ad-wrap { max-width: 980px; margin: 0 auto; }
+    .ad-card {
+        border: 0;
+        border-radius: 1.25rem;
+        box-shadow: 0 .4rem 1.5rem rgba(0,0,0,.07);
+    }
+    .ad-priority {
+        font-size: .72rem;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .ad-content { white-space: pre-line; line-height: 1.8; }
+    .ad-meta {
+        background: var(--eduai-gold-soft, rgba(148,107,28,.08));
+        border-radius: 1rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
 </style>
-<div class="ad-wrap py-4">
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-    <a href="{% url 'communication:inbox' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to Communication</a>
-    {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
-      <a href="{% url 'communication:announcement_management' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-megaphone me-1"></i>Manage Announcements</a>
-    {% endif %}
-  </div>
-  <article class="card ad-card">
-    <div class="card-body p-4 p-lg-5">
-      <div class="d-flex flex-wrap gap-2 mb-3">
-        <span class="badge ad-priority {% if announcement.priority == 'URGENT' %}bg-danger{% elif announcement.priority == 'HIGH' %}bg-warning text-dark{% elif announcement.priority == 'LOW' %}bg-secondary{% else %}bg-light text-dark{% endif %}">{{ announcement.get_priority_display }}</span>
-        <span class="badge bg-light text-dark"><i class="bi bi-people me-1"></i>{{ announcement.get_audience_display }}</span>
-        {% if announcement.is_archived %}<span class="badge bg-secondary">Archived</span>{% endif %}
-      </div>
-      <h2 class="fw-bold mb-2">{{ announcement.title }}</h2>
-      <div class="text-muted small mb-4">
-        <i class="bi bi-person me-1"></i>{{ announcement.sender.get_full_name|default:announcement.sender.username|default:'School Administration' }}
-        <span class="mx-2">•</span>
-        <i class="bi bi-calendar3 me-1"></i>{{ announcement.publish_at|date:"d M Y, H:i" }}
-        <span class="mx-2">•</span>
-        <i class="bi bi-eye me-1"></i>{{ announcement.views_count }} view{{ announcement.views_count|pluralize }}
-      </div>
-      {% if announcement.summary %}
-        <div class="ad-meta p-3 mb-4"><strong>Summary</strong><div class="text-muted mt-1">{{ announcement.summary }}</div></div>
-      {% endif %}
-      <div class="ad-content">{{ announcement.content }}</div>
-      {% if announcement.expires_at %}
-        <hr class="my-4">
-        <div class="small text-muted"><i class="bi bi-hourglass-split me-1"></i>Expires {{ announcement.expires_at|date:"d M Y, H:i" }}</div>
-      {% endif %}
+
+<div class="container-fluid py-4">
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Announcement Details
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% else %}
+                            Staff View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    View the full announcement below. Priority and audience are shown at the top,
+                    followed by the sender, publish date, and views count.
+                </p>
+            </div>
+        </div>
     </div>
-  </article>
+
+    <div class="ad-wrap">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <a href="{% url 'communication:inbox' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Back to Communication
+            </a>
+            {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                <a href="{% url 'communication:announcement_management' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-megaphone me-1"></i>Manage Announcements
+                </a>
+            {% endif %}
+        </div>
+
+        <article class="card ad-card">
+            <div class="card-body p-4 p-lg-5">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <span class="badge ad-priority {% if announcement.priority == 'URGENT' %}bg-danger{% elif announcement.priority == 'HIGH' %}bg-warning text-dark{% elif announcement.priority == 'LOW' %}bg-secondary{% else %}bg-light text-dark{% endif %}">
+                        {{ announcement.get_priority_display }}
+                    </span>
+                    <span class="badge bg-light text-dark">
+                        <i class="bi bi-people me-1"></i>{{ announcement.get_audience_display }}
+                    </span>
+                    {% if announcement.is_archived %}
+                        <span class="badge bg-secondary">Archived</span>
+                    {% endif %}
+                </div>
+
+                <h2 class="fw-bold mb-2">{{ announcement.title }}</h2>
+
+                <div class="text-muted small mb-4">
+                    <i class="bi bi-person me-1"></i>{{ announcement.sender.get_full_name|default:announcement.sender.username|default:'School Administration' }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-calendar3 me-1"></i>{{ announcement.publish_at|date:"d M Y, H:i" }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-eye me-1"></i>{{ announcement.views_count }} view{{ announcement.views_count|pluralize }}
+                </div>
+
+                {% if announcement.summary %}
+                    <div class="ad-meta p-3 mb-4">
+                        <strong class="d-block mb-1">Summary</strong>
+                        <div class="text-muted small">{{ announcement.summary }}</div>
+                    </div>
+                {% endif %}
+
+                <div class="ad-content">{{ announcement.content }}</div>
+
+                {% if announcement.expires_at %}
+                    <hr class="my-4">
+                    <div class="small text-muted">
+                        <i class="bi bi-hourglass-split me-1"></i>Expires {{ announcement.expires_at|date:"d M Y, H:i" }}
+                    </div>
+                {% endif %}
+            </div>
+        </article>
+    </div>
 </div>
 {% endblock %}

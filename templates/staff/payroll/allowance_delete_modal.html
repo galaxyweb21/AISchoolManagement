@@ -7,8 +7,8 @@
         background: rgba(220, 53, 69, .10);
     }
     .allowance-delete-modal .detail-card {
-        border: 1px solid var(--surface-border, #e5e7eb);
-        background: var(--surface-bg, #fff);
+        border: 1px solid var(--bs-border-color);
+        background: var(--bs-body-bg);
         border-radius: 16px;
     }
 </style>
@@ -53,7 +53,11 @@
                     </div>
                     <div class="col-sm-6">
                         <small class="text-muted d-block">Status</small>
-                        {% if allowance.is_active %}<span class="badge bg-teal-soft text-teal">Active</span>{% else %}<span class="badge bg-secondary-subtle text-secondary">Inactive</span>{% endif %}
+                        {% if allowance.is_active %}
+                            <span class="badge bg-success-subtle text-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -65,8 +69,12 @@
         </div>
 
         <div class="modal-footer border-0 px-4 pb-4">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle me-1"></i>Cancel</button>
-            <button type="submit" class="btn btn-danger" id="allowanceDeleteBtn"><i class="bi bi-trash me-1"></i>Delete Allowance</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <i class="bi bi-x-circle me-1"></i>Cancel
+            </button>
+            <button type="submit" class="btn btn-danger" id="allowanceDeleteBtn">
+                <i class="bi bi-trash me-1"></i>Delete Allowance
+            </button>
         </div>
     </form>
 </div>

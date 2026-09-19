@@ -5,6 +5,9 @@
 
 {% block content %}
 <style>
+    /* ============================================================
+       THEME-AWARE COLOR UTILITIES
+       ============================================================ */
     .text-gold {
         color: var(--eduai-gold, #946B1C) !important;
     }
@@ -36,33 +39,399 @@
         border-color: var(--eduai-gold, #946B1C) !important;
         color: #fff !important;
     }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+
+    /* ============================================================
+       PAGE DESCRIPTION
+       ============================================================ */
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+    /* ============================================================
+       KPI STRIP
+       ============================================================ */
+    .kpi-strip {
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 14px;
+        padding: 0.85rem 0.5rem;
+        margin-bottom: 1.5rem;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0;
+    }
+    @media (max-width: 576px) {
+        .kpi-strip { grid-template-columns: 1fr; }
+    }
+    .kpi-strip-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.4rem 1rem;
+        text-decoration: none;
+        color: inherit;
+        border-right: 1px solid var(--bs-border-color);
+        min-width: 0;
+    }
+    .kpi-strip-cell:last-child { border-right: none; }
+    .kpi-strip-dot {
+        flex: 0 0 auto;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+    .kpi-strip-dot.pending { background: #ffc107; box-shadow: 0 0 0 3px rgba(255,193,7,0.18); }
+    .kpi-strip-dot.done    { background: #198754; box-shadow: 0 0 0 3px rgba(25,135,84,0.18); }
+    .kpi-strip-dot.total   { background: var(--eduai-gold, #946B1C); box-shadow: 0 0 0 3px rgba(148,107,28,0.18); }
+    .kpi-strip-text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+    .kpi-strip-label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--bs-secondary-color);
+    }
+    .kpi-strip-value {
+        font-size: 1.05rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        color: var(--bs-body-color);
+        line-height: 1.1;
+    }
+
+    /* ============================================================
+       FILTER BAR
+       ============================================================ */
+    .filter-bar {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 0.9rem 1rem;
+        margin-bottom: 1rem;
+    }
+    .filter-bar .form-control {
+        background: var(--bs-body-bg);
+        border: 1px solid var(--bs-border-color);
+    }
+    .filter-bar .form-control:focus {
+        border-color: var(--eduai-gold, #946B1C);
+        box-shadow: 0 0 0 0.2rem rgba(148, 107, 28, 0.15);
+    }
+    .search-wrapper {
+        position: relative;
+    }
+    .search-wrapper .bi-search {
+        position: absolute;
+        top: 50%;
+        left: 0.75rem;
+        transform: translateY(-50%);
+        color: var(--bs-secondary-color);
+        pointer-events: none;
+    }
+    .search-wrapper .form-control {
+        padding-left: 2.25rem;
+    }
+    .results-counter {
+        font-size: 0.8rem;
+        color: var(--bs-secondary-color);
+    }
+
+    /* ============================================================
+       ENTERPRISE TABLE
+       ============================================================ */
+    .student-table {
+        margin-bottom: 0;
+    }
+    .student-table thead th {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 700;
+        color: var(--bs-secondary-color);
+        border-bottom: 1px solid var(--bs-border-color);
+        background: var(--bs-tertiary-bg);
+        padding: 0.75rem 1rem;
+        white-space: nowrap;
+    }
+    .student-table tbody td {
+        padding: 0.85rem 1rem;
+        vertical-align: middle;
+        border-color: var(--bs-border-color);
+    }
+    .student-table tbody tr {
+        transition: background 0.15s ease;
+    }
+    .student-table tbody tr:hover {
+        background: rgba(148, 107, 28, 0.04);
+    }
+
+    .student-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, rgba(148,107,28,0.14), rgba(44,122,109,0.14));
+        color: var(--eduai-gold, #946B1C);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+    .student-name {
+        font-weight: 600;
+        color: var(--bs-body-color);
+        margin-bottom: 2px;
+        line-height: 1.2;
+    }
+    .student-meta {
+        font-size: 0.78rem;
+        color: var(--bs-secondary-color);
+    }
+    .class-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 0.2rem 0.55rem;
+        border-radius: 8px;
+        background: rgba(44, 122, 109, 0.12);
+        color: var(--eduai-signal, #2C7A6D);
+    }
+    .grade-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 0.2rem 0.55rem;
+        border-radius: 8px;
+        background: rgba(148, 107, 28, 0.12);
+        color: var(--eduai-gold, #946B1C);
+    }
+    .status-badge-pending {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 0.28rem 0.65rem;
+        border-radius: 20px;
+        background: rgba(255, 193, 7, 0.14);
+        color: #b8860b;
+        white-space: nowrap;
+    }
+
+    /* ============================================================
+       EMPTY STATE / SEARCH NO-MATCH
+       ============================================================ */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--bs-secondary-color);
+    }
+    .empty-state i {
+        font-size: 2rem;
+        opacity: 0.5;
+        display: block;
+        margin-bottom: 0.75rem;
+    }
+
+    /* Filter chips */
+    .filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0.3rem 0.75rem;
+        border-radius: 20px;
+        background: var(--bs-body-bg);
+        border: 1px solid var(--bs-border-color);
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        color: var(--bs-secondary-color);
+    }
+    .filter-chip:hover {
+        border-color: var(--eduai-gold, #946B1C);
+        color: var(--eduai-gold, #946B1C);
+    }
+    .filter-chip.active {
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        border-color: var(--eduai-gold, #946B1C);
+        color: var(--eduai-gold, #946B1C);
+    }
+
+    @keyframes rowFadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .student-row {
+        animation: rowFadeIn 0.2s ease;
+    }
+    .student-row.hidden-row {
+        display: none !important;
+    }
 </style>
 
-<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
-    <div class="p-4">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+<div class="container-fluid py-4">
+
+    <!-- ================= PAGE DESCRIPTION ================= -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
             <div>
-                <h5 class="fw-bold mb-1">
-                    <i class="bi bi-camera-video text-teal me-2"></i>Bulk Face Registration
-                </h5>
-                <p class="text-muted mb-0">
-                    {{ total_unregistered }} student{{ total_unregistered|pluralize }} without face registration
+                <div class="title">
+                    Bulk Face Registration
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% else %}
+                            Staff View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    Register faces for multiple students in one session. Use the
+                    <strong>search</strong> to narrow the list, then click
+                    <strong>Register Face</strong> on any student to open the camera.
+                    Students with a registered face are automatically removed from this list.
                 </p>
-            </div>
-            <div class="d-flex gap-2">
-                <a href="{% url 'students:student_list' %}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left me-1"></i> Back to Students
-                </a>
             </div>
         </div>
     </div>
-</div>
 
-<div class="card card-custom border-0 shadow-sm rounded-4">
-    <div class="p-4">
-        <!-- Include the modal content directly -->
-        {% include 'students/bulk_face_registration_modal_content.html' %}
+    <!-- ================= HEADER ================= -->
+    <div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+        <div class="p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-camera-video text-teal me-2"></i>Bulk Face Registration
+                    </h5>
+                    <p class="text-muted mb-0">
+                        {{ total_unregistered }} student{{ total_unregistered|pluralize }} without face registration
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'students:student_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Back to Students
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- ================= KPI STRIP ================= -->
+    <div class="kpi-strip">
+        <div class="kpi-strip-cell">
+            <span class="kpi-strip-dot pending"></span>
+            <span class="kpi-strip-text">
+                <span class="kpi-strip-label">Awaiting Registration</span>
+                <span class="kpi-strip-value">{{ total_unregistered|default:0 }}</span>
+            </span>
+        </div>
+        <div class="kpi-strip-cell">
+            <span class="kpi-strip-dot total"></span>
+            <span class="kpi-strip-text">
+                <span class="kpi-strip-label">On This Page</span>
+                <span class="kpi-strip-value" id="kpiOnPage">{{ students|length|default:0 }}</span>
+            </span>
+        </div>
+        <div class="kpi-strip-cell">
+            <span class="kpi-strip-dot done"></span>
+            <span class="kpi-strip-text">
+                <span class="kpi-strip-label">Visible After Filter</span>
+                <span class="kpi-strip-value" id="kpiVisible">{{ students|length|default:0 }}</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- ================= FILTER BAR ================= -->
+    <div class="filter-bar">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-7">
+                <div class="search-wrapper">
+                    <i class="bi bi-search"></i>
+                    <input type="text"
+                           id="studentSearchInput"
+                           class="form-control form-control-sm"
+                           placeholder="Search by name, admission number, or class..."
+                           autocomplete="off">
+                </div>
+            </div>
+            <div class="col-md-5 d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+                <div class="d-flex gap-2">
+                    <button type="button" class="filter-chip active" data-status-filter="all">
+                        <i class="bi bi-list-ul"></i> All
+                    </button>
+                    <button type="button" class="filter-chip" data-status-filter="pending">
+                        <i class="bi bi-hourglass-split"></i> Pending
+                    </button>
+                </div>
+                <button type="button" id="clearFiltersBtn" class="btn btn-sm btn-outline-secondary" style="display:none;">
+                    <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
+            </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+            <div class="results-counter" id="resultsCounter">
+                Showing {{ students|length }} of {{ total_unregistered }} student(s)
+            </div>
+            <div class="results-counter small">
+                <i class="bi bi-keyboard me-1"></i>Press <kbd class="px-1">Ctrl</kbd> + <kbd class="px-1">F</kbd> to search
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MAIN CARD ================= -->
+    <div class="card card-custom border-0 shadow-sm rounded-4">
+        <div class="p-4">
+            <!-- Include the modal content directly -->
+            {% include 'students/bulk_face_registration_modal_content.html' %}
+        </div>
+    </div>
+
 </div>
 
 <!-- Face Capture Modal -->
@@ -70,13 +439,161 @@
 
 <!-- CSRF Token for AJAX -->
 {% csrf_token %}
+{% include "partials/pagination.html" with page_obj=students %}
 
 <script>
 // Make sure the modal script can access the CSRF token
 document.addEventListener('DOMContentLoaded', function() {
     // Store CSRF token for use in modal
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    document.documentElement.dataset.csrfToken = csrfToken;
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfInput) {
+        document.documentElement.dataset.csrfToken = csrfInput.value;
+    }
+
+    // ============================================================
+    // AUTO FILTER
+    // ============================================================
+    const searchInput = document.getElementById('studentSearchInput');
+    const clearBtn = document.getElementById('clearFiltersBtn');
+    const resultsCounter = document.getElementById('resultsCounter');
+    const kpiVisible = document.getElementById('kpiVisible');
+    const statusChips = document.querySelectorAll('[data-status-filter]');
+
+    // Try to locate the student rows. The included modal-content
+    // file renders a table; we assume rows carry data attributes.
+    // If the table uses a different structure, we fall back to
+    // filtering the `tr` elements that have a data-student-id.
+    function getRows() {
+        // Prefer explicit row markers, fall back to any tbody tr
+        // inside the included content.
+        let rows = document.querySelectorAll('.student-row');
+        if (rows.length === 0) {
+            rows = document.querySelectorAll('table tbody tr[data-student-id]');
+        }
+        if (rows.length === 0) {
+            // final fallback: any tbody row inside the main content area
+            rows = document.querySelectorAll('.card-custom table tbody tr');
+        }
+        return rows;
+    }
+
+    let currentStatusFilter = 'all';
+
+    function applyFilters() {
+        const query = (searchInput.value || '').toLowerCase().trim();
+        const rows = getRows();
+
+        let visible = 0;
+
+        rows.forEach(function(row) {
+            // Skip empty-state rows
+            if (row.querySelector('.empty-state') || row.id === 'emptyStateRow') {
+                return;
+            }
+
+            const text = (row.textContent || '').toLowerCase();
+            const rowStatus = (row.dataset.status || 'pending').toLowerCase();
+
+            const matchesQuery = !query || text.includes(query);
+            const matchesStatus = currentStatusFilter === 'all' || rowStatus === currentStatusFilter;
+
+            if (matchesQuery && matchesStatus) {
+                row.classList.remove('hidden-row');
+                row.style.display = '';
+                visible++;
+            } else {
+                row.classList.add('hidden-row');
+                row.style.display = 'none';
+            }
+        });
+
+        // Update counters
+        const totalOnPage = rows.length;
+        if (resultsCounter) {
+            resultsCounter.textContent = `Showing ${visible} of ${totalOnPage} student(s) on this page`;
+        }
+        if (kpiVisible) {
+            kpiVisible.textContent = visible;
+        }
+
+        // Show/hide clear button
+        const hasFilters = query || currentStatusFilter !== 'all';
+        if (clearBtn) {
+            clearBtn.style.display = hasFilters ? 'inline-block' : 'none';
+        }
+
+        // Handle "no matches" state
+        let noMatch = document.getElementById('searchNoMatchRow');
+        const tableBody = rows.length ? rows[0].parentElement : null;
+        if (tableBody) {
+            if (visible === 0 && (query || currentStatusFilter !== 'all')) {
+                if (!noMatch) {
+                    noMatch = document.createElement('tr');
+                    noMatch.id = 'searchNoMatchRow';
+                    noMatch.innerHTML = `
+                        <td colspan="10">
+                            <div class="empty-state">
+                                <i class="bi bi-search"></i>
+                                <p class="mb-0">No students match your filters.</p>
+                                <small>Try clearing the search to see all students.</small>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(noMatch);
+                }
+                noMatch.style.display = '';
+            } else if (noMatch) {
+                noMatch.style.display = 'none';
+            }
+        }
+    }
+
+    // Debounced search input
+    let searchTimeout;
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(applyFilters, 150);
+        });
+    }
+
+    // Status chips
+    statusChips.forEach(function(chip) {
+        chip.addEventListener('click', function() {
+            statusChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            currentStatusFilter = chip.dataset.statusFilter || 'all';
+            applyFilters();
+        });
+    });
+
+    // Clear button
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            currentStatusFilter = 'all';
+            statusChips.forEach(c => c.classList.toggle('active', c.dataset.statusFilter === 'all'));
+            applyFilters();
+        });
+    }
+
+    // Ctrl/Cmd+F focuses the search input
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+            const tag = (e.target.tagName || '').toLowerCase();
+            if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
+                e.preventDefault();
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+        }
+    });
+
+    // Initial counter
+    applyFilters();
 });
 </script>
+
 {% endblock %}

@@ -17,6 +17,116 @@ except ImportError:
 class FaceRegistrationService:
     """Enterprise-grade face registration service for students"""
 
+    # Distance below which two encodings are treated as the SAME person.
+    # face_recognition's own default for "is this a match" is 0.6; we use
+    # a slightly stricter value for duplicate-registration checks so we
+    # don't accidentally block two genuinely different students who merely
+    # look similar, while still reliably catching the same person being
+    # registered twice.
+    DUPLICATE_FACE_TOLERANCE = 0.45
+
+    # Distance below which a live capture is treated as a confident
+    # identification match against a registered student, e.g. for
+    # attendance check-in.
+    IDENTIFY_MATCH_TOLERANCE = 0.55
+
+    @staticmethod
+    def _known_encodings_for_school(school, exclude_student_id=None):
+        """
+        Load every registered (student, encoding) pair for a school as
+        numpy arrays, skipping any record with malformed/missing data.
+        Returns (students, encodings_matrix_or_empty_list).
+        """
+        from students.models import Student  # local import: avoids any
+        # import-order issues between models.py and this service module.
+
+        qs = Student.objects.filter(
+            school=school,
+            face_registered=True,
+            face_encoding__isnull=False,
+        )
+        if exclude_student_id:
+            qs = qs.exclude(pk=exclude_student_id)
+
+        students = []
+        encodings = []
+        for candidate in qs:
+            try:
+                enc = np.array(candidate.face_encoding, dtype=float)
+            except (TypeError, ValueError):
+                continue
+            if enc.shape != (128,):
+                # Not a valid 128-d face_recognition encoding; skip rather
+                # than letting a corrupt row crash the comparison.
+                continue
+            students.append(candidate)
+            encodings.append(enc)
+
+        return students, encodings
+
+    @staticmethod
+    def find_duplicate_registration(school, encoding, exclude_student_id=None):
+        """
+        Check whether `encoding` matches a face already registered to a
+        DIFFERENT student in the same school. This is what enforces
+        "one face -> one student record": without it, the same person's
+        photo can silently be saved under several different students,
+        and face-based attendance can never tell them apart.
+
+        Returns the matching Student, or None if no match is found.
+        """
+        if not FACE_RECOGNITION_AVAILABLE:
+            return None
+
+        students, known_encodings = FaceRegistrationService._known_encodings_for_school(
+            school, exclude_student_id=exclude_student_id
+        )
+        if not known_encodings:
+            return None
+
+        target = np.array(encoding, dtype=float)
+        distances = face_recognition.face_distance(known_encodings, target)
+        best_idx = int(np.argmin(distances))
+
+        if distances[best_idx] <= FaceRegistrationService.DUPLICATE_FACE_TOLERANCE:
+            return students[best_idx]
+        return None
+
+    @staticmethod
+    def identify_student(school, image_data, tolerance=None):
+        """
+        Real face-recognition lookup: given a freshly captured image (e.g.
+        from an attendance kiosk), find which registered student it
+        belongs to. This is the counterpart to registration -- registration
+        stores one encoding per student, this compares a live capture
+        against all of them and returns the closest confident match.
+
+        Returns (student_or_None, distance_or_None, message).
+        """
+        if not FACE_RECOGNITION_AVAILABLE:
+            return None, None, (
+                "Face recognition is not enabled in this deployment."
+            )
+
+        encoding, message = FaceRegistrationService.extract_face_encoding(image_data)
+        if encoding is None:
+            return None, None, message
+
+        students, known_encodings = FaceRegistrationService._known_encodings_for_school(school)
+        if not known_encodings:
+            return None, None, "No students with registered faces found."
+
+        target = np.array(encoding, dtype=float)
+        distances = face_recognition.face_distance(known_encodings, target)
+        best_idx = int(np.argmin(distances))
+        best_distance = float(distances[best_idx])
+
+        threshold = tolerance if tolerance is not None else FaceRegistrationService.IDENTIFY_MATCH_TOLERANCE
+        if best_distance <= threshold:
+            return students[best_idx], best_distance, "Match found."
+
+        return None, best_distance, "No confident match found."
+
     @staticmethod
     def extract_face_encoding(image_data):
         """
@@ -60,15 +170,11 @@ class FaceRegistrationService:
                 # Assume it's a PIL Image
                 image_np = np.array(image_data)
 
-            # Convert to RGB if needed
-            if len(image_np.shape) == 3 and image_np.shape[2] == 3:
-                # Check if it's BGR (OpenCV format)
-                if image_np[0, 0, 0] > image_np[0, 0, 2]:  # Simple heuristic
-                    image_rgb = image_np
-                else:
-                    image_rgb = image_np
-            else:
-                image_rgb = image_np
+            # All of our input paths (PIL.Image -> np.array, or an
+            # already-RGB ndarray/PIL image) are RGB, not OpenCV's BGR,
+            # so no channel swap is needed here. face_recognition always
+            # expects RGB.
+            image_rgb = image_np
 
             # Detect face locations
             face_locations = face_recognition.face_locations(image_rgb, model='hog')
@@ -103,6 +209,19 @@ class FaceRegistrationService:
 
             if encoding is None:
                 return False, message, None
+
+            # Enforce one-face-per-student: reject if this face is already
+            # registered to someone else in the same school, instead of
+            # silently overwriting/duplicating identities.
+            duplicate = FaceRegistrationService.find_duplicate_registration(
+                student.school, encoding, exclude_student_id=student.pk
+            )
+            if duplicate is not None:
+                return False, (
+                    f"This face already appears to be registered to "
+                    f"{duplicate} ({duplicate.admission_number}). "
+                    f"Each student must be registered with their own face."
+                ), None
 
             # Save the profile photo
             if isinstance(image_data, str) and image_data.startswith('data:image'):

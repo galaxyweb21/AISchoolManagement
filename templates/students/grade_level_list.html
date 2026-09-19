@@ -5,40 +5,20 @@
 {% block content %}
 
 <style>
-    .text-gold {
-        color: var(--eduai-gold, #946B1C) !important;
-    }
-    .bg-gold-soft {
-        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
-    }
-    .bg-teal-soft {
-        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
-    }
-    .text-teal {
-        color: var(--eduai-signal, #2C7A6D) !important;
-    }
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+    .bg-teal-soft { background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important; }
+    .text-teal { color: var(--eduai-signal, #2C7A6D) !important; }
     .btn-gold {
         background-color: var(--eduai-gold, #946B1C) !important;
         border-color: var(--eduai-gold, #946B1C) !important;
         color: #fff !important;
     }
-    .btn-gold:hover {
-        background-color: #7a5917 !important;
-        border-color: #7a5917 !important;
-        color: #fff !important;
-    }
-    .btn-outline-gold {
-        color: var(--eduai-gold, #946B1C) !important;
-        border-color: var(--eduai-gold, #946B1C) !important;
-    }
-    .btn-outline-gold:hover {
-        background-color: var(--eduai-gold, #946B1C) !important;
-        border-color: var(--eduai-gold, #946B1C) !important;
-        color: #fff !important;
-    }
-    .spinner-gold {
-        color: var(--eduai-gold, #946B1C) !important;
-    }
+    .btn-gold:hover { background-color: #7a5917 !important; border-color: #7a5917 !important; color: #fff !important; }
+    .btn-outline-gold { color: var(--eduai-gold, #946B1C) !important; border-color: var(--eduai-gold, #946B1C) !important; }
+    .btn-outline-gold:hover { background-color: var(--eduai-gold, #946B1C) !important; border-color: var(--eduai-gold, #946B1C) !important; color: #fff !important; }
+    .spinner-gold { color: var(--eduai-gold, #946B1C) !important; }
+
     .page-description {
         background: var(--bs-tertiary-bg);
         border-radius: 12px;
@@ -46,24 +26,56 @@
         margin-bottom: 1.5rem;
         border-left: 4px solid var(--eduai-gold, #946B1C);
     }
-    .page-description .icon {
-        color: var(--eduai-gold, #946B1C);
-        font-size: 1.25rem;
-        margin-right: 0.75rem;
-    }
-    .page-description .title {
-        font-weight: 600;
-        font-size: 0.9rem;
-        margin-bottom: 0.15rem;
-    }
-    .page-description .text {
-        font-size: 0.85rem;
-        color: var(--bs-secondary-color);
-        margin-bottom: 0;
-    }
-</style>
+    .page-description .icon { color: var(--eduai-gold, #946B1C); font-size: 1.25rem; margin-right: 0.75rem; }
+    .page-description .title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.15rem; }
+    .page-description .text { font-size: 0.85rem; color: var(--bs-secondary-color); margin-bottom: 0; }
 
-<!-- Messages are now handled by the global handler in base.html -->
+    .kpi-strip {
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 14px;
+        padding: 0.85rem 0.5rem;
+        margin-bottom: 1.5rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0;
+    }
+    .kpi-strip-cell {
+        display: flex; align-items: center; gap: 0.65rem;
+        padding: 0.4rem 1rem;
+        border-right: 1px solid var(--bs-border-color);
+    }
+    .kpi-strip-cell:last-child { border-right: none; }
+    .kpi-strip-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .kpi-strip-dot.gold { background: var(--eduai-gold, #946B1C); box-shadow: 0 0 0 3px rgba(148,107,28,0.18); }
+    .kpi-strip-dot.teal { background: var(--eduai-signal, #2C7A6D); box-shadow: 0 0 0 3px rgba(44,122,109,0.18); }
+    .kpi-strip-label {
+        font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em;
+        text-transform: uppercase; color: var(--bs-secondary-color);
+    }
+    .kpi-strip-value { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    .modern-table thead th {
+        font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+        font-weight: 700; color: var(--bs-secondary-color);
+        background: var(--bs-tertiary-bg);
+        border-bottom: 1px solid var(--bs-border-color);
+        padding: 0.75rem 1rem; white-space: nowrap;
+    }
+    .modern-table tbody td {
+        padding: 0.85rem 1rem; vertical-align: middle; border-color: var(--bs-border-color);
+    }
+    .modern-table tbody tr { transition: background 0.15s ease; }
+    .modern-table tbody tr:hover { background: rgba(148, 107, 28, 0.04); }
+
+    .chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 0.72rem; font-weight: 600;
+        padding: 0.22rem 0.6rem; border-radius: 8px;
+    }
+    .chip-order { background: rgba(108, 117, 125, 0.12); color: #6c757d; }
+    .chip-count { background: var(--eduai-gold-soft); color: var(--eduai-gold, #946B1C); }
+</style>
 
 <div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
     <div class="p-4">
@@ -81,7 +93,7 @@
     </div>
 </div>
 
-<!-- How Grade Levels Work -->
+<!-- Page description -->
 <div class="page-description">
     <div class="d-flex align-items-start">
         <i class="bi bi-info-circle-fill icon"></i>
@@ -97,11 +109,28 @@
     </div>
 </div>
 
+<!-- KPI strip -->
+<div class="kpi-strip">
+    <div class="kpi-strip-cell">
+        <span class="kpi-strip-dot gold"></span>
+        <div>
+            <div class="kpi-strip-label">Grade Levels</div>
+            <div class="kpi-strip-value" id="gradeCount">{{ grade_levels|length }}</div>
+        </div>
+    </div>
+    <div class="kpi-strip-cell">
+        <span class="kpi-strip-dot teal"></span>
+        <div>
+            <div class="kpi-strip-label">Visible After Filter</div>
+            <div class="kpi-strip-value" id="kpiVisible">{{ grade_levels|length }}</div>
+        </div>
+    </div>
+</div>
+
 <div class="card card-custom border-0 shadow-sm rounded-4" data-table-update>
     <div class="p-4 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h6 class="fw-bold mb-0">
             <i class="bi bi-table text-gold me-2"></i>All Grade Levels
-            <span class="badge bg-light text-muted ms-2" id="gradeCount">{{ grade_levels|length }}</span>
         </h6>
         <div class="d-flex gap-2 align-items-center">
             <span class="text-muted small" id="filterStatus"></span>
@@ -110,33 +139,33 @@
     </div>
     <div class="p-4">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="gradeLevelsTable">
+            <table class="table modern-table align-middle mb-0" id="gradeLevelsTable">
                 <thead>
                     <tr>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Name</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Order</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Assigned Students</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Actions</th>
+                        <th>Name</th>
+                        <th class="text-center">Order</th>
+                        <th class="text-center">Assigned Students</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="border-top-0" id="gradeLevelTableBody">
+                <tbody id="gradeLevelTableBody">
                     {% for g in grade_levels %}
-                    <tr class="border-bottom grade-level-row" data-id="{{ g.id }}">
-                        <td class="fw-semibold py-3 ps-0" data-field="name">{{ g.name }}</td>
-                        <td class="text-center py-3" data-field="order">
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">{{ g.order }}</span>
+                    <tr class="grade-level-row" data-id="{{ g.id }}">
+                        <td class="fw-semibold" data-field="name">{{ g.name }}</td>
+                        <td class="text-center" data-field="order">
+                            <span class="chip chip-order">{{ g.order }}</span>
                         </td>
-                        <td class="text-center py-3" data-field="student_count">
-                            <span class="badge bg-gold-soft text-gold rounded-pill px-3 py-2">{{ g.students.count }}</span>
+                        <td class="text-center" data-field="student_count">
+                            <span class="chip chip-count">{{ g.students.count }}</span>
                         </td>
-                        <td class="text-end py-3 pe-0 text-nowrap">
-                            <button type="button" class="btn btn-sm btn-outline-gold px-3"
+                        <td class="text-end text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-gold"
                                     data-bs-toggle="modal" data-bs-target="#gradeLevelModal"
                                     data-action="edit" data-url="{% url 'students:grade_level_edit' g.id %}"
                                     data-id="{{ g.id }}" data-modal-handler>
                                 <i class="bi bi-pencil-square me-1"></i> Edit
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-danger px-3 ms-1"
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-1"
                                     data-bs-toggle="modal" data-bs-target="#gradeLevelModal"
                                     data-action="delete" data-url="{% url 'students:grade_level_delete' g.id %}"
                                     data-id="{{ g.id }}" data-modal-handler>
@@ -158,30 +187,22 @@
     </div>
 </div>
 
-<!-- Row Template for dynamic updates -->
 <template id="rowTemplate">
-    <tr class="border-bottom grade-level-row" data-id="">
-        <td class="fw-semibold py-3 ps-0" data-field="name">Grade Name</td>
-        <td class="text-center py-3" data-field="order">
-            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">0</span>
-        </td>
-        <td class="text-center py-3" data-field="student_count">
-            <span class="badge bg-gold-soft text-gold rounded-pill px-3 py-2">0</span>
-        </td>
-        <td class="text-end py-3 pe-0 text-nowrap">
-            <button type="button" class="btn btn-sm btn-outline-gold px-3 edit-btn">
+    <tr class="grade-level-row" data-id="">
+        <td class="fw-semibold" data-field="name">Grade Name</td>
+        <td class="text-center" data-field="order"><span class="chip chip-order">0</span></td>
+        <td class="text-center" data-field="student_count"><span class="chip chip-count">0</span></td>
+        <td class="text-end text-nowrap">
+            <button type="button" class="btn btn-sm btn-outline-gold edit-btn">
                 <i class="bi bi-pencil-square me-1"></i> Edit
             </button>
-            <button type="button" class="btn btn-sm btn-outline-danger px-3 ms-1 delete-btn">
+            <button type="button" class="btn btn-sm btn-outline-danger ms-1 delete-btn">
                 <i class="bi bi-trash me-1"></i> Delete
             </button>
         </td>
     </tr>
 </template>
 
-<!-- =========================================== -->
-<!-- DYNAMIC MASTER MODAL -->
-<!-- =========================================== -->
 <div class="modal fade" id="gradeLevelModal" tabindex="-1" aria-hidden="true" data-modal-handler>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-sm rounded-4">
@@ -189,9 +210,7 @@
                 <h5 class="modal-title fw-bold" id="gradeLevelModalTitle">Loading...</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4" id="gradeLevelModalContent">
-                <!-- Content injected here -->
-            </div>
+            <div class="modal-body p-4" id="gradeLevelModalContent"></div>
         </div>
     </div>
 </div>
@@ -201,12 +220,11 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // ============================================================
-    // SEARCH / AUTO FILTER with real-time count update
-    // ============================================================
+    /* Preserved search behavior + a KPI visible counter */
     const gradeLevelSearchInput = document.getElementById('gradeLevelSearchInput');
     const filterStatus = document.getElementById('filterStatus');
     const gradeCount = document.getElementById('gradeCount');
+    const kpiVisible = document.getElementById('kpiVisible');
     const allRows = document.querySelectorAll('.grade-level-row');
     const emptyState = document.querySelector('.empty-state-row');
 
@@ -222,36 +240,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isVisible) visibleCount++;
             });
 
-            // Update count
             if (gradeCount) {
                 if (query) {
                     gradeCount.textContent = visibleCount;
-                    if (filterStatus) {
-                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
-                    }
+                    if (filterStatus) filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
                 } else {
                     gradeCount.textContent = allRows.length;
-                    if (filterStatus) {
-                        filterStatus.textContent = '';
-                    }
+                    if (filterStatus) filterStatus.textContent = '';
                 }
             }
+            if (kpiVisible) kpiVisible.textContent = query ? visibleCount : allRows.length;
 
-            // Show empty state if no rows visible
             if (emptyState) {
-                if (visibleCount === 0 && allRows.length > 0) {
-                    emptyState.style.display = '';
-                } else {
-                    emptyState.style.display = 'none';
-                }
+                emptyState.style.display = (visibleCount === 0 && allRows.length > 0) ? '' : 'none';
             }
         });
 
-        // Clear filter status on blur if empty
         gradeLevelSearchInput.addEventListener('blur', function() {
-            if (!this.value && filterStatus) {
-                filterStatus.textContent = '';
-            }
+            if (!this.value && filterStatus) filterStatus.textContent = '';
         });
     }
 
@@ -264,34 +270,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const action = button.getAttribute('data-action');
         const url = button.getAttribute('data-url');
 
-        if (action === 'create') {
-            modalTitle.innerHTML = '<i class="bi bi-plus-circle text-gold me-2"></i>Add New Grade Level';
-        } else if (action === 'edit') {
-            modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Grade Level';
-        } else if (action === 'delete') {
-            modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete';
-        }
+        if (action === 'create') modalTitle.innerHTML = '<i class="bi bi-plus-circle text-gold me-2"></i>Add New Grade Level';
+        else if (action === 'edit') modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Grade Level';
+        else if (action === 'delete') modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete';
 
-        modalContent.innerHTML = `
-            <div class="text-center py-5">
-                <div class="spinner-border spinner-gold" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-            </div>
-        `;
+        modalContent.innerHTML = '<div class="text-center py-5"><div class="spinner-border spinner-gold" role="status"><span class="visually-hidden">Loading...</span></div></div>';
 
         fetch(url, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'text/html'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' }
         })
         .then(response => response.text())
-        .then(html => {
-            modalContent.innerHTML = html;
-            // The global modal handler will auto-bind the form
-        })
-        .catch(err => {
+        .then(html => { modalContent.innerHTML = html; })
+        .catch(() => {
             modalContent.innerHTML = `
                 <div class="alert alert-danger border-0 shadow-sm rounded-4">
                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -306,5 +296,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% include "partials/pagination.html" with page_obj=grade_levels %}
-
 {% endblock %}

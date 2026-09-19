@@ -1,12 +1,24 @@
 <!-- staff/hr/department_form_modal.html -->
 {% load static %}
 
+<style>
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover { background-color: #7a5917 !important; border-color: #7a5917 !important; color: #fff !important; }
+    .form-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+</style>
+
 <div class="modal-header border-0 pt-4 px-4 pb-0">
     <h5 class="modal-title fw-bold">
         {% if mode == 'create' %}
-            <i class="bi bi-plus-circle me-2" style="color: var(--eduai-gold, #946B1C);"></i>New Department
+            <i class="bi bi-plus-circle text-gold me-2"></i>New Department
         {% else %}
-            <i class="bi bi-pencil-square me-2" style="color: var(--eduai-gold, #946B1C);"></i>Edit Department
+            <i class="bi bi-pencil-square text-gold me-2"></i>Edit Department
         {% endif %}
     </h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -24,12 +36,11 @@
             </label>
             <input type="text" name="name" id="departmentName" class="form-control"
                    placeholder="e.g., Mathematics Department"
-                   value="{% if mode == 'edit' %}{{ department.name }}{% endif %}"
-                   required>
-            <div class="invalid-feedback">
-                Please enter a department name.
+                   value="{% if mode == 'edit' %}{{ department.name }}{% endif %}" required>
+            <div class="invalid-feedback">Please enter a department name.</div>
+            <div class="form-hint">
+                <i class="bi bi-info-circle me-1"></i>This will be used to generate a department code automatically.
             </div>
-            <small class="text-muted">This will be used to generate a department code automatically.</small>
         </div>
 
         <!-- Head of Department -->
@@ -48,7 +59,9 @@
                     <option value="" disabled>No staff members available</option>
                 {% endfor %}
             </select>
-            <small class="text-muted">The staff member who will lead this department.</small>
+            <div class="form-hint">
+                <i class="bi bi-info-circle me-1"></i>The staff member who will lead this department.
+            </div>
         </div>
 
         <!-- Description -->
@@ -56,9 +69,11 @@
             <label class="form-label fw-semibold" for="departmentDescription">
                 Description
             </label>
-            <textarea name="description" id="departmentDescription" class="form-control"
-                      rows="3" placeholder="Brief description of the department...">{% if mode == 'edit' %}{{ department.description }}{% endif %}</textarea>
-            <small class="text-muted">Optional: Provide additional details about this department.</small>
+            <textarea name="description" id="departmentDescription" class="form-control" rows="3"
+                      placeholder="Brief description of the department...">{% if mode == 'edit' %}{{ department.description }}{% endif %}</textarea>
+            <div class="form-hint">
+                <i class="bi bi-info-circle me-1"></i>Optional: Provide additional details about this department.
+            </div>
         </div>
 
         <!-- Active Status (Edit mode only) -->
@@ -67,18 +82,18 @@
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" name="is_active" id="departmentActive"
                        {% if department.is_active %}checked{% endif %}>
-                <label class="form-check-label fw-semibold" for="departmentActive">
-                    Active
-                </label>
-                <small class="d-block text-muted">Inactive departments will not appear in dropdown selections.</small>
+                <label class="form-check-label fw-semibold" for="departmentActive">Active</label>
+                <div class="form-hint">
+                    <i class="bi bi-info-circle me-1"></i>Inactive departments will not appear in dropdown selections.
+                </div>
             </div>
         </div>
         {% endif %}
 
         <!-- Preview Code -->
-        <div class="alert border-0 rounded-3" style="background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));">
+        <div class="alert border-0 rounded-3 bg-gold-soft">
             <small class="d-block">
-                <i class="bi bi-tag me-1" style="color: var(--eduai-gold, #946B1C);"></i>
+                <i class="bi bi-tag text-gold me-1"></i>
                 <strong>Department Code:</strong>
                 {% if mode == 'create' %}
                     <span id="codePreview">Will be auto-generated</span>
@@ -93,7 +108,7 @@
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x-circle me-1"></i>Cancel
         </button>
-        <button type="submit" class="btn btn-primary" id="departmentSubmitBtn" style="background-color: var(--eduai-gold, #946B1C); border-color: var(--eduai-gold, #946B1C);">
+        <button type="submit" class="btn btn-gold" id="departmentSubmitBtn">
             <i class="bi {% if mode == 'create' %}bi-plus-circle{% else %}bi-save{% endif %} me-1"></i>
             {% if mode == 'create' %}Create Department{% else %}Update Department{% endif %}
         </button>
@@ -104,7 +119,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('departmentForm');
 
-    // Bootstrap form validation
     form.addEventListener('submit', function(e) {
         if (!form.checkValidity()) {
             e.preventDefault();
@@ -113,10 +127,8 @@ document.addEventListener('DOMContentLoaded', function() {
         form.classList.add('was-validated');
     });
 
-    // Handle form submission via AJAX
     form.addEventListener('submit', function(e) {
         e.preventDefault();
-
         if (!form.checkValidity()) {
             form.classList.add('was-validated');
             return;
@@ -144,11 +156,10 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.innerHTML = originalText;
 
             if (data.success) {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('departmentModal') ||
-                                                          document.querySelector('.modal'));
-                if (modal) {
-                    modal.hide();
-                }
+                const modal = bootstrap.Modal.getInstance(
+                    document.getElementById('departmentModal') || document.querySelector('.modal')
+                );
+                if (modal) modal.hide();
                 location.reload();
             } else {
                 alert('Error: ' + (data.error || 'Failed to save department.'));
@@ -162,7 +173,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Live preview of department code
+    // Live code preview
     const nameInput = document.getElementById('departmentName');
     const codePreview = document.getElementById('codePreview');
 

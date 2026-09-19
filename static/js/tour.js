@@ -42,18 +42,100 @@
     return url+join+'eduai_workflow='+encodeURIComponent(workflow)+'&eduai_step='+step;
   }
 
-  var general=[
-    {title:'Welcome to EduAI',text:'This quick guide introduces the main areas of your school management system. Each menu step highlights the exact menu item you should use.',target:null},
-    {title:'Dashboard',text:'Start here to see your school overview, alerts, shortcuts and role-specific information.',target:'dashboard'},
-    {title:'Students',text:'Manage learner records and enrollment from the Students menu.',target:'students'},
-    {title:'Attendance',text:'Record and review daily attendance from the Attendance menu.',target:'attendance'},
-    {title:'Academic Results',text:'Enter marks through Grade Entry and review final results through Terminal Results.',target:'grade-entry'},
-    {title:'Finance',text:'Use Billing Dashboard to monitor invoices, collections and outstanding balances.',target:'billing'},
-    {title:'Notifications',text:'Open Notification Center to view announcements, attendance alerts, payment receipts and other important updates.',target:'notifications'},
-    {title:'AI Copilot',text:'Open AI Copilot to ask questions about school data and operational tasks.',target:'copilot'},
-    {title:'Activity Log',text:'Administrators can review user actions and audit activity from Activity Log.',target:'activity-log'},
-    {title:'Product Guide',text:'Use this guide whenever you need help. You can also launch step-by-step workflows from the Product Guide page.',target:'product-guide'},
-    {title:'Ready to explore',text:function(){return 'You are signed in as '+(roleNames[role]||'User')+'. Open Product Guide whenever you need a guided walkthrough.';},target:null}
+  var roleGuides={
+    SUPER_ADMIN:[
+      {title:'Welcome to EduAI',text:'This guide highlights the main areas available to Super Admins.',target:null},
+      {title:'Dashboard',text:'Review the school overview, alerts, shortcuts and administrative metrics.',target:'dashboard'},
+      {title:'Students',text:'Manage learner records and enrollment.',target:'students'},
+      {title:'Attendance',text:'Monitor school attendance and daily records.',target:'attendance'},
+      {title:'Academic Results',text:'Enter and review academic results and terminal reports.',target:'grade-entry'},
+      {title:'Finance',text:'Manage fees, billing, invoices and collections.',target:'billing'},
+      {title:'Notifications',text:'Manage announcements and review system notifications.',target:'notifications'},
+      {title:'AI Copilot',text:'Ask questions about school data and operational tasks.',target:'copilot'},
+      {title:'Activity Log',text:'Review audit activity and user actions.',target:'activity-log'},
+      {title:'Ready to explore',text:'Your Super Admin guide is complete. Use Product Guide again whenever you need a walkthrough.',target:null}
+    ],
+    SCHOOL_ADMIN:[
+      {title:'Welcome to EduAI',text:'This guide highlights the main areas available to School Admins.',target:null},
+      {title:'Dashboard',text:'Review school operations and administrative alerts.',target:'dashboard'},
+      {title:'Students',text:'Manage learner records and enrollment.',target:'students'},
+      {title:'Attendance',text:'Monitor attendance records and school activity.',target:'attendance'},
+      {title:'Academic Results',text:'Manage grade entry and terminal results.',target:'grade-entry'},
+      {title:'Finance',text:'Review fees, billing, invoices and balances.',target:'billing'},
+      {title:'Notifications',text:'Manage school announcements and notifications.',target:'notifications'},
+      {title:'AI Copilot',text:'Use Copilot for school-data and operational questions.',target:'copilot'},
+      {title:'Ready to explore',text:'Your School Admin guide is complete.',target:null}
+    ],
+    BURSAR:[
+      {title:'Welcome to EduAI',text:'This guide highlights the finance workspace available to Bursars.',target:null},
+      {title:'Dashboard',text:'Review finance-focused school information and alerts.',target:'dashboard'},
+      {title:'Finance',text:'Open Billing Dashboard to work with fees, invoices, payments and balances.',target:'billing'},
+      {title:'Fee Preparation',text:'Prepare and review class fees before billing.',target:'fee-preparation'},
+      {title:'Student Fees',text:'Review prepared fees and outstanding amounts.',target:'student-fees'},
+      {title:'Invoices',text:'Review invoices and payment records.',target:'invoices'},
+      {title:'Notifications',text:'Review finance and school notifications.',target:'notifications'},
+      {title:'AI Copilot',text:'Ask Copilot for finance and operational information available to your role.',target:'copilot'},
+      {title:'Ready to explore',text:'Your Bursar guide is complete.',target:null}
+    ],
+    REGISTRAR:[
+      {title:'Welcome to EduAI',text:'This guide highlights the learner-record and administration areas available to Registrars.',target:null},
+      {title:'Dashboard',text:'Review your school overview and alerts.',target:'dashboard'},
+      {title:'Students',text:'Create, update and review learner records according to your permissions.',target:'students'},
+      {title:'Attendance',text:'Review attendance information relevant to your role.',target:'attendance'},
+      {title:'Notifications',text:'Read school announcements and system notifications.',target:'notifications'},
+      {title:'AI Copilot',text:'Ask Copilot for permitted school-data and operational information.',target:'copilot'},
+      {title:'Ready to explore',text:'Your Registrar guide is complete.',target:null}
+    ],
+    SECRETARY:[
+      {title:'Welcome to EduAI',text:'This guide highlights the administration and communication areas available to Secretaries.',target:null},
+      {title:'Dashboard',text:'Review your school overview and alerts.',target:'dashboard'},
+      {title:'Students',text:'Access learner information required for your administrative work.',target:'students'},
+      {title:'Attendance',text:'Review attendance information available to your role.',target:'attendance'},
+      {title:'Notifications',text:'Stay informed about announcements and school updates.',target:'notifications'},
+      {title:'AI Copilot',text:'Use Copilot for permitted school-data and operational assistance.',target:'copilot'},
+      {title:'Ready to explore',text:'Your Secretary guide is complete.',target:null}
+    ],
+    HOD:[
+      {title:'Welcome to EduAI',text:'This guide highlights the academic and teaching areas available to Heads of Department.',target:null},
+      {title:'Dashboard',text:'Review your academic overview and alerts.',target:'dashboard'},
+      {title:'Students',text:'Review learner information relevant to your department.',target:'students'},
+      {title:'Attendance',text:'Monitor attendance for the classes available to your role.',target:'attendance'},
+      {title:'Grade Entry',text:'Enter and review academic results for your assigned work.',target:'grade-entry'},
+      {title:'Terminal Results',text:'Review final results and report-card information.',target:'terminal-results'},
+      {title:'Notifications',text:'Read school announcements and academic notifications.',target:'notifications'},
+      {title:'AI Copilot',text:'Ask Copilot for permitted academic and operational information.',target:'copilot'},
+      {title:'Ready to explore',text:'Your HOD guide is complete.',target:null}
+    ],
+    TEACHER:[
+      {title:'Welcome to EduAI',text:'This guide highlights the teaching workspace available to Teachers.',target:null},
+      {title:'Dashboard',text:'Review your teaching overview and important school activity.',target:'dashboard'},
+      {title:'Students',text:'View learners relevant to your teaching work.',target:'students'},
+      {title:'Attendance',text:'Record and review attendance for your assigned classes.',target:'attendance'},
+      {title:'Grade Entry',text:'Enter continuous assessment and examination results.',target:'grade-entry'},
+      {title:'Terminal Results',text:'Review final results and report-card information.',target:'terminal-results'},
+      {title:'Notifications',text:'Read announcements and important school notifications.',target:'notifications'},
+      {title:'AI Copilot',text:'Ask Copilot for permitted school-data and operational assistance.',target:'copilot'},
+      {title:'Ready to explore',text:'Your Teacher guide is complete.',target:null}
+    ],
+    PARENT:[
+      {title:'Welcome to EduAI',text:'This guide highlights the family features available to Parents.',target:null},
+      {title:'Dashboard',text:'Review your family overview and key student information.',target:'dashboard'},
+      {title:'Notifications',text:'Read attendance, fee, report-card, promotion and announcement notifications.',target:'notifications'},
+      {title:'Ready to explore',text:'Use the Parent Portal pages available in your sidebar to review your children\'s information.',target:null}
+    ],
+    STUDENT:[
+      {title:'Welcome to EduAI',text:'This guide highlights the student features available to you.',target:null},
+      {title:'Dashboard',text:'Review your academic and school overview.',target:'dashboard'},
+      {title:'Notifications',text:'Read announcements and important school updates.',target:'notifications'},
+      {title:'Ready to explore',text:'Use your student pages to review attendance, grades and fees.',target:null}
+    ]
+  };
+
+  var general=roleGuides[role]||[
+    {title:'Welcome to EduAI',text:'This guide highlights the areas available to your account.',target:null},
+    {title:'Dashboard',text:'Start here to review your school overview.',target:'dashboard'},
+    {title:'Notifications',text:'Review messages and important system updates.',target:'notifications'},
+    {title:'Ready to explore',text:'Use the pages available in your sidebar for your role.',target:null}
   ];
 
   var workflows={

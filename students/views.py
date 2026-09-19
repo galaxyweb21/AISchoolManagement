@@ -769,7 +769,7 @@ def bulk_face_registration(request):
     ).select_related('user', 'grade_level', 'school_class').order_by('user__last_name')
 
     context = {
-        'students': unregistered_students,
+        'students': paginate_queryset(unregistered_students, request),
         'total_unregistered': unregistered_students.count(),
         'can_manage': request.user.role in MANAGE_ROLES,
         'can_edit': request.user.role in EDIT_ROLES,

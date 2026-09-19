@@ -23,7 +23,7 @@ EXAM_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER']
 def exam_dashboard(request):
     if request.user.role not in EXAM_ROLES:
         messages.error(request, "You don't have permission to view exam generation.")
-        return redirect('dashboard')
+        return redirect('dashboard:dashboard')
 
     school = request.user.school
     exams = GeneratedExam.objects.filter(school=school).select_related(

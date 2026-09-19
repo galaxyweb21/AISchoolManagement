@@ -190,6 +190,165 @@
         100% { transform: scale(1); }
     }
     .filter-active { animation: pulse-badge 1.5s ease-in-out 1; }
+
+    /* ============================================================
+   ENTERPRISE KPI LAYOUT
+   Two-tier design:
+     - Tier 1 (primary): Total + Sent + Pending + Failed
+     - Tier 2 (pipeline strip): Delivered · Sent · Pending ·
+       Queued · Failed · Read
+   ============================================================ */
+
+/* ---- Tier 1: hero KPIs ---- */
+.kpi-hero-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+@media (max-width: 992px) {
+    .kpi-hero-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 576px) {
+    .kpi-hero-grid { grid-template-columns: 1fr; }
+}
+
+.kpi-hero {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    min-width: 0;
+}
+.kpi-hero:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.06);
+    border-color: var(--eduai-gold, #946B1C);
+    color: inherit;
+}
+.kpi-hero-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.kpi-hero-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--bs-secondary-color);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.kpi-hero-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    color: var(--bs-body-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.kpi-hero-icon {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 1.15rem;
+}
+
+.kpi-hero.success .kpi-hero-icon { background: rgba(25, 135, 84, 0.12); color: #198754; }
+.kpi-hero.warning .kpi-hero-icon { background: rgba(255, 193, 7, 0.16); color: #b8860b; }
+.kpi-hero.danger  .kpi-hero-icon { background: rgba(220, 53, 69, 0.12); color: #dc3545; }
+.kpi-hero.info    .kpi-hero-icon { background: rgba(148, 107, 28, 0.14); color: var(--eduai-gold, #946B1C); }
+.kpi-hero.gold    .kpi-hero-icon { background: rgba(148, 107, 28, 0.14); color: var(--eduai-gold, #946B1C); }
+
+/* ---- Tier 2: pipeline strip ---- */
+.kpi-strip {
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 14px;
+    padding: 0.85rem 0.5rem;
+    margin-bottom: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0;
+}
+@media (max-width: 992px) {
+    .kpi-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 576px) {
+    .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.kpi-strip-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 1rem;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s ease;
+    border-right: 1px solid var(--bs-border-color);
+    min-width: 0;
+}
+.kpi-strip-cell:last-child { border-right: none; }
+.kpi-strip-cell:hover {
+    background: rgba(148, 107, 28, 0.05);
+    color: inherit;
+}
+
+.kpi-strip-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+.kpi-strip-dot.delivered { background: #198754; box-shadow: 0 0 0 3px rgba(25,135,84,0.15); }
+.kpi-strip-dot.sent      { background: var(--eduai-signal, #2C7A6D); box-shadow: 0 0 0 3px rgba(44,122,109,0.15); }
+.kpi-strip-dot.pending   { background: #ffc107; box-shadow: 0 0 0 3px rgba(255,193,7,0.15); }
+.kpi-strip-dot.queued    { background: #6c757d; box-shadow: 0 0 0 3px rgba(108,117,125,0.15); }
+.kpi-strip-dot.failed    { background: #dc3545; box-shadow: 0 0 0 3px rgba(220,53,69,0.15); }
+.kpi-strip-dot.read      { background: var(--eduai-gold, #946B1C); box-shadow: 0 0 0 3px rgba(148,107,28,0.15); }
+
+.kpi-strip-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.kpi-strip-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--bs-secondary-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.kpi-strip-value {
+    font-size: 1rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--bs-body-color);
+    line-height: 1.1;
+}
+
 </style>
 
 <div class="container-fluid py-4">
@@ -274,32 +433,109 @@
         </div>
     </div>
 
-    <!-- Statistics -->
-    <div class="row g-3 mb-4">
-        <div class="col-3 col-md-3">
-            <div class="stat-box">
-                <div class="number">{{ total_logs|default:0 }}</div>
-                <div class="label">Total</div>
+    <!-- Statistics — full NotificationStatus pipeline -->
+       <!-- ============================================================
+         ENTERPRISE KPI LAYOUT
+         Tier 1: hero KPIs (Total / Sent / Pending / Failed)
+         Tier 2: full pipeline strip (all NotificationStatus values)
+         ============================================================ -->
+
+    <!-- Tier 1: Hero KPIs -->
+    <div class="kpi-hero-grid">
+
+        <div class="kpi-hero info">
+            <div class="kpi-hero-body">
+                <div class="kpi-hero-label">Total Logs</div>
+                <div class="kpi-hero-value">{{ total_logs|default:0 }}</div>
+            </div>
+            <div class="kpi-hero-icon">
+                <i class="bi bi-database"></i>
             </div>
         </div>
-        <div class="col-3 col-md-3">
-            <div class="stat-box success">
-                <div class="number">{{ sent_count|default:0 }}</div>
-                <div class="label">Sent</div>
+
+        <div class="kpi-hero success">
+            <div class="kpi-hero-body">
+                <div class="kpi-hero-label">Sent / Delivered</div>
+                <div class="kpi-hero-value">{{ sent_count|default:0 }}</div>
+            </div>
+            <div class="kpi-hero-icon">
+                <i class="bi bi-check-circle-fill"></i>
             </div>
         </div>
-        <div class="col-3 col-md-3">
-            <div class="stat-box warning">
-                <div class="number">{{ pending_count|default:0 }}</div>
-                <div class="label">Pending</div>
+
+        <div class="kpi-hero warning">
+            <div class="kpi-hero-body">
+                <div class="kpi-hero-label">Pending / Queued</div>
+                <div class="kpi-hero-value">{{ pending_count|default:0 }}</div>
+            </div>
+            <div class="kpi-hero-icon">
+                <i class="bi bi-clock-fill"></i>
             </div>
         </div>
-        <div class="col-3 col-md-3">
-            <div class="stat-box danger">
-                <div class="number">{{ failed_count|default:0 }}</div>
-                <div class="label">Failed</div>
+
+        <div class="kpi-hero danger">
+            <div class="kpi-hero-body">
+                <div class="kpi-hero-label">Failed</div>
+                <div class="kpi-hero-value">{{ failed_count|default:0 }}</div>
+            </div>
+            <div class="kpi-hero-icon">
+                <i class="bi bi-x-circle-fill"></i>
             </div>
         </div>
+
+    </div>
+
+    <!-- Tier 2: Full pipeline strip -->
+    <div class="kpi-strip">
+
+        <a href="?status=DELIVERED" class="kpi-strip-cell">
+            <span class="kpi-strip-dot delivered"></span>
+            <span class="kpi-strip-text">
+                <span class="kpi-strip-label">Delivered</span>
+                <span class="kpi-strip-value">{{ kpi_counts.DELIVERED.count|default:0 }}</span>
+            </span>
+        </a>
+
+        <a href="?status=SENT" class="kpi-strip-cell">
+            <span class="kpi-strip-dot sent"></span>
+            <span class="kpi-strip-text">
+                <span class="kpi-strip-label">Sent</span>
+                <span class="kpi-strip-value">{{ kpi_counts.SENT.count|default:0 }}</span>
+            </span>
+        </a>
+
+        <a href="?status=PENDING" class="kpi-strip-cell">
+            <span class="kpi-strip-dot pending"></span>
+            <span class="kpi-strip-text">
+                <span class="kpi-strip-label">Pending</span>
+                <span class="kpi-strip-value">{{ kpi_counts.PENDING.count|default:0 }}</span>
+            </span>
+        </a>
+
+        <a href="?status=QUEUED" class="kpi-strip-cell">
+            <span class="kpi-strip-dot queued"></span>
+            <span class="kpi-strip-text">
+                <span class="kpi-strip-label">Queued</span>
+                <span class="kpi-strip-value">{{ kpi_counts.QUEUED.count|default:0 }}</span>
+            </span>
+        </a>
+
+        <a href="?status=FAILED" class="kpi-strip-cell">
+            <span class="kpi-strip-dot failed"></span>
+            <span class="kpi-strip-text">
+                <span class="kpi-strip-label">Failed</span>
+                <span class="kpi-strip-value">{{ kpi_counts.FAILED.count|default:0 }}</span>
+            </span>
+        </a>
+
+        <a href="?status=READ" class="kpi-strip-cell">
+            <span class="kpi-strip-dot read"></span>
+            <span class="kpi-strip-text">
+                <span class="kpi-strip-label">Read</span>
+                <span class="kpi-strip-value">{{ kpi_counts.READ.count|default:0 }}</span>
+            </span>
+        </a>
+
     </div>
 
     <!-- Filters -->

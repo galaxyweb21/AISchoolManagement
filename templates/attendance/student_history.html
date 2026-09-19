@@ -2,18 +2,124 @@
 {% load static %}
 
 {% block main_content %}
+<style>
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+    .bg-teal-soft { background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important; }
+    .text-teal { color: var(--eduai-signal, #2C7A6D) !important; }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon { color: var(--eduai-gold, #946B1C); font-size: 1.25rem; margin-right: 0.75rem; }
+    .page-description .title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.15rem; }
+    .page-description .text { font-size: 0.85rem; color: var(--bs-secondary-color); margin-bottom: 0; }
+    .page-description .badge-role { background-color: var(--eduai-gold-soft); color: var(--eduai-gold, #946B1C); font-weight: 500; }
+
+    .kpi-tile {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 14px;
+        padding: 1rem 1.15rem;
+        background: var(--bs-body-bg);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+    }
+    .kpi-tile:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+    }
+    .kpi-tile .kpi-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--bs-secondary-color);
+        margin-bottom: 4px;
+    }
+    .kpi-tile .kpi-value {
+        font-size: 1.85rem;
+        font-weight: 700;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+    }
+    .kpi-tile .kpi-sub {
+        font-size: 0.75rem;
+        color: var(--bs-secondary-color);
+        margin-top: 4px;
+    }
+
+    .modern-table thead th {
+        font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+        font-weight: 700; color: var(--bs-secondary-color);
+        background: var(--bs-tertiary-bg);
+        border-bottom: 1px solid var(--bs-border-color);
+        padding: 0.75rem 1rem; white-space: nowrap;
+    }
+    .modern-table tbody td {
+        padding: 0.85rem 1rem; vertical-align: middle; border-color: var(--bs-border-color);
+    }
+    .modern-table tbody tr { transition: background 0.15s ease; }
+    .modern-table tbody tr:hover { background: rgba(148, 107, 28, 0.04); }
+
+    .status-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 0.72rem; font-weight: 700;
+        padding: 0.25rem 0.7rem; border-radius: 20px;
+    }
+    .status-chip.present { background: var(--eduai-signal-soft); color: var(--eduai-signal); }
+    .status-chip.late    { background: rgba(255,193,7,0.16); color: #b8860b; }
+    .status-chip.absent  { background: rgba(220,53,69,0.14); color: #dc3545; }
+    .status-chip.excused { background: rgba(108,117,125,0.14); color: #6c757d; }
+
+    @media print {
+        .btn { display: none !important; }
+        .card { box-shadow: none !important; }
+    }
+</style>
+
 <div class="container-fluid py-4">
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    Attendance History
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                            Admin View
+                        {% elif request.user.role == 'TEACHER' %}
+                            Teacher View
+                        {% else %}
+                            Read-Only View
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="text">
+                    Full attendance record for this student. The KPI cards show the
+                    <strong>Attendance Rate</strong>, <strong>Present</strong>, <strong>Absent</strong>, and
+                    <strong>Late</strong> counts. Use the <strong>Print</strong> button to save a copy
+                    of this history for reporting.
+                </p>
+            </div>
+        </div>
+    </div>
+
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <div class="text-uppercase small fw-semibold text-muted">Attendance</div>
             {% if student %}
-            <h2 class="fw-bold mb-1">{{ student.user.get_full_name }}</h2>
-            <div class="text-muted">
-                {{ student.admission_number }}
-                {% if student.school_class %} · {{ student.school_class.name }}{% endif %}
-            </div>
+                <h2 class="fw-bold mb-1">{{ student.user.get_full_name|default:student.admission_number }}</h2>
+                <div class="text-muted">
+                    {{ student.admission_number }}
+                    {% if student.school_class %} · {{ student.school_class.name }}{% endif %}
+                </div>
             {% else %}
-            <h2 class="fw-bold mb-1">Attendance History</h2>
+                <h2 class="fw-bold mb-1">Attendance History</h2>
             {% endif %}
         </div>
         <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
@@ -22,43 +128,94 @@
     </div>
 
     {% if attendance_access_error %}
-    <div class="alert alert-danger border-0 shadow-sm">
-        <i class="bi bi-shield-exclamation me-2"></i>{{ attendance_access_error }}
-    </div>
-    {% else %}
-    <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Attendance Rate</div><div class="fs-3 fw-bold">{% if attendance_rate != None %}{{ attendance_rate }}%{% else %}—{% endif %}</div></div></div></div>
-        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Present</div><div class="fs-3 fw-bold text-success">{{ present_days }}</div></div></div></div>
-        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Absent</div><div class="fs-3 fw-bold text-danger">{{ absent_days }}</div></div></div></div>
-        <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Late</div><div class="fs-3 fw-bold text-warning">{{ late_days }}</div></div></div></div>
-    </div>
-
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-transparent border-0 py-3"><h5 class="mb-0 fw-bold">Attendance Record</h5></div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" data-no-pagination="true">
-                <thead><tr><th>Date</th><th>Status</th><th>Remarks</th></tr></thead>
-                <tbody>
-                {% for record in attendance_records %}
-                    <tr>
-                        <td>{{ record.date|date:"d M Y" }}</td>
-                        <td>
-                            {% if record.status == 'PRESENT' %}<span class="badge text-bg-success">Present</span>
-                            {% elif record.status == 'LATE' %}<span class="badge text-bg-warning">Late</span>
-                            {% elif record.status == 'ABSENT' %}<span class="badge text-bg-danger">Absent</span>
-                            {% else %}<span class="badge text-bg-secondary">{{ record.get_status_display }}</span>{% endif %}
-                        </td>
-                        <td class="text-muted">{{ record.remarks|default:"—" }}</td>
-                    </tr>
-                {% empty %}
-                    <tr><td colspan="3" class="text-center text-muted py-5">No attendance records found.</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
+        <div class="alert alert-danger border-0 shadow-sm rounded-4">
+            <i class="bi bi-shield-exclamation me-2"></i>{{ attendance_access_error }}
         </div>
-        {% include "partials/pagination.html" with page_obj=attendance_records %}
-    </div>
+    {% elif not student %}
+        <div class="alert alert-warning border-0 shadow-sm rounded-4">
+            <i class="bi bi-info-circle me-2"></i>No student record was found.
+        </div>
+    {% else %}
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-xl-3">
+                <div class="kpi-tile">
+                    <div class="kpi-label">Attendance Rate</div>
+                    <div class="kpi-value text-gold">
+                        {% if attendance_rate != None %}{{ attendance_rate }}%{% else %}—{% endif %}
+                    </div>
+                    <div class="kpi-sub">Overall term rate</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="kpi-tile">
+                    <div class="kpi-label">Present</div>
+                    <div class="kpi-value" style="color: var(--eduai-signal, #2C7A6D);">{{ present_days }}</div>
+                    <div class="kpi-sub">Days marked present</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="kpi-tile">
+                    <div class="kpi-label">Absent</div>
+                    <div class="kpi-value text-danger">{{ absent_days }}</div>
+                    <div class="kpi-sub">Days marked absent</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="kpi-tile">
+                    <div class="kpi-label">Late</div>
+                    <div class="kpi-value text-warning">{{ late_days }}</div>
+                    <div class="kpi-sub">Days marked late</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-transparent border-0 py-3 px-4">
+                <h5 class="mb-0 fw-bold">
+                    <i class="bi bi-calendar-check text-gold me-2"></i>Attendance Record
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table modern-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Date</th>
+                                <th>Status</th>
+                                <th class="pe-4">Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for record in attendance_records %}
+                            <tr>
+                                <td class="ps-4 fw-semibold">{{ record.date|date:"d M Y" }}</td>
+                                <td>
+                                    {% if record.status == 'PRESENT' %}<span class="status-chip present">Present</span>
+                                    {% elif record.status == 'LATE' %}<span class="status-chip late">Late</span>
+                                    {% elif record.status == 'ABSENT' %}<span class="status-chip absent">Absent</span>
+                                    {% elif record.status == 'EXCUSED' %}<span class="status-chip excused">Excused</span>
+                                    {% else %}<span class="status-chip excused">{{ record.get_status_display|default:record.status }}</span>{% endif %}
+                                </td>
+                                <td class="text-muted pe-4">{{ record.remarks|default:"—" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-5">
+                                    <div class="text-muted">
+                                        <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>
+                                        No attendance records found for this student.
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-4 pb-4">
+                    {% include "partials/pagination.html" with page_obj=attendance_records %}
+                </div>
+            </div>
+        </div>
     {% endif %}
 </div>
-<style>@media print {.btn {display:none!important;} .card {box-shadow:none!important;}}</style>
 {% endblock %}

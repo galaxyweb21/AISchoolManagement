@@ -10,6 +10,10 @@ urlpatterns = [
 
     # Announcements
     path('announcement/<uuid:announcement_id>/', views.announcement_detail, name='announcement_detail'),
+    path('announcements/manage/', views.announcement_management, name='announcement_management'),
+    path('api/announcement/<uuid:announcement_id>/publish/', views.announcement_publish, name='announcement_publish'),
+    path('api/announcement/<uuid:announcement_id>/update/', views.announcement_update, name='announcement_update'),
+    path('api/announcement/<uuid:announcement_id>/delete/', views.announcement_delete, name='announcement_delete'),
     path('api/announcement/post/', views.api_post_announcement, name='api_post_announcement'),
     path('api/announcement/<uuid:announcement_id>/toggle-archive/', views.announcement_toggle_archive,
          name='announcement_toggle_archive'),

@@ -314,7 +314,7 @@
     </style>
 </head>
 
-<body>
+<body data-eduai-role="{{ request.user.role|default:'USER' }}">
     <!-- === SIDEBAR === -->
     {% include "base/sidebar.html" %}
 

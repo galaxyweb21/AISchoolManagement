@@ -7,18 +7,50 @@
 {% endblock %}
 
 {% block content %}
-<div class="card card-custom border-0 shadow-sm rounded-4 text-center p-5">
-    {% if timetable.status == 'FAILED' %}
-        <i class="bi bi-exclamation-triangle text-danger fs-1 mb-3"></i>
-        <h5 class="fw-bold">Generation failed</h5>
-        <p class="text-muted">{{ timetable.error_message }}</p>
-        <a href="{% url 'timetable_workspace' %}" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent; margin-top: 0.5rem;">Back</a>
-    {% else %}
-        <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem; color: var(--primary-color, #946B1C) !important;" role="status"></div>
-        <h5 class="fw-bold">AI is building your timetable&hellip;</h5>
-        <p class="text-muted">
-            Checking every teacher, room and class for conflicts. This page refreshes automatically.
-        </p>
-    {% endif %}
+<style>
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+
+    .generating-card {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 18px;
+        padding: 3rem 1.5rem;
+        text-align: center;
+        background: var(--bs-body-bg);
+    }
+    .generating-icon-wrap {
+        width: 88px;
+        height: 88px;
+        margin: 0 auto 1.25rem;
+        border-radius: 50%;
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="generating-card">
+        {% if timetable.status == 'FAILED' %}
+            <div class="generating-icon-wrap" style="background: rgba(220,53,69,0.1);">
+                <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2.5rem;"></i>
+            </div>
+            <h5 class="fw-bold mb-2">Generation Failed</h5>
+            <p class="text-muted mb-4">{{ timetable.error_message }}</p>
+            <a href="{% url 'timetable_workspace' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back to Workspace
+            </a>
+        {% else %}
+            <div class="generating-icon-wrap">
+                <div class="spinner-border" role="status" style="color: var(--eduai-gold, #946B1C); width: 3rem; height: 3rem;"></div>
+            </div>
+            <h5 class="fw-bold mb-2">AI is building your timetable…</h5>
+            <p class="text-muted mb-0">
+                Checking every teacher, room, and class for conflicts.
+                This page refreshes automatically.
+            </p>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}

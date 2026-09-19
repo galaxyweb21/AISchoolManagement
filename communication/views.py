@@ -12,8 +12,30 @@ from django.db.models import Q
 from django.utils import timezone
 import json
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_announcement_datetime(value, field_name):
+    """Parse datetime-local/ISO input and return a timezone-aware datetime."""
+    if value in (None, ''):
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        raw = str(value).strip()
+        try:
+            dt = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+        except (TypeError, ValueError):
+            raise ValueError(f'Invalid {field_name}. Please use a valid date and time.')
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, timezone.get_current_timezone())
+    return dt.astimezone(timezone.get_current_timezone())
+
+
+def _admin_announcement_required(request):
+    return getattr(request.user, 'role', None) in ['SUPER_ADMIN', 'SCHOOL_ADMIN']
 
 from .models import Announcement, NotificationLog, NotificationStatus, UserNotificationPreference, NotificationCategory
 from .services import NotificationService, AnnouncementService
@@ -28,6 +50,12 @@ def communication_inbox(request):
     if not school:
         messages.error(request, "No school associated with your account.")
         return redirect('dashboard')
+
+    # Publish due scheduled announcements for this school as a safe local/demo fallback.
+    try:
+        AnnouncementService.publish_due_announcements(school=school)
+    except Exception:
+        logger.exception('Scheduled announcement sync failed for school %s', school.pk)
 
     # Get announcements for user
     announcements = AnnouncementService.get_announcements_for_user(request.user)
@@ -56,17 +84,16 @@ def communication_inbox(request):
 @login_required
 @require_POST
 def api_post_announcement(request):
-    """
-    Asynchronously posts a new broadcast circular text bulletin.
-    """
+    """Create an immediate or scheduled school announcement."""
+    if not _admin_announcement_required(request):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+
     try:
-        data = json.loads(request.body)
-        title = data.get('title', '').strip()
-        content = data.get('content', '').strip()
-        audience = data.get('audience', 'ALL')
-        priority = data.get('priority', 'NORMAL')
-        publish_at = data.get('publish_at')
-        expires_at = data.get('expires_at')
+        data = json.loads(request.body or '{}')
+        title = str(data.get('title') or '').strip()
+        content = str(data.get('content') or '').strip()
+        audience = str(data.get('audience') or 'ALL').strip().upper()
+        priority = str(data.get('priority') or 'NORMAL').strip().upper()
 
         if not title or not content:
             return JsonResponse({
@@ -74,27 +101,21 @@ def api_post_announcement(request):
                 'error': 'Title and content fields are required.'
             }, status=400)
 
-        school = request.user.school
+        school = getattr(request.user, 'school', None)
         if not school:
             return JsonResponse({
                 'success': False,
                 'error': 'No school associated with your account.'
             }, status=400)
 
-        # Parse dates if provided
-        publish_date = None
-        expire_date = None
-        if publish_at:
-            try:
-                publish_date = timezone.datetime.fromisoformat(publish_at.replace('Z', '+00:00'))
-            except (ValueError, AttributeError):
-                pass
+        publish_date = _parse_announcement_datetime(data.get('publish_at'), 'publish date')
+        expire_date = _parse_announcement_datetime(data.get('expires_at'), 'expiry date')
 
-        if expires_at:
-            try:
-                expire_date = timezone.datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
-            except (ValueError, AttributeError):
-                pass
+        if expire_date is not None and publish_date is not None and expire_date <= publish_date:
+            return JsonResponse({
+                'success': False,
+                'error': 'Expiry date must be later than the publish date.'
+            }, status=400)
 
         announcement = AnnouncementService.create_announcement(
             school=school,
@@ -104,7 +125,7 @@ def api_post_announcement(request):
             audience=audience,
             priority=priority,
             publish_at=publish_date,
-            expires_at=expire_date
+            expires_at=expire_date,
         )
 
         return JsonResponse({
@@ -112,12 +133,159 @@ def api_post_announcement(request):
             'id': str(announcement.id),
             'title': announcement.title,
             'created_at': announcement.created_at.strftime('%b %d, %Y'),
-            'message': 'Announcement published successfully.'
+            'is_published': announcement.is_published,
+            'message': (
+                'Announcement published successfully.'
+                if announcement.is_published
+                else 'Announcement scheduled successfully.'
+            )
         })
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON data.'}, status=400)
-    except Exception as e:
+    except ValueError as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    except Exception as e:
+        logger.exception('Announcement creation failed')
+        return JsonResponse({
+            'success': False,
+            'error': 'Unable to save the announcement. Please try again.'
+        }, status=400)
+
+
+@login_required
+def announcement_management(request):
+    """Admin-only announcement management workspace."""
+    if not _admin_announcement_required(request):
+        messages.error(request, 'You do not have permission to manage announcements.')
+        return redirect('communication:inbox')
+
+    school = getattr(request.user, 'school', None)
+    if not school:
+        messages.error(request, 'No school associated with your account.')
+        return redirect('dashboard:dashboard')
+
+    AnnouncementService.publish_due_announcements(school=school)
+    now = timezone.now()
+    qs = Announcement.objects.filter(school=school).select_related('sender').order_by('-publish_at', '-created_at')
+
+    query = (request.GET.get('q') or '').strip()
+    status = (request.GET.get('status') or 'all').strip().lower()
+    priority = (request.GET.get('priority') or '').strip().upper()
+
+    if query:
+        qs = qs.filter(Q(title__icontains=query) | Q(content__icontains=query))
+    if priority in {v for v, _ in Announcement.PRIORITY_CHOICES}:
+        qs = qs.filter(priority=priority)
+    if status == 'published':
+        qs = qs.filter(is_published=True, is_archived=False, publish_at__lte=now).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        )
+    elif status == 'scheduled':
+        qs = qs.filter(is_published=False, is_archived=False, publish_at__gt=now)
+    elif status == 'expired':
+        qs = qs.filter(is_published=True, expires_at__isnull=False, expires_at__lte=now)
+    elif status == 'archived':
+        qs = qs.filter(is_archived=True)
+
+    total_count = Announcement.objects.filter(school=school).count()
+    published_count = Announcement.objects.filter(
+        school=school, is_published=True, is_archived=False, publish_at__lte=now
+    ).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now)).count()
+    scheduled_count = Announcement.objects.filter(
+        school=school, is_published=False, is_archived=False, publish_at__gt=now
+    ).count()
+    expired_count = Announcement.objects.filter(
+        school=school, is_published=True, expires_at__isnull=False, expires_at__lte=now
+    ).count()
+    archived_count = Announcement.objects.filter(school=school, is_archived=True).count()
+
+    page_obj = paginate_queryset(qs, request)
+    return render(request, 'communication/announcement_management.html', {
+        'announcements': page_obj,
+        'priority_choices': Announcement.PRIORITY_CHOICES,
+        'total_count': total_count,
+        'published_count': published_count,
+        'scheduled_count': scheduled_count,
+        'expired_count': expired_count,
+        'archived_count': archived_count,
+        'query': query,
+        'status': status,
+        'priority': priority,
+        'now': now,
+        'active_tab': 'communication',
+    })
+
+
+@login_required
+@require_POST
+def announcement_publish(request, announcement_id):
+    """Publish a scheduled announcement immediately and notify recipients."""
+    if not _admin_announcement_required(request):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+    announcement = get_object_or_404(Announcement, id=announcement_id, school=request.user.school)
+    announcement.is_archived = False
+    announcement.is_published = True
+    announcement.publish_at = timezone.now()
+    announcement.save(update_fields=['is_archived', 'is_published', 'publish_at', 'updated_at'])
+    created = AnnouncementService.notify_announcement(announcement)
+    return JsonResponse({'success': True, 'message': f'Announcement published. {created} notification(s) created.'})
+
+
+@login_required
+@require_POST
+def announcement_update(request, announcement_id):
+    """Update an announcement using JSON from the management editor."""
+    if not _admin_announcement_required(request):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+    announcement = get_object_or_404(Announcement, id=announcement_id, school=request.user.school)
+    try:
+        data = json.loads(request.body or '{}')
+        publish_at = _parse_announcement_datetime(data.get('publish_at'), 'publish date')
+        expires_at = _parse_announcement_datetime(data.get('expires_at'), 'expiry date')
+        # An empty expiry means remove the expiry date.
+        if data.get('expires_at') in (None, ''):
+            expires_at = None
+            if 'expires_at' in data and publish_at is None:
+                # handled below by retaining the current publish date
+                pass
+        if publish_at is None and 'publish_at' in data:
+            publish_at = announcement.publish_at
+        if expires_at is not None and expires_at <= publish_at:
+            raise ValueError('Expiry date must be later than the publish date.')
+        AnnouncementService.update_announcement(
+            announcement,
+            title=data.get('title'),
+            content=data.get('content'),
+            audience=data.get('audience'),
+            priority=data.get('priority'),
+            publish_at=publish_at,
+            expires_at=expires_at,
+        )
+        return JsonResponse({'success': True, 'message': 'Announcement updated successfully.'})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data.'}, status=400)
+    except ValueError as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    except Exception:
+        logger.exception('Announcement update failed')
+        return JsonResponse({'success': False, 'error': 'Unable to update the announcement.'}, status=400)
+
+
+@login_required
+@require_POST
+def announcement_delete(request, announcement_id):
+    """Permanently delete an announcement belonging to the current school."""
+    if not _admin_announcement_required(request):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+    announcement = get_object_or_404(Announcement, id=announcement_id, school=request.user.school)
+    NotificationLog.objects.filter(
+        school=announcement.school,
+        category=NotificationCategory.ANNOUNCEMENT,
+        reference_id=str(announcement.id),
+        reference_type='announcement',
+    ).delete()
+    announcement.delete()
+    return JsonResponse({'success': True, 'message': 'Announcement and its related notifications were deleted successfully.'})
 
 
 @login_required
@@ -161,6 +329,11 @@ def announcement_toggle_archive(request, announcement_id):
 @require_GET
 def notification_list(request):
     """Return the current user's latest notifications for the navbar dropdown."""
+    try:
+        AnnouncementService.publish_due_announcements(school=getattr(request.user, 'school', None))
+    except Exception:
+        logger.exception('Scheduled announcement notification sync failed for user %s', request.user.pk)
+
     # Keep the navbar bell in sync with attendance alerts as well as the full
     # Notification Center. This is idempotent and only creates missing alerts.
     if getattr(request.user, 'role', None) in ['PARENT', 'STUDENT']:
@@ -211,6 +384,11 @@ def notification_list(request):
 @require_GET
 def notification_center(request):
     """Full notification center for the authenticated user's notifications."""
+    try:
+        AnnouncementService.publish_due_announcements(school=getattr(request.user, 'school', None))
+    except Exception:
+        logger.exception('Scheduled announcement center sync failed for user %s', request.user.pk)
+
     # Backfill promotion-result notifications for existing promotion records.
     # This makes older promotion batches visible to parents/students without
     # requiring the administrator to re-run the promotion process.
@@ -329,21 +507,46 @@ def notification_center(request):
 @login_required
 @require_POST
 def notification_mark_read(request, notification_id):
-    """Mark a notification as read."""
-    notification = get_object_or_404(NotificationLog, id=notification_id, recipient=request.user)
+    """Mark one of the current user's notifications as read."""
+    notification = get_object_or_404(
+        NotificationLog,
+        id=notification_id,
+        recipient=request.user,
+    )
     notification.mark_as_read()
-    return JsonResponse({'success': True, 'message': 'Notification marked as read.'})
+
+    unread_count = NotificationLog.objects.filter(
+        recipient=request.user,
+        status=NotificationStatus.DELIVERED,
+    ).count()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Notification marked as read.',
+        'notification_id': str(notification.id),
+        'unread_count': unread_count,
+    })
 
 
 @login_required
 @require_POST
 def notification_mark_all_read(request):
-    """Mark all notifications as read."""
-    NotificationLog.objects.filter(
+    """Mark all currently unread in-app notifications as read."""
+    now = timezone.now()
+    updated = NotificationLog.objects.filter(
         recipient=request.user,
-        status=NotificationStatus.DELIVERED
-    ).update(status=NotificationStatus.READ, read_at=timezone.now())
-    return JsonResponse({'success': True, 'message': 'All notifications marked as read.'})
+        status=NotificationStatus.DELIVERED,
+    ).update(
+        status=NotificationStatus.READ,
+        read_at=now,
+    )
+
+    return JsonResponse({
+        'success': True,
+        'message': 'All notifications marked as read.',
+        'updated': updated,
+        'unread_count': 0,
+    })
 
 
 # communication/views.py - Fixed notification_preferences view
@@ -428,8 +631,56 @@ def notification_log_list(request):
     """View notification logs (admin only)."""
     school = request.user.school
 
-    # Apply filters
-    logs = NotificationLog.objects.filter(school=school).select_related('recipient', 'sender')
+    # ---------------------------------------------------------
+    # BASE QUERYSET (school-scoped)
+    # ---------------------------------------------------------
+    base_qs = NotificationLog.objects.filter(
+        school=school
+    ).select_related('recipient', 'sender')
+
+    # ---------------------------------------------------------
+    # KPI COUNTS
+    #
+    # Counts are computed on the school-scoped queryset so the
+    # KPI cards remain a stable, school-wide overview regardless
+    # of the active filter.
+    #
+    # We build a per-status dict with ALL NotificationStatus
+    # values so the template can iterate over the full pipeline.
+    #
+    # We also expose the legacy variables (total_logs,
+    # sent_count, pending_count, failed_count) so nothing else
+    # in the project that references them breaks.
+    # ---------------------------------------------------------
+
+    # Total (all statuses)
+    total_logs = base_qs.count()
+
+    # Per-status counts — one entry per NotificationStatus value
+    kpi_counts = {}
+    for status_value, status_label in NotificationStatus.choices:
+        kpi_counts[status_value] = {
+            'value': status_value,
+            'label': status_label,
+            'count': base_qs.filter(status=status_value).count(),
+        }
+
+    # Grouped KPIs for the four "headline" cards the template shows
+    sent_count = (
+        kpi_counts[NotificationStatus.SENT]['count']
+        + kpi_counts[NotificationStatus.DELIVERED]['count']
+    )
+    pending_count = (
+        kpi_counts[NotificationStatus.PENDING]['count']
+        + kpi_counts[NotificationStatus.QUEUED]['count']
+    )
+    failed_count = kpi_counts[NotificationStatus.FAILED]['count']
+    read_count = kpi_counts[NotificationStatus.READ]['count']
+
+    # ---------------------------------------------------------
+    # FILTERS (applied only to the table queryset)
+    # ---------------------------------------------------------
+    logs = base_qs
 
     status_filter = request.GET.get('status')
     if status_filter:
@@ -439,7 +690,6 @@ def notification_log_list(request):
     if category_filter:
         logs = logs.filter(category=category_filter)
 
-    # Search
     search = request.GET.get('search')
     if search:
         logs = logs.filter(
@@ -449,8 +699,10 @@ def notification_log_list(request):
             Q(recipient__email__icontains=search)
         )
 
+    # ---------------------------------------------------------
+    # PAGINATION
+    # ---------------------------------------------------------
     page_obj = paginate_queryset(logs, request)
-    paginator = page_obj.paginator
 
     context = {
         'logs': page_obj,
@@ -459,6 +711,17 @@ def notification_log_list(request):
         'selected_status': status_filter,
         'selected_category': category_filter,
         'search': search,
-        'active_tab': 'communication'
+
+        # Full per-status breakdown (all NotificationStatus values)
+        'kpi_counts': kpi_counts,
+
+        # Legacy/grouped KPIs (kept for backwards compatibility)
+        'total_logs': total_logs,
+        'sent_count': sent_count,
+        'pending_count': pending_count,
+        'failed_count': failed_count,
+        'read_count': read_count,
+
+        'active_tab': 'communication',
     }
     return render(request, 'communication/log_list.html', context)
