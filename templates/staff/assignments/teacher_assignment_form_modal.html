@@ -17,14 +17,20 @@
     <div class="row g-3 mb-3">
         <div class="col-md-6">
             <label class="form-label fw-semibold">Class <span class="text-danger">*</span></label>
-            <select name="school_class" class="form-select" required>
-                <option value="">Select Class</option>
-                {% for class in classes %}
-                    <option value="{{ class.id }}" {% if mode == 'edit' and assignment.school_class.id == class.id %}selected{% endif %}>
-                        {{ class.name }} ({{ class.grade_level.name }})
-                    </option>
-                {% endfor %}
-            </select>
+            {% if selected_class %}
+                <input type="hidden" name="school_class" value="{{ selected_class.id }}">
+                <input type="text" class="form-control" value="{{ selected_class.name }}{% if selected_class.grade_level %} ({{ selected_class.grade_level.name }}){% endif %}" readonly>
+                <div class="form-text">Class selected from the class assignment page.</div>
+            {% else %}
+                <select name="school_class" class="form-select" required>
+                    <option value="">Select Class</option>
+                    {% for class in classes %}
+                        <option value="{{ class.id }}" {% if mode == 'edit' and assignment.school_class.id == class.id %}selected{% endif %}>
+                            {{ class.name }} ({{ class.grade_level.name }})
+                        </option>
+                    {% endfor %}
+                </select>
+            {% endif %}
         </div>
         <div class="col-md-6">
             <label class="form-label fw-semibold">Subject <span class="text-danger">*</span></label>
@@ -51,7 +57,7 @@
                 <input class="form-check-input" type="checkbox" name="is_primary" id="is_primary"
                        {% if mode == 'edit' and assignment.is_primary %}checked{% endif %}>
                 <label class="form-check-label" for="is_primary">
-                    Primary Teacher for this Class
+                    Primary Teacher for this Subject in this Class
                 </label>
             </div>
         </div>

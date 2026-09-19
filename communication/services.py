@@ -124,6 +124,9 @@ class NotificationService:
                 NotificationCategory.ATTENDANCE_ALERT: prefs.attendance_alert_enabled,
                 NotificationCategory.PROMOTION_RESULT: prefs.promotion_result_enabled,
                 NotificationCategory.LEAVE_APPROVAL: prefs.leave_approval_enabled,
+                NotificationCategory.PAYMENT_RECEIPT: prefs.payment_receipt_enabled,
+                NotificationCategory.SYSTEM_ALERT: prefs.system_alert_enabled,
+                NotificationCategory.STAFF_REMINDER: prefs.staff_reminder_enabled,
             }
             return category_map.get(category, True)
         except UserNotificationPreference.DoesNotExist:
@@ -237,6 +240,16 @@ class NotificationService:
 
         reference_id = str(reference_id) if reference_id is not None else None
         reference_type = str(reference_type).strip() if reference_type else None
+
+        # Apply category preferences before creating an in-app notification.
+        # This is important because IN_APP notifications do not pass through
+        # the external dispatch worker.
+        if not cls.should_send_notification(recipient, category):
+            logger.info(
+                'Notification suppressed by user preference: %s -> %s',
+                category, getattr(recipient, 'username', recipient.pk)
+            )
+            return None
 
         # Stable references are used by attendance, payments, report cards,
         # promotions, overdue balances and announcements. Reuse the existing

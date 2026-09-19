@@ -244,17 +244,9 @@
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
                                             <li><h6 class="dropdown-header">Class Management</h6></li>
-                                            {% if can_manage %}
-                                            <li>
-                                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#classTeacherModal"
-                                                        data-class-name="{{ class.name|escape }}" data-url="{% url 'staff:class_teacher_assign' class.id %}">
-                                                    <i class="bi bi-person-badge text-teal me-2"></i> Assign Class Teacher
-                                                </button>
-                                            </li>
-                                            {% endif %}
                                             <li>
                                                 <a href="{% url 'staff:teacher_assignment_class_view' class.id %}" class="dropdown-item">
-                                                    <i class="bi bi-journal-text text-gold me-2"></i> Teacher Assignments
+                                                    <i class="bi bi-people text-gold me-2"></i> Manage Teachers &amp; Subjects
                                                 </a>
                                             </li>
                                         </ul>

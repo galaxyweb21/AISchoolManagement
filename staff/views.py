@@ -1669,6 +1669,22 @@ def teacher_assignment_create(request):
             .order_by("name")
         )
 
+        # When this form is opened from a specific class, keep that
+        # class locked to the form. The general Teacher Assignments
+        # page continues to show the normal class selector.
+        selected_class_id = (
+            request.GET.get("class_id") or ""
+        ).strip()
+        selected_class = None
+
+        if selected_class_id:
+            selected_class = get_object_or_404(
+                SchoolClass,
+                id=selected_class_id,
+                school=school,
+                is_active=True,
+            )
+
         return render(
             request,
             "staff/assignments/teacher_assignment_form_modal.html",
@@ -1677,6 +1693,7 @@ def teacher_assignment_create(request):
                 "teachers": teachers,
                 "classes": classes,
                 "subjects": subjects,
+                "selected_class": selected_class,
                 "action_url": (
                     "staff:teacher_assignment_create"
                 ),

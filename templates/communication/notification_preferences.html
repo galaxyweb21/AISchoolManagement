@@ -392,6 +392,42 @@
                             </div>
                         </div>
 
+                        <!-- Payment Receipt -->
+                        <div class="preference-row d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="category-icon payment"><i class="bi bi-receipt"></i></div>
+                                <div><div class="preference-label">Payment Receipts</div>
+                                <div class="preference-description">Notifications when a payment receipt is recorded</div></div>
+                            </div>
+                            <div class="form-check form-switch toggle-switch-lg">
+                                <input class="form-check-input" type="checkbox" name="payment_receipt_enabled" id="paymentReceipt" {% if preferences.payment_receipt_enabled %}checked{% endif %} value="on">
+                            </div>
+                        </div>
+
+                        <!-- System Alert -->
+                        <div class="preference-row d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="category-icon system"><i class="bi bi-shield-exclamation"></i></div>
+                                <div><div class="preference-label">System Alerts</div>
+                                <div class="preference-description">Important system-generated alerts</div></div>
+                            </div>
+                            <div class="form-check form-switch toggle-switch-lg">
+                                <input class="form-check-input" type="checkbox" name="system_alert_enabled" id="systemAlert" {% if preferences.system_alert_enabled %}checked{% endif %} value="on">
+                            </div>
+                        </div>
+
+                        <!-- Staff Reminder -->
+                        <div class="preference-row d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="category-icon reminder"><i class="bi bi-bell"></i></div>
+                                <div><div class="preference-label">Staff Reminders</div>
+                                <div class="preference-description">Reminders intended for staff members</div></div>
+                            </div>
+                            <div class="form-check form-switch toggle-switch-lg">
+                                <input class="form-check-input" type="checkbox" name="staff_reminder_enabled" id="staffReminder" {% if preferences.staff_reminder_enabled %}checked{% endif %} value="on">
+                            </div>
+                        </div>
+
                         <!-- Leave Approval -->
                         <div class="preference-row d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center gap-3">
@@ -547,6 +583,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('attendanceAlert').checked = true;
         document.getElementById('promotionResult').checked = true;
         document.getElementById('leaveApproval').checked = true;
+        document.getElementById('paymentReceipt').checked = true;
+        document.getElementById('systemAlert').checked = true;
+        document.getElementById('staffReminder').checked = true;
 
         savePreferences(resetBtn, 'Preferences reset to defaults and saved.');
     });

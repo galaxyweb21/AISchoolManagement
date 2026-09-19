@@ -45,6 +45,11 @@ def sync_class_teacher_assignments(school_class):
         )
         if was_created:
             created.append(assignment)
+        elif not assignment.is_active:
+            assignment.is_active = True
+            assignment.is_primary = True
+            assignment.periods_per_week = class_subject.periods_per_week
+            assignment.save(update_fields=['is_active', 'is_primary', 'periods_per_week', 'updated_at'])
     return created
 
 
@@ -68,6 +73,7 @@ def assign_class_teacher(school_class, teacher, uses_single_class_teacher=None, 
     Returns {'created': [...], 'deactivated': <count>}.
     """
     previous_teacher_id = school_class.homeroom_teacher_id
+    previous_single_mode = bool(school_class.uses_single_class_teacher)
 
     update_fields = ['homeroom_teacher', 'updated_at']
     school_class.homeroom_teacher = teacher
@@ -78,7 +84,15 @@ def assign_class_teacher(school_class, teacher, uses_single_class_teacher=None, 
     school_class.save(update_fields=update_fields)
 
     if not school_class.uses_single_class_teacher:
-        return {'created': [], 'deactivated': 0}
+        deactivated = 0
+        if previous_single_mode and previous_teacher_id:
+            deactivated = TeacherAssignment.objects.filter(
+                school_class=school_class,
+                teacher_id=previous_teacher_id,
+                is_primary=True,
+                is_active=True,
+            ).update(is_active=False)
+        return {'created': [], 'deactivated': deactivated}
 
     deactivated = 0
     new_teacher_id = teacher.id if teacher else None

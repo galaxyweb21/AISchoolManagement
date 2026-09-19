@@ -195,6 +195,9 @@ class UserNotificationPreference(models.Model):
     attendance_alert_enabled = models.BooleanField(default=True)
     promotion_result_enabled = models.BooleanField(default=True)
     leave_approval_enabled = models.BooleanField(default=True)
+    payment_receipt_enabled = models.BooleanField(default=True)
+    system_alert_enabled = models.BooleanField(default=True)
+    staff_reminder_enabled = models.BooleanField(default=True)
 
     updated_at = models.DateTimeField(auto_now=True)
 

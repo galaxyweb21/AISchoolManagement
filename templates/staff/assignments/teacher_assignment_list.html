@@ -1217,6 +1217,22 @@
         })
         .then(function(html) {
             body.innerHTML = html;
+
+            // The form is loaded dynamically after the Bootstrap modal has
+            // already fired its `shown.bs.modal` event.  The global modal
+            // handler therefore cannot discover/bind the newly injected
+            // form unless we explicitly notify it here.  Without this, the
+            // browser performs a normal POST and Django correctly returns
+            // JSON, which is why the user sees the JSON response in the
+            // browser instead of the modal closing and the assignments page
+            // refreshing.
+            const parentModal = body.closest('.modal');
+            if (parentModal) {
+                document.dispatchEvent(new CustomEvent('modalContentLoaded', {
+                    detail: { modalId: parentModal.id }
+                }));
+            }
+
             const scripts = body.querySelectorAll("script");
             scripts.forEach(function(oldScript) {
                 const newScript = document.createElement("script");

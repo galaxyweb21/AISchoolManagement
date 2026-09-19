@@ -133,8 +133,13 @@
 
     <div class="col-md-6">
         <div class="card border-0 shadow-sm rounded-4 h-100">
-            <div class="card-header bg-transparent border-0 p-4">
+            <div class="card-header bg-transparent border-0 p-4 d-flex justify-content-between align-items-center">
                 <h6 class="fw-bold mb-0"><i class="bi bi-journal-bookmark text-gold me-2"></i>Subject Teachers</h6>
+                <button type="button" class="btn btn-sm btn-outline-gold"
+                        data-bs-toggle="modal" data-bs-target="#subjectTeacherModal"
+                        data-url="{% url 'staff:teacher_assignment_create' %}?class_id={{ school_class.id }}">
+                    <i class="bi bi-plus-circle me-1"></i>Add Subject Teacher
+                </button>
             </div>
             <div class="card-body p-4">
                 <div class="d-flex flex-wrap gap-2">
@@ -205,6 +210,22 @@
     </div>
 </div>
 
+<div class="modal fade" id="subjectTeacherModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="subjectTeacherModalTitle">
+                    <i class="bi bi-journal-bookmark text-gold me-2"></i>Add Subject Teacher
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="subjectTeacherModalContent">
+                <div class="text-center py-5"><div class="spinner-border spinner-gold" role="status"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="classTeacherModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-sm rounded-4">
@@ -227,6 +248,50 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const subjectModal = document.getElementById('subjectTeacherModal');
+    const subjectModalContent = document.getElementById('subjectTeacherModalContent');
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name=\"csrfmiddlewaretoken\"]')?.value;
+    }
+
+    if (subjectModal) {
+        subjectModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const url = button.getAttribute('data-url');
+            subjectModalContent.innerHTML = '<div class=\"text-center py-5\"><div class=\"spinner-border spinner-gold\" role=\"status\"></div></div>';
+            fetch(url, {headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html'}})
+                .then(response => response.text())
+                .then(html => {
+                    subjectModalContent.innerHTML = html;
+                    const form = subjectModalContent.querySelector('form');
+                    if (!form) return;
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const submitBtn = form.querySelector('button[type=\"submit\"]');
+                        const originalText = submitBtn ? submitBtn.innerHTML : '';
+                        if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class=\"spinner-border spinner-border-sm me-2\"></span>Saving...'; }
+                        fetch(form.action, {method:'POST', body:new FormData(form), headers:{'X-CSRFToken':getCSRFToken(), 'X-Requested-With':'XMLHttpRequest', 'Accept':'application/json'}})
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.success) {
+                                    bootstrap.Modal.getInstance(subjectModal)?.hide();
+                                    window.location.reload();
+                                } else {
+                                    const div=document.createElement('div'); div.className='alert alert-danger mb-3'; div.textContent=data.error || 'Unable to save assignment.'; form.prepend(div);
+                                    if (submitBtn) {submitBtn.disabled=false; submitBtn.innerHTML=originalText;}
+                                }
+                            })
+                            .catch(() => {
+                                const div=document.createElement('div'); div.className='alert alert-danger mb-3'; div.textContent='Unable to save assignment. Please try again.'; form.prepend(div);
+                                if (submitBtn) {submitBtn.disabled=false; submitBtn.innerHTML=originalText;}
+                            });
+                    });
+                });
+        });
+    }
+
     const modal = document.getElementById('classTeacherModal');
     const modalTitle = document.getElementById('classTeacherModalTitle');
     const modalContent = document.getElementById('classTeacherModalContent');

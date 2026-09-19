@@ -579,6 +579,9 @@ def notification_preferences(request):
         attendance_alert_enabled = request.POST.get('attendance_alert_enabled') == 'on'
         promotion_result_enabled = request.POST.get('promotion_result_enabled') == 'on'
         leave_approval_enabled = request.POST.get('leave_approval_enabled') == 'on'
+        payment_receipt_enabled = request.POST.get('payment_receipt_enabled') == 'on'
+        system_alert_enabled = request.POST.get('system_alert_enabled') == 'on'
+        staff_reminder_enabled = request.POST.get('staff_reminder_enabled') == 'on'
 
         # Update channel preferences
         preferences.email_enabled = email_enabled
@@ -593,6 +596,9 @@ def notification_preferences(request):
         preferences.attendance_alert_enabled = attendance_alert_enabled
         preferences.promotion_result_enabled = promotion_result_enabled
         preferences.leave_approval_enabled = leave_approval_enabled
+        preferences.payment_receipt_enabled = payment_receipt_enabled
+        preferences.system_alert_enabled = system_alert_enabled
+        preferences.staff_reminder_enabled = staff_reminder_enabled
 
         preferences.save()
 
@@ -612,6 +618,9 @@ def notification_preferences(request):
                     'attendance_alert_enabled': preferences.attendance_alert_enabled,
                     'promotion_result_enabled': preferences.promotion_result_enabled,
                     'leave_approval_enabled': preferences.leave_approval_enabled,
+                    'payment_receipt_enabled': preferences.payment_receipt_enabled,
+                    'system_alert_enabled': preferences.system_alert_enabled,
+                    'staff_reminder_enabled': preferences.staff_reminder_enabled,
                 }
             })
 
