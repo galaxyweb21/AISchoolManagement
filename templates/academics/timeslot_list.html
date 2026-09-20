@@ -151,6 +151,10 @@
                     <small class="text-muted">{{ timeslots|length }} time slot(s) configured</small>
                 </div>
                 {% if can_manage %}
+                <button type="button" class="btn btn-outline-gold" data-bs-toggle="modal" data-bs-target="#timeModal"
+                        data-action="generate_ges" data-url="{% url 'academics:timeslot_generate_ges' %}">
+                    <i class="bi bi-magic me-1"></i>Generate GES Schedule
+                </button>
                 <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#timeModal"
                         data-action="create" data-url="{% url 'academics:timeslot_create' %}">
                     <i class="bi bi-plus-lg me-1"></i>Add Time Slot
@@ -367,6 +371,13 @@ document.addEventListener('DOMContentLoaded', function() {
             modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Time Slot';
         } else if (action === 'delete') {
             modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete';
+        } else if (action === 'generate_ges') {
+            modalTitle.innerHTML = '<i class="bi bi-magic text-gold me-2"></i>Generate GES Standard Schedule';
+        }
+
+        const modalDialog = modal.querySelector('.modal-dialog');
+        if (modalDialog) {
+            modalDialog.classList.toggle('modal-lg', action === 'generate_ges');
         }
 
         modalContent.innerHTML = `

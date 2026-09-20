@@ -50,6 +50,49 @@
     </div>
 </div>
 
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <h6 class="fw-bold mb-1"><i class="bi bi-shield-check me-2"></i>Timetable Readiness Check</h6>
+                <small class="text-muted">The system checks the current academic setup before the AI generator runs.</small>
+            </div>
+            {% if readiness.ready %}
+                <span class="badge px-3 py-2" style="background: rgba(44,122,109,.1); color: var(--eduai-signal,#2C7A6D);">Ready to generate</span>
+            {% else %}
+                <span class="badge px-3 py-2" style="background: rgba(220,38,38,.1); color:#dc2626;">Action required</span>
+            {% endif %}
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-3"><div class="p-3 rounded-3" style="background:var(--app-bg,#F7F4EC);"><small class="text-muted d-block">Classes</small><strong>{{ readiness.stats.classes }}</strong></div></div>
+            <div class="col-6 col-md-3"><div class="p-3 rounded-3" style="background:var(--app-bg,#F7F4EC);"><small class="text-muted d-block">Class Subjects</small><strong>{{ readiness.stats.class_subjects }}</strong></div></div>
+            <div class="col-6 col-md-3"><div class="p-3 rounded-3" style="background:var(--app-bg,#F7F4EC);"><small class="text-muted d-block">Active Periods</small><strong>{{ readiness.stats.timeslots }}</strong></div></div>
+            <div class="col-6 col-md-3"><div class="p-3 rounded-3" style="background:var(--app-bg,#F7F4EC);"><small class="text-muted d-block">Rooms</small><strong>{{ readiness.stats.rooms }}</strong></div></div>
+        </div>
+
+        {% if readiness.issues %}
+            <div class="alert alert-danger border-0 rounded-3 mb-3">
+                <div class="fw-semibold mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>Fix these before generating</div>
+                <ul class="mb-0 ps-4">
+                    {% for issue in readiness.issues %}<li class="mb-1">{{ issue }}</li>{% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if readiness.warnings %}
+            <div class="alert alert-warning border-0 rounded-3 mb-0">
+                <div class="fw-semibold mb-2"><i class="bi bi-info-circle-fill me-2"></i>Warnings</div>
+                <ul class="mb-0 ps-4">
+                    {% for warning in readiness.warnings %}<li class="mb-1">{{ warning }}</li>{% endfor %}
+                </ul>
+            </div>
+        {% elif readiness.ready %}
+            <div class="small" style="color:var(--eduai-signal,#2C7A6D);"><i class="bi bi-check-circle-fill me-1"></i>Classes, subject requirements, teachers, rooms and periods passed the preflight checks.</div>
+        {% endif %}
+    </div>
+</div>
+
 <div class="card card-custom border-0 shadow-sm rounded-4">
     <div class="p-4">
         <h6 class="fw-bold mb-3">Recent Runs</h6>

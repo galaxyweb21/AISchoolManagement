@@ -1,4 +1,6 @@
 # academics/services/timetable_service.py
+from collections import defaultdict
+
 from django.db import transaction
 
 from school.services.scheduler_engine import (
@@ -7,8 +9,10 @@ from school.services.scheduler_engine import (
     RoomOption,
 )
 from academics.models import (
+    ClassSubject,
     ClassSubjectRequirement,
     Room,
+    TeacherAssignment,
     TimeSlot,
     Timetable,
     TimetableEntry,
@@ -21,9 +25,9 @@ class TimetableGenerationError(Exception):
 
 class AITimetableService:
     """
-    Turns a school's ClassSubjectRequirement / Room / TimeSlot / Teacher data
-    into lesson requirements, runs the genetic algorithm, and persists the
-    winning chromosome as Timetable + TimetableEntry rows.
+    Turns a school's TeacherAssignment / ClassSubjectRequirement / Room /
+    TimeSlot data into lesson requirements, runs the genetic algorithm, and
+    persists the winning chromosome as Timetable + TimetableEntry rows.
 
     Split into create_pending() + run() so the actual GA work can be handed
     off to a Celery task instead of blocking the HTTP request - a real
@@ -36,23 +40,82 @@ class AITimetableService:
     # ------------------------------------------------------------------
     @staticmethod
     def _build_requirements(school, academic_term):
-        requirements = ClassSubjectRequirement.objects.filter(
-            school=school, school_class__isnull=False
-        ).select_related('school_class', 'subject').prefetch_related('subject__qualified_teachers')
+        """
+        Pull lesson requirements from TeacherAssignment -- the model a
+        school actually populates through the real "Teacher Assignments"
+        UI. ClassSubjectRequirement has no UI of its own (Django admin
+        only), so relying on it as the *only* source meant the AI
+        timetabler failed with "No subject requirements configured" for
+        essentially every real school, even ones with teachers fully
+        assigned to their classes.
+
+        TeacherAssignment also pins the correct teacher(s) per
+        class+subject directly, which is more accurate than a generic
+        subject-level "qualified teachers" pool -- two different classes
+        can have two different teachers for the same subject.
+
+        ClassSubjectRequirement is kept as an explicit periods_per_week
+        override where one exists for a (class, subject) pair, so any
+        school already using it via /admin/ keeps working exactly as
+        before -- this only adds a new, working default path, it
+        doesn't remove the old one.
+        """
+        assignments = TeacherAssignment.objects.filter(
+            school=school,
+            is_active=True,
+            school_class__is_active=True,
+            subject__is_active=True,
+        ).select_related('school_class', 'subject', 'teacher')
+
+        grouped = defaultdict(list)
+        for assignment in assignments:
+            grouped[(assignment.school_class_id, assignment.subject_id)].append(assignment)
+
+        periods_overrides = {
+            (req.school_class_id, req.subject_id): req.periods_per_week
+            for req in ClassSubjectRequirement.objects.filter(
+                school=school, school_class__isnull=False
+            )
+        }
 
         lesson_requirements = []
-        for req in requirements:
-            teacher_ids = tuple(
-                str(t.id) for t in req.subject.qualified_teachers.filter(school=school, is_active=True)
+        for (class_id, subject_id), group in grouped.items():
+            # Prefer the primary teacher's periods_per_week as the
+            # authoritative count for this class+subject; any co-teachers
+            # in the group are still offered to the solver as additional
+            # eligible teachers for the same sessions.
+            primary = next((a for a in group if a.is_primary), group[0])
+
+            # Normal source: ClassSubject.periods_per_week. This removes the
+            # old dependence on the TeacherAssignment form's hard-coded 4.
+            # An explicit ClassSubjectRequirement remains the highest-priority
+            # advanced override for existing schools.
+            class_subject = (
+                ClassSubject.objects
+                .filter(
+                    school=school,
+                    school_class_id=class_id,
+                    subject_id=subject_id,
+                    is_active=True,
+                )
+                .first()
             )
-            for session_index in range(req.periods_per_week):
+            periods_per_week = periods_overrides.get(
+                (class_id, subject_id),
+                class_subject.periods_per_week if class_subject else primary.periods_per_week,
+            )
+            teacher_ids = tuple(str(a.teacher_id) for a in group)
+            school_class = primary.school_class
+            subject = primary.subject
+
+            for session_index in range(periods_per_week):
                 lesson_requirements.append(
                     LessonRequirement(
-                        cohort_id=str(req.school_class_id),
-                        subject_id=str(req.subject_id),
+                        cohort_id=str(class_id),
+                        subject_id=str(subject_id),
                         session_index=session_index,
-                        student_count=req.school_class.student_count,
-                        is_lab_required=req.subject.requires_lab,
+                        student_count=school_class.student_count,
+                        is_lab_required=subject.requires_lab,
                         eligible_teacher_ids=teacher_ids,
                     )
                 )
@@ -62,12 +125,12 @@ class AITimetableService:
     def _build_room_options(school):
         return [
             RoomOption(room_id=str(r.id), capacity=r.capacity, is_lab=r.is_lab)
-            for r in Room.objects.filter(school=school)
+            for r in Room.objects.filter(school=school, is_active=True)
         ]
 
     @staticmethod
     def _build_timeslots(school):
-        slots = list(TimeSlot.objects.filter(school=school))
+        slots = list(TimeSlot.objects.filter(school=school, is_active=True))
         return slots, [s.slot_id for s in slots]
 
     # ------------------------------------------------------------------

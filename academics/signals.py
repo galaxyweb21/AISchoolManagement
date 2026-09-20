@@ -1,8 +1,42 @@
 # academics/signals.py
 from django.db.models.signals import post_save, post_delete, pre_delete
 from django.dispatch import receiver
+import logging
+
+from school.models import School
 from students.models import Student
 from .models import SchoolClass, ClassSubject, TeacherAssignment
+from .services.ges_schedule import generate_ges_standard_timeslots
+
+logger = logging.getLogger(__name__)
+
+
+@receiver(post_save, sender=School)
+def seed_ges_timeslots_on_school_creation(sender, instance, created, **kwargs):
+    """
+    Give every new school a working weekly timetable grid out of the
+    box, using the Ghana Education Service's proposed 8 x 50-minute
+    period structure. Without this, the AI auto-timetabler has nothing
+    to schedule against until an admin manually enters every period by
+    hand (see TimetableGenerationError: "No timeslots configured for
+    this school yet."). A school can still edit, add to, or fully
+    regenerate its schedule afterward from Academics > Time Slots.
+    """
+    if not created:
+        return
+
+    try:
+        created_count, _ = generate_ges_standard_timeslots(instance)
+        logger.info(
+            "Seeded %s GES-standard time slots for new school %s (subdomain: %s)",
+            created_count, instance.name, instance.subdomain,
+        )
+    except Exception as e:
+        # Never let timetable seeding block school creation itself --
+        # an admin can always generate the schedule manually afterward.
+        logger.error(
+            "Failed to seed GES time slots for %s: %s", instance.name, str(e)
+        )
 
 
 @receiver(post_save, sender=ClassSubject)

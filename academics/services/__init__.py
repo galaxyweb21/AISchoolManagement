@@ -8,6 +8,7 @@ Re-export all service classes here so every existing import site keeps working:
 """
 
 from .timetable_service import AITimetableService, TimetableGenerationError
+from .timetable_readiness import TimetableReadiness
 
 try:
     from .promotion_service import PromotionService
@@ -25,8 +26,27 @@ try:
 except ImportError:
     pass
 
+try:
+    from .ges_schedule import (
+        generate_ges_standard_timeslots,
+        build_ges_schedule_preview,
+        summarize_school_day,
+        GESScheduleError,
+        GES_STANDARD_DEFAULTS,
+        GES_TEMPLATE_LABEL,
+    )
+except ImportError:
+    pass
+
 __all__ = [
     "AITimetableService",
     "TimetableGenerationError",
+    "TimetableReadiness",
     "PromotionService",
+    "generate_ges_standard_timeslots",
+    "build_ges_schedule_preview",
+    "summarize_school_day",
+    "GESScheduleError",
+    "GES_STANDARD_DEFAULTS",
+    "GES_TEMPLATE_LABEL",
 ]

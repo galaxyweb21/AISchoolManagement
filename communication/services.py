@@ -112,25 +112,80 @@ class NotificationService:
             return None
 
     @classmethod
-    def should_send_notification(cls, user, category):
-        """Check if user has opted in for this notification category."""
+    def get_user_preferences(cls, user):
+        """Return the user's preferences without creating them during delivery."""
         try:
-            prefs = UserNotificationPreference.objects.get(user=user)
-            category_map = {
-                NotificationCategory.OVERDUE_BALANCE: prefs.overdue_balance_enabled,
-                NotificationCategory.TIMETABLE_UPDATE: prefs.timetable_update_enabled,
-                NotificationCategory.GRADE_RELEASE: prefs.grade_release_enabled,
-                NotificationCategory.ANNOUNCEMENT: prefs.announcement_enabled,
-                NotificationCategory.ATTENDANCE_ALERT: prefs.attendance_alert_enabled,
-                NotificationCategory.PROMOTION_RESULT: prefs.promotion_result_enabled,
-                NotificationCategory.LEAVE_APPROVAL: prefs.leave_approval_enabled,
-                NotificationCategory.PAYMENT_RECEIPT: prefs.payment_receipt_enabled,
-                NotificationCategory.SYSTEM_ALERT: prefs.system_alert_enabled,
-                NotificationCategory.STAFF_REMINDER: prefs.staff_reminder_enabled,
-            }
-            return category_map.get(category, True)
+            return UserNotificationPreference.objects.get(user=user)
         except UserNotificationPreference.DoesNotExist:
-            return True  # Default to sending if no preferences set
+            return None
+
+    @classmethod
+    def should_send_notification(cls, user, category):
+        """Check whether the user has enabled the supplied notification category."""
+        prefs = cls.get_user_preferences(user)
+        if prefs is None:
+            return True
+
+        category_map = {
+            NotificationCategory.OVERDUE_BALANCE: prefs.overdue_balance_enabled,
+            NotificationCategory.TIMETABLE_UPDATE: prefs.timetable_update_enabled,
+            NotificationCategory.GRADE_RELEASE: prefs.grade_release_enabled,
+            NotificationCategory.ANNOUNCEMENT: prefs.announcement_enabled,
+            NotificationCategory.PAYMENT_RECEIPT: prefs.payment_receipt_enabled,
+            NotificationCategory.ATTENDANCE_ALERT: prefs.attendance_alert_enabled,
+            NotificationCategory.PROMOTION_RESULT: prefs.promotion_result_enabled,
+            NotificationCategory.SYSTEM_ALERT: prefs.system_alert_enabled,
+            NotificationCategory.LEAVE_APPROVAL: prefs.leave_approval_enabled,
+            NotificationCategory.STAFF_REMINDER: prefs.staff_reminder_enabled,
+        }
+        return category_map.get(category, True)
+
+    @classmethod
+    def get_effective_channel(cls, user, category, requested_channel):
+        """Apply channel preferences without changing the caller's requested channel."""
+        prefs = cls.get_user_preferences(user)
+        if prefs is None:
+            return requested_channel
+
+        if not cls.should_send_notification(user, category):
+            return None
+
+        enabled = []
+        if prefs.email_enabled:
+            enabled.append(NotificationChannel.EMAIL)
+        if prefs.sms_enabled:
+            enabled.append(NotificationChannel.SMS)
+        if prefs.in_app_enabled:
+            enabled.append(NotificationChannel.IN_APP)
+
+        if requested_channel == NotificationChannel.IN_APP:
+            return NotificationChannel.IN_APP if prefs.in_app_enabled else None
+        if requested_channel == NotificationChannel.EMAIL:
+            return NotificationChannel.EMAIL if prefs.email_enabled else None
+        if requested_channel == NotificationChannel.SMS:
+            return NotificationChannel.SMS if prefs.sms_enabled else None
+        if requested_channel == NotificationChannel.BOTH:
+            if prefs.email_enabled and prefs.sms_enabled:
+                return NotificationChannel.BOTH
+            if prefs.email_enabled:
+                return NotificationChannel.EMAIL
+            if prefs.sms_enabled:
+                return NotificationChannel.SMS
+            return None
+        if requested_channel == NotificationChannel.ALL:
+            if len(enabled) == 3:
+                return NotificationChannel.ALL
+            if len(enabled) == 2:
+                if NotificationChannel.EMAIL in enabled and NotificationChannel.SMS in enabled:
+                    return NotificationChannel.BOTH
+                # The existing service has no EMAIL+IN_APP channel constant.
+                # Keep the in-app channel when it is the only application channel requested.
+                return NotificationChannel.IN_APP if NotificationChannel.IN_APP in enabled else NotificationChannel.EMAIL
+            if len(enabled) == 1:
+                return enabled[0]
+            return None
+
+        return requested_channel
 
     @classmethod
     def dispatch_notification(cls, log_id):
@@ -234,22 +289,20 @@ class NotificationService:
         if not recipient:
             return None
 
+        # Apply the recipient's category/channel preferences before creating a log.
+        # This is intentionally done before database creation so disabled notifications
+        # never appear in the Notification Center as FAILED records.
+        effective_channel = cls.get_effective_channel(recipient, category, channel)
+        if effective_channel is None:
+            return None
+        channel = effective_channel
+
         # Use recipient's school if not provided.
         if not school:
             school = getattr(recipient, 'school', None)
 
         reference_id = str(reference_id) if reference_id is not None else None
         reference_type = str(reference_type).strip() if reference_type else None
-
-        # Apply category preferences before creating an in-app notification.
-        # This is important because IN_APP notifications do not pass through
-        # the external dispatch worker.
-        if not cls.should_send_notification(recipient, category):
-            logger.info(
-                'Notification suppressed by user preference: %s -> %s',
-                category, getattr(recipient, 'username', recipient.pk)
-            )
-            return None
 
         # Stable references are used by attendance, payments, report cards,
         # promotions, overdue balances and announcements. Reuse the existing

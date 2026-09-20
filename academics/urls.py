@@ -31,6 +31,7 @@ urlpatterns = [
     path('rooms/<uuid:room_id>/delete/', views.room_delete, name='room_delete'),
     path('timeslots/', views.timeslot_list, name='timeslot_list'),
     path('timeslots/create/', views.timeslot_create, name='timeslot_create'),
+    path('timeslots/generate-ges/', views.timeslot_generate_ges, name='timeslot_generate_ges'),
     path('timeslots/<uuid:timeslot_id>/edit/', views.timeslot_edit, name='timeslot_edit'),
     path('timeslots/<uuid:timeslot_id>/delete/', views.timeslot_delete, name='timeslot_delete'),
 

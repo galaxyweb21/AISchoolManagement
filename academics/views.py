@@ -21,9 +21,18 @@ from .services import *
 from .tasks import generate_timetable_task
 from students.models import *
 
-from .forms import TimeSlotForm
+from .forms import TimeSlotForm, GESScheduleForm
 from .models import PromotionRule, PromotionBatch, StudentPromotion, SchoolClass
 from academics.services.promotion_service import PromotionService
+from academics.services.timetable_readiness import TimetableReadiness
+from academics.services.ges_schedule import (
+    generate_ges_standard_timeslots,
+    build_ges_schedule_preview,
+    summarize_school_day,
+    GESScheduleError,
+    GES_STANDARD_DEFAULTS,
+    GES_TEMPLATE_LABEL,
+)
 
 
 # ============================================================
@@ -46,10 +55,13 @@ def timetable_workspace(request):
         timetables = timetables.filter(academic_term=active_term)
     timetables = timetables.order_by('-generated_at')[:10]
 
+    readiness = TimetableReadiness(school, active_term).run()
+
     context = {
         'active_term': active_term,
         'timetables': timetables,
         'can_generate': request.user.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'],
+        'readiness': readiness,
     }
     return render(request, 'academics/timetable_workspace.html', context)
 
@@ -69,6 +81,46 @@ def generate_timetable(request):
     if not active_term:
         messages.error(request, "No active academic term is configured. Set one up in School Settings first.")
         return redirect('academics:timetable_workspace')
+
+    readiness = TimetableReadiness(school, active_term).run()
+    if not readiness['ready']:
+        messages.error(
+            request,
+            "Timetable is not ready for generation. Fix the items shown in the Readiness Check first."
+        )
+        return redirect('academics:timetable_workspace')
+
+    # The AI timetabler can't schedule anything without a weekly period
+    # grid. Rather than fail the run outright, seed the GES-standard
+    # schedule automatically the first time a school generates with none
+    # configured -- non-destructive (only fills in periods that don't
+    # already exist), so this is a complete no-op for any school that
+    # already has a schedule set up.
+    if not TimeSlot.objects.filter(school=school, is_active=True).exists():
+        try:
+            created_count, _ = generate_ges_standard_timeslots(school)
+        except GESScheduleError as e:
+            messages.error(request, f"Could not generate a timetable: no time slots are configured, "
+                                     f"and the default GES schedule couldn't be generated automatically ({e}). "
+                                     f"Set one up from Academics > Time Slots first.")
+            return redirect('academics:timetable_workspace')
+
+        if created_count:
+            messages.info(
+                request,
+                f"No time slots were configured yet, so the GES standard schedule "
+                f"({created_count} periods) was generated automatically. You can adjust "
+                f"it anytime from Academics > Time Slots."
+            )
+        else:
+            # Every (day, period) already existed but all as inactive --
+            # generation left them alone rather than resurrecting them.
+            messages.error(
+                request,
+                "No active time slots are configured for this school. "
+                "Check Academics > Time Slots -- your existing periods may be marked inactive."
+            )
+            return redirect('academics:timeslot_list')
 
     timetable = AITimetableService.create_pending(
         school=school, academic_term=active_term, generated_by=request.user
@@ -636,12 +688,95 @@ def timeslot_delete(request, timeslot_id):
                 }, status=500)
             return render(request, 'academics/timeslot_delete_modal.html', {
                 'timeslot': timeslot,
+                'action_url': 'academics:timeslot_delete',
                 'error': f'Error deleting timeslot: {str(e)}'
             })
 
     return render(request, 'academics/timeslot_delete_modal.html', {
         'timeslot': timeslot,
         'action_url': 'academics:timeslot_delete'
+    })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def timeslot_generate_ges(request):
+    """
+    Bulk-generate a week of TimeSlots from the Ghana Education Service's
+    proposed periods allocation (8 x 50-minute periods/day, with two
+    daily breaks folded into the timing) -- or a customized variant of
+    it. Non-destructive by default: existing (day, period) TimeSlots are
+    left alone unless "replace_existing" is checked.
+    """
+    school = request.user.school
+    if not school:
+        return redirect('dashboard')
+
+    if request.user.role not in ['SUPER_ADMIN', 'SCHOOL_ADMIN']:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': 'You do not have permission to do this.'}, status=403)
+        messages.error(request, "You do not have permission to do this.")
+        return redirect('academics:timeslot_list')
+
+    if request.method == "POST":
+        form = GESScheduleForm(request.POST)
+        if form.is_valid():
+            try:
+                created, skipped = generate_ges_standard_timeslots(
+                    school, **form.to_service_kwargs()
+                )
+            except GESScheduleError as e:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': str(e)}, status=400)
+                form.add_error(None, str(e))
+            else:
+                if created and skipped:
+                    message = f"Generated {created} new time slot(s); {skipped} already existed and were left as-is."
+                elif created:
+                    message = f"Generated {created} new time slot(s) from the GES standard schedule."
+                else:
+                    message = "No new time slots were created -- every period already exists. Check 'replace and regenerate' to overwrite them."
+
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': True, 'message': message})
+                messages.success(request, message)
+                return redirect('academics:timeslot_list')
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'error': ' '.join([' '.join(errors) for errors in form.errors.values()])
+                }, status=400)
+    else:
+        form = GESScheduleForm()
+
+    preview_error = None
+    preview_rows = []
+    day_summary = []
+    try:
+        defaults_kwargs = {
+            'start_time': GES_STANDARD_DEFAULTS['start_time'],
+            'period_length_minutes': GES_STANDARD_DEFAULTS['period_length_minutes'],
+            'periods_per_day': GES_STANDARD_DEFAULTS['periods_per_day'],
+            'breaks': GES_STANDARD_DEFAULTS['breaks'],
+            'days': ['MON'],
+        }
+        preview_rows = build_ges_schedule_preview(**defaults_kwargs)
+        day_summary = summarize_school_day(
+            period_length_minutes=GES_STANDARD_DEFAULTS['period_length_minutes'],
+            periods_per_day=GES_STANDARD_DEFAULTS['periods_per_day'],
+            breaks=GES_STANDARD_DEFAULTS['breaks'],
+        )
+    except GESScheduleError as e:
+        preview_error = str(e)
+
+    return render(request, 'academics/ges_schedule_modal.html', {
+        'form': form,
+        'action_url': 'academics:timeslot_generate_ges',
+        'template_label': GES_TEMPLATE_LABEL,
+        'preview_rows': preview_rows,
+        'preview_error': preview_error,
+        'day_summary': day_summary,
     })
 
 
