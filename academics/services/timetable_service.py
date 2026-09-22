@@ -78,6 +78,18 @@ class AITimetableService:
             )
         }
 
+        # ClassSubject is the normal school-facing source for how many times
+        # a subject should appear each week. Keep TeacherAssignment's value
+        # as a fallback for older records, and retain ClassSubjectRequirement
+        # as an explicit advanced override. This removes the need to repeat
+        # the same periods/week value manually on every teacher assignment.
+        class_subject_periods = {
+            (item.school_class_id, item.subject_id): item.periods_per_week
+            for item in ClassSubject.objects.filter(
+                school=school, school_class__isnull=False, subject__isnull=False, is_active=True
+            )
+        }
+
         lesson_requirements = []
         for (class_id, subject_id), group in grouped.items():
             # Prefer the primary teacher's periods_per_week as the
@@ -85,24 +97,9 @@ class AITimetableService:
             # in the group are still offered to the solver as additional
             # eligible teachers for the same sessions.
             primary = next((a for a in group if a.is_primary), group[0])
-
-            # Normal source: ClassSubject.periods_per_week. This removes the
-            # old dependence on the TeacherAssignment form's hard-coded 4.
-            # An explicit ClassSubjectRequirement remains the highest-priority
-            # advanced override for existing schools.
-            class_subject = (
-                ClassSubject.objects
-                .filter(
-                    school=school,
-                    school_class_id=class_id,
-                    subject_id=subject_id,
-                    is_active=True,
-                )
-                .first()
-            )
             periods_per_week = periods_overrides.get(
                 (class_id, subject_id),
-                class_subject.periods_per_week if class_subject else primary.periods_per_week,
+                class_subject_periods.get((class_id, subject_id), primary.periods_per_week),
             )
             teacher_ids = tuple(str(a.teacher_id) for a in group)
             school_class = primary.school_class
@@ -249,6 +246,7 @@ class AITimetableService:
                     teacher=teacher,
                     room=room,
                     timeslot=timeslot,
+                    is_lab=gene.is_lab_required,
                 )
             )
 

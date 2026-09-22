@@ -24,7 +24,6 @@ from students.models import *
 from .forms import TimeSlotForm, GESScheduleForm
 from .models import PromotionRule, PromotionBatch, StudentPromotion, SchoolClass
 from academics.services.promotion_service import PromotionService
-from academics.services.timetable_readiness import TimetableReadiness
 from academics.services.ges_schedule import (
     generate_ges_standard_timeslots,
     build_ges_schedule_preview,
@@ -55,13 +54,10 @@ def timetable_workspace(request):
         timetables = timetables.filter(academic_term=active_term)
     timetables = timetables.order_by('-generated_at')[:10]
 
-    readiness = TimetableReadiness(school, active_term).run()
-
     context = {
         'active_term': active_term,
         'timetables': timetables,
         'can_generate': request.user.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'],
-        'readiness': readiness,
     }
     return render(request, 'academics/timetable_workspace.html', context)
 
@@ -80,14 +76,6 @@ def generate_timetable(request):
 
     if not active_term:
         messages.error(request, "No active academic term is configured. Set one up in School Settings first.")
-        return redirect('academics:timetable_workspace')
-
-    readiness = TimetableReadiness(school, active_term).run()
-    if not readiness['ready']:
-        messages.error(
-            request,
-            "Timetable is not ready for generation. Fix the items shown in the Readiness Check first."
-        )
         return redirect('academics:timetable_workspace')
 
     # The AI timetabler can't schedule anything without a weekly period
@@ -177,10 +165,54 @@ def timetable_detail(request, timetable_id):
         key = (entry.timeslot.period_index, entry.timeslot.day)
         slot_lookup[key] = entry
 
+    # Build presentation rows from the actual TimeSlot clock times.
+    # Breaks/lunch are intentionally not database rows: the existing TimeSlot
+    # model stores teaching periods only. When there is a time gap between two
+    # instructional periods, show that gap as a non-teaching row in the grid.
+    # This makes the existing GES/default schedule visibly show its break and
+    # lunch without requiring a migration or changing the scheduler's data model.
+    slot_by_period_day = {(slot.period_index, slot.day): slot for slot in timeslots}
     rows = []
-    for p in period_indexes:
-        cells = [slot_lookup.get((p, d)) for d in days]
-        rows.append({'period': p, 'cells': cells})
+    break_number = 0
+    for index, period in enumerate(period_indexes):
+        cells = [slot_lookup.get((period, d)) for d in days]
+        period_slots = [slot_by_period_day.get((period, d)) for d in days]
+        rows.append({
+            'type': 'period',
+            'period': period,
+            'cells': cells,
+            'period_slots': period_slots,
+        })
+
+        if index < len(period_indexes) - 1:
+            next_period = period_indexes[index + 1]
+            gap_cells = []
+            has_gap = False
+            for d in days:
+                current_slot = slot_by_period_day.get((period, d))
+                next_slot = slot_by_period_day.get((next_period, d))
+                gap = None
+                if current_slot and next_slot:
+                    from datetime import datetime
+                    current_end = datetime.combine(datetime.today(), current_slot.end_time)
+                    next_start = datetime.combine(datetime.today(), next_slot.start_time)
+                    minutes = int((next_start - current_end).total_seconds() // 60)
+                    if minutes > 0:
+                        has_gap = True
+                        gap = {
+                            'start': current_slot.end_time,
+                            'end': next_slot.start_time,
+                            'minutes': minutes,
+                        }
+                gap_cells.append(gap)
+
+            if has_gap:
+                break_number += 1
+                rows.append({
+                    'type': 'break',
+                    'label': 'Break' if break_number == 1 else ('Lunch' if break_number == 2 else f'Break {break_number}'),
+                    'cells': gap_cells,
+                })
 
     context = {
         'timetable': timetable,

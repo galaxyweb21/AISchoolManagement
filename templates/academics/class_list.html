@@ -120,11 +120,55 @@
         color: var(--eduai-gold, #946B1C);
         font-weight: 750;
         font-size: 14px;
+        text-decoration: none;
+        transition: transform 0.15s ease;
+    }
+    a.class-avatar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(148, 107, 28, 0.18);
+        color: var(--eduai-gold, #946B1C);
     }
     .class-actions .btn {
         border-radius: 8px;
         font-size: 0.75rem;
         padding: 0.3rem 0.75rem;
+    }
+
+    .kpi-tile {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 14px;
+        padding: 1rem 1.15rem;
+        background: var(--bs-body-bg);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+    }
+    .kpi-tile:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+    }
+    .kpi-tile .kpi-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 1.35rem;
+    }
+    .kpi-tile .kpi-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--bs-secondary-color);
+        margin-bottom: 2px;
+    }
+    .kpi-tile .kpi-value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
     }
 </style>
 
@@ -184,6 +228,43 @@
         </div>
     </div>
 
+    <!-- KPI strip -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="kpi-tile d-flex align-items-center gap-3">
+                <div class="kpi-icon bg-gold-soft text-gold">
+                    <i class="bi bi-mortarboard-fill"></i>
+                </div>
+                <div>
+                    <div class="kpi-label">Total Classes</div>
+                    <div class="kpi-value">{{ classes|length }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="kpi-tile d-flex align-items-center gap-3">
+                <div class="kpi-icon bg-teal-soft text-teal">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <div>
+                    <div class="kpi-label">Cohorts</div>
+                    <div class="kpi-value">{{ classes|length }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="kpi-tile d-flex align-items-center gap-3">
+                <div class="kpi-icon" style="background: rgba(255,193,7,0.16); color: #b8860b;">
+                    <i class="bi bi-sliders2"></i>
+                </div>
+                <div>
+                    <div class="kpi-label">Manage</div>
+                    <div class="fw-semibold">Teachers &amp; Subjects</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Classes Table -->
     <div class="card border-0 shadow-sm rounded-4">
         <div class="p-4">
@@ -221,9 +302,11 @@
                         <tr class="border-bottom class-row visible-row" data-class-id="{{ class.id }}">
                             <td class="py-3 ps-0">
                                 <div class="d-flex align-items-center gap-3">
-                                    <div class="class-avatar">
+                                    <a href="{% url 'staff:teacher_assignment_class_view' class.id %}"
+                                       class="class-avatar"
+                                       title="View {{ class.name }}">
                                         {{ class.name|slice:":1"|upper }}
-                                    </div>
+                                    </a>
                                     <div>
                                         <div class="fw-semibold class-name">{{ class.name }}</div>
                                         <small class="text-muted class-desc">Teaching cohort</small>

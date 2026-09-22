@@ -12,6 +12,23 @@
         min-height: 60px;
         padding: 0.5rem;
     }
+    .timetable-break-row td {
+        background: var(--eduai-gold-soft, rgba(148,107,28,0.08));
+        border-top: 1px dashed var(--eduai-gold, #946B1C);
+        border-bottom: 1px dashed var(--eduai-gold, #946B1C);
+        padding: 0.45rem 0.5rem;
+    }
+    .timetable-break-label {
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 700;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+    }
+    .timetable-break-time {
+        color: var(--bs-secondary-color);
+        font-size: 0.72rem;
+    }
     .timetable-cell .subject-name {
         font-weight: 600;
         font-size: 0.85rem;
@@ -219,32 +236,54 @@
                     <tbody>
                         {% if rows %}
                             {% for row in rows %}
-                                <tr>
-                                    <td class="fw-bold text-muted py-2" style="background-color: var(--bs-tertiary-bg);">
-                                        P{{ row.period }}
-                                    </td>
-                                    {% for entry in row.cells %}
-                                        <td class="timetable-cell">
-                                            {% if entry %}
-                                                <div class="subject-name">{{ entry.subject.name }}</div>
-                                                <div class="class-name">
-                                                    <i class="bi bi-people me-1"></i>{{ entry.school_class.name }}
-                                                </div>
-                                                <div class="teacher-name">
-                                                    <i class="bi bi-person me-1"></i>{{ entry.teacher.user.get_full_name }}
-                                                </div>
-                                                <div class="room-name">
-                                                    <i class="bi bi-door-open me-1"></i>{{ entry.room.name }}
-                                                    {% if entry.is_lab %}
-                                                        <span class="badge ms-1" style="background: var(--eduai-gold-soft, rgba(148,107,28,0.1)); color: var(--primary-color, #946B1C); font-size: 0.55rem;">Lab</span>
-                                                    {% endif %}
-                                                </div>
-                                            {% else %}
-                                                <span class="text-muted">&mdash;</span>
-                                            {% endif %}
+                                {% if row.type == 'break' %}
+                                    <tr class="timetable-break-row">
+                                        <td class="fw-bold py-2">
+                                            <span class="timetable-break-label"><i class="bi bi-cup-hot me-1"></i>{{ row.label }}</span>
                                         </td>
-                                    {% endfor %}
-                                </tr>
+                                        {% for gap in row.cells %}
+                                            <td>
+                                                {% if gap %}
+                                                    <span class="timetable-break-time">{{ gap.start|time:"H:i" }} – {{ gap.end|time:"H:i" }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td class="fw-bold text-muted py-2" style="background-color: var(--bs-tertiary-bg);">
+                                            <div>P{{ row.period }}</div>
+                                            {% for slot in row.period_slots %}
+                                                {% if forloop.first and slot %}
+                                                    <small class="text-muted fw-normal">{{ slot.start_time|time:"H:i" }}–{{ slot.end_time|time:"H:i" }}</small>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </td>
+                                        {% for entry in row.cells %}
+                                            <td class="timetable-cell">
+                                                {% if entry %}
+                                                    <div class="subject-name">{{ entry.subject.name }}</div>
+                                                    <div class="class-name">
+                                                        <i class="bi bi-people me-1"></i>{{ entry.school_class.name }}
+                                                    </div>
+                                                    <div class="teacher-name">
+                                                        <i class="bi bi-person me-1"></i>{{ entry.teacher.user.get_full_name }}
+                                                    </div>
+                                                    <div class="room-name">
+                                                        <i class="bi bi-door-open me-1"></i>{{ entry.room.name }}
+                                                        {% if entry.is_lab %}
+                                                            <span class="badge ms-1" style="background: var(--eduai-gold-soft, rgba(148,107,28,0.1)); color: var(--primary-color, #946B1C); font-size: 0.55rem;">Lab</span>
+                                                        {% endif %}
+                                                    </div>
+                                                {% else %}
+                                                    <span class="text-muted">&mdash;</span>
+                                                {% endif %}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endif %}
                             {% endfor %}
                         {% else %}
                             <tr>
@@ -261,6 +300,11 @@
                 </table>
             </div>
         </div>
+    </div>
+
+    <div class="mt-3 d-flex flex-wrap gap-3 justify-content-center small text-muted">
+        <span><i class="bi bi-book me-1"></i>Instructional period</span>
+        <span><i class="bi bi-cup-hot me-1" style="color: var(--eduai-gold, #946B1C);"></i>Break/Lunch is inferred from the configured TimeSlot gaps</span>
     </div>
 
     <!-- Footer Info -->

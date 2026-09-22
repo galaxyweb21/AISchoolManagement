@@ -1,7 +1,8 @@
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import render
+
+from core.pagination import paginate_queryset
 
 from .models import ActivityLog
 
@@ -17,6 +18,14 @@ def activity_log(request):
         return HttpResponseForbidden("You do not have permission to view the Activity Log.")
 
     school = getattr(request.user, "school", None)
+
+    # True, always-unfiltered total -- feeds the "Total Activities" KPI and
+    # the hero card, so those keep showing the real total regardless of
+    # filters. Previously this was set from the *filtered* paginator.count,
+    # so it silently matched "Filtered Results" instead of the real total
+    # the moment any filter was applied.
+    total_activity_count = ActivityLog.objects.filter(school=school).count()
+
     logs = ActivityLog.objects.filter(school=school).select_related("user", "content_type")
 
     query = request.GET.get("q", "").strip()
@@ -40,8 +49,13 @@ def activity_log(request):
         logs = logs.filter(user_id=user_id)
 
     logs = logs.order_by("-created_at")
-    paginator = Paginator(logs, 25)
-    page_obj = paginator.get_page(request.GET.get("page"))
+
+    # Shared pagination helper, same as every other list view in the app --
+    # this is what makes the "Records per page" control in
+    # partials/pagination.html (?per_page=25/50/100) actually work here.
+    # The previous django.core.paginator.Paginator(logs, 25) call ignored
+    # ?per_page= entirely, so that dropdown silently did nothing on this page.
+    page_obj = paginate_queryset(logs, request)
 
     users = (
         ActivityLog.objects.filter(school=school, user__isnull=False)
@@ -53,7 +67,7 @@ def activity_log(request):
     context = {
         "page_obj": page_obj,
         "activity_logs": page_obj.object_list,
-        "activity_count": paginator.count,
+        "activity_count": total_activity_count,
         "users": users,
         "action_choices": ActivityLog.ACTION_CHOICES,
         "query": query,

@@ -15,15 +15,16 @@
         <div class="d-flex align-items-start gap-2">
             <i class="bi bi-mortarboard-fill mt-1" style="color: var(--eduai-gold, #946B1C);"></i>
             <div class="small">
-                <strong>{{ template_label }}</strong> — Ghana Education Service's proposed
-                structure for Public Basic Schools: 50-minute periods, 8 per day, with a
-                mid-morning break and a lunch break folded into the timing.
+                <strong>{{ template_label }}</strong> — a GES-based starting template for Ghanaian
+                schools: 50-minute periods, 8 per day, with a mid-morning break and a
+                lunch break folded into the timing. Your school can adjust every value.
                 {% if day_summary %}
                     That's <strong>{{ day_summary.instruction_minutes }} minutes</strong> of instruction
                     plus <strong>{{ day_summary.break_minutes }} minutes</strong> of break per day
                     ({{ day_summary.periods_per_week }} periods/week).
                 {% endif %}
-                Every value below can be adjusted for your school.
+                The breaks are represented by the time gaps between instructional TimeSlots;
+                the timetable view displays those gaps as <strong>Break</strong> and <strong>Lunch</strong>.
             </div>
         </div>
     </div>
@@ -53,7 +54,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="form-text">This preview uses the GES defaults; it updates once you generate with your own values below.</div>
+        <div class="form-text">The preview shows instructional periods. Break and lunch are the gaps between those periods and are displayed in the generated timetable.</div>
     </div>
     {% endif %}
 
