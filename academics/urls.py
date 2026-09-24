@@ -7,8 +7,11 @@ app_name = 'academics'
 urlpatterns = [
     # Timetabler
     path('timetable/', views.timetable_workspace, name='timetable_workspace'),
+    path('timetable/configuration/', views.timetable_configuration, name='timetable_configuration'),
     path('timetable/generate/', views.generate_timetable, name='generate_timetable'),
     path('timetable/<uuid:timetable_id>/', views.timetable_detail, name='timetable_detail'),
+    path('timetable/<uuid:timetable_id>/export/pdf/', views.timetable_export_pdf, name='timetable_export_pdf'),
+    path('timetable/<uuid:timetable_id>/export/word/', views.timetable_export_word, name='timetable_export_word'),
     path('timetable/<uuid:timetable_id>/publish/', views.publish_timetable, name='publish_timetable'),
     path('timetable/<uuid:timetable_id>/delete/', views.delete_timetable, name='delete_timetable'),
 

@@ -40,12 +40,17 @@
             {% endif %}
         </div>
         {% if can_generate %}
+        <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'academics:timetable_configuration' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-sliders2 me-1"></i> Schedule Configuration
+        </a>
         <form method="post" action="{% url 'academics:generate_timetable' %}">
             {% csrf_token %}
             <button type="submit" class="btn" style="background: var(--primary-color, #946B1C); color: #fff; border-color: var(--primary-color, #946B1C);">
                 <i class="bi bi-magic me-1"></i> Generate New Timetable
             </button>
         </form>
+        </div>
         {% endif %}
     </div>
 </div>

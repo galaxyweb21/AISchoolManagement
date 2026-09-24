@@ -4,9 +4,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_POST
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 import json
+from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.urls import reverse
@@ -22,8 +23,20 @@ from .tasks import generate_timetable_task
 from students.models import *
 
 from .forms import TimeSlotForm, GESScheduleForm
+from .timetable_configuration_forms import TimetableConfigurationForm, TimetableScheduleBlockFormSet
+from .timetable_configuration_model import TimetableConfiguration
+from academics.services.timetable_configuration import (
+    get_or_create_configuration,
+    apply_timetable_configuration,
+    build_configured_schedule_preview,
+    build_schedule_preview_with_blocks,
+    get_explicit_blocks,
+    save_explicit_blocks,
+)
 from .models import PromotionRule, PromotionBatch, StudentPromotion, SchoolClass
 from academics.services.promotion_service import PromotionService
+from academics.services.timetable_readiness import TimetableReadiness
+from academics.services.timetable_export import build_timetable_export_context
 from academics.services.ges_schedule import (
     generate_ges_standard_timeslots,
     build_ges_schedule_preview,
@@ -54,10 +67,13 @@ def timetable_workspace(request):
         timetables = timetables.filter(academic_term=active_term)
     timetables = timetables.order_by('-generated_at')[:10]
 
+    readiness = TimetableReadiness(school, active_term).run()
+
     context = {
         'active_term': active_term,
         'timetables': timetables,
         'can_generate': request.user.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'],
+        'readiness': readiness,
     }
     return render(request, 'academics/timetable_workspace.html', context)
 
@@ -76,6 +92,14 @@ def generate_timetable(request):
 
     if not active_term:
         messages.error(request, "No active academic term is configured. Set one up in School Settings first.")
+        return redirect('academics:timetable_workspace')
+
+    readiness = TimetableReadiness(school, active_term).run()
+    if not readiness['ready']:
+        messages.error(
+            request,
+            "Timetable is not ready for generation. Fix the items shown in the Readiness Check first."
+        )
         return redirect('academics:timetable_workspace')
 
     # The AI timetabler can't schedule anything without a weekly period
@@ -125,94 +149,278 @@ def generate_timetable(request):
 
 
 @login_required
+def timetable_export_pdf(request, timetable_id):
+    """Download a server-generated timetable PDF using xhtml2pdf."""
+    school = request.user.school
+    timetable = get_object_or_404(Timetable, id=timetable_id, school=school)
+
+    if timetable.status in ('PENDING', 'RUNNING'):
+        messages.warning(request, "The timetable is still being generated. Please try again when it is complete.")
+        return redirect('academics:timetable_detail', timetable_id=timetable_id)
+
+    try:
+        from io import BytesIO
+        from xhtml2pdf import pisa
+        from django.template.loader import render_to_string
+
+        context = build_timetable_export_context(
+            timetable,
+            class_id=request.GET.get('class_id'),
+        )
+        html = render_to_string('academics/timetable_export_pdf.html', context, request=request)
+        result = BytesIO()
+        pdf_status = pisa.CreatePDF(html, dest=result, encoding='UTF-8')
+        if pdf_status.err:
+            return JsonResponse(
+                {'error': 'The timetable PDF could not be generated.'},
+                status=500,
+            )
+
+        filename = context['export_filename_base'] + '.pdf'
+        response = HttpResponse(result.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except ImportError:
+        return JsonResponse(
+            {'error': 'xhtml2pdf is not installed. Install the project requirements and try again.'},
+            status=500,
+        )
+    except Exception as exc:
+        return JsonResponse(
+            {'error': f'Unable to generate the timetable PDF: {exc}'},
+            status=500,
+        )
+
+
+@login_required
+def timetable_export_word(request, timetable_id):
+    """Download an editable timetable Word document using python-docx."""
+    school = request.user.school
+    timetable = get_object_or_404(Timetable, id=timetable_id, school=school)
+
+    if timetable.status in ('PENDING', 'RUNNING'):
+        messages.warning(request, "The timetable is still being generated. Please try again when it is complete.")
+        return redirect('academics:timetable_detail', timetable_id=timetable_id)
+
+    try:
+        from io import BytesIO
+        from django.http import HttpResponse
+        from docx import Document
+        from docx.enum.section import WD_ORIENT
+        from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.shared import Inches, Pt
+
+        context = build_timetable_export_context(
+            timetable,
+            class_id=request.GET.get('class_id'),
+        )
+
+        document = Document()
+        section = document.sections[0]
+        section.orientation = WD_ORIENT.LANDSCAPE
+        section.page_width, section.page_height = section.page_height, section.page_width
+        section.top_margin = Inches(0.45)
+        section.bottom_margin = Inches(0.45)
+        section.left_margin = Inches(0.35)
+        section.right_margin = Inches(0.35)
+
+        title = document.add_paragraph()
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = title.add_run(context['school_name'])
+        run.bold = True
+        run.font.size = Pt(15)
+
+        subtitle = document.add_paragraph()
+        subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = subtitle.add_run(f"{context['timetable_title']} — {context['term_name']}")
+        run.bold = True
+        run.font.size = Pt(11)
+
+        meta = document.add_paragraph()
+        meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        meta.add_run(
+            f"Status: {context['status_label']}   |   Fitness: {context['fitness']}   |   "
+            f"Hard Conflicts: {context['hard_conflicts']}   |   Soft Conflicts: {context['soft_conflicts']}   |   "
+            f"Entries: {context['entries_count']}"
+        ).font.size = Pt(8)
+
+        table = document.add_table(rows=1, cols=6)
+        table.style = 'Table Grid'
+        table.autofit = True
+        headers = ['Period / Time'] + context['days_display']
+        for i, header in enumerate(headers):
+            cell = table.rows[0].cells[i]
+            cell.text = header
+            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+            for paragraph in cell.paragraphs:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                for r in paragraph.runs:
+                    r.bold = True
+                    r.font.size = Pt(8)
+
+        for row in context['rows']:
+            cells = table.add_row().cells
+            if row['type'] == 'block':
+                merged = cells[0]
+                for cell in cells[1:]:
+                    merged = merged.merge(cell)
+                block = row['block']
+                text = f"{block['label']}  |  {block['start']} – {block['end']}"
+                merged.text = text
+                merged.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+                for paragraph in merged.paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for r in paragraph.runs:
+                        r.bold = True
+                        r.font.size = Pt(8)
+                continue
+
+            period_label = row['period_label']
+            cells[0].text = period_label
+            for paragraph in cells[0].paragraphs:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                for r in paragraph.runs:
+                    r.bold = True
+                    r.font.size = Pt(7.5)
+
+            for idx, cell_data in enumerate(row['cells'], start=1):
+                cells[idx].vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+                if not cell_data:
+                    cells[idx].text = ''
+                    continue
+                lines = [cell_data['subject']]
+                if cell_data.get('class'):
+                    lines.append(cell_data['class'])
+                if cell_data.get('teacher'):
+                    lines.append(cell_data['teacher'])
+                if cell_data.get('room'):
+                    lines.append(cell_data['room'])
+                cells[idx].text = '\n'.join(lines)
+                for paragraph in cells[idx].paragraphs:
+                    for r in paragraph.runs:
+                        r.font.size = Pt(7)
+
+        footer = document.add_paragraph()
+        footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        footer.add_run('Generated by EduAI School Management').font.size = Pt(7)
+
+        output = BytesIO()
+        document.save(output)
+        output.seek(0)
+        filename = context['export_filename_base'] + '.docx'
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except ImportError:
+        return JsonResponse(
+            {'error': 'python-docx is not installed. Install the project requirements and try again.'},
+            status=500,
+        )
+    except Exception as exc:
+        return JsonResponse(
+            {'error': f'Unable to generate the timetable Word document: {exc}'},
+            status=500,
+        )
+
+
+@login_required
 def timetable_detail(request, timetable_id):
     school = request.user.school
     timetable = get_object_or_404(Timetable, id=timetable_id, school=school)
 
     if timetable.status in ('PENDING', 'RUNNING'):
-        context = {'timetable': timetable}
-        return render(request, 'academics/timetable_generating.html', context)
+        return render(request, 'academics/timetable_generating.html', {'timetable': timetable})
 
-    # FIXED: Count entries directly without triggering the tenant manager
     entries_count = TimetableEntry.objects.filter(timetable=timetable).count()
-
-    # FIXED: Get entries without filtering by school (since TimetableEntry doesn't have school field)
     entries = TimetableEntry.objects.filter(
         timetable=timetable
-    ).select_related(
-        'school_class', 'subject', 'teacher__user', 'room', 'timeslot'
-    )
+    ).select_related('school_class', 'subject', 'teacher__user', 'room', 'timeslot')
 
     days = ['MON', 'TUE', 'WED', 'THU', 'FRI']
-    timeslots = list(TimeSlot.objects.filter(school=school).order_by('period_index', 'day'))
+    timeslots = list(TimeSlot.objects.filter(school=school, is_active=True).order_by('period_index', 'day'))
     period_indexes = sorted(set(s.period_index for s in timeslots))
     classes = SchoolClass.objects.filter(school=school).order_by('name')
     selected_class_id = request.GET.get('class_id')
-
-    # Get selected class name for display
     selected_class_display = None
     if selected_class_id:
-        try:
-            selected_class = SchoolClass.objects.get(id=selected_class_id, school=school)
+        selected_class = SchoolClass.objects.filter(id=selected_class_id, school=school).first()
+        if selected_class:
             selected_class_display = selected_class.name
-        except SchoolClass.DoesNotExist:
-            pass
 
     slot_lookup = {}
     for entry in entries:
         if selected_class_id and str(entry.school_class_id) != selected_class_id:
             continue
-        key = (entry.timeslot.period_index, entry.timeslot.day)
-        slot_lookup[key] = entry
+        slot_lookup[(entry.timeslot.period_index, entry.timeslot.day)] = entry
 
-    # Build presentation rows from the actual TimeSlot clock times.
-    # Breaks/lunch are intentionally not database rows: the existing TimeSlot
-    # model stores teaching periods only. When there is a time gap between two
-    # instructional periods, show that gap as a non-teaching row in the grid.
-    # This makes the existing GES/default schedule visibly show its break and
-    # lunch without requiring a migration or changing the scheduler's data model.
+    config = get_or_create_configuration(school)
+    explicit_blocks = get_explicit_blocks(config)
+    # Do not let Save Configuration Only retroactively relabel an existing
+    # timetable whose TimeSlots have not been updated. Explicit blocks are
+    # shown only when the saved configuration matches the current teaching
+    # period grid.
+    try:
+        expected_slots = build_configured_schedule_preview(config)
+        actual_slots = {(s.day, s.period_index, s.start_time, s.end_time) for s in timeslots}
+        expected = {(r['day'], r['period_index'], r['start_time'], r['end_time']) for r in expected_slots}
+        if actual_slots != expected:
+            explicit_blocks = []
+    except Exception:
+        explicit_blocks = []
+    blocks_by_period = {}
+    for block in explicit_blocks:
+        blocks_by_period.setdefault(block.after_period, []).append(block)
+
     slot_by_period_day = {(slot.period_index, slot.day): slot for slot in timeslots}
+
+    def block_for_day(after_period, day):
+        matches = [b for b in blocks_by_period.get(after_period, []) if b.day in (None, '', day)]
+        return matches[0] if matches else None
+
+    def block_cells(after_period):
+        cells = []
+        for day in days:
+            block = block_for_day(after_period, day)
+            if not block:
+                cells.append(None)
+                continue
+            if after_period == 0:
+                first_slot = slot_by_period_day.get((period_indexes[0], day)) if period_indexes else None
+                if not first_slot:
+                    cells.append(None)
+                    continue
+                end = first_slot.start_time
+                anchor = datetime.combine(datetime.today(), end) - timedelta(minutes=block.minutes)
+                cells.append({'block': block, 'start': anchor.time(), 'end': end, 'minutes': block.minutes})
+            else:
+                current_slot = slot_by_period_day.get((after_period, day))
+                next_slot = slot_by_period_day.get((after_period + 1, day))
+                if current_slot and next_slot:
+                    cells.append({'block': block, 'start': current_slot.end_time, 'end': next_slot.start_time, 'minutes': block.minutes})
+                elif current_slot:
+                    anchor = datetime.combine(datetime.today(), current_slot.end_time) + timedelta(minutes=block.minutes)
+                    cells.append({'block': block, 'start': current_slot.end_time, 'end': anchor.time(), 'minutes': block.minutes})
+                else:
+                    cells.append(None)
+        return cells
+
     rows = []
-    break_number = 0
+    if 0 in blocks_by_period:
+        rows.append({'type': 'block', 'cells': block_cells(0)})
+
     for index, period in enumerate(period_indexes):
-        cells = [slot_lookup.get((period, d)) for d in days]
-        period_slots = [slot_by_period_day.get((period, d)) for d in days]
         rows.append({
             'type': 'period',
             'period': period,
-            'cells': cells,
-            'period_slots': period_slots,
+            'cells': [slot_lookup.get((period, d)) for d in days],
+            'period_slots': [slot_by_period_day.get((period, d)) for d in days],
         })
-
-        if index < len(period_indexes) - 1:
-            next_period = period_indexes[index + 1]
-            gap_cells = []
-            has_gap = False
-            for d in days:
-                current_slot = slot_by_period_day.get((period, d))
-                next_slot = slot_by_period_day.get((next_period, d))
-                gap = None
-                if current_slot and next_slot:
-                    from datetime import datetime
-                    current_end = datetime.combine(datetime.today(), current_slot.end_time)
-                    next_start = datetime.combine(datetime.today(), next_slot.start_time)
-                    minutes = int((next_start - current_end).total_seconds() // 60)
-                    if minutes > 0:
-                        has_gap = True
-                        gap = {
-                            'start': current_slot.end_time,
-                            'end': next_slot.start_time,
-                            'minutes': minutes,
-                        }
-                gap_cells.append(gap)
-
-            if has_gap:
-                break_number += 1
-                rows.append({
-                    'type': 'break',
-                    'label': 'Break' if break_number == 1 else ('Lunch' if break_number == 2 else f'Break {break_number}'),
-                    'cells': gap_cells,
-                })
+        if period in blocks_by_period:
+            rows.append({'type': 'block', 'cells': block_cells(period)})
 
     context = {
         'timetable': timetable,
@@ -223,8 +431,70 @@ def timetable_detail(request, timetable_id):
         'selected_class_display': selected_class_display,
         'entries_count': entries_count,
         'can_publish': request.user.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'],
+        'schedule_config': config,
+        'schedule_blocks': explicit_blocks,
     }
     return render(request, 'academics/timetable_detail.html', context)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def timetable_configuration(request):
+    """Configure the school's weekly timetable and explicit non-teaching blocks."""
+    school = request.user.school
+    if not school:
+        return redirect('dashboard')
+    if request.user.role not in ['SUPER_ADMIN', 'SCHOOL_ADMIN']:
+        messages.error(request, "You don't have permission to change timetable configuration.")
+        return redirect('academics:timetable_workspace')
+
+    config = get_or_create_configuration(school)
+    if request.method == 'POST':
+        form = TimetableConfigurationForm(request.POST, instance=config, config=config)
+        block_formset = TimetableScheduleBlockFormSet(
+            request.POST, instance=config, form_kwargs={'periods_per_day': int(request.POST.get('periods_per_day') or config.periods_per_day)}
+        )
+        if form.is_valid() and block_formset.is_valid():
+            config = form.save()
+            try:
+                save_explicit_blocks(config, block_formset.forms)
+            except ValueError as exc:
+                messages.error(request, str(exc))
+                return redirect('academics:timetable_configuration')
+
+            apply_schedule = request.POST.get('apply_schedule') == '1'
+            replace_existing = request.POST.get('replace_existing') == '1'
+            if apply_schedule:
+                try:
+                    created, skipped = apply_timetable_configuration(school, config, replace_existing=replace_existing)
+                    if replace_existing:
+                        messages.success(request, f"Schedule configuration saved and {created} time slots regenerated safely.")
+                    elif created:
+                        messages.success(request, f"Schedule configuration saved. {created} missing teaching periods were added; existing periods were left untouched.")
+                    else:
+                        messages.success(request, "Schedule configuration saved. Existing teaching periods were left untouched.")
+                except ValueError as exc:
+                    messages.error(request, str(exc))
+            else:
+                messages.success(request, "Timetable configuration saved. Existing TimeSlots were not changed.")
+            return redirect('academics:timetable_configuration')
+    else:
+        form = TimetableConfigurationForm(instance=config, config=config)
+        block_formset = TimetableScheduleBlockFormSet(instance=config, form_kwargs={'periods_per_day': config.periods_per_day})
+
+    preview = build_schedule_preview_with_blocks(config)
+    preview_by_day = {}
+    for row in preview:
+        preview_by_day.setdefault(row['day'], []).append(row)
+
+    return render(request, 'academics/timetable_configuration.html', {
+        'form': form,
+        'block_formset': block_formset,
+        'config': config,
+        'preview_by_day': preview_by_day,
+        'can_manage': True,
+        'has_timetable_entries': TimetableEntry.objects.filter(timetable__school=school).exists(),
+    })
 
 
 @login_required

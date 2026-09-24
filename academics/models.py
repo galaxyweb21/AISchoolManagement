@@ -747,3 +747,10 @@ class PromotionBatch(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.academic_year})"
+# T4 — persistent timetable schedule configuration layer.
+# Imported here so Django registers the model without rewriting the existing
+# large academics/models.py file.
+from .timetable_configuration_model import TimetableConfiguration
+
+# T4.1 — explicit persisted timetable schedule blocks.
+from .timetable_schedule_block_model import TimetableScheduleBlock

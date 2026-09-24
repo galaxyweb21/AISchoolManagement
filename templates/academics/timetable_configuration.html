@@ -1,0 +1,921 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Schedule Structure{% endblock %}
+
+{% block content %}
+<style>
+    .schedule-page .page-hero {
+        background: linear-gradient(135deg, rgba(148,107,28,.10), rgba(44,122,109,.08));
+        border: 1px solid rgba(148,107,28,.12);
+        border-radius: 1.25rem;
+    }
+    .schedule-page .section-card {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 1rem;
+        box-shadow: 0 .35rem 1.25rem rgba(0,0,0,.045);
+        overflow: hidden;
+    }
+    .schedule-page .section-head {
+        padding: 1.1rem 1.25rem;
+        border-bottom: 1px solid var(--bs-border-color);
+        background: var(--bs-body-bg);
+    }
+    .schedule-page .section-head-icon {
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: .8rem;
+        background: rgba(148,107,28,.10);
+        color: var(--eduai-gold,#946B1C);
+        font-size: 1.15rem;
+    }
+    .schedule-page .setting-box {
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: .85rem;
+        padding: .85rem;
+    }
+    .schedule-page .block-card {
+        position: relative;
+        border: 1px solid var(--bs-border-color);
+        border-radius: 1rem;
+        background: var(--bs-body-bg);
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+    .schedule-page .block-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 .5rem 1.2rem rgba(0,0,0,.07);
+        border-color: rgba(148,107,28,.35);
+    }
+    .schedule-page .block-number {
+        width: 36px;
+        height: 36px;
+        border-radius: .75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(148,107,28,.10);
+        color: var(--eduai-gold,#946B1C);
+        font-weight: 700;
+        flex: 0 0 auto;
+    }
+    .schedule-page .field-label {
+        font-size: .75rem;
+        font-weight: 700;
+        color: var(--bs-secondary-color);
+        margin-bottom: .35rem;
+        text-transform: uppercase;
+        letter-spacing: .035em;
+    }
+    .schedule-page .block-help {
+        background: rgba(44,122,109,.07);
+        border: 1px solid rgba(44,122,109,.16);
+        border-radius: .85rem;
+    }
+    .schedule-page .block-card {
+        padding: 0 !important;
+        overflow: hidden;
+    }
+    .schedule-page .block-card-head {
+        padding: 1rem 1.1rem;
+        background: linear-gradient(90deg, rgba(148,107,28,.075), rgba(44,122,109,.035));
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    .schedule-page .block-card-body {
+        padding: 1.1rem;
+    }
+    .schedule-page .block-fields {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 1.25rem;
+        align-items: start;
+    }
+    .schedule-page .block-field.day-field {
+        grid-column: 1 / -1;
+    }
+    .schedule-page .block-timing {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 1.25rem;
+        margin-top: 1.35rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--bs-border-color);
+    }
+    .schedule-page .block-field {
+        min-width: 0;
+    }
+    .schedule-page .field-label {
+        display: flex;
+        align-items: center;
+        gap: .45rem;
+        font-size: .72rem;
+        font-weight: 800;
+        color: var(--bs-secondary-color);
+        margin-bottom: .5rem;
+        text-transform: uppercase;
+        letter-spacing: .055em;
+    }
+    .schedule-page .field-label i {
+        color: var(--eduai-signal,#2C7A6D);
+        font-size: .9rem;
+    }
+    .schedule-page .field-shell {
+        position: relative;
+        min-width: 0;
+    }
+    .schedule-page .field-shell > select,
+    .schedule-page .field-shell > input[type="text"],
+    .schedule-page .field-shell > input[type="number"] {
+        display: block;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        min-height: 48px !important;
+        padding: .65rem .85rem !important;
+        border: 1px solid rgba(127,127,127,.30) !important;
+        border-radius: .75rem !important;
+        background: var(--bs-body-bg) !important;
+        color: var(--bs-body-color) !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,.025) !important;
+        font-size: .94rem !important;
+        line-height: 1.35 !important;
+        box-sizing: border-box !important;
+        outline: none;
+        transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+    }
+    .schedule-page .field-shell > select {
+        appearance: auto;
+        cursor: pointer;
+        padding-right: 2.4rem !important;
+    }
+    .schedule-page .field-shell > select:hover,
+    .schedule-page .field-shell > input[type="text"]:hover,
+    .schedule-page .field-shell > input[type="number"]:hover {
+        border-color: rgba(44,122,109,.45) !important;
+    }
+    .schedule-page .field-shell > select:focus,
+    .schedule-page .field-shell > input[type="text"]:focus,
+    .schedule-page .field-shell > input[type="number"]:focus {
+        border-color: var(--eduai-signal,#2C7A6D) !important;
+        box-shadow: 0 0 0 .2rem rgba(44,122,109,.12) !important;
+    }
+    .schedule-page .field-shell .field-icon {
+        position: absolute;
+        right: .8rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--eduai-signal,#2C7A6D);
+        pointer-events: none;
+        font-size: .95rem;
+    }
+    .schedule-page .field-note {
+        display: block;
+        margin-top: .45rem;
+        color: var(--bs-secondary-color);
+        font-size: .72rem;
+        line-height: 1.35;
+    }
+    .schedule-page .measure-shell {
+        display: flex;
+        align-items: stretch;
+        width: 100%;
+        min-width: 0;
+    }
+    .schedule-page .measure-shell > input[type="number"] {
+        flex: 1 1 auto;
+        width: 1% !important;
+        min-width: 0 !important;
+        border-radius: .75rem 0 0 .75rem !important;
+        border-right: 0 !important;
+    }
+    .schedule-page .measure-unit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        min-width: 82px;
+        padding: 0 .85rem;
+        border: 1px solid rgba(44,122,109,.20);
+        border-left: 1px solid rgba(44,122,109,.12);
+        border-radius: 0 .75rem .75rem 0;
+        background: rgba(44,122,109,.075);
+        color: var(--eduai-signal,#2C7A6D);
+        font-size: .8rem;
+        font-weight: 800;
+    }
+    .schedule-page .timing-caption {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        margin-top: 1.35rem;
+        margin-bottom: -.35rem;
+    }
+    .schedule-page .timing-caption .caption-icon {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: .6rem;
+        background: rgba(44,122,109,.09);
+        color: var(--eduai-signal,#2C7A6D);
+    }
+    .schedule-page .timing-caption strong {
+        font-size: .86rem;
+    }
+    .schedule-page .timing-caption span {
+        font-size: .74rem;
+        color: var(--bs-secondary-color);
+    }
+    .schedule-page .block-status {
+        margin-top: 1rem;
+        padding-top: .9rem;
+        border-top: 1px solid var(--bs-border-color);
+    }
+    .schedule-page .remove-block {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        color: var(--bs-danger);
+        font-size: .82rem;
+        font-weight: 700;
+    }
+    .schedule-page .remove-block input {
+        width: 16px;
+        height: 16px;
+    }
+    /* Teaching-period controls */
+    .schedule-page .teaching-fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.15rem;
+    }
+    .schedule-page .teaching-field {
+        min-width: 0;
+        padding: 1rem;
+        border: 1px solid var(--bs-border-color);
+        border-radius: .9rem;
+        background: var(--bs-body-bg);
+    }
+    .schedule-page .teaching-field .field-label {
+        margin-bottom: .55rem;
+    }
+    .schedule-page .teaching-field .field-shell {
+        width: 100%;
+    }
+    .schedule-page .teaching-field .field-shell > input,
+    .schedule-page .teaching-field .field-shell > select,
+    .schedule-page .teaching-field .field-shell > textarea {
+        width: 100% !important;
+        min-height: 50px !important;
+        box-sizing: border-box !important;
+        border-radius: .75rem !important;
+        padding: .7rem .9rem !important;
+        border: 1px solid rgba(127,127,127,.30) !important;
+        background: var(--bs-body-bg) !important;
+        color: var(--bs-body-color) !important;
+        font-size: .94rem !important;
+        line-height: 1.35 !important;
+    }
+    .schedule-page .teaching-field .field-shell > input:focus,
+    .schedule-page .teaching-field .field-shell > select:focus {
+        border-color: var(--eduai-signal,#2C7A6D) !important;
+        box-shadow: 0 0 0 .2rem rgba(44,122,109,.12) !important;
+        outline: none;
+    }
+    .schedule-page .teaching-field .field-note {
+        min-height: 2.5em;
+    }
+    .schedule-page .days-panel {
+        margin-top: 1.15rem;
+        padding: 1rem;
+        border: 1px solid var(--bs-border-color);
+        border-radius: .9rem;
+        background: var(--bs-tertiary-bg);
+    }
+    .schedule-page .day-choice-list {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: .65rem;
+        margin-top: .75rem;
+    }
+    .schedule-page .day-choice-list .form-check {
+        position: relative;
+        margin: 0;
+        padding: 0;
+    }
+    .schedule-page .day-choice-list .form-check-input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+    .schedule-page .day-choice-list .form-check-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 46px;
+        padding: .55rem .6rem;
+        border: 1px solid var(--bs-border-color);
+        border-radius: .7rem;
+        background: var(--bs-body-bg);
+        color: var(--bs-body-color);
+        font-weight: 700;
+        font-size: .82rem;
+        cursor: pointer;
+        transition: all .15s ease;
+    }
+    .schedule-page .day-choice-list .form-check-input:checked + .form-check-label {
+        border-color: rgba(44,122,109,.55);
+        background: rgba(44,122,109,.10);
+        color: var(--eduai-signal,#2C7A6D);
+        box-shadow: 0 0 0 .15rem rgba(44,122,109,.08);
+    }
+    .schedule-page .day-choice-list .form-check-label:hover {
+        border-color: rgba(44,122,109,.4);
+    }
+    .schedule-page .double-period-panel {
+        margin-top: 1rem;
+        padding: 1rem;
+        border: 1px solid rgba(148,107,28,.18);
+        border-radius: .9rem;
+        background: rgba(148,107,28,.045);
+    }
+    .schedule-page .double-period-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+    .schedule-page .double-period-copy {
+        display: flex;
+        align-items: flex-start;
+        gap: .7rem;
+    }
+    .schedule-page .double-period-icon {
+        width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: .7rem;
+        background: rgba(148,107,28,.10);
+        color: var(--eduai-gold,#946B1C);
+    }
+    .schedule-page .double-period-toggle .form-check-input {
+        width: 2.6rem;
+        height: 1.35rem;
+        margin-top: .2rem;
+        cursor: pointer;
+    }
+    @media (max-width: 767.98px) {
+        .schedule-page .teaching-fields { grid-template-columns: 1fr; }
+        .schedule-page .day-choice-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .schedule-page .double-period-toggle { align-items: flex-start; }
+    }
+
+    @media (max-width: 767.98px) {
+        .schedule-page .block-fields,
+        .schedule-page .block-timing {
+            grid-template-columns: 1fr;
+        }
+        .schedule-page .block-field.day-field {
+            grid-column: auto;
+        }
+    }
+    @media (max-width: 575.98px) {
+        .schedule-page .block-card-head,
+        .schedule-page .block-card-body {
+            padding-left: .9rem;
+            padding-right: .9rem;
+        }
+        .schedule-page .block-timing {
+            gap: .9rem;
+        }
+    }
+    @media (max-width: 991.98px) {
+        .schedule-page .block-fields,
+        .schedule-page .block-timing {
+            grid-template-columns: 1fr;
+        }
+        .schedule-page .block-field.day-field { grid-column: auto; }
+    }
+    @media (max-width: 575.98px) {
+        .schedule-page .block-card-head,
+        .schedule-page .block-card-body { padding-left: .9rem; padding-right: .9rem; }
+        .schedule-page .measure-unit { min-width: 74px; padding-left: .6rem; padding-right: .6rem; }
+    }
+
+    /* Page header + KPI styling: consistent with AI Auto-Timetabler / Readiness */
+    .schedule-page .schedule-header-card {
+        background: var(--bs-body-bg);
+    }
+    .schedule-page .schedule-title-icon {
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: .9rem;
+        background: rgba(148,107,28,.10);
+        color: var(--eduai-gold,#946B1C);
+        font-size: 1.25rem;
+    }
+    .schedule-page .schedule-eyebrow,
+    .schedule-page .schedule-status-pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: .42rem .75rem;
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .025em;
+    }
+    .schedule-page .schedule-eyebrow {
+        background: rgba(148,107,28,.10);
+        color: var(--eduai-gold,#946B1C);
+    }
+    .schedule-page .schedule-status-pill {
+        background: rgba(44,122,109,.10);
+        color: var(--eduai-signal,#2C7A6D);
+    }
+    .schedule-page .schedule-description {
+        max-width: 820px;
+        line-height: 1.55;
+    }
+    .schedule-page .schedule-kpi-row {
+        border-top: 1px solid var(--bs-border-color);
+        padding-top: 1rem;
+    }
+    .schedule-page .schedule-kpi {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        padding: .9rem 1rem;
+        border: 1px solid var(--bs-border-color);
+        border-radius: .85rem;
+        background: var(--app-bg,#F7F4EC);
+        transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+    }
+    .schedule-page .schedule-kpi:hover {
+        border-color: rgba(44,122,109,.25);
+        transform: translateY(-1px);
+        box-shadow: 0 .35rem 1rem rgba(0,0,0,.04);
+    }
+    .schedule-page .schedule-kpi-icon {
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: .72rem;
+        font-size: 1rem;
+    }
+    .schedule-page .schedule-kpi-icon.gold {
+        background: rgba(148,107,28,.12);
+        color: var(--eduai-gold,#946B1C);
+    }
+    .schedule-page .schedule-kpi-icon.teal {
+        background: rgba(44,122,109,.11);
+        color: var(--eduai-signal,#2C7A6D);
+    }
+    .schedule-page .schedule-kpi-copy {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        column-gap: .5rem;
+        align-items: baseline;
+    }
+    .schedule-page .schedule-kpi-copy span {
+        grid-column: 1 / -1;
+        color: var(--bs-secondary-color);
+        font-size: .72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .035em;
+    }
+    .schedule-page .schedule-kpi-copy strong {
+        color: var(--bs-body-color);
+        font-size: 1.25rem;
+        line-height: 1.2;
+        font-weight: 800;
+    }
+    .schedule-page .schedule-kpi-copy small {
+        color: var(--bs-secondary-color);
+        font-size: .7rem;
+        white-space: nowrap;
+    }
+    @media (max-width: 575.98px) {
+        .schedule-page .schedule-kpi { padding: .8rem; }
+        .schedule-page .schedule-kpi-copy strong { font-size: 1.1rem; }
+        .schedule-page .schedule-kpi-copy small { display: none; }
+    }
+
+    .schedule-page .preview-row {
+        border: 1px solid var(--bs-border-color);
+        border-radius: .7rem;
+        padding: .65rem .75rem;
+        background: var(--bs-body-bg);
+    }
+    .schedule-page .preview-block {
+        background: rgba(148,107,28,.09);
+        border-color: rgba(148,107,28,.28);
+    }
+    .schedule-page .mini-stat {
+        border: 1px solid var(--bs-border-color);
+        border-radius: .9rem;
+        padding: .8rem;
+        background: var(--bs-body-bg);
+    }
+    .schedule-page .mini-stat .value {
+        font-size: 1.15rem;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+    .schedule-page .sticky-preview {
+        position: sticky;
+        top: 1rem;
+    }
+    @media (max-width: 1199.98px) {
+        .schedule-page .sticky-preview { position: static; }
+    }
+</style>
+
+<div class="container-fluid px-4 py-4 schedule-page">
+    <!-- Page header: aligned with AI Auto-Timetabler / Readiness pages -->
+    <div class="card card-custom border-0 shadow-sm rounded-4 mb-4 schedule-header-card">
+        <div class="p-4 p-lg-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="schedule-title-icon">
+                        <i class="bi bi-calendar2-week"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                            <span class="schedule-eyebrow"><i class="bi bi-calendar3 me-1"></i> ACADEMICS · TIMETABLE</span>
+                            <span class="schedule-status-pill"><i class="bi bi-wifi-off me-1"></i> Offline-capable</span>
+                        </div>
+                        <h5 class="fw-bold mb-1">Schedule Structure</h5>
+                        <p class="text-muted mb-0 schedule-description">
+                            Configure teaching periods, school days and non-teaching schedule blocks before generating the timetable.
+                            Breaks, lunch, assembly and activities are treated as real parts of the school day.
+                        </p>
+                    </div>
+                </div>
+                <a href="{% url 'academics:timetable_workspace' %}" class="btn btn-outline-secondary rounded-3 px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Timetable
+                </a>
+            </div>
+
+            <!-- KPI row aligned with timetable workspace/readiness -->
+            <div class="row g-3 mt-3 schedule-kpi-row">
+                <div class="col-6 col-xl-3">
+                    <div class="schedule-kpi">
+                        <div class="schedule-kpi-icon gold"><i class="bi bi-grid-3x3-gap"></i></div>
+                        <div class="schedule-kpi-copy">
+                            <span>Teaching periods</span>
+                            <strong>{{ form.periods_per_day.value|default:'—' }}</strong>
+                            <small>periods per day</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="schedule-kpi">
+                        <div class="schedule-kpi-icon teal"><i class="bi bi-stopwatch"></i></div>
+                        <div class="schedule-kpi-copy">
+                            <span>Period length</span>
+                            <strong>{{ form.period_length_minutes.value|default:'—' }}</strong>
+                            <small>minutes each</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="schedule-kpi">
+                        <div class="schedule-kpi-icon gold"><i class="bi bi-sunrise"></i></div>
+                        <div class="schedule-kpi-copy">
+                            <span>First period</span>
+                            <strong>{{ form.start_time.value|default:'—' }}</strong>
+                            <small>teaching starts</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="schedule-kpi">
+                        <div class="schedule-kpi-icon teal"><i class="bi bi-calendar-event"></i></div>
+                        <div class="schedule-kpi-copy">
+                            <span>Schedule blocks</span>
+                            <strong>{{ block_formset.total_form_count }}</strong>
+                            <small>configured blocks</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 rounded-4 shadow-sm alert-dismissible fade show">
+            <i class="bi {% if message.tags == 'success' %}bi-check-circle{% elif message.tags == 'warning' %}bi-exclamation-triangle{% else %}bi-info-circle{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if form.non_field_errors or block_formset.non_form_errors %}
+    <div class="alert alert-danger border-0 rounded-4">
+        {{ form.non_field_errors }}{{ block_formset.non_form_errors }}
+    </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {{ block_formset.management_form }}
+
+        <div class="row g-4">
+            <div class="col-xl-7">
+                <!-- Teaching structure -->
+                <div class="section-card mb-4">
+                    <div class="section-head">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="section-head-icon"><i class="bi bi-clock-history"></i></div>
+                            <div>
+                                <h5 class="fw-bold mb-1">Teaching Periods</h5>
+                                <p class="text-muted small mb-0">Define the instructional time available to the offline timetable engine.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="teaching-fields">
+                            <div class="teaching-field">
+                                <div class="field-label"><i class="bi bi-pencil-square"></i>Configuration name</div>
+                                <div class="field-shell">{{ form.template_name }}</div>
+                                <span class="field-note">A name for this school's timetable structure, for example <strong>Standard School Day</strong>.</span>
+                                {% if form.template_name.errors %}<div class="text-danger small mt-1">{{ form.template_name.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div class="teaching-field">
+                                <div class="field-label"><i class="bi bi-sunrise"></i>First teaching period</div>
+                                <div class="field-shell">{{ form.start_time }}</div>
+                                <span class="field-note">The time at which the first instructional period begins.</span>
+                                {% if form.start_time.errors %}<div class="text-danger small mt-1">{{ form.start_time.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div class="teaching-field">
+                                <div class="field-label"><i class="bi bi-stopwatch"></i>Minutes per period</div>
+                                <div class="measure-shell">{{ form.period_length_minutes }}<span class="measure-unit">minutes</span></div>
+                                <span class="field-note">Length of each teaching period before a schedule block or the next period.</span>
+                                {% if form.period_length_minutes.errors %}<div class="text-danger small mt-1">{{ form.period_length_minutes.errors|striptags }}</div>{% endif %}
+                            </div>
+                            <div class="teaching-field">
+                                <div class="field-label"><i class="bi bi-grid-3x3-gap"></i>Teaching periods / day</div>
+                                <div class="measure-shell">{{ form.periods_per_day }}<span class="measure-unit">periods</span></div>
+                                <span class="field-note">Number of instructional periods available on each configured school day.</span>
+                                {% if form.periods_per_day.errors %}<div class="text-danger small mt-1">{{ form.periods_per_day.errors|striptags }}</div>{% endif %}
+                            </div>
+                        </div>
+
+                        <div class="days-panel">
+                            <div class="field-label mb-0"><i class="bi bi-calendar-week"></i>School days</div>
+                            <span class="field-note mt-1">Select the days on which teaching periods are generated.</span>
+                            <div class="day-choice-list">
+                                {% for checkbox in form.DAYS %}
+                                <div class="form-check">{{ checkbox.tag }} <label class="form-check-label" for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label></div>
+                                {% endfor %}
+                            </div>
+                            {% if form.DAYS.errors %}<div class="text-danger small mt-2">{{ form.DAYS.errors|striptags }}</div>{% endif %}
+                        </div>
+
+                        <div class="double-period-panel">
+                            <div class="double-period-toggle">
+                                <div class="double-period-copy">
+                                    <span class="double-period-icon"><i class="bi bi-layout-split"></i></span>
+                                    <div>
+                                        <div class="fw-bold">Allow double periods</div>
+                                        <div class="text-muted small mt-1">A scheduling preference only. Teacher, class and room conflicts remain protected by the timetable engine.</div>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch mb-0 flex-shrink-0">{{ form.allow_double_periods }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule blocks -->
+                <div class="section-card mb-4">
+                    <div class="section-head">
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="section-head-icon"><i class="bi bi-calendar-event"></i></div>
+                                <div>
+                                    <h5 class="fw-bold mb-1">Schedule Blocks</h5>
+                                    <p class="text-muted small mb-0">Create the activities that sit between teaching periods.</p>
+                                </div>
+                            </div>
+                            <span class="badge rounded-pill px-3 py-2" style="background:rgba(148,107,28,.10);color:var(--eduai-gold,#946B1C);">Up to 10</span>
+                        </div>
+                    </div>
+
+                    <div class="card-body p-3 p-lg-4">
+                        <div class="block-help p-3 mb-4 small">
+                            <div class="d-flex gap-2 align-items-start">
+                                <i class="bi bi-lightbulb-fill mt-1" style="color:var(--eduai-signal,#2C7A6D);"></i>
+                                <div>
+                                    <strong>How schedule blocks work</strong>
+                                    <div class="text-muted mt-1">
+                                        Use <strong>After period 0</strong> for a block before P1. Leave Day blank to use a block on every configured school day. Use a specific day when an activity applies only to that day.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% for block_form in block_formset %}
+                        <div class="block-card mb-3">
+                            {{ block_form.id }}
+                            <div class="block-card-head d-flex justify-content-between align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-3 min-w-0">
+                                    <span class="block-number">{{ forloop.counter }}</span>
+                                    <div class="min-w-0">
+                                        <div class="fw-bold text-truncate">Schedule Block {{ forloop.counter }}</div>
+                                        <div class="text-muted small">Non-teaching time · reserved in the school day</div>
+                                    </div>
+                                </div>
+                                {% if block_form.instance.pk %}
+                                <label class="remove-block mb-0 flex-shrink-0">
+                                    {{ block_form.DELETE }}
+                                    <span><i class="bi bi-trash3 me-1"></i>Remove</span>
+                                </label>
+                                {% endif %}
+                            </div>
+
+                            <div class="block-card-body">
+                                <div class="block-fields">
+                                    <div class="block-field day-field">
+                                        <div class="field-label"><i class="bi bi-calendar3"></i>Day</div>
+                                        <div class="field-shell">{{ block_form.day }}<i class="bi bi-chevron-down field-icon"></i></div>
+                                        <span class="field-note">Leave blank to use this block on every configured school day.</span>
+                                    </div>
+                                    <div class="block-field">
+                                        <div class="field-label"><i class="bi bi-layers"></i>Block type</div>
+                                        <div class="field-shell">{{ block_form.block_type }}<i class="bi bi-chevron-down field-icon"></i></div>
+                                        <span class="field-note">Choose the type of non-teaching activity.</span>
+                                    </div>
+                                    <div class="block-field">
+                                        <div class="field-label"><i class="bi bi-tag"></i>Display label</div>
+                                        <div class="field-shell">{{ block_form.label }}</div>
+                                        <span class="field-note">The name staff will see in the timetable.</span>
+                                    </div>
+                                </div>
+
+                                <div class="timing-caption">
+                                    <span class="caption-icon"><i class="bi bi-clock"></i></span>
+                                    <div><strong>Timing</strong><span class="d-block">Reserve this time in the school day.</span></div>
+                                </div>
+                                <div class="block-timing">
+                                    <div class="block-field">
+                                        <div class="field-label"><i class="bi bi-arrow-down-circle"></i>Start after</div>
+                                        <div class="measure-shell">
+                                            {{ block_form.after_period }}
+                                            <span class="measure-unit">period</span>
+                                        </div>
+                                        <span class="field-note">0 = before P1; 2 = immediately after P2.</span>
+                                    </div>
+                                    <div class="block-field">
+                                        <div class="field-label"><i class="bi bi-hourglass-split"></i>Duration</div>
+                                        <div class="measure-shell">
+                                            {{ block_form.minutes }}
+                                            <span class="measure-unit">minutes</span>
+                                        </div>
+                                        <span class="field-note">Time reserved for the activity.</span>
+                                    </div>
+                                </div>
+
+                                <div class="block-status d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                    <div class="form-check form-switch mb-0">
+                                        {{ block_form.is_active }}
+                                        <label class="form-check-label small fw-semibold">Active block</label>
+                                    </div>
+                                    <span class="text-muted small"><i class="bi bi-calendar2-check me-1"></i>Included in schedule preview</span>
+                                </div>
+
+                                {% for field in block_form %}
+                                    {% if field.errors %}
+                                    <div class="text-danger small mt-2">{{ field.label }}: {{ field.errors|striptags }}</div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-5 border rounded-4">
+                            <i class="bi bi-calendar-plus fs-2 text-muted"></i>
+                            <h6 class="fw-bold mt-3">No schedule blocks configured</h6>
+                            <p class="text-muted small mb-0">Add break, lunch, assembly or activity blocks to structure the school day.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Save actions -->
+                <div class="section-card">
+                    <div class="card-body p-4">
+                        <div class="alert alert-warning border-0 rounded-4 small mb-4">
+                            <i class="bi bi-shield-check me-2"></i>
+                            {% if has_timetable_entries %}
+                                Existing timetable entries were found. Saving this configuration does <strong>not</strong> change existing TimeSlots. Replacing the teaching-period grid is intentionally blocked until old timetable runs are removed/archive-managed.
+                            {% else %}
+                                No existing timetable entries were found. Replacing the TimeSlot grid is available if you intentionally want to rebuild the teaching periods.
+                            {% endif %}
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 justify-content-end">
+                            <button type="submit" class="btn rounded-3" style="background:var(--eduai-gold,#946B1C);color:#fff;">
+                                <i class="bi bi-check2-circle me-1"></i>Save Configuration
+                            </button>
+                            <button type="submit" name="apply_schedule" value="1" class="btn btn-outline-success rounded-3">
+                                <i class="bi bi-calendar2-check me-1"></i>Save & Apply Missing Periods
+                            </button>
+                            {% if not has_timetable_entries %}
+                            <button type="submit" name="replace_existing" value="1" class="btn btn-outline-danger rounded-3" onclick="return confirm('Replace the existing teaching-period TimeSlots with this configuration?')">
+                                <i class="bi bi-arrow-repeat me-1"></i>Replace Teaching Periods
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right column -->
+            <div class="col-xl-5">
+                <div class="sticky-preview">
+                    <div class="section-card mb-4">
+                        <div class="section-head">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="section-head-icon"><i class="bi bi-eye"></i></div>
+                                <div>
+                                    <h5 class="fw-bold mb-1">Schedule Preview</h5>
+                                    <p class="text-muted small mb-0">See the school day before applying it.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body p-3 p-lg-4">
+                            {% for day, rows in preview_by_day.items %}
+                            <div class="mb-4">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="badge rounded-pill" style="background:rgba(44,122,109,.10);color:var(--eduai-signal,#2C7A6D);">{{ day }}</span>
+                                    <span class="text-muted small">School day</span>
+                                </div>
+                                <div class="d-flex flex-column gap-1">
+                                    {% for row in rows %}
+                                    {% if row.type == 'block' %}
+                                    <div class="preview-row preview-block d-flex justify-content-between align-items-center gap-2">
+                                        <div class="d-flex align-items-center gap-2 min-w-0">
+                                            <i class="bi bi-calendar-event" style="color:var(--eduai-gold,#946B1C);"></i>
+                                            <span class="fw-semibold text-truncate">{{ row.block.label }}</span>
+                                        </div>
+                                        <span class="text-muted small text-nowrap">{{ row.start_time|time:'H:i' }}–{{ row.end_time|time:'H:i' }}</span>
+                                    </div>
+                                    {% else %}
+                                    <div class="preview-row d-flex justify-content-between align-items-center">
+                                        <span class="fw-semibold small">P{{ row.period_index }}</span>
+                                        <span class="text-muted small">{{ row.start_time|time:'H:i' }}–{{ row.end_time|time:'H:i' }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="text-center py-4 text-muted small">Configure the schedule to see the preview.</div>
+                            {% endfor %}
+                            <div class="small text-muted pt-3 border-top">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Only <strong>P1, P2, P3…</strong> teaching rows are passed to the offline timetable solver. Schedule blocks reserve the time for school activities.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <div class="section-head-icon"><i class="bi bi-cpu"></i></div>
+                                <div>
+                                    <h6 class="fw-bold mb-1">Offline timetable engine</h6>
+                                    <div class="text-muted small">Built for local school scheduling.</div>
+                                </div>
+                            </div>
+                            <p class="text-muted small mb-3">The timetable optimiser, conflict checking and period allocation run from the school's local database. No external AI service is required to generate the timetable.</p>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <span class="badge rounded-pill bg-success-subtle text-success-emphasis">Local engine</span>
+                                <span class="badge rounded-pill bg-success-subtle text-success-emphasis">No LLM required</span>
+                                <span class="badge rounded-pill bg-success-subtle text-success-emphasis">No Internet required</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
