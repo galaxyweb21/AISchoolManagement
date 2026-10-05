@@ -22,6 +22,7 @@ from .models import *
 from django.core.exceptions import ValidationError
 
 from academics.models import SchoolClass, Subject, TeacherAssignment, ClassSubject, TeacherClassAssignment
+from academics.curriculum_views import _subjects_for_class, ensure_class_subjects, subjects_for_class
 from academics.services.class_teacher_sync import assign_class_teacher
 
 # Import leave services
@@ -1605,6 +1606,61 @@ def teacher_assignment_list(request, class_id=None,):
     )
 
 
+
+# ============================================================
+# TEACHER ASSIGNMENT SUBJECT OPTIONS
+# ============================================================
+
+@login_required
+def teacher_assignment_subject_options(request):
+    """Return only subjects already assigned to the selected class.
+
+    Teacher assignments are deliberately limited to the class's active
+    ClassSubject records. This keeps subject choices consistent with the
+    academic setup and prevents assigning a teacher to a subject that the
+    class does not take.
+    """
+    if request.user.role not in ["SUPER_ADMIN", "SCHOOL_ADMIN", "HOD"]:
+        return JsonResponse({"success": False, "error": "Permission denied."}, status=403)
+
+    school = getattr(request.user, "school", None)
+    if not school:
+        return JsonResponse({"success": False, "error": "No school is associated with this account."}, status=400)
+
+    class_id = (request.GET.get("class_id") or "").strip()
+    if not class_id:
+        return JsonResponse({"success": True, "subjects": []})
+
+    school_class = get_object_or_404(
+        SchoolClass,
+        id=class_id,
+        school=school,
+        is_active=True,
+    )
+
+    ensure_class_subjects(school, school_class)
+    subjects = (
+        Subject.objects
+        .filter(
+            school=school,
+            is_active=True,
+            class_subjects__school_class=school_class,
+            class_subjects__is_active=True,
+        )
+        .distinct()
+        .order_by("name")
+    )
+
+    return JsonResponse({
+        "success": True,
+        "class_id": str(school_class.id),
+        "subjects": [
+            {"id": str(subject.id), "name": subject.name, "code": subject.code}
+            for subject in subjects
+        ],
+    })
+
+
 # ============================================================
 # TEACHER ASSIGNMENT CREATE
 # ============================================================
@@ -1660,31 +1716,25 @@ def teacher_assignment_create(request):
             .order_by("name")
         )
 
-        subjects = (
-            Subject.objects
-            .filter(
-                school=school,
-                is_active=True,
+        # Load only subjects offered by the selected class.
+        selected_class_id = (request.GET.get("class_id") or "").strip()
+        selected_class = None
+        if selected_class_id:
+            selected_class = get_object_or_404(
+                SchoolClass, id=selected_class_id, school=school, is_active=True
             )
-            .order_by("name")
-        )
+            ensure_class_subjects(school, selected_class)
+            subjects = Subject.objects.filter(
+                school=school, is_active=True,
+                class_subjects__school_class=selected_class,
+                class_subjects__is_active=True,
+            ).distinct().order_by("name")
+        else:
+            subjects = Subject.objects.none()
 
         # When this form is opened from a specific class, keep that
         # class locked to the form. The general Teacher Assignments
         # page continues to show the normal class selector.
-        selected_class_id = (
-            request.GET.get("class_id") or ""
-        ).strip()
-        selected_class = None
-
-        if selected_class_id:
-            selected_class = get_object_or_404(
-                SchoolClass,
-                id=selected_class_id,
-                school=school,
-                is_active=True,
-            )
-
         return render(
             request,
             "staff/assignments/teacher_assignment_form_modal.html",
@@ -1772,6 +1822,21 @@ def teacher_assignment_create(request):
             school=school,
             is_active=True,
         )
+
+        class_subject = ClassSubject.objects.filter(
+            school=school, school_class=school_class, subject=subject, is_active=True
+        ).first()
+        if not class_subject:
+            if not _subjects_for_class(school, school_class).filter(id=subject.id).exists():
+                return JsonResponse({
+                    'success': False,
+                    'error': f'{subject.name} belongs to {subject.get_curriculum_level_display()} and cannot be assigned to {school_class.name}.',
+                }, status=400)
+            class_subject = ClassSubject.objects.create(
+                school=school, school_class=school_class, subject=subject,
+                periods_per_week=max(1, int(periods_per_week or 4)),
+                is_core=False, is_active=True,
+            )
 
         # ----------------------------------------------------
         # Duplicate protection
@@ -1936,14 +2001,21 @@ def teacher_assignment_edit(request, assignment_id,):
             .order_by("name")
         )
 
-        subjects = (
-            Subject.objects
-            .filter(
-                school=school,
-                is_active=True,
-            )
-            .order_by("name")
-        )
+        selected_class = assignment.school_class
+        ensure_class_subjects(school, selected_class)
+        subjects = Subject.objects.filter(
+            school=school, is_active=True,
+            class_subjects__school_class=selected_class,
+            class_subjects__is_active=True,
+        ).distinct().order_by("name")
+        if not subjects.filter(id=assignment.subject_id).exists():
+            subjects = (
+                subjects | Subject.objects.filter(
+                    id=assignment.subject_id,
+                    school=school,
+                    is_active=True,
+                )
+            ).distinct().order_by("name")
 
         return render(
             request,
@@ -2039,6 +2111,21 @@ def teacher_assignment_edit(request, assignment_id,):
             school=school,
             is_active=True,
         )
+
+        class_subject = ClassSubject.objects.filter(
+            school=school, school_class=school_class, subject=subject, is_active=True
+        ).first()
+        if not class_subject:
+            if not _subjects_for_class(school, school_class).filter(id=subject.id).exists():
+                return JsonResponse({
+                    'success': False,
+                    'error': f'{subject.name} belongs to {subject.get_curriculum_level_display()} and cannot be assigned to {school_class.name}.',
+                }, status=400)
+            class_subject = ClassSubject.objects.create(
+                school=school, school_class=school_class, subject=subject,
+                periods_per_week=max(1, int(periods_per_week or 4)),
+                is_core=False, is_active=True,
+            )
 
         duplicate = (
             TeacherAssignment.objects
@@ -2185,14 +2272,8 @@ def teacher_assignment_bulk_create(request):
             .order_by("name")
         )
 
-        subjects = (
-            Subject.objects
-            .filter(
-                school=school,
-                is_active=True,
-            )
-            .order_by("name")
-        )
+        # Subjects are loaded after a class is selected.
+        subjects = Subject.objects.none()
 
         return render(
             request,
@@ -2279,7 +2360,15 @@ def teacher_assignment_bulk_create(request):
             school=school,
             is_active=True,
             id__in=subject_ids,
-        )
+            class_subjects__school_class=school_class,
+            class_subjects__is_active=True,
+        ).distinct()
+
+        if subjects.count() != len(set(subject_ids)):
+            return JsonResponse({
+                "success": False,
+                "error": "One or more selected subjects are not assigned to the selected class. Refresh the form and select only class subjects.",
+            }, status=400)
 
         created = 0
         reactivated = 0

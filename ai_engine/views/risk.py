@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.utils import timezone
 import json
 
@@ -33,19 +34,53 @@ def risk_dashboard(request):
     if active_term:
         latest_run = RiskAssessmentRun.objects.filter(school=school, academic_term=active_term).first()
 
-    assessments = []
+    assessments_qs = StudentRiskAssessment.objects.none()
+    status_filter = request.GET.get('band', '').strip()
+    search_query = request.GET.get('search', '').strip()
+
     if latest_run and latest_run.status == 'COMPLETE':
-        assessments = StudentRiskAssessment.objects.filter(run=latest_run).select_related('student__user')
-        band_filter = request.GET.get('band')
-        if band_filter:
-            assessments = assessments.filter(risk_band=band_filter)
+        assessments_qs = (
+            StudentRiskAssessment.objects
+            .filter(run=latest_run)
+            .select_related('student__user', 'student__grade_level')
+            .order_by('risk_score')  # lower score = higher risk typically
+        )
+
+        # Note: if you want highest risk first, replace with
+        # .order_by('-risk_score') depending on your scoring convention.
+
+        if status_filter:
+            assessments_qs = assessments_qs.filter(risk_band=status_filter)
+
+        if search_query:
+            from django.db.models import Q
+            assessments_qs = assessments_qs.filter(
+                Q(student__user__first_name__icontains=search_query) |
+                Q(student__user__last_name__icontains=search_query) |
+                Q(student__admission_number__icontains=search_query)
+            )
+
+    # Pagination — 25 per page, matching the rest of the app
+    paginator = Paginator(assessments_qs, 25)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    # Summary counts for the KPI cards — computed on the whole filtered set
+    total_count = assessments_qs.count()
+    high_risk_count = assessments_qs.filter(risk_band='HIGH').count() if latest_run and latest_run.status == 'COMPLETE' else 0
+    critical_risk_count = assessments_qs.filter(risk_band='CRITICAL').count() if latest_run and latest_run.status == 'COMPLETE' else 0
 
     context = {
         'active_term': active_term,
         'latest_run': latest_run,
-        'assessments': assessments,
-        'selected_band': request.GET.get('band', ''),
+        'assessments': page_obj,
+        'page_obj': page_obj,
+        'selected_band': status_filter,
+        'search': search_query,
         'can_trigger': request.user.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'],
+        'total_count': total_count,
+        'high_risk_count': high_risk_count,
+        'critical_risk_count': critical_risk_count,
     }
     return render(request, 'ai_engine/risk_dashboard.html', context)
 
@@ -90,7 +125,8 @@ def student_risk_detail(request, assessment_id):
         return redirect('dashboard')
 
     assessment = get_object_or_404(
-        StudentRiskAssessment.objects.select_related('student__user', 'run'), id=assessment_id, school=school
+        StudentRiskAssessment.objects.select_related('student__user', 'run'),
+        id=assessment_id, school=school
     )
     history = StudentRiskAssessment.objects.filter(
         school=school, student=assessment.student

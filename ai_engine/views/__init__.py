@@ -29,6 +29,7 @@ from .copilot import (
 )
 
 from .automation import approve_task
+from .translator import language_translator, language_translator_api
 from .absences import (
     absence_list, report_absence, cover_plan_detail,
     regenerate_cover_plan, confirm_substitute, unconfirm_substitute,
@@ -66,6 +67,7 @@ __all__ = [
     'get_conversation_messages',
     'delete_conversation',
     'approve_task',
+    'language_translator', 'language_translator_api',
     'absence_list', 'report_absence', 'cover_plan_detail',
     'regenerate_cover_plan', 'confirm_substitute', 'unconfirm_substitute',
     'save_handover_note',

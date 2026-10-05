@@ -7,6 +7,8 @@ from django.contrib import messages
 from django.utils import timezone
 import json
 
+from core.pagination import paginate_queryset
+
 from staff.models import Teacher, TeacherAbsence
 from ai_engine.models import SubstituteAssignment
 from ai_engine.services.substitute_engine import CoverPlanService, SubstituteMatchService, SubstituteCoverError
@@ -25,7 +27,7 @@ def absence_list(request):
         'substitute_assignments'
     )
     teachers = Teacher.objects.filter(school=school, is_active=True).select_related('user')
-    context = {'absences': absences, 'teachers': teachers}
+    context = {'absences': paginate_queryset(absences, request), 'teachers': teachers}
     return render(request, 'ai_engine/absence_list.html', context)
 
 

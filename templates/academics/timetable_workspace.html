@@ -3,9 +3,38 @@
 {% block page_title %}AI Timetabler{% endblock %}
 
 {% block content %}
+<style>
+/* Timetable workspace — isolated styling so it cannot inherit broken page styles. */
+.timetable-workspace{--tw-gold:#946B1C;--tw-teal:#2C7A6D;--tw-bg:#f7f8f6;--tw-card:#fff;--tw-border:#e5e7eb;--tw-text:#26332f;--tw-muted:#6b7570}
+.timetable-workspace{color:var(--tw-text)}
+.timetable-workspace .tw-hero,.timetable-workspace .tw-card{background:var(--tw-card);border:1px solid var(--tw-border);border-radius:18px;box-shadow:0 6px 24px rgba(35,48,42,.06)}
+.timetable-workspace .tw-hero{padding:1.35rem 1.5rem}
+.timetable-workspace .tw-title{font-size:1.15rem;font-weight:800;margin:0}
+.timetable-workspace .tw-subtitle{font-size:.86rem;color:var(--tw-muted);line-height:1.55;max-width:760px}
+.timetable-workspace .tw-actions{display:flex;gap:.55rem;flex-wrap:wrap;justify-content:flex-end}
+.timetable-workspace .tw-btn{border-radius:10px;font-weight:700;padding:.58rem .9rem}
+.timetable-workspace .tw-btn-outline{background:#fff;border:1px solid var(--tw-border);color:var(--tw-text)}
+.timetable-workspace .tw-btn-outline:hover{border-color:var(--tw-gold);color:var(--tw-gold);background:#fffaf0}
+.timetable-workspace .tw-btn-primary{background:var(--tw-gold);border:1px solid var(--tw-gold);color:#fff}
+.timetable-workspace .tw-section{padding:1.2rem 1.25rem}
+.timetable-workspace .tw-stat{height:100%;padding:1rem;border:1px solid var(--tw-border);border-radius:14px;background:var(--tw-bg)}
+.timetable-workspace .tw-stat-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--tw-muted);font-weight:700}
+.timetable-workspace .tw-stat-value{font-size:1.35rem;font-weight:800;margin-top:.2rem}
+.timetable-workspace .tw-table-wrap{border:1px solid var(--tw-border);border-radius:14px;overflow:auto}
+.timetable-workspace table{margin:0;background:#fff}
+.timetable-workspace thead th{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--tw-muted);background:#f8faf9;white-space:nowrap}
+.timetable-workspace tbody td{font-size:.82rem;vertical-align:middle}
+.timetable-workspace .tw-badge{display:inline-flex;align-items:center;border-radius:999px;padding:.38rem .65rem;font-size:.72rem;font-weight:800}
+.timetable-workspace .tw-ready{background:rgba(44,122,109,.1);color:var(--tw-teal)}
+.timetable-workspace .tw-danger{background:rgba(220,38,38,.1);color:#b42318}
+.timetable-workspace .tw-muted{color:var(--tw-muted)}
+.timetable-workspace .tw-alert{border-radius:14px;border:1px solid rgba(220,38,38,.16);background:#fff8f7}
+.timetable-workspace .tw-history-row:hover{background:#fafbf9}
+@media(max-width:900px){.timetable-workspace .tw-hero{padding:1rem}.timetable-workspace .tw-actions{justify-content:flex-start}.timetable-workspace .tw-btn{width:100%}}
+@media(prefers-color-scheme:dark){.timetable-workspace .tw-hero,.timetable-workspace .tw-card,.timetable-workspace table{background:#18201d}.timetable-workspace .tw-stat,.timetable-workspace thead th{background:#202925}.timetable-workspace .tw-table-wrap{border-color:#33413b}.timetable-workspace .tw-btn-outline{background:#18201d;color:#e7eee9;border-color:#394840}}
+</style>
 
-
-<div class="container-fluid px-4" id="messagesContainer">
+<div class="timetable-workspace"><div class="container-fluid px-4" id="messagesContainer">
     {% if messages %}
         {% for message in messages %}
         <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
@@ -28,7 +57,7 @@
 <div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 p-4">
         <div>
-            <h5 class="fw-bold mb-1"><i class="bi bi-stars text-primary me-2" style="color: var(--primary-color, #946B1C) !important;"></i>AI Auto-Timetabler</h5>
+            <h5 class="fw-bold mb-1"><i class="bi bi-stars text-primary me-2" style="color: var(--primary-color, #946B1C) !important;"></i>AI Timetabler</h5>
             <p class="text-muted mb-0">
                 Generates a conflict-free weekly timetable using a genetic algorithm that checks
                 every teacher, room and class for double-bookings, lab requirements and capacity limits.
@@ -39,23 +68,31 @@
                 <small class="text-danger">No active academic term configured yet.</small>
             {% endif %}
         </div>
-        {% if can_generate %}
         <div class="d-flex flex-wrap gap-2">
-        <a href="{% url 'academics:timetable_configuration' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-sliders2 me-1"></i> Schedule Configuration
+        {% if can_manage_allocations %}
+        <a href="{% url 'academics:timetable_setup' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-sliders2-vertical me-1"></i> Timetable Setup
         </a>
+        {% endif %}
+        {% if can_generate %}
         <form method="post" action="{% url 'academics:generate_timetable' %}">
             {% csrf_token %}
-            <button type="submit" class="btn" style="background: var(--primary-color, #946B1C); color: #fff; border-color: var(--primary-color, #946B1C);">
-                <i class="bi bi-magic me-1"></i> Generate New Timetable
-            </button>
+            {% if readiness.ready %}
+                <button type="submit" class="btn" style="background: var(--primary-color, #946B1C); color: #fff; border-color: var(--primary-color, #946B1C);">
+                    <i class="bi bi-magic me-1"></i> Generate Timetable
+                </button>
+            {% else %}
+                <button type="button" class="btn" disabled title="Fix the Readiness Check items before generating.">
+                    <i class="bi bi-lock-fill me-1"></i> Generation Locked
+                </button>
+            {% endif %}
         </form>
-        </div>
         {% endif %}
+        </div>
     </div>
 </div>
 
-<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4" id="readiness">
     <div class="p-4">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
             <div>
@@ -75,6 +112,119 @@
             <div class="col-6 col-md-3"><div class="p-3 rounded-3" style="background:var(--app-bg,#F7F4EC);"><small class="text-muted d-block">Active Periods</small><strong>{{ readiness.stats.timeslots }}</strong></div></div>
             <div class="col-6 col-md-3"><div class="p-3 rounded-3" style="background:var(--app-bg,#F7F4EC);"><small class="text-muted d-block">Rooms</small><strong>{{ readiness.stats.rooms }}</strong></div></div>
         </div>
+
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            {% if readiness.stats.missing_teachers %}<span class="badge rounded-pill bg-danger-subtle text-danger px-3 py-2"><i class="bi bi-person-x me-1"></i>{{ readiness.stats.missing_teachers }} missing teacher{{ readiness.stats.missing_teachers|pluralize }}</span>{% endif %}
+            {% if readiness.stats.duplicate_assignments %}<span class="badge rounded-pill bg-danger-subtle text-danger px-3 py-2"><i class="bi bi-copy me-1"></i>{{ readiness.stats.duplicate_assignments }} duplicate assignment{{ readiness.stats.duplicate_assignments|pluralize }}</span>{% endif %}
+            {% if readiness.stats.teacher_capacity_over %}<span class="badge rounded-pill bg-danger-subtle text-danger px-3 py-2"><i class="bi bi-person-exclamation me-1"></i>{{ readiness.stats.teacher_capacity_over }} teacher capacity issue{{ readiness.stats.teacher_capacity_over|pluralize }}</span>{% endif %}
+            {% if readiness.stats.classes_without_subjects %}<span class="badge rounded-pill bg-danger-subtle text-danger px-3 py-2"><i class="bi bi-journal-x me-1"></i>{{ readiness.stats.classes_without_subjects }} class{{ readiness.stats.classes_without_subjects|pluralize }} without subjects</span>{% endif %}
+            {% if readiness.stats.issue_count == 0 %}<span class="badge rounded-pill bg-success-subtle text-success px-3 py-2"><i class="bi bi-check-circle me-1"></i>No blocking issues</span>{% endif %}
+        </div>
+
+        {% if readiness.class_details or readiness.teacher_details %}
+            <div class="row g-3 mb-4">
+                <div class="col-lg-6">
+                    <div class="border rounded-4 p-3 h-100" style="border-color:var(--surface-border,#e5e7eb)!important;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div><div class="fw-bold">Class Weekly Capacity</div><small class="text-muted">Required teaching periods compared with the active weekly timetable.</small></div>
+                            {% if readiness.stats.missing_teachers %}<span class="badge rounded-pill bg-danger-subtle text-danger">{{ readiness.stats.missing_teachers }} missing</span>{% endif %}
+                        </div>
+                        <div class="table-responsive" style="max-height:280px;overflow:auto;">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead><tr><th>Class</th><th class="text-end">Required</th><th class="text-end">Available</th><th class="text-end">Status</th></tr></thead>
+                                <tbody>
+                                {% for item in readiness.class_details %}
+                                    <tr><td class="fw-semibold">{{ item.name }}</td><td class="text-end">{{ item.required }}</td><td class="text-end">{{ item.available }}</td><td class="text-end">{% if item.missing %}<span class="badge rounded-pill bg-danger-subtle text-danger">{{ item.missing }} missing</span>{% elif item.required > item.available %}<span class="badge rounded-pill bg-warning-subtle text-warning-emphasis">+{{ item.overage }} over</span>{% else %}<span class="badge rounded-pill bg-success-subtle text-success">Ready</span>{% endif %}</td></tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="border rounded-4 p-3 h-100" style="border-color:var(--surface-border,#e5e7eb)!important;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div><div class="fw-bold">Teacher Distribution</div><small class="text-muted">Physical capacity uses the active periods in the school week.</small></div>
+                            <span class="badge rounded-pill bg-light text-dark">{{ readiness.stats.active_teachers }} teachers</span>
+                        </div>
+                        <div class="table-responsive" style="max-height:280px;overflow:auto;">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead><tr><th>Teacher</th><th class="text-end">Assigned</th><th class="text-end">Capacity</th><th class="text-end">Status</th></tr></thead>
+                                <tbody>
+                                {% for item in readiness.teacher_details %}
+                                    <tr><td class="fw-semibold">{{ item.name }}</td><td class="text-end">{{ item.assigned }}</td><td class="text-end">{{ item.capacity }}</td><td class="text-end">{% if item.hard_over %}<span class="badge rounded-pill bg-danger-subtle text-danger">Over by {{ item.overage }}</span>{% elif item.reference_over %}<span class="badge rounded-pill bg-warning-subtle text-warning-emphasis">Above reference</span>{% else %}<span class="badge rounded-pill bg-success-subtle text-success">Within capacity</span>{% endif %}</td></tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if readiness.teacher_details %}
+            <div class="border rounded-4 p-3 mb-4" style="border-color:var(--surface-border,#e5e7eb)!important;">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <div class="fw-bold"><i class="bi bi-list-check me-2"></i>Teacher Allocation Audit</div>
+                        <small class="text-muted">Each class/subject is counted once using the effective teacher used by readiness: Subject Teacher first, then Class Teacher fallback.</small>
+                    </div>
+                    <span class="small text-muted">Expand a teacher to inspect the allocation.</span>
+                </div>
+                <div class="accordion mt-3" id="teacherAllocationAudit">
+                    {% for teacher in readiness.teacher_details %}
+                    <div class="accordion-item border rounded-3 mb-2 overflow-hidden">
+                        <h2 class="accordion-header" id="auditHeading{{ forloop.counter }}">
+                            <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse" data-bs-target="#auditCollapse{{ forloop.counter }}" aria-expanded="false" aria-controls="auditCollapse{{ forloop.counter }}">
+                                <div class="d-flex align-items-center justify-content-between w-100 pe-3 gap-3">
+                                    <span class="fw-semibold">{{ teacher.name }}</span>
+                                    <span class="small">{{ teacher.assigned }} / {{ teacher.capacity }} periods{% if teacher.hard_over %} · <span class="text-danger fw-semibold">over by {{ teacher.overage }}</span>{% elif teacher.reference_over %} · <span class="text-warning-emphasis">above workload reference</span>{% endif %}</span>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="auditCollapse{{ forloop.counter }}" class="accordion-collapse collapse" aria-labelledby="auditHeading{{ forloop.counter }}" data-bs-parent="#teacherAllocationAudit">
+                            <div class="accordion-body p-0">
+                                {% if teacher.audit %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead><tr><th class="ps-3">Class</th><th>Subject</th><th>Source</th><th class="text-end pe-3">Periods</th></tr></thead>
+                                        <tbody>
+                                        {% for row in teacher.audit %}
+                                            <tr><td class="ps-3">{{ row.class_name }}</td><td>{{ row.subject_name }}</td><td><span class="badge rounded-pill bg-light text-dark">{{ row.source }}</span></td><td class="text-end pe-3 fw-semibold">{{ row.periods }}</td></tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                    <div class="p-3 text-muted small">No current timetable teaching allocation.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if readiness.duplicate_assignments %}
+            <div class="alert alert-warning border-0 rounded-3 mb-3">
+                <div class="fw-semibold mb-2"><i class="bi bi-copy me-2"></i>Multiple active teacher assignments detected</div>
+                <div class="small mb-2">These class/subject combinations have more than one active subject-teacher assignment. Resolve them before generation so the timetable has one unambiguous teacher per class/subject.</div>
+                <ul class="small mb-0 ps-4">
+                {% for item in readiness.duplicate_assignments %}
+                    <li>{{ item.class_name }} — {{ item.subject_name }}: {{ item.teachers|join:", " }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if readiness.configuration and not readiness.configuration.matches %}
+            <div class="alert alert-warning border-0 rounded-3 mb-3">
+                <div class="fw-semibold mb-1"><i class="bi bi-sliders2 me-2"></i>{{ readiness.configuration.title }}</div>
+                <div class="small">{{ readiness.configuration.message }} Generation uses the active TimeSlots.</div>
+                <a href="{% url 'academics:timetable_configuration' %}" class="btn btn-sm btn-outline-warning mt-2">Review Schedule Configuration</a>
+            </div>
+        {% endif %}
 
         {% if readiness.issues %}
             <div class="alert alert-danger border-0 rounded-3 mb-3">

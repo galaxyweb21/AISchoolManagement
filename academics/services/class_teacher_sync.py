@@ -31,6 +31,10 @@ def sync_class_teacher_assignments(school_class):
     if not school_class.uses_single_class_teacher or not school_class.homeroom_teacher_id:
         return []
 
+    teacher = school_class.homeroom_teacher
+    if not teacher.is_active or not getattr(teacher.user, 'is_active', True):
+        return []
+
     created = []
     for class_subject in ClassSubject.objects.filter(school_class=school_class, is_active=True):
         assignment, was_created = TeacherAssignment.objects.get_or_create(

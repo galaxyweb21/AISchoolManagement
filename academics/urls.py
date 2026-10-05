@@ -1,13 +1,19 @@
 # academics/urls.py
 from django.urls import path
 from . import views
+from .timetable_setup_views import timetable_setup_assistant, timetable_setup
+from .timetable_capacity_views import timetable_capacity_manager
+from .curriculum_views import apply_curriculum_subjects, curriculum_subject_options, sync_subjects_to_classes
 
 app_name = 'academics'
 
 urlpatterns = [
     # Timetabler
     path('timetable/', views.timetable_workspace, name='timetable_workspace'),
+    path('timetable/setup/', timetable_setup, name='timetable_setup'),
     path('timetable/configuration/', views.timetable_configuration, name='timetable_configuration'),
+    path('timetable/setup-assistant/', timetable_setup_assistant, name='timetable_setup_assistant'),
+    path('timetable/capacity-manager/', timetable_capacity_manager, name='timetable_capacity_manager'),
     path('timetable/generate/', views.generate_timetable, name='generate_timetable'),
     path('timetable/<uuid:timetable_id>/', views.timetable_detail, name='timetable_detail'),
     path('timetable/<uuid:timetable_id>/export/pdf/', views.timetable_export_pdf, name='timetable_export_pdf'),
@@ -17,6 +23,9 @@ urlpatterns = [
 
     # Subjects
     path('subjects/', views.subject_list, name='subject_list'),
+    path('subjects/curriculum/options/', curriculum_subject_options, name='curriculum_subject_options'),
+    path('subjects/curriculum/apply-to-classes/', apply_curriculum_subjects, name='apply_curriculum_subjects'),
+    path('subjects/curriculum/sync/', sync_subjects_to_classes, name='sync_subjects_to_classes'),
     path('subjects/create/', views.subject_create, name='subject_create'),
     path('subjects/<uuid:subject_id>/edit/', views.subject_edit, name='subject_edit'),
     path('subjects/<uuid:subject_id>/delete/', views.subject_delete, name='subject_delete'),

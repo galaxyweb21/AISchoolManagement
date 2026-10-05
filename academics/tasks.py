@@ -3,7 +3,7 @@ from celery import shared_task
 
 
 @shared_task
-def generate_timetable_task(timetable_id, population_size=80, generations=300, mutation_rate=0.15):
+def generate_timetable_task(timetable_id, population_size=40, generations=120, mutation_rate=0.10):
     """
     Runs the AI timetabler in the background so an admin generating a
     timetable for a large school doesn't sit on a spinning HTTP request.

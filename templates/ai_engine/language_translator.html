@@ -1,0 +1,34 @@
+{% extends 'base/base.html' %}
+{% block page_title %}Language Translator{% endblock %}
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1"><i class="bi bi-translate text-gold fs-4"></i><h4 class="fw-bold mb-0">Language Translator</h4></div>
+      <p class="text-muted mb-0">Translate school messages and notices into Ghanaian and international languages.</p>
+    </div>
+    <span class="badge rounded-pill bg-teal-soft text-teal px-3 py-2">Twi · Ga · Ewe · Yoruba · French · Arabic</span>
+  </div>
+  <div class="card border-0 shadow-sm rounded-4"><div class="card-body p-4">
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <label class="form-label fw-semibold">Source language</label>
+        <select id="sourceLanguage" class="form-select mb-3">{% for key,label in languages.items %}<option value="{{ key }}" {% if key == 'English' %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+        <label class="form-label fw-semibold">Text to translate</label>
+        <textarea id="sourceText" class="form-control" rows="10" maxlength="4000" placeholder="Type or paste a school notice, message, instruction, or announcement..."></textarea>
+        <div class="d-flex justify-content-between align-items-center mt-2"><small class="text-muted">Up to 4,000 characters</small><button id="translateBtn" class="btn btn-gold px-4"><i class="bi bi-translate me-1"></i>Translate</button></div>
+      </div>
+      <div class="col-lg-6">
+        <label class="form-label fw-semibold">Translate to</label>
+        <select id="targetLanguage" class="form-select mb-3">{% for key,label in languages.items %}<option value="{{ key }}" {% if key == 'Twi' %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+        <label class="form-label fw-semibold">Translation</label>
+        <div id="translationOutput" class="form-control bg-light" style="min-height:250px;white-space:pre-wrap;overflow:auto;">Your translation will appear here.</div>
+        <div class="d-flex justify-content-between align-items-center mt-2"><small id="translatorStatus" class="text-muted"></small><button id="copyTranslation" class="btn btn-outline-secondary" type="button" disabled><i class="bi bi-copy me-1"></i>Copy</button></div>
+      </div>
+    </div>
+    <div class="alert bg-gold-soft border-0 rounded-3 mt-4 mb-0"><div class="d-flex gap-2"><i class="bi bi-info-circle text-gold"></i><div class="small">Designed for school communication. Review important official notices before publishing, especially where exact local-language wording matters. Ga translation uses a stronger language-specific prompt and model, but human review is still recommended for formal notices.</div></div></div>
+  </div></div>
+</div>
+<style>.text-gold{color:var(--eduai-gold,#946B1C)!important}.text-teal{color:var(--eduai-signal,#2C7A6D)!important}.bg-gold-soft{background:var(--eduai-gold-soft,rgba(148,107,28,.12))!important}.bg-teal-soft{background:var(--eduai-signal-soft,rgba(44,122,109,.12))!important}.btn-gold{background:var(--eduai-gold,#946B1C);border-color:var(--eduai-gold,#946B1C);color:#fff}.btn-gold:hover{background:#7a5917;border-color:#7a5917;color:#fff}</style>
+<script>(function(){const b=document.getElementById('translateBtn'),s=document.getElementById('sourceLanguage'),t=document.getElementById('targetLanguage'),x=document.getElementById('sourceText'),o=document.getElementById('translationOutput'),m=document.getElementById('translatorStatus'),c=document.getElementById('copyTranslation');b.addEventListener('click',async()=>{const v=x.value.trim();if(!v){m.textContent='Enter text to translate.';x.focus();return}b.disabled=true;m.textContent='Translating…';o.textContent='';c.disabled=true;try{const body=new URLSearchParams({text:v,source:s.value,target:t.value});const r=await fetch('{% url "ai_engine:language_translator_api" %}',{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}','Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body});const d=await r.json();if(!r.ok||!d.success)throw new Error(d.error||'Translation failed.');o.textContent=d.translation||'';m.textContent='Translation complete.';c.disabled=false}catch(e){m.textContent=e.message||'Translation failed.'}finally{b.disabled=false}});c.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(o.textContent);m.textContent='Copied to clipboard.'}catch(e){m.textContent='Unable to copy automatically.'}})})();</script>
+{% endblock %}

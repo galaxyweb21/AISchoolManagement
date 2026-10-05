@@ -33,17 +33,8 @@
 
     <div class="mb-3">
         <label class="form-label fw-semibold">Subjects to Assign <span class="text-danger">*</span></label>
-        <div class="border rounded-3 p-3 bg-light" style="max-height: 200px; overflow-y: auto;" id="subjectContainer">
-            {% for subject in subjects %}
-                <div class="form-check">
-                    <input class="form-check-input subject-checkbox" type="checkbox" name="subjects" value="{{ subject.id }}" id="subject_{{ subject.id }}">
-                    <label class="form-check-label" for="subject_{{ subject.id }}">
-                        {{ subject.name }} ({{ subject.code }})
-                    </label>
-                </div>
-            {% empty %}
-                <p class="text-muted mb-0">No subjects available.</p>
-            {% endfor %}
+        <div class="border rounded-3 p-3 bg-light" style="max-height: 220px; overflow-y: auto;" id="subjectContainer">
+            <p class="text-muted mb-0">Select a class first. Only that class's subjects will appear.</p>
         </div>
         <div class="mt-2">
             <button type="button" class="btn btn-sm btn-outline-secondary select-all-btn">
@@ -65,100 +56,77 @@
 </form>
 
 <script>
-(function() {
-    'use strict';
+(function () {
+    const form = document.getElementById('bulkAssignmentForm');
+    if (!form) return;
 
-    // Function to initialize the bulk assignment form functionality
-    function initBulkAssignment() {
-        const form = document.getElementById('bulkAssignmentForm');
-        if (!form) return;
+    const classSelect = document.getElementById('bulkClassSelect');
+    const subjectContainer = document.getElementById('subjectContainer');
+    const endpoint = "{% url 'staff:teacher_assignment_subject_options' %}";
 
-        // Find buttons within this form
-        const selectAllBtn = form.querySelector('.select-all-btn');
-        const deselectAllBtn = form.querySelector('.deselect-all-btn');
-
-        // Function to get checkboxes within this form
-        function getCheckboxes() {
-            return form.querySelectorAll('.subject-checkbox');
-        }
-
-        // Select All
-        if (selectAllBtn) {
-            // Remove any existing event listeners by cloning
-            const newSelectAllBtn = selectAllBtn.cloneNode(true);
-            selectAllBtn.parentNode.replaceChild(newSelectAllBtn, selectAllBtn);
-
-            newSelectAllBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                const checkboxes = getCheckboxes();
-                checkboxes.forEach(function(cb) {
-                    cb.checked = true;
-                });
-                // Trigger change event to update any dependent UI
-                checkboxes.forEach(function(cb) {
-                    cb.dispatchEvent(new Event('change', { bubbles: true }));
-                });
-            });
-        }
-
-        // Deselect All
-        if (deselectAllBtn) {
-            // Remove any existing event listeners by cloning
-            const newDeselectAllBtn = deselectAllBtn.cloneNode(true);
-            deselectAllBtn.parentNode.replaceChild(newDeselectAllBtn, deselectAllBtn);
-
-            newDeselectAllBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                const checkboxes = getCheckboxes();
-                checkboxes.forEach(function(cb) {
-                    cb.checked = false;
-                });
-                // Trigger change event to update any dependent UI
-                checkboxes.forEach(function(cb) {
-                    cb.dispatchEvent(new Event('change', { bubbles: true }));
-                });
-            });
-        }
-    }
-
-    // Initialize immediately if the form is already in the DOM
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initBulkAssignment);
-    } else {
-        initBulkAssignment();
-    }
-
-    // Also initialize when modal is shown (for dynamic content)
-    const bulkModal = document.getElementById('bulkAssignmentModal');
-    if (bulkModal) {
-        bulkModal.addEventListener('shown.bs.modal', function() {
-            // Re-initialize when modal is shown
-            setTimeout(initBulkAssignment, 100);
+    function esc(value) {
+        return String(value).replace(/[&<>"']/g, function (c) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
         });
     }
 
-    // Watch for DOM changes in the modal content
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.type === 'childList') {
-                // Check if our form was added
-                const form = document.getElementById('bulkAssignmentForm');
-                if (form) {
-                    initBulkAssignment();
-                    // Disconnect observer once form is found
-                    observer.disconnect();
-                }
-            }
-        });
-    });
+    function renderSubjects(subjects) {
+        if (!subjects.length) {
+            subjectContainer.innerHTML = '<p class="text-muted mb-0">No subjects have been assigned to this class yet. Add them from Academics → Subjects → Apply to Classes.</p>';
+            return;
+        }
 
-    // Start observing if we have a target
-    const modalContent = document.getElementById('bulkAssignmentModalContent');
-    if (modalContent) {
-        observer.observe(modalContent, { childList: true, subtree: true });
+        subjectContainer.innerHTML = subjects.map(function (subject) {
+            const id = 'bulk_subject_' + subject.id;
+            return '<div class="form-check mb-2">' +
+                '<input class="form-check-input subject-checkbox" type="checkbox" name="subjects" value="' + esc(subject.id) + '" id="' + esc(id) + '">' +
+                '<label class="form-check-label" for="' + esc(id) + '">' +
+                esc(subject.name) + (subject.code ? ' (' + esc(subject.code) + ')' : '') +
+                '</label></div>';
+        }).join('');
     }
 
+    async function loadSubjects() {
+        const classId = classSelect.value;
+        if (!classId) {
+            renderSubjects([]);
+            return;
+        }
+
+        subjectContainer.innerHTML = '<div class="text-muted small"><span class="spinner-border spinner-border-sm me-2"></span>Loading class subjects...</div>';
+
+        try {
+            const response = await fetch(endpoint + '?class_id=' + encodeURIComponent(classId), {
+                credentials: 'same-origin',
+                headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'Unable to load class subjects.');
+            renderSubjects(data.subjects || []);
+        } catch (error) {
+            subjectContainer.innerHTML = '<div class="alert alert-danger py-2 mb-0">' + esc(error.message) + '</div>';
+        }
+    }
+
+    classSelect.addEventListener('change', loadSubjects);
+
+    const selectAllBtn = form.querySelector('.select-all-btn');
+    const deselectAllBtn = form.querySelector('.deselect-all-btn');
+
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function () {
+            form.querySelectorAll('.subject-checkbox').forEach(function (cb) {
+                cb.checked = true;
+            });
+        });
+    }
+
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener('click', function () {
+            form.querySelectorAll('.subject-checkbox').forEach(function (cb) {
+                cb.checked = false;
+            });
+        });
+    }
 })();
 </script>

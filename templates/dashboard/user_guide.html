@@ -32,8 +32,8 @@
     {% include 'dashboard/guide_step.html' with n='1' icon='bi-building' title='Set up the school' text='Configure the school, academic year and terms before daily operations.' url='school:school_dashboard' label='School Settings' %}
     {% include 'dashboard/guide_step.html' with n='2' icon='bi-people' title='Add students and staff' text='Create student records, staff profiles, classes and departments.' url='students:student_list' label='Students' %}
     {% include 'dashboard/guide_step.html' with n='3' icon='bi-journal' title='Configure academics' text='Create subjects, classes, teacher assignments, rooms and timetable.' url='academics:subject_list' label='Academic Setup' %}
-    {% include 'dashboard/guide_step.html' with n='4' icon='bi-cash-coin' title='Prepare fees' text='Configure fee categories and structures, then prepare class fees.' url='finance:fee_preparation' label='Fee Preparation' %}
-    {% include 'dashboard/guide_step.html' with n='5' icon='bi-receipt' title='Manage billing' text='Review invoices, student fees, payments and outstanding balances.' url='finance:billing_dashboard' label='Billing Dashboard' %}
+    {% include 'dashboard/guide_step.html' with n='4' icon='bi-cash-coin' title='Manage fees' text='Prepare, review and approve class and student fees before billing.' url='finance:fee_preparation' label='Fee Management' %}
+    {% include 'dashboard/guide_step.html' with n='5' icon='bi-receipt' title='Manage billing' text='Review invoices, collections, payments and outstanding balances.' url='finance:billing_dashboard' label='Finance Dashboard' %}
     {% include 'dashboard/guide_step.html' with n='6' icon='bi-calendar-check' title='Run attendance' text='Teachers record attendance and the system generates relevant notifications.' url='attendance:attendance_tracker' label='Attendance' %}
     {% include 'dashboard/guide_step.html' with n='7' icon='bi-pencil-square' title='Enter results' text='Enter grades and terminal results, then review report-card data.' url='assessments:grading_portal' label='Grade Entry' %}
     {% include 'dashboard/guide_step.html' with n='8' icon='bi-file-earmark-text' title='Generate report cards' text='Generate, review, finalize and release report cards for students.' url='ai_engine:report_card_dashboard' label='Report Cards' %}
@@ -42,8 +42,8 @@
   </div>
   {% elif user_role == 'BURSAR' %}
   <div class="row g-3">
-    {% include 'dashboard/guide_step.html' with n='1' icon='bi-wallet2' title='Review billing' text='Start from the finance dashboard to see invoices, collections and receivables.' url='finance:billing_dashboard' label='Billing Dashboard' %}
-    {% include 'dashboard/guide_step.html' with n='2' icon='bi-clipboard-check' title='Prepare student fees' text='Prepare or review class fees before invoices are generated.' url='finance:fee_preparation' label='Fee Preparation' %}
+    {% include 'dashboard/guide_step.html' with n='1' icon='bi-wallet2' title='Review billing' text='Start from the finance dashboard to see invoices, collections and receivables.' url='finance:billing_dashboard' label='Finance Dashboard' %}
+    {% include 'dashboard/guide_step.html' with n='2' icon='bi-clipboard-check' title='Manage student fees' text='Prepare or review class fees before invoices are generated.' url='finance:fee_preparation' label='Fee Management' %}
     {% include 'dashboard/guide_step.html' with n='3' icon='bi-file-earmark-text' title='Review student fees' text='Check prepared fees, status, final amounts and outstanding balances.' url='finance:student_fees_list' label='Student Fees' %}
     {% include 'dashboard/guide_step.html' with n='4' icon='bi-receipt' title='Manage invoices' text='Generate and review invoices, statements and payment history.' url='finance:invoice_list' label='Invoices' %}
     {% include 'dashboard/guide_step.html' with n='5' icon='bi-person-exclamation' title='Follow up owing students' text='Use the consolidated outstanding-balance report for collection follow-up.' url='finance:students_owing_report' label='Students Owing' %}

@@ -153,10 +153,18 @@
                     <small class="text-muted">{{ subjects|length }} subject(s) configured</small>
                 </div>
                 {% if can_manage %}
-                <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#academicsModal"
-                        data-action="create" data-url="{% url 'academics:subject_create' %}">
-                    <i class="bi bi-plus-lg me-1"></i>Add Subject
-                </button>
+                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                    <button type="button" class="btn btn-outline-gold" data-bs-toggle="modal" data-bs-target="#ghanaCurriculumModal">
+                        <i class="bi bi-stars me-1"></i>Ghana Curriculum
+                    </button>
+                    <button type="button" class="btn btn-outline-teal" data-bs-toggle="modal" data-bs-target="#applySubjectsModal" id="openApplySubjects">
+                        <i class="bi bi-diagram-3 me-1"></i>Apply to Classes
+                    </button>
+                    <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#academicsModal"
+                            data-action="create" data-url="{% url 'academics:subject_create' %}">
+                        <i class="bi bi-plus-lg me-1"></i>Add Subject
+                    </button>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -191,6 +199,7 @@
                         <tr>
                             <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Name</th>
                             <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Code</th>
+                            <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Curriculum Level</th>
                             <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Lab Required</th>
                             <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Actions</th>
                         </tr>
@@ -201,6 +210,9 @@
                             <td class="fw-semibold py-3 ps-0 subject-name">{{ s.name }}</td>
                             <td class="py-3">
                                 <code class="text-muted small bg-light px-2 py-1 rounded-2 border subject-code">{{ s.code|default:"—" }}</code>
+                            </td>
+                            <td class="py-3">
+                                <span class="badge bg-gold-soft text-gold rounded-pill px-3 py-2 subject-level">{{ s.get_curriculum_level_display }}</span>
                             </td>
                             <td class="text-center py-3">
                                 {% if s.requires_lab %}
@@ -228,7 +240,7 @@
                         </tr>
                         {% empty %}
                         <tr id="emptyStateRow">
-                            <td colspan="4" class="text-center text-muted py-5">
+                            <td colspan="5" class="text-center text-muted py-5">
                                 <i class="bi bi-book fs-2 d-block mb-2 text-secondary"></i>
                                 No subjects created yet.
                             </td>
@@ -557,4 +569,473 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 {% include "partials/pagination.html" with page_obj=subjects %}
 
+
+
+<!-- ============================================================
+     GHANA CURRICULUM SUBJECT LIBRARY
+     Uses the existing subject_create endpoint; no migration required.
+     Catalogue is an offline starting point based on NaCCA curriculum resources.
+     ============================================================ -->
+{% if can_manage %}
+<div class="modal fade" id="ghanaCurriculumModal" tabindex="-1" aria-labelledby="ghanaCurriculumModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header border-0 px-4 pt-4 pb-3">
+        <div>
+          <div class="small text-uppercase fw-bold text-gold mb-1">Academics · Ghana Curriculum</div>
+          <h5 class="modal-title fw-bold" id="ghanaCurriculumModalLabel">Build your school subject list</h5>
+          <p class="text-muted mb-0 small">Choose a curriculum level, select the subjects your school actually teaches, then save them to this school.</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body px-4 pb-4">
+        <div class="alert border-0 rounded-4 bg-gold-soft mb-4">
+          <div class="d-flex gap-3 align-items-start">
+            <i class="bi bi-info-circle-fill text-gold fs-5"></i>
+            <div class="small">
+              <strong>Offline curriculum starter library.</strong> The catalogue is based on official NaCCA curriculum resources.
+              It is a starting list — your school decides which subjects it actually offers.
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-lg-4">
+            <label class="form-label small text-uppercase fw-bold text-muted">Curriculum level</label>
+            <select id="ghanaCurriculumLevel" class="form-select form-select-lg rounded-3">
+              <option value="PRIMARY">Primary</option>
+              <option value="JHS">JHS / Common Core</option>
+              <option value="SHS">SHS</option>
+              <option value="KG">KG learning areas</option>
+            </select>
+          </div>
+          <div class="col-lg-8 d-flex align-items-end">
+            <div class="d-flex flex-wrap gap-2 w-100">
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="ghanaSelectAll">Select all</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="ghanaClearAll">Clear</button>
+              <span class="ms-auto align-self-center small text-muted" id="ghanaSelectionCount">0 selected</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="ghanaSubjectGrid" class="row g-3"></div>
+
+        <div class="mt-4 p-3 rounded-4 bg-teal-soft d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <div class="small">
+            <strong id="ghanaSaveSummary">No subjects selected.</strong>
+            <div class="text-muted">Existing subjects are skipped automatically.</div>
+          </div>
+          <button type="button" class="btn btn-gold px-4" id="saveGhanaSubjects">
+            <i class="bi bi-check2-circle me-1"></i>Save Selected Subjects
+          </button>
+        </div>
+        <div id="ghanaSaveStatus" class="mt-3"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  #ghanaSubjectGrid .ghana-subject-card {
+    height: 100%;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 14px;
+    background: var(--bs-body-bg);
+    transition: .16s ease;
+  }
+  #ghanaSubjectGrid .ghana-subject-card:hover {
+    border-color: var(--eduai-gold, #946B1C);
+    transform: translateY(-1px);
+  }
+  #ghanaSubjectGrid .ghana-subject-card:has(input:checked) {
+    border-color: var(--eduai-signal, #2C7A6D);
+    box-shadow: 0 0 0 2px rgba(44,122,109,.10);
+  }
+  #ghanaSubjectGrid .ghana-subject-card label {
+    cursor: pointer;
+    padding: .85rem 1rem;
+    width: 100%;
+  }
+  #ghanaSubjectGrid .ghana-subject-name { font-weight: 600; font-size: .92rem; }
+  #ghanaSubjectGrid .ghana-subject-note { font-size: .72rem; color: var(--bs-secondary-color); }
+</style>
+
+<script>
+(function () {
+  const catalog = {
+    KG: [
+      'Language and Literacy', 'Numeracy', 'Environmental Studies',
+      'Creative Arts', 'Music, Dance and Drama', 'Physical Development', 'Psychomotor Skills'
+    ],
+    PRIMARY: [
+      'English Language', 'Mathematics', 'Science', 'Ghanaian Language',
+      'Creative Arts', 'Religious and Moral Education', 'Physical Education',
+      'History', 'Computing', 'Our World and Our People', 'French'
+    ],
+    JHS: [
+      'English Language', 'Ghanaian Language', 'French', 'Arabic', 'Mathematics',
+      'Science', 'Creative Arts and Design', 'Career Technology', 'Social Studies',
+      'Computing', 'Religious and Moral Education', 'Physical and Health Education'
+    ],
+    SHS: [
+      'English Language', 'Mathematics', 'Science', 'Social Studies',
+      'Physical Education and Health', 'Computing', 'French', 'Arabic',
+      'Religious and Moral Education', 'Biology', 'Chemistry', 'Physics',
+      'Economics', 'Government', 'Geography', 'History', 'Literature in English',
+      'Agricultural Science', 'Agriculture', 'Accounting', 'Business Management',
+      'General Science', 'Additional Mathematics', 'Performing Arts',
+      'Art and Design Foundation', 'Art and Design Studio', 'Engineering',
+      'Applied Technology', 'Manufacturing Engineering', 'Robotics',
+      'Design Communication Technology', 'Spanish'
+    ]
+  };
+
+  const level = document.getElementById('ghanaCurriculumLevel');
+  const grid = document.getElementById('ghanaSubjectGrid');
+  const count = document.getElementById('ghanaSelectionCount');
+  const summary = document.getElementById('ghanaSaveSummary');
+  const status = document.getElementById('ghanaSaveStatus');
+  const saveBtn = document.getElementById('saveGhanaSubjects');
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>'"]/g, function (c) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;', '"':'&quot;'})[c];
+    });
+  }
+
+  function render() {
+    const items = catalog[level.value] || [];
+    grid.innerHTML = items.map(function (name, i) {
+      const id = 'ghana-subject-' + level.value.toLowerCase() + '-' + i;
+      return `<div class="col-md-6 col-xl-4">
+        <div class="ghana-subject-card">
+          <label for="${id}" class="d-flex gap-3 align-items-start mb-0">
+            <input class="form-check-input mt-1 ghana-subject-check" type="checkbox" id="${id}" value="${escapeHtml(name)}">
+            <span><span class="ghana-subject-name d-block">${escapeHtml(name)}</span><span class="ghana-subject-note">Curriculum starter</span></span>
+          </label>
+        </div>
+      </div>`;
+    }).join('');
+    updateCount();
+  }
+
+  function selected() {
+    return Array.from(grid.querySelectorAll('.ghana-subject-check:checked')).map(function (el) { return el.value; });
+  }
+
+  function updateCount() {
+    const n = selected().length;
+    count.textContent = n + ' selected';
+    summary.textContent = n ? n + ' subject' + (n === 1 ? '' : 's') + ' ready to save.' : 'No subjects selected.';
+  }
+
+  level.addEventListener('change', render);
+  document.getElementById('ghanaSelectAll').addEventListener('click', function () {
+    grid.querySelectorAll('.ghana-subject-check').forEach(function (el) { el.checked = true; });
+    updateCount();
+  });
+  document.getElementById('ghanaClearAll').addEventListener('click', function () {
+    grid.querySelectorAll('.ghana-subject-check').forEach(function (el) { el.checked = false; });
+    updateCount();
+  });
+  grid.addEventListener('change', updateCount);
+
+  saveBtn.addEventListener('click', async function () {
+    const subjects = selected();
+    if (!subjects.length) {
+      status.innerHTML = '<div class="alert alert-warning border-0 rounded-4">Select at least one subject.</div>';
+      return;
+    }
+
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrf) {
+      status.innerHTML = '<div class="alert alert-danger border-0 rounded-4">Security token not found. Refresh the page and try again.</div>';
+      return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+    status.innerHTML = '';
+
+    let created = 0, skipped = 0, failed = 0;
+    for (const name of subjects) {
+      try {
+        const body = new URLSearchParams();
+        body.append('name', name);
+        body.append('curriculum_level', level.value);
+        const response = await fetch("{% url 'academics:subject_create' %}", {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrf.value, 'X-Requested-With': 'XMLHttpRequest' },
+          body: body
+        });
+        const data = await response.json();
+        if (data.success) {
+          created++;
+        } else if ((data.error || '').toLowerCase().includes('already exists')) {
+          skipped++;
+        } else {
+          failed++;
+        }
+      } catch (e) {
+        failed++;
+      }
+    }
+
+    let html = `<div class="alert alert-success border-0 rounded-4"><i class="bi bi-check-circle-fill me-2"></i><strong>${created}</strong> subject(s) added.`;
+    if (skipped) html += ` <strong>${skipped}</strong> already existed and were skipped.`;
+    if (failed) html += ` <strong>${failed}</strong> could not be saved.`;
+    html += ' Refreshing subject list... </div>';
+    status.innerHTML = html;
+
+    setTimeout(function () { window.location.reload(); }, 900);
+  });
+
+  render();
+})();
+</script>
+{% endif %}
+
+<!-- ============================================================
+     T-A3: APPLY SCHOOL SUBJECTS TO CLASSES
+     Existing ClassSubject settings are never overwritten.
+     ============================================================ -->
+{% if can_manage %}
+<div class="modal fade" id="applySubjectsModal" tabindex="-1" aria-labelledby="applySubjectsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header border-0 px-4 pt-4 pb-3">
+        <div>
+          <div class="small text-uppercase fw-bold text-teal mb-1">Academics · Class Subjects</div>
+          <h5 class="modal-title fw-bold" id="applySubjectsModalLabel">Apply Subjects to Classes</h5>
+          <p class="text-muted mb-0 small">Select classes to automatically apply all curriculum-eligible school subjects. Existing class-subject settings are preserved.</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body px-4 pb-4">
+        {% csrf_token %}
+        <div class="row g-4">
+          <div class="col-lg-5">
+            <div class="ta3-panel h-100">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <div class="fw-bold">1. Select Classes</div>
+                  <div class="small text-muted" id="ta3ClassCount">0 selected</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="ta3SelectAllClasses">All</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="ta3ClearClasses">Clear</button>
+                </div>
+              </div>
+              <div id="ta3Classes" class="ta3-selection-list"></div>
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <div class="ta3-panel h-100">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <div class="fw-bold ta3-subject-context">2. Eligible Subjects</div>
+                  <div class="small text-muted" id="ta3SubjectCount">Select a class first; eligible subjects will be applied automatically.</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="ta3SelectAllSubjects">All</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="ta3ClearSubjects">Clear</button>
+                </div>
+              </div>
+              <div id="ta3Subjects" class="row g-2"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-md-4">
+            <label class="form-label small text-uppercase fw-bold text-muted">Default periods / week</label>
+            <input type="number" class="form-control" id="ta3Periods" value="4" min="1" max="20">
+            <div class="form-text">Only applies to newly created class-subject records.</div>
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check form-switch pb-2">
+              <input class="form-check-input" type="checkbox" id="ta3Core">
+              <label class="form-check-label fw-semibold" for="ta3Core">Mark new assignments as core</label>
+            </div>
+          </div>
+          <div class="col-md-4 d-flex align-items-end justify-content-md-end">
+            <button type="button" class="btn btn-teal px-4" id="ta3ApplyBtn">
+              <i class="bi bi-check2-circle me-1"></i>Apply to Selected Classes
+            </button>
+          </div>
+        </div>
+        <div id="ta3Status" class="mt-3"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .btn-outline-teal { border-color:#2C7A6D; color:#2C7A6D; }
+  .btn-outline-teal:hover { background:#2C7A6D; color:#fff; }
+  .btn-teal { background:#2C7A6D; color:#fff; border:0; }
+  .btn-teal:hover { background:#236457; color:#fff; }
+  .ta3-panel { border:1px solid var(--bs-border-color); border-radius:16px; padding:1rem; background:var(--bs-body-bg); }
+  .ta3-selection-list { max-height:390px; overflow:auto; padding-right:.25rem; }
+  .ta3-option { border:1px solid var(--bs-border-color); border-radius:12px; padding:.65rem .75rem; cursor:pointer; transition:.15s ease; background:var(--bs-body-bg); }
+  .ta3-option:hover { border-color:#2C7A6D; }
+  .ta3-option:has(input:checked) { border-color:#2C7A6D; box-shadow:0 0 0 2px rgba(44,122,109,.09); }
+  .ta3-option.ta3-assigned { opacity:.72; background:var(--bs-tertiary-bg); cursor:not-allowed; }
+  .ta3-option.ta3-assigned input { cursor:not-allowed; }
+  .bg-gold-soft { background-color:rgba(148,107,28,.14) !important; }
+  .text-gold { color:#946B1C !important; }
+  .bg-teal-soft { background-color:rgba(44,122,109,.14) !important; }
+  .text-teal { color:#2C7A6D !important; }
+  .ta3-option .small { line-height:1.25; }
+</style>
+
+<script>
+(function () {
+  const modal = document.getElementById('applySubjectsModal');
+  if (!modal) return;
+  const classesBox = document.getElementById('ta3Classes');
+  const subjectsBox = document.getElementById('ta3Subjects');
+  const classCount = document.getElementById('ta3ClassCount');
+  const subjectCount = document.getElementById('ta3SubjectCount');
+  const status = document.getElementById('ta3Status');
+  const applyBtn = document.getElementById('ta3ApplyBtn');
+  let loaded = false;
+  let data = {classes: [], subjects: [], existing_pairs: []};
+
+  function esc(v) { return String(v).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+  function selected(box, selector) { return Array.from(box.querySelectorAll(selector + ':checked')).map(x => x.value); }
+  function getSelectedClassIds() {
+    return selected(classesBox, '.ta3-class-check');
+  }
+
+  function subjectIsAssignedToClass(classId, subjectId) {
+    return data.existing_pairs.some(p => String(p.class_id) === String(classId) && String(p.subject_id) === String(subjectId));
+  }
+
+  function subjectIsRelevant(subjectId, classIds) {
+    if (!classIds.length) return false;
+    const subject = data.subjects.find(s => String(s.id) === String(subjectId));
+    if (!subject) return false;
+
+    // Curriculum level is the band (KG/Primary/JHS/SHS); the selected
+    // class is a specific level such as KG 1, Basic 4 or JHS 2.
+    // Use GradeLevel.stage to bridge the two. General subjects remain
+    // available to every stage.
+    return classIds.some(classId => {
+      const c = data.classes.find(x => String(x.id) === String(classId));
+      const stage = c ? (c.stage || 'OTHER') : 'OTHER';
+      return subject.curriculum_level === 'ALL' || subject.curriculum_level === stage;
+    });
+  }
+
+  function updateSubjectPanel() {
+    const classIds = getSelectedClassIds();
+    const previousSelected = new Set(selected(subjectsBox, '.ta3-subject-check'));
+
+    if (!classIds.length) {
+      subjectsBox.innerHTML = '<div class="col-12"><div class="alert alert-info border-0 rounded-4 mb-0"><i class="bi bi-arrow-left-circle me-2"></i>Select a class first. The subject list will then be filtered to that class.</div></div>';
+      subjectCount.textContent = '0 selected';
+      return;
+    }
+
+    const visibleSubjects = data.subjects.filter(subject => subjectIsRelevant(subject.id, classIds));
+
+    if (!visibleSubjects.length) {
+      subjectsBox.innerHTML = '<div class="col-12"><div class="alert alert-warning border-0 rounded-4 mb-0">No subjects are currently available for the selected class(es). Add subjects to the school subject list first.</div></div>';
+      subjectCount.textContent = '0 selected';
+      return;
+    }
+
+    subjectsBox.innerHTML = visibleSubjects.map(subject => {
+      const assignedCount = classIds.filter(classId => subjectIsAssignedToClass(classId, subject.id)).length;
+      const applicableCount = classIds.filter(classId => {
+        const c = data.classes.find(x => String(x.id) === String(classId));
+        const stage = c ? (c.stage || 'OTHER') : 'OTHER';
+        return subject.curriculum_level === 'ALL' || subject.curriculum_level === stage;
+      }).length;
+      const allAssigned = applicableCount > 0 && assignedCount >= applicableCount;
+      const partiallyAssigned = assignedCount > 0 && !allAssigned;
+      const checked = previousSelected.has(String(subject.id)) && !allAssigned;
+      const badge = allAssigned
+        ? '<span class="badge bg-secondary-subtle text-secondary rounded-pill ms-2">Already assigned</span>'
+        : partiallyAssigned
+          ? `<span class="badge bg-gold-soft text-gold rounded-pill ms-2">Assigned to ${assignedCount}/${applicableCount}</span>`
+          : '<span class="badge bg-teal-soft text-teal rounded-pill ms-2">Available</span>';
+      return `<div class="col-md-6">
+        <label class="ta3-option d-flex gap-2 align-items-start h-100 ${allAssigned ? 'ta3-assigned' : ''}">
+          <input class="form-check-input mt-1 ta3-subject-check" type="checkbox" value="${esc(subject.id)}" ${checked ? 'checked' : ''} ${allAssigned ? 'disabled' : ''}>
+          <span class="flex-grow-1"><span class="d-flex align-items-center flex-wrap"><strong>${esc(subject.name)}</strong>${badge}</span><span class="small text-muted d-block">${esc(subject.code || '')} · ${esc(subject.curriculum_label || subject.curriculum_level || 'General')}</span></span>
+        </label>
+      </div>`;
+    }).join('');
+    update();
+  }
+
+  function update() {
+    const classIds = getSelectedClassIds();
+    classCount.textContent = classIds.length + ' selected';
+    subjectCount.textContent = selected(subjectsBox, '.ta3-subject-check').length + ' selected';
+    if (classIds.length === 1) {
+      const c = data.classes.find(x => String(x.id) === String(classIds[0]));
+      const heading = document.querySelector('#applySubjectsModal .ta3-subject-context');
+      if (heading) heading.textContent = c ? `Subjects for ${c.name}` : 'Subjects for selected class';
+    }
+  }
+
+  function render() {
+    classesBox.innerHTML = data.classes.length ? data.classes.map(c => `
+      <label class="ta3-option d-flex gap-2 align-items-start mb-2">
+        <input class="form-check-input mt-1 ta3-class-check" type="checkbox" value="${esc(c.id)}">
+        <span><strong>${esc(c.name)}</strong>${c.grade_level ? `<span class="small text-muted d-block">${esc(c.grade_level)}</span>` : ''}</span>
+      </label>`).join('') : '<div class="text-muted small py-3">No active classes found.</div>';
+    subjectsBox.innerHTML = '<div class="col-12"><div class="alert alert-info border-0 rounded-4 mb-0"><i class="bi bi-arrow-left-circle me-2"></i>Select a class first to load its subjects.</div></div>';
+    update();
+  }
+  async function load() {
+    if (loaded) return;
+    status.innerHTML = '<div class="text-muted small"><span class="spinner-border spinner-border-sm me-2"></span>Loading classes and subjects...</div>';
+    try {
+      const r = await fetch("{% url 'academics:curriculum_subject_options' %}", {headers:{'X-Requested-With':'XMLHttpRequest'}});
+      const j = await r.json();
+      if (!j.success) throw new Error(j.error || 'Unable to load options.');
+      data = j; loaded = true; status.innerHTML = ''; render();
+    } catch (e) {
+      status.innerHTML = `<div class="alert alert-danger border-0 rounded-4">${esc(e.message)}</div>`;
+    }
+  }
+  modal.addEventListener('show.bs.modal', load);
+  classesBox.addEventListener('change', function () {
+    // Rebuild the subject choices whenever the selected class changes.
+    // This prevents the full school subject catalogue from appearing for every class.
+    updateSubjectPanel();
+  });
+  subjectsBox.addEventListener('change', update);
+  document.getElementById('ta3SelectAllClasses').addEventListener('click', () => { classesBox.querySelectorAll('.ta3-class-check').forEach(x => x.checked=true); updateSubjectPanel(); });
+  document.getElementById('ta3ClearClasses').addEventListener('click', () => { classesBox.querySelectorAll('.ta3-class-check').forEach(x => x.checked=false); updateSubjectPanel(); });
+  document.getElementById('ta3SelectAllSubjects').addEventListener('click', () => { subjectsBox.querySelectorAll('.ta3-subject-check:not(:disabled)').forEach(x => x.checked=true); update(); });
+  document.getElementById('ta3ClearSubjects').addEventListener('click', () => { subjectsBox.querySelectorAll('.ta3-subject-check').forEach(x => x.checked=false); update(); });
+  applyBtn.addEventListener('click', async () => {
+    const classIds = selected(classesBox, '.ta3-class-check');
+    const subjectIds = selected(subjectsBox, '.ta3-subject-check');
+    if (!classIds.length) { status.innerHTML='<div class="alert alert-warning border-0 rounded-4">Select at least one class.</div>'; return; }
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrf) { status.innerHTML='<div class="alert alert-danger border-0 rounded-4">Security token not found. Refresh the page and try again.</div>'; return; }
+    const body = new URLSearchParams();
+    classIds.forEach(id => body.append('class_ids[]', id));
+    // Subject selection is optional. If none are checked, the server automatically
+    // applies every curriculum-eligible school subject to the selected classes.
+    subjectIds.forEach(id => body.append('subject_ids[]', id));
+    body.append('periods_per_week', document.getElementById('ta3Periods').value || '4');
+    if (document.getElementById('ta3Core').checked) body.append('is_core', '1');
+    applyBtn.disabled=true; applyBtn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Applying...'; status.innerHTML='';
+    try {
+      const r=await fetch("{% url 'academics:apply_curriculum_subjects' %}",{method:'POST',headers:{'X-CSRFToken':csrf.value,'X-Requested-With':'XMLHttpRequest'},body});
+      const j=await r.json(); if(!j.success) throw new Error(j.error||'Unable to apply subjects.');
+      status.innerHTML=`<div class="alert alert-success border-0 rounded-4"><strong>Done.</strong> ${esc(j.message)}</div>`;
+    } catch(e) { status.innerHTML=`<div class="alert alert-danger border-0 rounded-4">${esc(e.message)}</div>`; }
+    finally { applyBtn.disabled=false; applyBtn.innerHTML='<i class="bi bi-check2-circle me-1"></i>Apply to Selected Classes'; }
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

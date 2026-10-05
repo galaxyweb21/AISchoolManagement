@@ -2,6 +2,18 @@
 {% block page_title %}Fee Categories{% endblock %}
 
 {% block content %}
+<div class="container-fluid px-4 pt-3">
+    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between rounded-4 p-2 border bg-body shadow-sm">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'finance:fee_structure_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Fee Structures</a>
+            <a href="{% url 'finance:fee_category_list' %}" class="btn btn-sm btn-gold"><i class="bi bi-tags me-1"></i>Categories</a>
+            <a href="{% url 'finance:fee_addon_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-plus-square me-1"></i>Add-ons</a>
+            <a href="{% url 'finance:waiver_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-percent me-1"></i>Waivers</a>
+        </div>
+        <a href="{% url 'finance:fee_preparation' %}" class="btn btn-sm btn-outline-gold"><i class="bi bi-clipboard-check me-1"></i>Fee Management</a>
+    </div>
+</div>
+
 <style>
     .text-gold {
         color: var(--eduai-gold, #946B1C) !important;
@@ -67,6 +79,66 @@
         color: var(--bs-secondary-color);
         margin-bottom: 0;
     }
+
+    /* Modern table */
+    .modern-table thead th {
+        font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+        font-weight: 700; color: var(--bs-secondary-color);
+        background: var(--bs-tertiary-bg);
+        border-bottom: 1px solid var(--bs-border-color);
+        padding: 0.75rem 1rem; white-space: nowrap;
+    }
+    .modern-table tbody td {
+        padding: 0.85rem 1rem; vertical-align: middle; border-color: var(--bs-border-color);
+    }
+    .modern-table tbody tr { transition: background 0.15s ease; }
+    .modern-table tbody tr:hover { background: rgba(148, 107, 28, 0.04); }
+
+    .category-name {
+        font-weight: 700;
+        color: var(--bs-body-color);
+    }
+    .category-desc {
+        font-size: 0.75rem;
+        color: var(--bs-secondary-color);
+    }
+    .category-type-badge {
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.3rem 0.7rem;
+        border-radius: 20px;
+        background: var(--eduai-gold-soft);
+        color: var(--eduai-gold, #946B1C);
+        display: inline-block;
+    }
+    .yes-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0.25rem 0.65rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+    .yes-pill.on {
+        background: var(--eduai-signal-soft);
+        color: var(--eduai-signal, #2C7A6D);
+    }
+    .yes-pill.off {
+        background: rgba(108, 117, 125, 0.12);
+        color: #6c757d;
+    }
+    .yes-pill.optional {
+        background: rgba(13, 110, 253, 0.12);
+        color: #0d6efd;
+    }
+
+    .filter-active {
+        animation: pulse-badge 1.5s ease-in-out 1;
+    }
+    @keyframes pulse-badge {
+        0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); }
+    }
 </style>
 
 <!-- How Fee Categories Work -->
@@ -105,25 +177,34 @@
     {% endif %}
 </div>
 
-<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
-    <div class="p-4">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div>
-                <h5 class="fw-bold mb-1"><i class="bi bi-tags text-gold me-2"></i>Fee Categories</h5>
-                <p class="text-muted mb-0">Define the types of fees charged to students.</p>
+<!-- Header Card -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge badge-gold rounded-pill px-3 py-2">
+                    <i class="bi bi-tags me-1"></i> FEE SETUP
+                </span>
             </div>
-            {% if can_manage %}
-            <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#feeCategoryModal"
-                    data-action="create" data-url="{% url 'finance:fee_category_create' %}">
-                <i class="bi bi-plus-lg me-1"></i>Add Category
-            </button>
-            {% endif %}
+            <h5 class="fw-bold mb-1">
+                <i class="bi bi-tags text-gold me-2"></i>Fee Categories
+            </h5>
+            <p class="text-muted mb-0 small">
+                Define the types of fees charged to students.
+            </p>
         </div>
+        {% if can_manage %}
+        <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#feeCategoryModal"
+                data-action="create" data-url="{% url 'finance:fee_category_create' %}">
+            <i class="bi bi-plus-lg me-1"></i>Add Category
+        </button>
+        {% endif %}
     </div>
 </div>
 
-<div class="card card-custom border-0 shadow-sm rounded-4">
-    <div class="p-4">
+<!-- Categories Table -->
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
             <h6 class="fw-bold mb-0">
                 <i class="bi bi-table text-gold me-2"></i>All Categories
@@ -131,63 +212,89 @@
             </h6>
             <div class="d-flex gap-2 align-items-center">
                 <span class="text-muted small" id="filterStatus"></span>
-                <input type="text" id="categorySearchInput" class="form-control form-control-sm" placeholder="Search categories..." style="max-width: 220px;">
+                <input type="text" id="categorySearchInput" class="form-control form-control-sm"
+                       placeholder="Search categories..." style="max-width: 220px;">
             </div>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="categoriesTable">
+            <table class="table modern-table align-middle mb-0" id="categoriesTable">
                 <thead>
                     <tr>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Name</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Type</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Recurring</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Optional</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Actions</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th class="text-center">Recurring</th>
+                        <th class="text-center">Optional</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="border-top-0" id="categoryTableBody">
+                <tbody id="categoryTableBody">
                     {% for cat in categories %}
-                    <tr class="border-bottom category-row" data-id="{{ cat.id }}">
-                        <td class="py-3 ps-0 fw-medium" data-field="name">{{ cat.name }}</td>
-                        <td class="py-3" data-field="type">{{ cat.get_category_type_display }}</td>
-                        <td class="py-3 text-center" data-field="recurring">
+                    <tr class="category-row" data-id="{{ cat.id }}">
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="category-icon" style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--eduai-gold-soft);color:var(--eduai-gold,#946B1C);font-size:1rem;">
+                                    <i class="bi bi-tag-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="category-name">{{ cat.name }}</div>
+                                    {% if cat.description %}
+                                    <div class="category-desc">{{ cat.description|truncatechars:60 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="category-type-badge">{{ cat.get_category_type_display }}</span>
+                        </td>
+                        <td class="text-center">
                             {% if cat.is_recurring %}
-                            <span class="badge badge-teal rounded-pill px-3 py-2">Yes</span>
+                            <span class="yes-pill on">
+                                <i class="bi bi-check-circle-fill"></i> Yes
+                            </span>
                             {% else %}
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">No</span>
+                            <span class="yes-pill off">
+                                <i class="bi bi-circle"></i> No
+                            </span>
                             {% endif %}
                         </td>
-                        <td class="py-3 text-center" data-field="optional">
+                        <td class="text-center">
                             {% if cat.is_optional %}
-                            <span class="badge bg-info-subtle text-info rounded-pill px-3 py-2">Yes</span>
+                            <span class="yes-pill optional">
+                                <i class="bi bi-star-fill"></i> Yes
+                            </span>
                             {% else %}
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">No</span>
+                            <span class="yes-pill off">
+                                <i class="bi bi-circle"></i> No
+                            </span>
                             {% endif %}
                         </td>
-                        <td class="py-3 pe-0 text-end text-nowrap">
+                        <td class="text-end text-nowrap">
                             <button type="button" class="btn btn-sm btn-outline-gold px-3"
                                     data-bs-toggle="modal" data-bs-target="#feeCategoryModal"
                                     data-action="edit" data-url="{% url 'finance:fee_category_edit' cat.id %}">
-                                Edit
+                                <i class="bi bi-pencil me-1"></i>Edit
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-danger px-3"
                                     data-bs-toggle="modal" data-bs-target="#feeCategoryModal"
                                     data-action="delete" data-url="{% url 'finance:fee_category_delete' cat.id %}">
-                                Delete
+                                <i class="bi bi-trash me-1"></i>Delete
                             </button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr class="empty-state-row">
-                        <td colspan="5" class="text-center text-muted py-5">
+                        <td colspan="5" class="text-center py-5 text-muted">
                             <i class="bi bi-tags fs-2 d-block mb-2 text-secondary"></i>
-                            No fee categories defined yet.
+                            <p class="mb-0">No fee categories defined yet.</p>
+                            <small>Click "Add Category" to create your first category.</small>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+
+        {% include "partials/pagination.html" with page_obj=categories %}
     </div>
 </div>
 
@@ -209,7 +316,6 @@
         </div>
     </div>
 </div>
-{% include "partials/pagination.html" with page_obj=categories %}
 {% endblock %}
 
 {% block extra_js %}
@@ -467,7 +573,30 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // ============================================================
+    // AUTO-DISMISS MESSAGES
+    // ============================================================
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+
+    // ============================================================
+    // RESET MODAL ON HIDE
+    // ============================================================
+    modal.addEventListener('hidden.bs.modal', function () {
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        modalTitle.innerHTML = 'Loading...';
+    });
 });
 </script>
-
 {% endblock %}

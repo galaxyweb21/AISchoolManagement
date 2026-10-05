@@ -16,6 +16,7 @@ from academics.models import (
     TimeSlot,
     Timetable,
     TimetableEntry,
+    TeacherWorkload,
 )
 
 
@@ -40,82 +41,183 @@ class AITimetableService:
     # ------------------------------------------------------------------
     @staticmethod
     def _build_requirements(school, academic_term):
+        """Build a practical weekly lesson set for the simple timetabler.
+
+        The older implementation treated every configured ``periods_per_week``
+        value as mandatory.  That made demo data such as 11 subjects x 4
+        periods impossible inside a 40-period week.
+
+        This replacement keeps the existing subject/teacher assignments, but
+        treats the configured periods as *requested weighting* and creates a
+        balanced weekly teaching budget.  A normal class receives up to 32
+        instructional lessons per week, while a class with fewer requested
+        lessons keeps its full allocation.  KG classes in the demo naturally
+        remain at their configured 28 lessons.
+
+        This does not modify ClassSubject or TeacherAssignment records.  It
+        only determines how many occurrences the timetable generator places.
         """
-        Pull lesson requirements from TeacherAssignment -- the model a
-        school actually populates through the real "Teacher Assignments"
-        UI. ClassSubjectRequirement has no UI of its own (Django admin
-        only), so relying on it as the *only* source meant the AI
-        timetabler failed with "No subject requirements configured" for
-        essentially every real school, even ones with teachers fully
-        assigned to their classes.
+        from academics.services.timetable_readiness import _resolve_teacher_group
 
-        TeacherAssignment also pins the correct teacher(s) per
-        class+subject directly, which is more accurate than a generic
-        subject-level "qualified teachers" pool -- two different classes
-        can have two different teachers for the same subject.
+        WEEKLY_LESSON_BUDGET = 32
 
-        ClassSubjectRequirement is kept as an explicit periods_per_week
-        override where one exists for a (class, subject) pair, so any
-        school already using it via /admin/ keeps working exactly as
-        before -- this only adds a new, working default path, it
-        doesn't remove the old one.
-        """
-        assignments = TeacherAssignment.objects.filter(
-            school=school,
-            is_active=True,
-            school_class__is_active=True,
-            subject__is_active=True,
-        ).select_related('school_class', 'subject', 'teacher')
-
-        grouped = defaultdict(list)
+        classes = list(
+            school.classes.filter(is_active=True)
+            .select_related('homeroom_teacher__user', 'grade_level')
+        )
+        assignments = list(
+            TeacherAssignment.objects.filter(
+                school=school,
+                is_active=True,
+                school_class__is_active=True,
+                subject__is_active=True,
+                teacher__is_active=True,
+                teacher__user__is_active=True,
+            ).select_related('school_class', 'subject', 'teacher')
+        )
+        assignments_by_key = defaultdict(list)
         for assignment in assignments:
-            grouped[(assignment.school_class_id, assignment.subject_id)].append(assignment)
+            assignments_by_key[(assignment.school_class_id, assignment.subject_id)].append(assignment)
 
-        periods_overrides = {
-            (req.school_class_id, req.subject_id): req.periods_per_week
-            for req in ClassSubjectRequirement.objects.filter(
-                school=school, school_class__isnull=False
-            )
+        class_subjects = list(
+            ClassSubject.objects.filter(
+                school=school,
+                school_class__is_active=True,
+                subject__is_active=True,
+                is_active=True,
+            ).select_related('school_class', 'subject')
+        )
+        class_subject_keys = {(cs.school_class_id, cs.subject_id) for cs in class_subjects}
+
+        overrides = {
+            (req.school_class_id, req.subject_id): int(req.periods_per_week)
+            for req in ClassSubjectRequirement.objects.filter(school=school)
         }
 
-        # ClassSubject is the normal school-facing source for how many times
-        # a subject should appear each week. Keep TeacherAssignment's value
-        # as a fallback for older records, and retain ClassSubjectRequirement
-        # as an explicit advanced override. This removes the need to repeat
-        # the same periods/week value manually on every teacher assignment.
-        class_subject_periods = {
-            (item.school_class_id, item.subject_id): item.periods_per_week
-            for item in ClassSubject.objects.filter(
-                school=school, school_class__isnull=False, subject__isnull=False, is_active=True
+        # Gather one effective record per class/subject first.
+        records_by_class = defaultdict(list)
+        for class_subject in class_subjects:
+            key = (class_subject.school_class_id, class_subject.subject_id)
+            group = _resolve_teacher_group(
+                class_subject.school_class,
+                assignments_by_key.get(key, []),
             )
-        }
+            if not group:
+                raise TimetableGenerationError(
+                    f"{class_subject.school_class.name} — {class_subject.subject.name}: "
+                    "no active teacher is assigned."
+                )
+
+            primary = next(
+                (item for item in group if isinstance(item, TeacherAssignment) and item.is_primary),
+                group[0],
+            )
+            fallback_periods = (
+                primary.periods_per_week
+                if isinstance(primary, TeacherAssignment)
+                else class_subject.periods_per_week
+            )
+            requested = int(overrides.get(
+                key,
+                class_subject.periods_per_week or fallback_periods,
+            ) or 0)
+            if requested <= 0:
+                continue
+
+            teacher_ids = tuple(
+                str(item.teacher_id if isinstance(item, TeacherAssignment) else item.id)
+                for item in group
+            )
+            records_by_class[class_subject.school_class_id].append({
+                'class_subject': class_subject,
+                'requested': requested,
+                'teacher_ids': teacher_ids,
+            })
+
+        # Include legacy TeacherAssignment-only records.
+        for key, group in assignments_by_key.items():
+            if key in class_subject_keys or not group:
+                continue
+            primary = next((a for a in group if a.is_primary), group[0])
+            requested = int(overrides.get(key, primary.periods_per_week) or 0)
+            if requested <= 0:
+                continue
+            records_by_class[primary.school_class_id].append({
+                'class_subject': None,
+                'school_class': primary.school_class,
+                'subject': primary.subject,
+                'requested': requested,
+                'teacher_ids': tuple(str(a.teacher_id) for a in group),
+                'is_lab': bool(primary.subject.requires_lab),
+            })
+
+        def allocate_periods(records):
+            """Scale requested periods down fairly to the class lesson budget."""
+            total_requested = sum(r['requested'] for r in records)
+            if total_requested <= WEEKLY_LESSON_BUDGET:
+                for r in records:
+                    r['allocated'] = r['requested']
+                return
+
+            # Every active subject gets at least two lessons when possible.
+            # Remaining lessons are distributed by requested weight and core
+            # status, making the result predictable rather than random.
+            count = len(records)
+            target = WEEKLY_LESSON_BUDGET
+            minimum = 2 if target >= count * 2 else 1
+            allocated = {id(r): minimum for r in records}
+            remaining = target - (count * minimum)
+
+            ranked = sorted(
+                records,
+                key=lambda r: (
+                    bool(getattr(r.get('class_subject'), 'is_core', False)),
+                    r['requested'],
+                    getattr(r.get('class_subject'), 'subject_id', None) or str(getattr(r.get('subject'), 'id', '')),
+                ),
+                reverse=True,
+            )
+            while remaining > 0:
+                changed = False
+                for r in ranked:
+                    if remaining <= 0:
+                        break
+                    if allocated[id(r)] < r['requested']:
+                        allocated[id(r)] += 1
+                        remaining -= 1
+                        changed = True
+                if not changed:
+                    break
+
+            for r in records:
+                r['allocated'] = allocated[id(r)]
+
+        for school_class in classes:
+            records = records_by_class.get(school_class.id, [])
+            if not records:
+                continue
+            allocate_periods(records)
 
         lesson_requirements = []
-        for (class_id, subject_id), group in grouped.items():
-            # Prefer the primary teacher's periods_per_week as the
-            # authoritative count for this class+subject; any co-teachers
-            # in the group are still offered to the solver as additional
-            # eligible teachers for the same sessions.
-            primary = next((a for a in group if a.is_primary), group[0])
-            periods_per_week = periods_overrides.get(
-                (class_id, subject_id),
-                class_subject_periods.get((class_id, subject_id), primary.periods_per_week),
-            )
-            teacher_ids = tuple(str(a.teacher_id) for a in group)
-            school_class = primary.school_class
-            subject = primary.subject
-
-            for session_index in range(periods_per_week):
-                lesson_requirements.append(
-                    LessonRequirement(
-                        cohort_id=str(class_id),
-                        subject_id=str(subject_id),
-                        session_index=session_index,
-                        student_count=school_class.student_count,
-                        is_lab_required=subject.requires_lab,
-                        eligible_teacher_ids=teacher_ids,
+        for school_class in classes:
+            records = records_by_class.get(school_class.id, [])
+            for record in records:
+                class_subject = record.get('class_subject')
+                subject = class_subject.subject if class_subject is not None else record['subject']
+                student_count = class_subject.school_class.student_count if class_subject is not None else school_class.student_count
+                cohort_id = class_subject.school_class_id if class_subject is not None else school_class.id
+                for session_index in range(int(record['allocated'])):
+                    lesson_requirements.append(
+                        LessonRequirement(
+                            cohort_id=str(cohort_id),
+                            subject_id=str(subject.id),
+                            session_index=session_index,
+                            student_count=student_count,
+                            is_lab_required=bool(subject.requires_lab),
+                            eligible_teacher_ids=record['teacher_ids'],
+                        )
                     )
-                )
+
         return lesson_requirements
 
     @staticmethod
@@ -129,6 +231,28 @@ class AITimetableService:
     def _build_timeslots(school):
         slots = list(TimeSlot.objects.filter(school=school, is_active=True))
         return slots, [s.slot_id for s in slots]
+
+    @staticmethod
+    def _build_teacher_max_periods(school, academic_term, requirements):
+        """Return each eligible teacher's weekly workload reference."""
+        teacher_ids = {
+            str(teacher_id)
+            for req in requirements
+            for teacher_id in req.eligible_teacher_ids
+            if teacher_id
+        }
+        capacities = {teacher_id: 25 for teacher_id in teacher_ids}
+        if not teacher_ids:
+            return capacities
+
+        rows = TeacherWorkload.objects.filter(
+            school=school,
+            academic_term=academic_term,
+            teacher_id__in=teacher_ids,
+        ).only('teacher_id', 'max_periods')
+        for row in rows:
+            capacities[str(row.teacher_id)] = int(row.max_periods or 25)
+        return capacities
 
     # ------------------------------------------------------------------
     # Phase 1: called synchronously from the view - just books a row so the
@@ -151,9 +275,9 @@ class AITimetableService:
     def run(
         cls,
         timetable: Timetable,
-        population_size=80,
-        generations=300,
-        mutation_rate=0.15,
+        population_size=40,
+        generations=120,
+        mutation_rate=0.10,
         random_seed=None,
     ) -> Timetable:
         school = timetable.school
@@ -163,6 +287,10 @@ class AITimetableService:
         timetable.save(update_fields=['status'])
 
         try:
+            # The Simple Smart Timetabler deliberately does NOT block on the
+            # old readiness total. Readiness reports configured demand, while
+            # this generator converts that demand into a practical weekly lesson
+            # budget. Missing teachers/rooms are still treated as real errors.
             lesson_requirements = cls._build_requirements(school, academic_term)
             if not lesson_requirements:
                 raise TimetableGenerationError(
@@ -178,16 +306,34 @@ class AITimetableService:
             if not timeslot_ids:
                 raise TimetableGenerationError("No timeslots configured for this school yet.")
 
+            teacher_max_periods = cls._build_teacher_max_periods(
+                school, academic_term, lesson_requirements
+            )
+
             solver = GeneticTimetableSolver(
                 requirements=lesson_requirements,
                 rooms=rooms,
                 timeslot_ids=timeslot_ids,
                 population_size=population_size,
-                generations=generations,
+                generations=min(int(generations or 40), 40),
                 mutation_rate=mutation_rate,
                 random_seed=random_seed,
+                teacher_max_periods=teacher_max_periods,
             )
             best_chromosome = solver.run()
+
+            if best_chromosome.hard_conflicts > 0:
+                raise TimetableGenerationError(
+                    f'Fast timetable construction could not produce a conflict-free timetable. '
+                    f'{best_chromosome.hard_conflicts} hard conflict(s) remain after '
+                    f'{solver.generations_run} improvement pass(es). No invalid timetable was saved.'
+                )
+
+            if len(best_chromosome.genes) != len(lesson_requirements):
+                raise TimetableGenerationError(
+                    f'The generator placed {len(best_chromosome.genes)} of '
+                    f'{len(lesson_requirements)} required lessons. No partial timetable was saved.'
+                )
 
             cls._persist(
                 timetable=timetable,
@@ -252,18 +398,25 @@ class AITimetableService:
 
         # Clear out any stale entries (re-run on the same pending row) before
         # writing the winning chromosome.
-        TimetableEntry.objects.filter(timetable=timetable).delete()
-        TimetableEntry.objects.bulk_create(entries, ignore_conflicts=True)
+        TimetableEntry._base_manager.filter(timetable=timetable).delete()
+        TimetableEntry._base_manager.bulk_create(entries, ignore_conflicts=False)
 
         timetable.fitness_score = chromosome.fitness
         timetable.hard_conflicts = chromosome.hard_conflicts
         timetable.soft_conflicts = chromosome.soft_conflicts
         timetable.generations_run = generations_run
         if skipped:
-            timetable.error_message = (
-                f"{skipped} lesson(s) could not be placed - likely a subject with no "
-                f"qualified teacher assigned. Check Teacher subject qualifications."
+            raise TimetableGenerationError(
+                f"{skipped} generated lesson(s) could not be resolved to database records."
             )
+
+        saved_count = TimetableEntry._base_manager.filter(timetable=timetable).count()
+        if saved_count != len(entries):
+            raise TimetableGenerationError(
+                f"The generator prepared {len(entries)} entries but only {saved_count} were saved."
+            )
+
+        timetable.error_message = ''
         timetable.save(update_fields=['fitness_score', 'hard_conflicts', 'soft_conflicts',
                                        'generations_run', 'error_message'])
 

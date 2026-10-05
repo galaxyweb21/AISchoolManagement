@@ -18,11 +18,11 @@
         <div class="col-md-6">
             <label class="form-label fw-semibold">Class <span class="text-danger">*</span></label>
             {% if selected_class %}
-                <input type="hidden" name="school_class" value="{{ selected_class.id }}">
+                <input type="hidden" name="school_class" id="teacherAssignmentClass" value="{{ selected_class.id }}">
                 <input type="text" class="form-control" value="{{ selected_class.name }}{% if selected_class.grade_level %} ({{ selected_class.grade_level.name }}){% endif %}" readonly>
                 <div class="form-text">Class selected from the class assignment page.</div>
             {% else %}
-                <select name="school_class" class="form-select" required>
+                <select name="school_class" class="form-select" id="teacherAssignmentClass" required>
                     <option value="">Select Class</option>
                     {% for class in classes %}
                         <option value="{{ class.id }}" {% if mode == 'edit' and assignment.school_class.id == class.id %}selected{% endif %}>
@@ -34,7 +34,7 @@
         </div>
         <div class="col-md-6">
             <label class="form-label fw-semibold">Subject <span class="text-danger">*</span></label>
-            <select name="subject" class="form-select" required>
+            <select name="subject" class="form-select" id="teacherAssignmentSubject" required>
                 <option value="">Select Subject</option>
                 {% for subject in subjects %}
                     <option value="{{ subject.id }}" {% if mode == 'edit' and assignment.subject.id == subject.id %}selected{% endif %}>
@@ -42,6 +42,7 @@
                     </option>
                 {% endfor %}
             </select>
+            <div id="teacherAssignmentSubjectHelp" class="form-text">Only subjects assigned to the selected class are shown.</div>
         </div>
     </div>
 
@@ -80,4 +81,81 @@
             {% if mode == 'create' %}Create Assignment{% else %}Save Changes{% endif %}
         </button>
     </div>
+
 </form>
+
+<script>
+(function () {
+    const classSelect = document.getElementById('teacherAssignmentClass');
+    const subjectSelect = document.getElementById('teacherAssignmentSubject');
+    const help = document.getElementById('teacherAssignmentSubjectHelp');
+    if (!classSelect || !subjectSelect) return;
+
+    const endpoint = "{% url 'staff:teacher_assignment_subject_options' %}";
+    const initialSubject = "{{ assignment.subject.id|default:'' }}";
+
+    function setLoading() {
+        subjectSelect.innerHTML = '<option value="">Loading class subjects...</option>';
+        subjectSelect.disabled = true;
+        if (help) help.textContent = 'Loading subjects assigned to this class...';
+    }
+
+    function renderSubjects(subjects, keepId) {
+        subjectSelect.innerHTML = '';
+        const first = document.createElement('option');
+        first.value = '';
+        first.textContent = subjects.length ? 'Select Subject' : 'No subjects assigned to this class';
+        subjectSelect.appendChild(first);
+
+        subjects.forEach(function (subject) {
+            const option = document.createElement('option');
+            option.value = subject.id;
+            option.textContent = subject.name + (subject.code ? ' (' + subject.code + ')' : '');
+            if (String(subject.id) === String(keepId)) option.selected = true;
+            subjectSelect.appendChild(option);
+        });
+
+        subjectSelect.disabled = subjects.length === 0;
+        if (help) {
+            help.textContent = subjects.length
+                ? subjects.length + ' subject' + (subjects.length === 1 ? '' : 's') + ' offered by this class.'
+                : 'No subjects have been assigned to this class yet. Add them from Academics → Subjects → Apply to Classes.';
+        }
+    }
+
+    async function loadClassSubjects(keepId) {
+        const classId = classSelect.value;
+        if (!classId) {
+            renderSubjects([], '');
+            if (help) help.textContent = 'Select a class first.';
+            return;
+        }
+
+        setLoading();
+        try {
+            const response = await fetch(endpoint + '?class_id=' + encodeURIComponent(classId), {
+                credentials: 'same-origin',
+                headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'Unable to load class subjects.');
+            renderSubjects(data.subjects || [], keepId || '');
+        } catch (error) {
+            subjectSelect.innerHTML = '<option value="">Unable to load subjects</option>';
+            subjectSelect.disabled = true;
+            if (help) help.textContent = error.message;
+        }
+    }
+
+    classSelect.addEventListener('change', function () {
+        loadClassSubjects('');
+    });
+
+    // A class supplied by the class-assignment page is already selected.
+    if (classSelect.value) {
+        loadClassSubjects(initialSubject);
+    } else {
+        renderSubjects([], '');
+    }
+})();
+</script>

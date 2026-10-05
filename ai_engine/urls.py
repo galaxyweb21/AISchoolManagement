@@ -8,6 +8,7 @@ from ai_engine.views.ghana_education import (
     ghana_education_search,
     ghana_education_ask_copilot,
 )
+from ai_engine.views.exams import exam_subject_options
 from ai_engine.views.exports import (
     export_exam,
     export_report_card,
@@ -31,6 +32,8 @@ urlpatterns = [
     # ============================================================
     path('copilot/', views.ai_copilot_page, name='ai_copilot'),
     path('copilot/api/', views.ai_copilot_api, name='ai_copilot_api'),
+    path('translator/', views.language_translator, name='language_translator'),
+    path('translator/api/', views.language_translator_api, name='language_translator_api'),
     path('copilot/api/conversation/<uuid:conversation_id>/messages/', views.get_conversation_messages, name='get_conversation_messages'),
     path('copilot/api/conversation/<uuid:conversation_id>/delete/', views.delete_conversation, name='delete_conversation'),
 
@@ -69,6 +72,7 @@ urlpatterns = [
 
     # Exams
     path('exams/', views.exam_dashboard, name='exam_dashboard'),
+    path('exams/subject-options/', exam_subject_options, name='exam_subject_options'),
     path('exams/create/', views.create_exam, name='create_exam'),
     path('exams/<uuid:exam_id>/', views.exam_detail, name='exam_detail'),
     path('exams/<uuid:exam_id>/unlink-assessment/', views.unlink_exam_from_assessment, name='unlink_exam_from_assessment'),

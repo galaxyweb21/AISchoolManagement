@@ -31,6 +31,7 @@ class ScheduleChromosome:
         self.hard_conflicts: int = 0
         self.soft_conflicts: int = 0
         self.conflicting_gene_indices: Set[int] = set()
+        self.workload_excess: int = 0
 
 
 class TimetableEvaluator:
@@ -40,15 +41,22 @@ class TimetableEvaluator:
     # Penalty weights
     HARD_CONSTRAINT_PENALTY = 100
     SOFT_CONSTRAINT_PENALTY = 10
+    DEFAULT_TEACHER_MAX_PERIODS = 25
 
     @classmethod
-    def calculate_fitness(cls, chromosome: ScheduleChromosome) -> float:
+    def calculate_fitness(
+        cls,
+        chromosome: ScheduleChromosome,
+        teacher_max_periods: Optional[Dict[str, int]] = None,
+    ) -> float:
         """Evaluate hard constraints first, then timetable quality preferences."""
         hard_conflicts = 0
         soft_conflicts = 0
         conflicting_indices: Set[int] = set()
 
         teacher_claims: Dict[Tuple[str, str], int] = {}
+        teacher_week_load: Dict[str, int] = {}
+        teacher_max_periods = teacher_max_periods or {}
         room_claims: Dict[Tuple[str, str], int] = {}
         cohort_claims: Dict[Tuple[str, str], int] = {}
         teacher_daily_blocks: Dict[Tuple[str, str], List[int]] = {}
@@ -93,6 +101,8 @@ class TimetableEvaluator:
                 hard_conflicts += 1
                 conflicting_indices.add(idx)
 
+            teacher_week_load[gene.teacher_id] = teacher_week_load.get(gene.teacher_id, 0) + 1
+
             # ---------------------------
             # Soft-quality tracking
             # ---------------------------
@@ -113,6 +123,23 @@ class TimetableEvaluator:
             for first, second in zip(slots, slots[1:]):
                 if second - first > 100:
                     soft_conflicts += 1
+
+        # Teacher workload is deliberately a SECONDARY objective. It is
+        # tracked separately so workload balancing can break ties between
+        # otherwise similar timetables without inflating the main soft
+        # conflict count and degrading the proven T3.1 quality rules.
+        workload_excess = 0
+        for teacher_id, load in teacher_week_load.items():
+            maximum = int(
+                teacher_max_periods.get(
+                    teacher_id, cls.DEFAULT_TEACHER_MAX_PERIODS
+                )
+                or cls.DEFAULT_TEACHER_MAX_PERIODS
+            )
+            if load > maximum:
+                workload_excess += load - maximum
+
+        chromosome.workload_excess = workload_excess
 
         # Spread repeated subjects across the school week. One occurrence
         # per day is preferred for subjects with up to five weekly sessions.
@@ -146,6 +173,17 @@ class TimetableEvaluator:
                     if second - first > 110:
                         soft_conflicts += 1
 
+        # Keep teacher daily loads reasonably balanced. This is deliberately
+        # soft: a teacher may legitimately have a full day, but the solver
+        # should avoid concentrating all weekly lessons into a few days.
+        for teacher in {gene.teacher_id for gene in chromosome.genes}:
+            loads = []
+            for day in {cls._slot_parts(g.timeslot_id)[0] for g in chromosome.genes}:
+                loads.append(sum(1 for g in chromosome.genes if g.teacher_id == teacher and cls._slot_parts(g.timeslot_id)[0] == day))
+            active = [x for x in loads if x > 0]
+            if len(active) > 1:
+                soft_conflicts += max(0, max(active) - min(active) - 2)
+
         # Keep class teaching loads reasonably balanced across the week.
         for cohort in {gene.cohort_id for gene in chromosome.genes}:
             loads = [load for (c, _day), load in cohort_day_load.items() if c == cohort]
@@ -164,7 +202,10 @@ class TimetableEvaluator:
         chromosome.soft_conflicts = soft_conflicts
         chromosome.conflicting_gene_indices = conflicting_indices
         total_penalty = (hard_conflicts * cls.HARD_CONSTRAINT_PENALTY) + (soft_conflicts * cls.SOFT_CONSTRAINT_PENALTY)
-        chromosome.fitness = 1.0 / (1.0 + total_penalty)
+        base_fitness = 1.0 / (1.0 + total_penalty)
+        # Workload only breaks ties; it must not outweigh a meaningful
+        # improvement in the established timetable-quality objectives.
+        chromosome.fitness = max(0.0, base_fitness - (workload_excess * 0.000001))
         return chromosome.fitness
 
     @staticmethod
@@ -207,13 +248,25 @@ class LessonRequirement:
         return f"{self.cohort_id}::{self.subject_id}::{self.session_index}"
 
 
-class GeneticTimetableSolver:
-    """
-    Evolves a population of ScheduleChromosome candidates toward a
-    conflict-free timetable using TimetableEvaluator as the fitness function.
 
-    Pure Python / no Django dependency, so it can run and be unit-tested
-    without a database.
+class GeneticTimetableSolver:
+    """Fast, constraint-first school timetable generator.
+
+    The old implementation mixed greedy placement, repair passes and genetic
+    terminology.  For a school timetable this is unnecessary and could leave
+    one or two conflicts after a long run.  This implementation uses a small
+    randomized constructive search with bounded backtracking:
+
+    * every class can occupy only one slot;
+    * a teacher can teach only one class in a slot;
+    * a room can host only one class in a slot;
+    * lab subjects use only lab rooms;
+    * room capacity is enforced;
+    * no partially conflicting timetable is persisted by the service.
+
+    ``population_size`` and ``generations`` remain accepted for compatibility
+    with the existing service.  They now control the number of short search
+    attempts rather than a genetic algorithm.
     """
 
     def __init__(
@@ -221,12 +274,14 @@ class GeneticTimetableSolver:
         requirements: List[LessonRequirement],
         rooms: List[RoomOption],
         timeslot_ids: List[str],
-        population_size: int = 60,
-        generations: int = 200,
-        mutation_rate: float = 0.15,
+        population_size: int = 40,
+        generations: int = 120,
+        mutation_rate: float = 0.10,
         elite_count: int = 4,
         tournament_size: int = 3,
         random_seed: Optional[int] = None,
+        teacher_max_periods: Optional[Dict[str, int]] = None,
+        max_seconds: float = 30.0,
     ):
         if not requirements:
             raise ValueError("Cannot generate a timetable with zero lesson requirements.")
@@ -235,280 +290,286 @@ class GeneticTimetableSolver:
         if not timeslot_ids:
             raise ValueError("Cannot generate a timetable with zero timeslots configured.")
 
-        self.requirements = requirements
-        self.rooms = rooms
-        self.timeslot_ids = timeslot_ids
-        self.population_size = population_size
-        self.generations = generations
-        self.mutation_rate = mutation_rate
-        self.elite_count = min(elite_count, population_size)
-        self.tournament_size = tournament_size
+        self.requirements = list(requirements)
+        self.rooms = list(rooms)
+        self.timeslot_ids = list(timeslot_ids)
+        self.population_size = max(4, int(population_size or 4))
+        self.generations = max(1, int(generations or 1))
+        self.mutation_rate = float(mutation_rate or 0.10)
         self._rng = random.Random(random_seed)
-
-        self.lab_rooms = [r for r in rooms if r.is_lab]
+        self.teacher_max_periods = {
+            str(k): int(v)
+            for k, v in (teacher_max_periods or {}).items()
+            if v is not None
+        }
+        self.max_seconds = max(5.0, float(max_seconds or 30.0))
         self.generations_run = 0
 
-    # ---------------------------------------------------------------
-    # Gene construction
-    # ---------------------------------------------------------------
-    def _pick_room(self, requirement: LessonRequirement) -> RoomOption:
-        candidates = self.lab_rooms if requirement.is_lab_required else self.rooms
-        if not candidates:
-            raise ValueError(f"No suitable room is configured for {requirement.subject_id}.")
-        big_enough = [r for r in candidates if r.capacity >= requirement.student_count]
-        pool = big_enough or candidates
-        return self._rng.choice(pool)
+        self._room_pool_cache: Dict[Tuple[str, int, bool], List[RoomOption]] = {}
+        for req in self.requirements:
+            pool = self._room_pool(req)
+            if not pool:
+                kind = "lab" if req.is_lab_required else ""
+                raise ValueError(
+                    f"No suitable {kind} room is available for class {req.cohort_id}, "
+                    f"subject {req.subject_id} ({req.student_count} students)."
+                )
 
-    def _pick_teacher(self, requirement: LessonRequirement) -> str:
-        if requirement.eligible_teacher_ids:
-            return self._rng.choice(requirement.eligible_teacher_ids)
-        return "UNASSIGNED"
+        self._ordered_requirement_indexes = self._order_requirements()
 
-    def _random_gene(self, requirement: LessonRequirement) -> ClassGene:
-        room = self._pick_room(requirement)
-        return ClassGene(
-            cohort_id=requirement.cohort_id,
-            subject_id=requirement.subject_id,
-            teacher_id=self._pick_teacher(requirement),
-            room_id=room.room_id,
-            timeslot_id=self._rng.choice(self.timeslot_ids),
-            room_capacity=room.capacity,
-            student_count=requirement.student_count,
-            is_lab_required=requirement.is_lab_required,
-            is_room_lab=room.is_lab,
-        )
-
-    def _candidate_gene(self, requirement: LessonRequirement, timeslot_id: str, teacher_id: str, room: RoomOption) -> ClassGene:
-        return ClassGene(
-            cohort_id=requirement.cohort_id,
-            subject_id=requirement.subject_id,
-            teacher_id=teacher_id,
-            room_id=room.room_id,
-            timeslot_id=timeslot_id,
-            room_capacity=room.capacity,
-            student_count=requirement.student_count,
-            is_lab_required=requirement.is_lab_required,
-            is_room_lab=room.is_lab,
-        )
-
-    def _greedy_score(self, gene: ClassGene, genes: List[ClassGene]) -> int:
-        """Score a candidate using hard collisions plus distribution preferences."""
-        score = 0
-        day, slot = TimetableEvaluator._slot_parts(gene.timeslot_id)
-        subject_days = set()
-        subject_slots = []
-        class_day_load = 0
-        for existing in genes:
-            if existing is None:
-                continue
-            if existing.teacher_id == gene.teacher_id and existing.timeslot_id == gene.timeslot_id:
-                score += 100
-            if existing.room_id == gene.room_id and existing.timeslot_id == gene.timeslot_id:
-                score += 100
-            if existing.cohort_id == gene.cohort_id and existing.timeslot_id == gene.timeslot_id:
-                score += 100
-            if existing.cohort_id == gene.cohort_id and existing.subject_id == gene.subject_id:
-                old_day, old_slot = TimetableEvaluator._slot_parts(existing.timeslot_id)
-                subject_days.add(old_day)
-                if old_day == day and slot is not None and old_slot is not None:
-                    if abs(slot - old_slot) <= 50:
-                        score += 18
-                    else:
-                        score += 5
-            if existing.cohort_id == gene.cohort_id and TimetableEvaluator._slot_parts(existing.timeslot_id)[0] == day:
-                class_day_load += 1
-                old_day, old_slot = TimetableEvaluator._slot_parts(existing.timeslot_id)
-                if slot is not None and old_slot is not None:
-                    distance = abs(slot - old_slot)
-                    if distance > 110:
-                        score += 3
-        if subject_days and day in subject_days:
-            score += 10
-        if class_day_load >= 5:
-            score += 6
-        if gene.student_count > gene.room_capacity:
-            score += 100
-        if gene.is_lab_required and not gene.is_room_lab:
-            score += 100
-        return score
-
-    def _create_greedy_individual(self) -> ScheduleChromosome:
-        """Construct one low-conflict timetable before evolutionary search."""
-        # Schedule the most constrained lessons first, but restore the
-        # original requirement order before returning. Crossover/mutation
-        # depend on every chromosome having the same gene index for the same
-        # LessonRequirement.
-        ordered = sorted(
-            enumerate(self.requirements),
-            key=lambda item: (len(item[1].eligible_teacher_ids), not item[1].is_lab_required, -item[1].student_count),
-        )
-        genes: List[Optional[ClassGene]] = [None] * len(self.requirements)
-        for original_index, requirement in ordered:
-            candidates = []
-            teacher_pool = list(requirement.eligible_teacher_ids) or ['UNASSIGNED']
-            room_pool = self.lab_rooms if requirement.is_lab_required else self.rooms
-            for _ in range(min(48, max(12, len(self.timeslot_ids) * 2))):
-                slot = self._rng.choice(self.timeslot_ids)
-                teacher = self._rng.choice(teacher_pool)
-                suitable_rooms = [r for r in room_pool if r.capacity >= requirement.student_count] or room_pool
-                if not suitable_rooms:
-                    continue
-                room = self._rng.choice(suitable_rooms)
-                candidate = self._candidate_gene(requirement, slot, teacher, room)
-                candidates.append((self._greedy_score(candidate, genes), candidate))
-                if candidates[-1][0] == 0:
-                    break
-            if not candidates:
-                genes[original_index] = self._random_gene(requirement)
-            else:
-                candidates.sort(key=lambda item: item[0])
-                # Randomly choose among the best few to retain population diversity.
-                genes[original_index] = self._rng.choice(candidates[:min(3, len(candidates))])[1]
-        chromosome = ScheduleChromosome([gene for gene in genes if gene is not None])
-        TimetableEvaluator.calculate_fitness(chromosome)
-        return chromosome
-
-    def _create_individual(self) -> ScheduleChromosome:
-        # Most initial candidates are constructive rather than completely
-        # random. This dramatically reduces the 3-way collisions that the GA
-        # otherwise spends hundreds of generations repairing.
-        if self._rng.random() < 0.75:
-            return self._create_greedy_individual()
-        genes = [self._random_gene(req) for req in self.requirements]
-        chromosome = ScheduleChromosome(genes)
-        TimetableEvaluator.calculate_fitness(chromosome)
-        return chromosome
-
-    # ---------------------------------------------------------------
-    # Genetic operators
-    # ---------------------------------------------------------------
-    def _tournament_select(self, population: List[ScheduleChromosome]) -> ScheduleChromosome:
-        contenders = self._rng.sample(population, min(self.tournament_size, len(population)))
-        return max(contenders, key=lambda c: c.fitness)
-
-    def _crossover(self, parent_a: ScheduleChromosome, parent_b: ScheduleChromosome) -> ScheduleChromosome:
-        # Requirements are in a fixed, aligned order across every individual,
-        # so gene-by-gene uniform crossover is safe here.
-        child_genes = [
-            self._rng.choice([gene_a, gene_b])
-            for gene_a, gene_b in zip(parent_a.genes, parent_b.genes)
-        ]
-        return ScheduleChromosome(child_genes)
+    def _room_pool(self, requirement: LessonRequirement) -> List[RoomOption]:
+        key = (requirement.subject_id, requirement.student_count, bool(requirement.is_lab_required))
+        if key in self._room_pool_cache:
+            return self._room_pool_cache[key]
+        candidates = [r for r in self.rooms if (not requirement.is_lab_required or r.is_lab)]
+        suitable = [r for r in candidates if r.capacity >= requirement.student_count]
+        suitable.sort(key=lambda r: (r.capacity, r.room_id))
+        self._room_pool_cache[key] = suitable
+        return suitable
 
     @staticmethod
-    def _build_occupancy_maps(genes: List[ClassGene], skip_index: int) -> Tuple[Set[Tuple[str, str]], Set[Tuple[str, str]], Set[Tuple[str, str]]]:
-        """(teacher_id, timeslot), (room_id, timeslot), (cohort_id, timeslot)
-        pairs already claimed elsewhere in the chromosome, as O(1)-lookup
-        sets, built once per mutation call rather than rescanned per
-        candidate."""
-        teacher_slots, room_slots, cohort_slots = set(), set(), set()
-        for j, gene in enumerate(genes):
-            if j == skip_index:
-                continue
-            teacher_slots.add((gene.teacher_id, gene.timeslot_id))
-            room_slots.add((gene.room_id, gene.timeslot_id))
-            cohort_slots.add((gene.cohort_id, gene.timeslot_id))
-        return teacher_slots, room_slots, cohort_slots
+    def _slot_day(slot_id: str) -> str:
+        return slot_id.split('-', 1)[0] if '-' in slot_id else slot_id
 
     @staticmethod
-    def _local_conflict_score(gene: ClassGene, occupancy: Tuple[Set, Set, Set]) -> int:
-        """Cheap conflict count for one candidate gene against precomputed
-        occupancy sets - O(1) per check instead of rescanning every other
-        gene."""
-        teacher_slots, room_slots, cohort_slots = occupancy
-        score = 0
-        if (gene.teacher_id, gene.timeslot_id) in teacher_slots:
-            score += 1
-        if (gene.room_id, gene.timeslot_id) in room_slots:
-            score += 1
-        if (gene.cohort_id, gene.timeslot_id) in cohort_slots:
-            score += 1
-        if gene.student_count > gene.room_capacity:
-            score += 1
-        if gene.is_lab_required and not gene.is_room_lab:
-            score += 1
-        return score
+    def _slot_value(slot_id: str) -> Optional[int]:
+        return TimetableEvaluator._slot_parts(slot_id)[1]
 
-    def _repair_gene(
+    def _order_requirements(self) -> List[int]:
+        """Place the hardest lessons first, while keeping occurrences together."""
+        frequency = {}
+        for req in self.requirements:
+            key = (req.cohort_id, req.subject_id)
+            frequency[key] = frequency.get(key, 0) + 1
+
+        def key(index):
+            req = self.requirements[index]
+            pool_size = len(self._room_pool(req))
+            return (
+                len(req.eligible_teacher_ids),
+                pool_size,
+                0 if req.is_lab_required else 1,
+                -req.student_count,
+                -frequency[(req.cohort_id, req.subject_id)],
+                req.cohort_id,
+                req.subject_id,
+                req.session_index,
+            )
+
+        return sorted(range(len(self.requirements)), key=key)
+
+    def _candidate_score(
         self,
-        requirement: LessonRequirement,
-        occupancy: Tuple[Set, Set, Set],
-        context_genes: List[ClassGene],
-        samples: int = 24,
-    ) -> ClassGene:
-        """Repair a gene while preserving timetable quality.
+        req: LessonRequirement,
+        teacher_id: str,
+        slot_id: str,
+        room: RoomOption,
+        subject_days,
+        subject_slots,
+        class_day_load,
+        teacher_day_load,
+        teacher_load,
+    ):
+        day = self._slot_day(slot_id)
+        value = self._slot_value(slot_id) or 0
+        subject_key = (req.cohort_id, req.subject_id)
+        existing_days = subject_days.get(subject_key, set())
+        existing_slots = subject_slots.get(subject_key, [])
+        class_load = class_day_load.get((req.cohort_id, day), 0)
+        teacher_day = teacher_day_load.get((teacher_id, day), 0)
+        teacher_total = teacher_load.get(teacher_id, 0)
 
-        T3 originally selected repairs almost entirely on hard-conflict count.
-        Once a chromosome reached zero hard conflicts, mutations could replace
-        a good placement with a merely valid one. We now use the same
-        distribution-aware score used during greedy construction while giving
-        hard conflicts overwhelming priority.
-        """
-        best_gene, best_score = None, None
-        for _ in range(samples):
-            candidate = self._random_gene(requirement)
-            local_hard = self._local_conflict_score(candidate, occupancy)
-            score = (local_hard * 1000) + self._greedy_score(candidate, context_genes)
-            if best_score is None or score < best_score:
-                best_gene, best_score = candidate, score
-                if best_score == 0:
-                    break
-        return best_gene
+        # Lower is better.  Subject distribution and balanced days are more
+        # important than cosmetic room selection.
+        same_day = 1 if day in existing_days else 0
+        adjacent_subject = 0
+        for existing_day, existing_value in existing_slots:
+            if existing_day == day and abs(existing_value - value) <= 55:
+                adjacent_subject += 1
 
-    def _mutate(self, chromosome: ScheduleChromosome) -> ScheduleChromosome:
-        """
-        Conflict-directed local repair: genes already flagged as part of a
-        double-booking / capacity / lab mismatch get a new placement chosen
-        by best-of-k local search with high probability; everything else
-        keeps the normal low mutation_rate. Occupancy maps are built once
-        per call (O(n)) rather than rescanned per candidate, which is what
-        keeps this usable once a school has a few hundred lessons/week
-        instead of a few dozen.
-        """
-        conflicting = chromosome.conflicting_gene_indices
-        new_genes = list(chromosome.genes)
-        for i, requirement in enumerate(self.requirements):
-            probability = 0.98 if i in conflicting else self.mutation_rate
-            if self._rng.random() < probability:
-                occupancy = self._build_occupancy_maps(new_genes, i)
-                context_genes = [gene for j, gene in enumerate(new_genes) if j != i]
-                new_genes[i] = self._repair_gene(requirement, occupancy, context_genes)
-        return ScheduleChromosome(new_genes)
+        # Preserve larger rooms for large classes by preferring the smallest
+        # suitable room.
+        room_waste = room.capacity - req.student_count
+        return (
+            same_day,
+            adjacent_subject,
+            class_load,
+            teacher_day,
+            teacher_total,
+            room_waste,
+            value,
+        )
 
-    # ---------------------------------------------------------------
-    # Main loop
-    # ---------------------------------------------------------------
+    def _construct(self, seed_offset=0) -> Optional[ScheduleChromosome]:
+        """Build one complete timetable without ever intentionally creating a conflict."""
+        rng = random.Random(self._rng.randint(0, 2_000_000_000) + seed_offset)
+        slots = list(self.timeslot_ids)
+        rng.shuffle(slots)
+
+        teacher_slots: Set[Tuple[str, str]] = set()
+        room_slots: Set[Tuple[str, str]] = set()
+        cohort_slots: Set[Tuple[str, str]] = set()
+        subject_days = {}
+        subject_slots = {}
+        class_day_load = {}
+        teacher_day_load = {}
+        teacher_load = {}
+        genes_by_index: Dict[int, ClassGene] = {}
+
+        # A small bounded backtracking stack.  In normal demo data the first
+        # pass completes; it exists to escape a greedy dead end near the end.
+        history = []
+        order = list(self._ordered_requirement_indexes)
+        position = 0
+        backtracks = 0
+        max_backtracks = max(250, len(order) * 3)
+
+        while position < len(order):
+            index = order[position]
+            req = self.requirements[index]
+            candidates = []
+
+            teachers = list(req.eligible_teacher_ids)
+            rng.shuffle(teachers)
+            teachers.sort(key=lambda t: teacher_load.get(t, 0))
+
+            for teacher_id in teachers:
+                for slot_id in slots:
+                    if (teacher_id, slot_id) in teacher_slots:
+                        continue
+                    if (req.cohort_id, slot_id) in cohort_slots:
+                        continue
+                    pool = self._room_pool(req)
+                    available = [r for r in pool if (r.room_id, slot_id) not in room_slots]
+                    if not available:
+                        continue
+                    # Only the best room for this slot is needed.
+                    room = min(
+                        available,
+                        key=lambda r: self._candidate_score(
+                            req, teacher_id, slot_id, r, subject_days,
+                            subject_slots, class_day_load, teacher_day_load, teacher_load
+                        )
+                    )
+                    score = self._candidate_score(
+                        req, teacher_id, slot_id, room, subject_days,
+                        subject_slots, class_day_load, teacher_day_load, teacher_load
+                    )
+                    candidates.append((score, rng.random(), teacher_id, slot_id, room))
+
+            if candidates:
+                candidates.sort(key=lambda x: (x[0], x[1]))
+                # Keep a little randomness among otherwise equivalent choices.
+                pick_window = min(4, len(candidates))
+                _, _, teacher_id, slot_id, room = candidates[rng.randrange(pick_window)]
+                gene = ClassGene(
+                    cohort_id=req.cohort_id,
+                    subject_id=req.subject_id,
+                    teacher_id=teacher_id,
+                    room_id=room.room_id,
+                    timeslot_id=slot_id,
+                    room_capacity=room.capacity,
+                    student_count=req.student_count,
+                    is_lab_required=req.is_lab_required,
+                    is_room_lab=room.is_lab,
+                )
+                genes_by_index[index] = gene
+                teacher_slots.add((teacher_id, slot_id))
+                room_slots.add((room.room_id, slot_id))
+                cohort_slots.add((req.cohort_id, slot_id))
+                day = self._slot_day(slot_id)
+                value = self._slot_value(slot_id) or 0
+                skey = (req.cohort_id, req.subject_id)
+                subject_days.setdefault(skey, set()).add(day)
+                subject_slots.setdefault(skey, []).append((day, value))
+                class_day_load[(req.cohort_id, day)] = class_day_load.get((req.cohort_id, day), 0) + 1
+                teacher_day_load[(teacher_id, day)] = teacher_day_load.get((teacher_id, day), 0) + 1
+                teacher_load[teacher_id] = teacher_load.get(teacher_id, 0) + 1
+                history.append((index, gene))
+                position += 1
+                continue
+
+            # No legal placement. Remove a few recent placements and retry.
+            if not history or backtracks >= max_backtracks:
+                return None
+
+            rewind = min(3, len(history))
+            for _ in range(rewind):
+                old_index, old_gene = history.pop()
+                old_req = self.requirements[old_index]
+                del genes_by_index[old_index]
+                teacher_slots.discard((old_gene.teacher_id, old_gene.timeslot_id))
+                room_slots.discard((old_gene.room_id, old_gene.timeslot_id))
+                cohort_slots.discard((old_gene.cohort_id, old_gene.timeslot_id))
+                day = self._slot_day(old_gene.timeslot_id)
+                value = self._slot_value(old_gene.timeslot_id) or 0
+                skey = (old_req.cohort_id, old_req.subject_id)
+                if skey in subject_slots:
+                    try:
+                        subject_slots[skey].remove((day, value))
+                    except ValueError:
+                        pass
+                    if not subject_slots[skey]:
+                        subject_slots.pop(skey, None)
+                        subject_days.pop(skey, None)
+                    else:
+                        subject_days[skey] = {d for d, _ in subject_slots[skey]}
+                class_key = (old_req.cohort_id, day)
+                class_day_load[class_key] = class_day_load.get(class_key, 1) - 1
+                if class_day_load[class_key] <= 0:
+                    class_day_load.pop(class_key, None)
+                teacher_key = (old_gene.teacher_id, day)
+                teacher_day_load[teacher_key] = teacher_day_load.get(teacher_key, 1) - 1
+                if teacher_day_load[teacher_key] <= 0:
+                    teacher_day_load.pop(teacher_key, None)
+                teacher_load[old_gene.teacher_id] = teacher_load.get(old_gene.teacher_id, 1) - 1
+                if teacher_load[old_gene.teacher_id] <= 0:
+                    teacher_load.pop(old_gene.teacher_id, None)
+                position -= 1
+            backtracks += 1
+
+        genes = [genes_by_index[i] for i in range(len(self.requirements))]
+        chromosome = ScheduleChromosome(genes)
+        TimetableEvaluator.calculate_fitness(chromosome, self.teacher_max_periods)
+        return chromosome
+
     def run(self) -> ScheduleChromosome:
-        population = [self._create_individual() for _ in range(self.population_size)]
-        population.sort(key=lambda c: c.fitness, reverse=True)
-        best = population[0]
+        import time
 
-        stagnant = 0
-        for generation in range(1, self.generations + 1):
-            self.generations_run = generation
+        deadline = time.monotonic() + self.max_seconds
+        # 20 short starts is still dramatically cheaper and more reliable than
+        # hundreds of repair generations. Stop immediately once a legal schedule
+        # is found.
+        attempts = min(20, max(4, self.population_size // 2))
+        best = None
 
-            # Once hard conflicts reach zero, continue briefly to improve the
-            # timetable's distribution instead of stopping at the first valid
-            # (but poorly balanced) schedule.
-            if best.hard_conflicts == 0 and stagnant >= 30:
+        for attempt in range(attempts):
+            if time.monotonic() >= deadline:
+                break
+            candidate = self._construct(seed_offset=attempt)
+            self.generations_run = attempt + 1
+            if candidate is None:
+                continue
+            if best is None or (
+                candidate.hard_conflicts,
+                candidate.soft_conflicts,
+                candidate.workload_excess,
+            ) < (
+                best.hard_conflicts,
+                best.soft_conflicts,
+                best.workload_excess,
+            ):
+                best = candidate
+            if candidate.hard_conflicts == 0 and candidate.soft_conflicts <= 12:
                 break
 
-            next_population = population[: self.elite_count]  # elitism
+        if best is None:
+            # Return a diagnostic empty chromosome rather than inventing a
+            # conflicting timetable. The service will report the failure.
+            best = ScheduleChromosome([])
+            best.hard_conflicts = 1
+            best.soft_conflicts = 0
+            best.fitness = 0.0
 
-            while len(next_population) < self.population_size:
-                parent_a = self._tournament_select(population)
-                parent_b = self._tournament_select(population)
-                child = self._crossover(parent_a, parent_b)
-                TimetableEvaluator.calculate_fitness(child)  # populates conflicting_gene_indices for _mutate
-                child = self._mutate(child)
-                TimetableEvaluator.calculate_fitness(child)
-                next_population.append(child)
-
-            population = sorted(next_population, key=lambda c: c.fitness, reverse=True)
-            if population[0].fitness > best.fitness:
-                best = population[0]
-                stagnant = 0
-            else:
-                stagnant += 1
-
+        TimetableEvaluator.calculate_fitness(best, self.teacher_max_periods)
         return best

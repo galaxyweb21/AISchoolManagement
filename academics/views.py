@@ -36,7 +36,6 @@ from academics.services.timetable_configuration import (
 from .models import PromotionRule, PromotionBatch, StudentPromotion, SchoolClass
 from academics.services.promotion_service import PromotionService
 from academics.services.timetable_readiness import TimetableReadiness
-from academics.services.timetable_export import build_timetable_export_context
 from academics.services.ges_schedule import (
     generate_ges_standard_timeslots,
     build_ges_schedule_preview,
@@ -45,6 +44,134 @@ from academics.services.ges_schedule import (
     GES_STANDARD_DEFAULTS,
     GES_TEMPLATE_LABEL,
 )
+
+
+@login_required
+def timetable_export_pdf(request, timetable_id):
+    """Render a completed timetable as a PDF using the shared export context."""
+    school = request.user.school
+    timetable = get_object_or_404(Timetable, id=timetable_id, school=school)
+    if timetable.status in ('PENDING', 'RUNNING'):
+        return JsonResponse({'error': 'The timetable is still being generated. Please wait and try again.'}, status=409)
+
+    from django.template.loader import render_to_string
+    from xhtml2pdf import pisa
+    from .services.timetable_export import build_timetable_export_context
+
+    class_id = request.GET.get('class_id') or None
+    context = build_timetable_export_context(timetable, class_id=class_id)
+    html = render_to_string('academics/timetable_export_pdf.html', context, request=request)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{context["export_filename_base"]}.pdf"'
+    result = pisa.CreatePDF(html, dest=response)
+    if result.err:
+        return JsonResponse({'error': 'Unable to generate the timetable PDF.'}, status=500)
+    return response
+
+
+@login_required
+def timetable_export_word(request, timetable_id):
+    """Export a completed timetable as a Word document using the shared context."""
+    school = request.user.school
+    timetable = get_object_or_404(Timetable, id=timetable_id, school=school)
+    if timetable.status in ('PENDING', 'RUNNING'):
+        return JsonResponse({'error': 'The timetable is still being generated. Please wait and try again.'}, status=409)
+
+    from docx import Document
+    from docx.shared import Pt, Inches
+    from .services.timetable_export import build_timetable_export_context
+
+    class_id = request.GET.get('class_id') or None
+    context = build_timetable_export_context(timetable, class_id=class_id)
+    document = Document()
+    section = document.sections[0]
+    section.left_margin = Inches(0.35)
+    section.right_margin = Inches(0.35)
+    section.top_margin = Inches(0.4)
+    section.bottom_margin = Inches(0.4)
+
+    p = document.add_paragraph()
+    p.alignment = 1
+    r = p.add_run(context['school_name'])
+    r.bold = True; r.font.size = Pt(16)
+    p = document.add_paragraph(); p.alignment = 1
+    r = p.add_run(f"{context['timetable_title']} — {context['term_name']}")
+    r.bold = True; r.font.size = Pt(11)
+    p = document.add_paragraph(); p.alignment = 1
+    p.add_run(
+        f"Status: {context['status_label']} | Fitness: {context['fitness']} | "
+        f"Hard: {context['hard_conflicts']} | Soft: {context['soft_conflicts']} | "
+        f"Generations: {context['generations']} | Entries: {context['entries_count']}"
+    ).font.size = Pt(8)
+
+    table = document.add_table(rows=1, cols=6)
+    table.style = 'Table Grid'
+    headers = ['Period / Time'] + context['days_display']
+    for i, value in enumerate(headers):
+        cell = table.rows[0].cells[i]
+        cell.text = value
+        for run in cell.paragraphs[0].runs:
+            run.bold = True; run.font.size = Pt(8)
+
+    for row in context['rows']:
+        if row['type'] == 'block':
+            cells = table.add_row().cells
+            merged = cells[0]
+            for cell in cells[1:]: merged = merged.merge(cell)
+            merged.text = f"{row['block']['type']}: {row['block']['label']} | {row['block']['start']} – {row['block']['end']}"
+            for run in merged.paragraphs[0].runs:
+                run.bold = True; run.font.size = Pt(8)
+            continue
+        cells = table.add_row().cells
+        cells[0].text = row['period_label']
+
+        # Each day cell contains a list because more than one class can
+        # legitimately occupy the same period.  Render every lesson in the
+        # cell instead of treating the list itself as a lesson dictionary.
+        for i, lessons in enumerate(row['cells'], start=1):
+            if not lessons:
+                continue
+
+            cell = cells[i]
+            cell.text = ''
+            for lesson_index, item in enumerate(lessons):
+                if lesson_index:
+                    separator = cell.add_paragraph()
+                    separator.paragraph_format.space_before = Pt(2)
+                    separator.paragraph_format.space_after = Pt(2)
+                    separator.add_run('—' * 12).font.size = Pt(5)
+
+                paragraph = cell.paragraphs[0] if lesson_index == 0 else cell.add_paragraph()
+                paragraph.paragraph_format.space_after = Pt(0)
+
+                subject_run = paragraph.add_run(
+                    item['subject'] + (' (Lab)' if item['is_lab'] else '')
+                )
+                subject_run.bold = True
+                subject_run.font.size = Pt(7)
+
+                paragraph.add_run('\n' + item['class']).font.size = Pt(7)
+                if item['teacher']:
+                    paragraph.add_run('\n' + item['teacher']).font.size = Pt(6.5)
+                if item['room']:
+                    paragraph.add_run('\n' + item['room']).font.size = Pt(6.5)
+
+        for cell in cells:
+            for paragraph in cell.paragraphs:
+                for run in paragraph.runs:
+                    if run.font.size is None:
+                        run.font.size = Pt(7)
+
+    from io import BytesIO
+    buffer = BytesIO()
+    document.save(buffer)
+    buffer.seek(0)
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{context["export_filename_base"]}.docx"'
+    return response
 
 
 # ============================================================
@@ -73,6 +200,7 @@ def timetable_workspace(request):
         'active_term': active_term,
         'timetables': timetables,
         'can_generate': request.user.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'],
+        'can_manage_allocations': request.user.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'HOD'],
         'readiness': readiness,
     }
     return render(request, 'academics/timetable_workspace.html', context)
@@ -149,185 +277,6 @@ def generate_timetable(request):
 
 
 @login_required
-def timetable_export_pdf(request, timetable_id):
-    """Download a server-generated timetable PDF using xhtml2pdf."""
-    school = request.user.school
-    timetable = get_object_or_404(Timetable, id=timetable_id, school=school)
-
-    if timetable.status in ('PENDING', 'RUNNING'):
-        messages.warning(request, "The timetable is still being generated. Please try again when it is complete.")
-        return redirect('academics:timetable_detail', timetable_id=timetable_id)
-
-    try:
-        from io import BytesIO
-        from xhtml2pdf import pisa
-        from django.template.loader import render_to_string
-
-        context = build_timetable_export_context(
-            timetable,
-            class_id=request.GET.get('class_id'),
-        )
-        html = render_to_string('academics/timetable_export_pdf.html', context, request=request)
-        result = BytesIO()
-        pdf_status = pisa.CreatePDF(html, dest=result, encoding='UTF-8')
-        if pdf_status.err:
-            return JsonResponse(
-                {'error': 'The timetable PDF could not be generated.'},
-                status=500,
-            )
-
-        filename = context['export_filename_base'] + '.pdf'
-        response = HttpResponse(result.getvalue(), content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
-    except ImportError:
-        return JsonResponse(
-            {'error': 'xhtml2pdf is not installed. Install the project requirements and try again.'},
-            status=500,
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {'error': f'Unable to generate the timetable PDF: {exc}'},
-            status=500,
-        )
-
-
-@login_required
-def timetable_export_word(request, timetable_id):
-    """Download an editable timetable Word document using python-docx."""
-    school = request.user.school
-    timetable = get_object_or_404(Timetable, id=timetable_id, school=school)
-
-    if timetable.status in ('PENDING', 'RUNNING'):
-        messages.warning(request, "The timetable is still being generated. Please try again when it is complete.")
-        return redirect('academics:timetable_detail', timetable_id=timetable_id)
-
-    try:
-        from io import BytesIO
-        from django.http import HttpResponse
-        from docx import Document
-        from docx.enum.section import WD_ORIENT
-        from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        from docx.shared import Inches, Pt
-
-        context = build_timetable_export_context(
-            timetable,
-            class_id=request.GET.get('class_id'),
-        )
-
-        document = Document()
-        section = document.sections[0]
-        section.orientation = WD_ORIENT.LANDSCAPE
-        section.page_width, section.page_height = section.page_height, section.page_width
-        section.top_margin = Inches(0.45)
-        section.bottom_margin = Inches(0.45)
-        section.left_margin = Inches(0.35)
-        section.right_margin = Inches(0.35)
-
-        title = document.add_paragraph()
-        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = title.add_run(context['school_name'])
-        run.bold = True
-        run.font.size = Pt(15)
-
-        subtitle = document.add_paragraph()
-        subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = subtitle.add_run(f"{context['timetable_title']} — {context['term_name']}")
-        run.bold = True
-        run.font.size = Pt(11)
-
-        meta = document.add_paragraph()
-        meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        meta.add_run(
-            f"Status: {context['status_label']}   |   Fitness: {context['fitness']}   |   "
-            f"Hard Conflicts: {context['hard_conflicts']}   |   Soft Conflicts: {context['soft_conflicts']}   |   "
-            f"Entries: {context['entries_count']}"
-        ).font.size = Pt(8)
-
-        table = document.add_table(rows=1, cols=6)
-        table.style = 'Table Grid'
-        table.autofit = True
-        headers = ['Period / Time'] + context['days_display']
-        for i, header in enumerate(headers):
-            cell = table.rows[0].cells[i]
-            cell.text = header
-            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-            for paragraph in cell.paragraphs:
-                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                for r in paragraph.runs:
-                    r.bold = True
-                    r.font.size = Pt(8)
-
-        for row in context['rows']:
-            cells = table.add_row().cells
-            if row['type'] == 'block':
-                merged = cells[0]
-                for cell in cells[1:]:
-                    merged = merged.merge(cell)
-                block = row['block']
-                text = f"{block['label']}  |  {block['start']} – {block['end']}"
-                merged.text = text
-                merged.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-                for paragraph in merged.paragraphs:
-                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    for r in paragraph.runs:
-                        r.bold = True
-                        r.font.size = Pt(8)
-                continue
-
-            period_label = row['period_label']
-            cells[0].text = period_label
-            for paragraph in cells[0].paragraphs:
-                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                for r in paragraph.runs:
-                    r.bold = True
-                    r.font.size = Pt(7.5)
-
-            for idx, cell_data in enumerate(row['cells'], start=1):
-                cells[idx].vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
-                if not cell_data:
-                    cells[idx].text = ''
-                    continue
-                lines = [cell_data['subject']]
-                if cell_data.get('class'):
-                    lines.append(cell_data['class'])
-                if cell_data.get('teacher'):
-                    lines.append(cell_data['teacher'])
-                if cell_data.get('room'):
-                    lines.append(cell_data['room'])
-                cells[idx].text = '\n'.join(lines)
-                for paragraph in cells[idx].paragraphs:
-                    for r in paragraph.runs:
-                        r.font.size = Pt(7)
-
-        footer = document.add_paragraph()
-        footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        footer.add_run('Generated by EduAI School Management').font.size = Pt(7)
-
-        output = BytesIO()
-        document.save(output)
-        output.seek(0)
-        filename = context['export_filename_base'] + '.docx'
-        response = HttpResponse(
-            output.getvalue(),
-            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        )
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
-    except ImportError:
-        return JsonResponse(
-            {'error': 'python-docx is not installed. Install the project requirements and try again.'},
-            status=500,
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {'error': f'Unable to generate the timetable Word document: {exc}'},
-            status=500,
-        )
-
-
-@login_required
 def timetable_detail(request, timetable_id):
     school = request.user.school
     timetable = get_object_or_404(Timetable, id=timetable_id, school=school)
@@ -335,8 +284,8 @@ def timetable_detail(request, timetable_id):
     if timetable.status in ('PENDING', 'RUNNING'):
         return render(request, 'academics/timetable_generating.html', {'timetable': timetable})
 
-    entries_count = TimetableEntry.objects.filter(timetable=timetable).count()
-    entries = TimetableEntry.objects.filter(
+    entries_count = TimetableEntry._base_manager.filter(timetable=timetable).count()
+    entries = TimetableEntry._base_manager.filter(
         timetable=timetable
     ).select_related('school_class', 'subject', 'teacher__user', 'room', 'timeslot')
 
@@ -351,11 +300,21 @@ def timetable_detail(request, timetable_id):
         if selected_class:
             selected_class_display = selected_class.name
 
+    # Multiple classes can legitimately occupy the same period/day.
+    # Keep every lesson instead of overwriting earlier classes in the
+    # ``All Classes`` view.  When a class is selected this list contains
+    # at most one lesson.
     slot_lookup = {}
     for entry in entries:
         if selected_class_id and str(entry.school_class_id) != selected_class_id:
             continue
-        slot_lookup[(entry.timeslot.period_index, entry.timeslot.day)] = entry
+        key = (entry.timeslot.period_index, entry.timeslot.day)
+        slot_lookup.setdefault(key, []).append(entry)
+
+    for key in slot_lookup:
+        slot_lookup[key].sort(
+            key=lambda e: (e.school_class.name or '', e.subject.name or '')
+        )
 
     config = get_or_create_configuration(school)
     explicit_blocks = get_explicit_blocks(config)
@@ -416,7 +375,7 @@ def timetable_detail(request, timetable_id):
         rows.append({
             'type': 'period',
             'period': period,
-            'cells': [slot_lookup.get((period, d)) for d in days],
+            'cells': [slot_lookup.get((period, d), []) for d in days],
             'period_slots': [slot_by_period_day.get((period, d)) for d in days],
         })
         if period in blocks_by_period:
@@ -425,8 +384,8 @@ def timetable_detail(request, timetable_id):
     context = {
         'timetable': timetable,
         'days': days,
-        'rows': rows,
-        'classes': classes,
+        'timetable_rows': list(rows),
+        'school_classes': list(classes),
         'selected_class_id': selected_class_id,
         'selected_class_display': selected_class_display,
         'entries_count': entries_count,
@@ -527,7 +486,7 @@ def delete_timetable(request, timetable_id):
 
     if request.method == 'GET':
         # Count entries directly using the timetable filter
-        entries_count = TimetableEntry.objects.filter(timetable=timetable).count()
+        entries_count = TimetableEntry._base_manager.filter(timetable=timetable).count()
         return render(request, 'academics/timetable_delete_modal.html', {
             'timetable': timetable,
             'entries_count': entries_count,
@@ -570,15 +529,43 @@ def subject_create(request):
     school = request.user.school
     if request.method == 'GET':
         return render(request, 'academics/subject_form_modal.html',
-                      {'mode': 'create', 'action_url': 'academics:subject_create'})
+                      {'mode': 'create', 'action_url': 'academics:subject_create',
+                       'curriculum_levels': Subject.CURRICULUM_LEVEL_CHOICES})
     name = request.POST.get('name', '').strip()
     requires_lab = request.POST.get('requires_lab', False) == 'on'
+    curriculum_level = (request.POST.get('curriculum_level') or 'ALL').strip().upper()
+    valid_levels = {choice[0] for choice in Subject.CURRICULUM_LEVEL_CHOICES}
+    if curriculum_level not in valid_levels:
+        return JsonResponse({'success': False, 'error': 'Please select a valid curriculum level.'})
     if not name:
         return JsonResponse({'success': False, 'error': "Subject name is required."})
-    if Subject.objects.filter(school=school, name=name).exists():
-        return JsonResponse({'success': False, 'error': f"A subject named '{name}' already exists."})
-    Subject.objects.create(school=school, name=name, requires_lab=requires_lab)
-    return JsonResponse({'success': True, 'message': f"Subject '{name}' created successfully."})
+    if Subject.objects.filter(school=school, name=name, curriculum_level=curriculum_level).exists():
+        return JsonResponse({'success': False, 'error': f"A subject named '{name}' already exists for {dict(Subject.CURRICULUM_LEVEL_CHOICES).get(curriculum_level, curriculum_level)}."}, status=400)
+
+    subject = Subject.objects.create(
+        school=school,
+        name=name,
+        curriculum_level=curriculum_level,
+        requires_lab=requires_lab,
+    )
+
+    # Automatically offer a newly-created subject to every active class
+    # whose curriculum stage matches the subject. Existing settings are
+    # preserved because get_or_create never overwrites an existing row.
+    from .models import SchoolClass, ClassSubject
+    eligible_stages = {'ALL', curriculum_level}
+    eligible_classes = SchoolClass.objects.filter(
+        school=school, is_active=True, grade_level__stage__in=eligible_stages
+    ) if curriculum_level != 'ALL' else SchoolClass.objects.filter(school=school, is_active=True)
+    created_count = 0
+    for school_class in eligible_classes:
+        _, created = ClassSubject.objects.get_or_create(
+            school=school, school_class=school_class, subject=subject,
+            defaults={'periods_per_week': 4, 'is_core': False, 'is_active': True}
+        )
+        created_count += int(created)
+
+    return JsonResponse({'success': True, 'message': f"Subject '{name}' created successfully and added to {created_count} eligible class(es)."})
 
 
 @login_required
@@ -589,17 +576,42 @@ def subject_edit(request, subject_id):
     subject = get_object_or_404(Subject, id=subject_id, school=school)
     if request.method == 'GET':
         return render(request, 'academics/subject_form_modal.html',
-                      {'mode': 'edit', 'subject': subject, 'action_url': 'academics:subject_edit'})
+                      {'mode': 'edit', 'subject': subject, 'action_url': 'academics:subject_edit',
+                       'curriculum_levels': Subject.CURRICULUM_LEVEL_CHOICES})
     name = request.POST.get('name', '').strip()
     requires_lab = request.POST.get('requires_lab', False) == 'on'
+    curriculum_level = (request.POST.get('curriculum_level') or subject.curriculum_level or 'ALL').strip().upper()
+    valid_levels = {choice[0] for choice in Subject.CURRICULUM_LEVEL_CHOICES}
+    if curriculum_level not in valid_levels:
+        return JsonResponse({'success': False, 'error': 'Please select a valid curriculum level.'})
     if not name:
         return JsonResponse({'success': False, 'error': "Subject name is required."})
-    if Subject.objects.filter(school=school, name=name).exclude(id=subject.id).exists():
-        return JsonResponse({'success': False, 'error': f"A subject named '{name}' already exists."})
+    if Subject.objects.filter(school=school, name=name, curriculum_level=curriculum_level).exclude(id=subject.id).exists():
+        return JsonResponse({'success': False, 'error': f"A subject named '{name}' already exists for {dict(Subject.CURRICULUM_LEVEL_CHOICES).get(curriculum_level, curriculum_level)}."}, status=400)
     subject.name = name
+    subject.curriculum_level = curriculum_level
     subject.requires_lab = requires_lab
     subject.save()
-    return JsonResponse({'success': True, 'message': f"Subject '{name}' updated successfully."})
+
+    # If the curriculum band was changed, add the subject to newly-eligible
+    # active classes without touching existing class-subject settings.
+    from .models import SchoolClass, ClassSubject
+    eligible_classes = (
+        SchoolClass.objects.filter(school=school, is_active=True)
+        if curriculum_level == 'ALL'
+        else SchoolClass.objects.filter(
+            school=school, is_active=True, grade_level__stage=curriculum_level
+        )
+    )
+    added = 0
+    for school_class in eligible_classes:
+        _, created = ClassSubject.objects.get_or_create(
+            school=school, school_class=school_class, subject=subject,
+            defaults={'periods_per_week': 4, 'is_core': False, 'is_active': True}
+        )
+        added += int(created)
+
+    return JsonResponse({'success': True, 'message': f"Subject '{name}' updated successfully and synchronized with {added} eligible class(es)."})
 
 
 @login_required

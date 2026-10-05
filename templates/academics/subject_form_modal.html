@@ -4,6 +4,17 @@
         <label class="form-label fw-semibold">Subject Name <span class="text-danger">*</span></label>
         <input type="text" name="name" class="form-control" placeholder="e.g., Mathematics" value="{% if mode == 'edit' %}{{ subject.name }}{% endif %}" required>
     </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Curriculum Level <span class="text-danger">*</span></label>
+        <select name="curriculum_level" class="form-select" required>
+            {% for value, label in curriculum_levels %}
+                <option value="{{ value }}" {% if mode == 'edit' and subject.curriculum_level == value or mode == 'create' and value == 'ALL' %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <div class="form-text">This determines which class levels can select the subject. Use General / All levels for a subject shared across stages.</div>
+    </div>
+
     <div class="form-check mb-4">
         <input class="form-check-input" type="checkbox" name="requires_lab" id="requiresLab" {% if mode == 'edit' and subject.requires_lab %}checked{% endif %}>
         <label class="form-check-label fw-semibold" for="requiresLab">Requires a Lab Room</label>

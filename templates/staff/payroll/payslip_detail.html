@@ -110,10 +110,12 @@
                                     <td class="text-end fw-bold">₵{{ payslip.payroll_run.basic_salary|floatformat:2 }}</td>
                                 </tr>
                                 {% for name, amount in payslip.earnings.items %}
+                                {% if name != "Basic Salary" and name != "Total Allowances" and name != "Gross Pay" %}
                                 <tr>
                                     <td>{{ name }}</td>
                                     <td class="text-end">₵{{ amount|floatformat:2 }}</td>
                                 </tr>
+                                {% endif %}
                                 {% endfor %}
                                 <tr class="border-top fw-bold">
                                     <td>Total Earnings</td>

@@ -100,7 +100,9 @@
         <h4>PAYSLIP</h4>
         <div class="subtitle">
             {{ payslip.payroll_run.payroll_period.name }}
-            &middot; {{ payslip.generated_at|date:"F d, Y" }}
+        </div>
+        <div class="subtitle" style="margin-top:4px;">
+            Date Generated: {{ payslip.generated_at|date:"F d, Y" }}
         </div>
     </div>
 
@@ -119,7 +121,9 @@
     <table>
         <tr><td>Basic Salary</td><td align="right">₵{{ payslip.payroll_run.basic_salary|floatformat:2 }}</td></tr>
         {% for name, amount in payslip.earnings.items %}
+        {% if name != "Basic Salary" and name != "Total Allowances" and name != "Gross Pay" %}
         <tr><td>{{ name }}</td><td align="right">₵{{ amount|floatformat:2 }}</td></tr>
+        {% endif %}
         {% endfor %}
         <tr class="total-row"><td>Total Earnings</td><td align="right" class="text-success">₵{{ payslip.payroll_run.gross_pay|floatformat:2 }}</td></tr>
     </table>

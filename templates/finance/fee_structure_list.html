@@ -70,6 +70,18 @@
 
 </style>
 
+<div class="container-fluid px-4 pt-3">
+    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between rounded-4 p-2 border bg-body shadow-sm">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'finance:fee_structure_list' %}" class="btn btn-sm btn-gold"><i class="bi bi-sliders2 me-1"></i>Fee Setup</a>
+            <a href="{% url 'finance:fee_category_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-tags me-1"></i>Categories</a>
+            <a href="{% url 'finance:fee_addon_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-plus-square me-1"></i>Add-ons</a>
+            <a href="{% url 'finance:waiver_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-percent me-1"></i>Waivers</a>
+        </div>
+        <a href="{% url 'finance:fee_preparation' %}" class="btn btn-sm btn-outline-gold"><i class="bi bi-clipboard-check me-1"></i>Fee Management</a>
+    </div>
+</div>
+
 <!-- How Fee Structures Work -->
 <div class="page-description">
     <div class="d-flex align-items-start">

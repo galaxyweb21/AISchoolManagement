@@ -11,6 +11,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from core.pagination import paginate_queryset
+
 from accounts.access import role_allows
 from academics.models import SchoolClass, Subject, TeacherAssignment, ClassSubject, TeacherClassAssignment
 from ai_engine.services.services import AIService
@@ -801,8 +803,8 @@ def terminal_results_register(request):
                 'complete': bool(student_results) and complete_count == len(student_results),
             })
 
-        students = register_rows
         summary['students'] = len(register_rows)
+        students = paginate_queryset(register_rows, request)
         summary['subjects'] = len(subjects)
         summary['entries'] = results.count()
         summary['complete'] = results.filter(status='COMPLETE').count()

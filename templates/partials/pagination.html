@@ -1,3 +1,8 @@
+<style>
+.pagination-current { background: var(--eduai-gold, #946B1C); border-color: var(--eduai-gold, #946B1C); color: #fff; }
+.pagination-current:hover { background: #7a5917; border-color: #7a5917; color: #fff; }
+.enterprise-pagination .form-select { min-width: 96px; }
+</style>
 {% load pagination_tags %}
 {% if page_obj and page_obj.paginator.count %}
 <nav class="enterprise-pagination d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4" aria-label="Pagination">
@@ -13,7 +18,7 @@
                 <span class="btn btn-outline-secondary disabled">&laquo;</span>
                 <span class="btn btn-outline-secondary disabled">&lsaquo;</span>
             {% endif %}
-            <span class="btn btn-primary">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            <span class="btn pagination-current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
             {% if page_obj.has_next %}
                 <a class="btn btn-outline-secondary" href="{% pagination_url page_obj.next_page_number %}" aria-label="Next page">&rsaquo;</a>
                 <a class="btn btn-outline-secondary" href="{% pagination_url page_obj.paginator.num_pages %}" aria-label="Last page">&raquo;</a>

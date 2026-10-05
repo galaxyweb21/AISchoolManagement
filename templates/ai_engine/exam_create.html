@@ -124,7 +124,7 @@
                 <!-- Subject Dropdown -->
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Subject <span class="text-danger">*</span></label>
-                    <select name="subject" class="form-select" required>
+                    <select name="subject" class="form-select" id="examSubject" required>
                         <option value="">Select a Subject</option>
                         {% for subject in subjects %}
                         <option value="{{ subject.id }}" {% if form_data.subject == subject.id|stringformat:"s" %}selected{% endif %}>
@@ -132,7 +132,7 @@
                         </option>
                         {% endfor %}
                     </select>
-                    <small class="text-muted">Select a subject from the list of available subjects.</small>
+                    <small class="text-muted" id="examSubjectHelp">Select a school class first; only subjects offered by that class will be shown.</small>
                 </div>
 
                 <!-- Topic -->
@@ -147,7 +147,7 @@
                     <!-- School Class -->
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">School Class <span class="text-danger">*</span></label>
-                        <select name="school_class" class="form-select" required>
+                        <select name="school_class" class="form-select" id="examSchoolClass" required>
                             <option value="">Select Class</option>
                             {% for cls in school_classes %}
                             <option value="{{ cls.id }}" {% if form_data.school_class == cls.id|stringformat:"s" %}selected{% endif %}>
@@ -222,4 +222,81 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    const classSelect = document.getElementById('examSchoolClass');
+    const subjectSelect = document.getElementById('examSubject');
+    const help = document.getElementById('examSubjectHelp');
+    if (!classSelect || !subjectSelect) return;
+
+    const endpoint = "{% url 'ai_engine:exam_subject_options' %}";
+    const initialSubject = "{{ form_data.subject|default:'' }}";
+
+    function renderSubjects(subjects, keepId) {
+        subjectSelect.innerHTML = '';
+        const first = document.createElement('option');
+        first.value = '';
+        first.textContent = subjects.length ? 'Select a Subject' : 'No subjects assigned to this class';
+        subjectSelect.appendChild(first);
+
+        subjects.forEach(function (subject) {
+            const option = document.createElement('option');
+            option.value = subject.id;
+            option.textContent = subject.name + (subject.code ? ' (' + subject.code + ')' : '');
+            if (String(subject.id) === String(keepId || '')) option.selected = true;
+            subjectSelect.appendChild(option);
+        });
+
+        subjectSelect.disabled = subjects.length === 0;
+        if (help) {
+            help.textContent = subjects.length
+                ? subjects.length + ' subject' + (subjects.length === 1 ? '' : 's') + ' offered by ' +
+                  (classSelect.options[classSelect.selectedIndex]?.textContent.trim() || 'the selected class') + '.'
+                : 'No subjects have been assigned to this class yet. Add them from Academics → Subjects → Apply to Classes.';
+        }
+    }
+
+    function loading() {
+        subjectSelect.innerHTML = '<option value="">Loading class subjects...</option>';
+        subjectSelect.disabled = true;
+        if (help) help.textContent = 'Loading subjects for the selected class...';
+    }
+
+    async function loadSubjects(keepId) {
+        const classId = classSelect.value;
+        if (!classId) {
+            renderSubjects([], '');
+            if (help) help.textContent = 'Select a school class first.';
+            return;
+        }
+
+        loading();
+        try {
+            const response = await fetch(endpoint + '?class_id=' + encodeURIComponent(classId), {
+                credentials: 'same-origin',
+                headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'Unable to load class subjects.');
+            renderSubjects(data.subjects || [], keepId || '');
+        } catch (error) {
+            subjectSelect.innerHTML = '<option value="">Unable to load subjects</option>';
+            subjectSelect.disabled = true;
+            if (help) help.textContent = error.message;
+        }
+    }
+
+    classSelect.addEventListener('change', function () {
+        loadSubjects('');
+    });
+
+    // On first load, also restore the selected subject after a validation error.
+    if (classSelect.value) {
+        loadSubjects(initialSubject);
+    } else {
+        renderSubjects([], '');
+    }
+})();
+</script>
 {% endblock %}

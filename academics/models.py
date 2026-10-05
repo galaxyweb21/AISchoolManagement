@@ -16,6 +16,22 @@ class Subject(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='subjects')
     name = models.CharField(max_length=150, help_text="e.g., Mathematics, Integrated Science")
+    CURRICULUM_LEVEL_CHOICES = (
+        ('ALL', 'General / All levels'),
+        ('KG', 'KG Learning Areas'),
+        ('PRIMARY', 'Primary'),
+        ('JHS', 'JHS / Common Core'),
+        ('SHS', 'SHS'),
+    )
+    curriculum_level = models.CharField(
+        max_length=10,
+        choices=CURRICULUM_LEVEL_CHOICES,
+        default='ALL',
+        help_text=(
+            'Curriculum band this subject belongs to. Legacy/manual subjects use General / All levels ' 
+            'until the school classifies them.'
+        ),
+    )
     code = models.CharField(max_length=50, blank=True, editable=False)
     requires_lab = models.BooleanField(
         default=False,
@@ -28,7 +44,7 @@ class Subject(models.Model):
     objects = managers.TenantManager()
 
     class Meta:
-        unique_together = ('school', 'name')
+        unique_together = ('school', 'name', 'curriculum_level')
         ordering = ['name']
 
     def save(self, *args, **kwargs):
@@ -392,7 +408,7 @@ class TimetableEntry(models.Model):
     # No direct `school` FK on this model -- only reachable via
     # timetable.school -- so the shared TenantManager needs the
     # relation path spelled out explicitly.
-    objects = managers.TenantManager(school_field="timetable__school")
+    objects = managers.related_tenant_manager("timetable__school")()
 
     class Meta:
         unique_together = ('timetable', 'school_class', 'timeslot')
@@ -747,10 +763,3 @@ class PromotionBatch(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.academic_year})"
-# T4 — persistent timetable schedule configuration layer.
-# Imported here so Django registers the model without rewriting the existing
-# large academics/models.py file.
-from .timetable_configuration_model import TimetableConfiguration
-
-# T4.1 — explicit persisted timetable schedule blocks.
-from .timetable_schedule_block_model import TimetableScheduleBlock

@@ -1,0 +1,534 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Timetable Setup{% endblock %}
+
+{% block content %}
+<style>
+    .eduai-tt-setup {
+        --tt-gold: var(--eduai-gold, #946B1C);
+        --tt-teal: var(--eduai-signal, #2C7A6D);
+        --tt-bg: var(--app-bg, #F7F4EC);
+        --tt-surface: var(--surface-bg, #FFFFFF);
+        --tt-border: var(--surface-border, #E7E1D3);
+        --tt-text: var(--text-primary, #1F2A28);
+        --tt-muted: var(--text-muted, #6B7570);
+    }
+
+    .eduai-tt-setup .tt-shell {
+        max-width: 1440px;
+        margin: 0 auto;
+    }
+
+    .eduai-tt-setup .tt-hero {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--tt-border);
+        border-radius: 22px;
+        background:
+            radial-gradient(circle at 92% 15%, var(--eduai-gold-soft, rgba(148,107,28,.16)), transparent 30%),
+            radial-gradient(circle at 75% 100%, var(--eduai-signal-soft, rgba(44,122,109,.12)), transparent 34%),
+            var(--tt-surface);
+        box-shadow: 0 8px 30px rgba(31,42,40,.06);
+    }
+
+    .eduai-tt-setup .tt-hero-inner {
+        padding: 1.6rem 1.7rem;
+    }
+
+    .eduai-tt-setup .eyebrow {
+        color: var(--tt-teal);
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .11em;
+        text-transform: uppercase;
+    }
+
+    .eduai-tt-setup .tt-title {
+        margin: .25rem 0 .4rem;
+        color: var(--tt-text);
+        font-size: clamp(1.35rem, 2vw, 1.9rem);
+        font-weight: 800;
+        letter-spacing: -.025em;
+    }
+
+    .eduai-tt-setup .tt-description {
+        max-width: 760px;
+        margin: 0;
+        color: var(--tt-muted);
+        font-size: .9rem;
+        line-height: 1.65;
+    }
+
+    .eduai-tt-setup .tt-action {
+        flex: 0 0 auto;
+    }
+
+    .eduai-tt-setup .btn-tt-gold {
+        background: var(--tt-gold);
+        border: 1px solid var(--tt-gold);
+        color: #fff !important;
+        font-weight: 700;
+        box-shadow: 0 5px 14px rgba(148,107,28,.18);
+    }
+
+    .eduai-tt-setup .btn-tt-gold:hover {
+        filter: brightness(.94);
+        color: #fff !important;
+        transform: translateY(-1px);
+    }
+
+    .eduai-tt-setup .btn-tt-outline {
+        background: transparent;
+        border: 1px solid var(--tt-border);
+        color: var(--tt-text) !important;
+        font-weight: 700;
+    }
+
+    .eduai-tt-setup .btn-tt-outline:hover {
+        border-color: var(--tt-gold);
+        color: var(--tt-gold) !important;
+        background: var(--eduai-gold-soft, rgba(148,107,28,.08));
+    }
+
+    .eduai-tt-setup .term-line {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        margin-top: .8rem;
+        color: var(--tt-muted);
+        font-size: .78rem;
+    }
+
+    .eduai-tt-setup .term-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--tt-teal);
+    }
+
+    .eduai-tt-setup .term-dot.off {
+        background: #dc3545;
+    }
+
+    .eduai-tt-setup .kpi {
+        height: 100%;
+        padding: 1rem 1.05rem;
+        border: 1px solid var(--tt-border);
+        border-radius: 16px;
+        background: var(--tt-surface);
+    }
+
+    .eduai-tt-setup .kpi-label {
+        color: var(--tt-muted);
+        font-size: .7rem;
+        font-weight: 800;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+    }
+
+    .eduai-tt-setup .kpi-value {
+        display: block;
+        margin-top: .2rem;
+        color: var(--tt-text);
+        font-size: 1.35rem;
+        font-weight: 800;
+    }
+
+    .eduai-tt-setup .section-card {
+        overflow: hidden;
+        border: 1px solid var(--tt-border);
+        border-radius: 20px;
+        background: var(--tt-surface);
+        box-shadow: 0 5px 22px rgba(31,42,40,.045);
+    }
+
+    .eduai-tt-setup .section-head {
+        padding: 1.15rem 1.25rem;
+        border-bottom: 1px solid var(--tt-border);
+    }
+
+    .eduai-tt-setup .section-title {
+        margin: 0;
+        color: var(--tt-text);
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .eduai-tt-setup .section-help {
+        margin: .25rem 0 0;
+        color: var(--tt-muted);
+        font-size: .78rem;
+    }
+
+    .eduai-tt-setup .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .42rem .7rem;
+        border-radius: 999px;
+        font-size: .73rem;
+        font-weight: 800;
+    }
+
+    .eduai-tt-setup .status-ready {
+        color: var(--tt-teal);
+        background: var(--eduai-signal-soft, rgba(44,122,109,.12));
+    }
+
+    .eduai-tt-setup .status-blocked {
+        color: #b42318;
+        background: rgba(220,53,69,.1);
+    }
+
+    .eduai-tt-setup .setup-card {
+        height: 100%;
+        padding: 1.2rem;
+        border: 1px solid var(--tt-border);
+        border-radius: 16px;
+        background: var(--tt-surface);
+        transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+    }
+
+    .eduai-tt-setup .setup-card:hover {
+        border-color: rgba(148,107,28,.42);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(31,42,40,.07);
+    }
+
+    .eduai-tt-setup .setup-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        margin-bottom: .85rem;
+        border-radius: 10px;
+        background: var(--eduai-gold-soft, rgba(148,107,28,.12));
+        color: var(--tt-gold);
+        font-size: .78rem;
+        font-weight: 800;
+    }
+
+    .eduai-tt-setup .setup-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        margin-bottom: .8rem;
+        border-radius: 12px;
+        background: var(--eduai-signal-soft, rgba(44,122,109,.12));
+        color: var(--tt-teal);
+        font-size: 1.05rem;
+    }
+
+    .eduai-tt-setup .setup-card h3 {
+        margin: 0 0 .35rem;
+        color: var(--tt-text);
+        font-size: .98rem;
+        font-weight: 800;
+    }
+
+    .eduai-tt-setup .setup-card p {
+        min-height: 66px;
+        margin: 0 0 1rem;
+        color: var(--tt-muted);
+        font-size: .8rem;
+        line-height: 1.6;
+    }
+
+    .eduai-tt-setup .check-list {
+        display: grid;
+        gap: .65rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .eduai-tt-setup .check-list li {
+        display: flex;
+        gap: .6rem;
+        align-items: flex-start;
+        color: var(--tt-muted);
+        font-size: .78rem;
+    }
+
+    .eduai-tt-setup .check-list i {
+        flex: 0 0 auto;
+        color: var(--tt-teal);
+        margin-top: .05rem;
+    }
+
+    .eduai-tt-setup .readiness-row {
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        padding: .85rem 0;
+        border-bottom: 1px solid var(--tt-border);
+    }
+
+    .eduai-tt-setup .readiness-row:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .eduai-tt-setup .readiness-icon {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: var(--eduai-gold-soft, rgba(148,107,28,.12));
+        color: var(--tt-gold);
+    }
+
+    .eduai-tt-setup .readiness-copy strong {
+        display: block;
+        color: var(--tt-text);
+        font-size: .8rem;
+    }
+
+    .eduai-tt-setup .readiness-copy span {
+        color: var(--tt-muted);
+        font-size: .73rem;
+    }
+
+    .eduai-tt-setup .advanced .accordion-item {
+        border-color: var(--tt-border) !important;
+        background: var(--tt-surface);
+    }
+
+    .eduai-tt-setup .advanced .accordion-button {
+        background: var(--tt-surface);
+        color: var(--tt-text);
+        box-shadow: none;
+    }
+
+    .eduai-tt-setup .advanced .accordion-button:not(.collapsed) {
+        color: var(--tt-gold);
+        background: var(--tt-surface);
+    }
+
+    .eduai-tt-setup .advanced-link {
+        display: block;
+        height: 100%;
+        padding: .95rem;
+        border: 1px solid var(--tt-border);
+        border-radius: 13px;
+        color: var(--tt-text) !important;
+        text-decoration: none;
+        background: var(--tt-surface);
+    }
+
+    .eduai-tt-setup .advanced-link:hover {
+        border-color: rgba(148,107,28,.45);
+        background: var(--eduai-gold-soft, rgba(148,107,28,.06));
+    }
+
+    .eduai-tt-setup .advanced-link strong {
+        font-size: .8rem;
+    }
+
+    .eduai-tt-setup .advanced-link small {
+        display: block;
+        margin-top: .2rem;
+        color: var(--tt-muted);
+        font-size: .7rem;
+    }
+
+    @media (max-width: 767.98px) {
+        .eduai-tt-setup .tt-hero-inner { padding: 1.2rem; }
+        .eduai-tt-setup .tt-action { width: 100%; }
+        .eduai-tt-setup .tt-action .btn { width: 100%; }
+        .eduai-tt-setup .setup-card p { min-height: auto; }
+    }
+</style>
+
+<div class="eduai-tt-setup container-fluid px-3 px-lg-4 py-3 py-lg-4">
+    <div class="tt-shell">
+        {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                    <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show" role="alert">
+                        <i class="bi bi-info-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <section class="tt-hero mb-4">
+            <div class="tt-hero-inner">
+                <div class="d-flex justify-content-between align-items-start gap-4 flex-wrap">
+                    <div>
+                        <div class="eyebrow">AI Timetabler · Setup</div>
+                        <h1 class="tt-title">Set up your school timetable</h1>
+                        <p class="tt-description">Tell EduAI how your school day works and who teaches each subject. The timetable engine handles the scheduling conflicts and creates the weekly timetable for you.</p>
+                        <div class="term-line">
+                            <span class="term-dot {% if not active_term %}off{% endif %}"></span>
+                            {% if active_term %}Active term: <strong>{{ active_term }}</strong>{% else %}<strong>No active academic term</strong>{% endif %}
+                        </div>
+                    </div>
+                    <div class="tt-action d-flex gap-2 flex-wrap">
+                        <a href="{% url 'academics:timetable_workspace' %}" class="btn btn-tt-outline rounded-3 px-3">
+                            <i class="bi bi-arrow-left me-1"></i> AI Timetabler
+                        </a>
+                        <a href="{% url 'academics:timetable_workspace' %}#readiness" class="btn btn-tt-gold rounded-3 px-3">
+                            <i class="bi bi-shield-check me-1"></i> Check Readiness
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-xl-3"><div class="kpi"><span class="kpi-label">Classes</span><span class="kpi-value">{{ classes_count|default:0 }}</span></div></div>
+            <div class="col-6 col-xl-3"><div class="kpi"><span class="kpi-label">Subjects to schedule</span><span class="kpi-value">{{ class_subjects_count|default:0 }}</span></div></div>
+            <div class="col-6 col-xl-3"><div class="kpi"><span class="kpi-label">Active teachers</span><span class="kpi-value">{{ teachers_count|default:0 }}</span></div></div>
+            <div class="col-6 col-xl-3"><div class="kpi"><span class="kpi-label">Teaching periods</span><span class="kpi-value">{{ slots_count|default:0 }}</span></div></div>
+        </div>
+
+        <section class="section-card mb-4">
+            <div class="section-head d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                <div>
+                    <h2 class="section-title">Three things to set up</h2>
+                    <p class="section-help">These are the only school-level decisions you need to make before generating a timetable.</p>
+                </div>
+                {% if readiness.ready %}
+                    <span class="status-badge status-ready"><i class="bi bi-check-circle-fill"></i> Ready to generate</span>
+                {% else %}
+                    <span class="status-badge status-blocked"><i class="bi bi-exclamation-circle-fill"></i> {{ readiness.stats.issue_count|default:0 }} item{{ readiness.stats.issue_count|default:0|pluralize }} to fix</span>
+                {% endif %}
+            </div>
+
+            <div class="p-3 p-lg-4">
+                <div class="row g-3">
+                    <div class="col-lg-4">
+                        <article class="setup-card">
+                            <div class="setup-number">01</div>
+                            <div class="setup-icon"><i class="bi bi-calendar3"></i></div>
+                            <h3>School Day</h3>
+                            <p>Define when lessons happen and when the school stops for breaks, lunch and other activities.</p>
+                            <a href="{% url 'academics:timetable_configuration' %}" class="btn btn-tt-gold rounded-3 w-100">
+                                <i class="bi bi-calendar-week me-1"></i> Configure School Day
+                            </a>
+                        </article>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <article class="setup-card">
+                            <div class="setup-number">02</div>
+                            <div class="setup-icon"><i class="bi bi-people"></i></div>
+                            <h3>Subjects &amp; Teachers</h3>
+                            <p>Assign teachers to class subjects and set how many periods each subject should receive each week.</p>
+                            <a href="{% url 'academics:timetable_setup_assistant' %}" class="btn btn-tt-gold rounded-3 w-100">
+                                <i class="bi bi-person-check me-1"></i> Manage Subjects &amp; Teachers
+                            </a>
+                        </article>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <article class="setup-card">
+                            <div class="setup-number">03</div>
+                            <div class="setup-icon"><i class="bi bi-shield-check"></i></div>
+                            <h3>Review &amp; Generate</h3>
+                            <p>EduAI checks teacher availability, class capacity, rooms and other constraints before generation.</p>
+                            <a href="{% url 'academics:timetable_workspace' %}#readiness" class="btn btn-tt-gold rounded-3 w-100">
+                                <i class="bi bi-clipboard-check me-1"></i> Review Readiness
+                            </a>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-7">
+                <section class="section-card h-100">
+                    <div class="section-head">
+                        <h2 class="section-title">What EduAI handles automatically</h2>
+                        <p class="section-help">You provide the school's requirements; the scheduler handles the complex timetable rules.</p>
+                    </div>
+                    <div class="p-3 p-lg-4">
+                        <ul class="check-list">
+                            <li><i class="bi bi-check-circle-fill"></i><span>Teacher double-booking and class conflicts</span></li>
+                            <li><i class="bi bi-check-circle-fill"></i><span>Room availability and suitable laboratory rooms</span></li>
+                            <li><i class="bi bi-check-circle-fill"></i><span>Teacher physical timetable capacity</span></li>
+                            <li><i class="bi bi-check-circle-fill"></i><span>Break and lunch protection</span></li>
+                            <li><i class="bi bi-check-circle-fill"></i><span>Weekly lesson allocation and timetable constraints</span></li>
+                            <li><i class="bi bi-check-circle-fill"></i><span>Offline timetable generation once the school data is available</span></li>
+                        </ul>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-lg-5">
+                <section class="section-card h-100">
+                    <div class="section-head">
+                        <h2 class="section-title">Current readiness</h2>
+                        <p class="section-help">A quick view of what may prevent generation.</p>
+                    </div>
+                    <div class="px-3 px-lg-4 pb-3 pb-lg-4">
+                        <div class="readiness-row">
+                            <div class="readiness-icon"><i class="bi bi-person-x"></i></div>
+                            <div class="readiness-copy flex-grow-1"><strong>Missing teachers</strong><span>Subjects without an effective teacher</span></div>
+                            <strong>{{ readiness.stats.missing_teachers|default:0 }}</strong>
+                        </div>
+                        <div class="readiness-row">
+                            <div class="readiness-icon"><i class="bi bi-people"></i></div>
+                            <div class="readiness-copy flex-grow-1"><strong>Teacher capacity issues</strong><span>Teachers exceeding physical availability</span></div>
+                            <strong>{{ readiness.stats.teacher_capacity_over|default:0 }}</strong>
+                        </div>
+                        <div class="readiness-row">
+                            <div class="readiness-icon"><i class="bi bi-journal-x"></i></div>
+                            <div class="readiness-copy flex-grow-1"><strong>Classes without subjects</strong><span>Active classes needing curriculum setup</span></div>
+                            <strong>{{ readiness.stats.classes_without_subjects|default:0 }}</strong>
+                        </div>
+                        <div class="pt-3">
+                            <a href="{% url 'academics:timetable_workspace' %}#readiness" class="btn btn-tt-outline rounded-3 w-100">
+                                <i class="bi bi-clipboard-data me-1"></i> Open Full Readiness Report
+                            </a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <section class="advanced mb-4">
+            <div class="accordion" id="advancedTimetableSetup">
+                <div class="accordion-item rounded-4 overflow-hidden">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#advancedSetup" aria-expanded="false" aria-controls="advancedSetup">
+                            <i class="bi bi-sliders2 me-2"></i> Advanced timetable tools
+                        </button>
+                    </h2>
+                    <div id="advancedSetup" class="accordion-collapse collapse">
+                        <div class="accordion-body">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <a href="{% url 'academics:timetable_capacity_manager' %}" class="advanced-link">
+                                        <i class="bi bi-bar-chart-line me-2" style="color:var(--tt-gold)"></i><strong>Allocation Review</strong>
+                                        <small>Detailed class and teacher allocation audit.</small>
+                                    </a>
+                                </div>
+                                <div class="col-md-4">
+                                    <a href="{% url 'academics:timetable_configuration' %}" class="advanced-link">
+                                        <i class="bi bi-sliders2-vertical me-2" style="color:var(--tt-gold)"></i><strong>Schedule Details</strong>
+                                        <small>Advanced period and schedule-block controls.</small>
+                                    </a>
+                                </div>
+                                <div class="col-md-4">
+                                    <a href="{% url 'academics:timeslot_list' %}" class="advanced-link">
+                                        <i class="bi bi-clock-history me-2" style="color:var(--tt-gold)"></i><strong>Time Slots</strong>
+                                        <small>Inspect the active teaching-period grid.</small>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

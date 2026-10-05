@@ -170,6 +170,31 @@
     </div>
 
     <div class="d-flex align-items-center gap-2">
+        <!-- Google-style Page Translator -->
+        <div class="dropdown" id="eduaiPageTranslator" data-page-translator>
+            <button class="eduai-icon-btn" type="button" data-bs-toggle="dropdown"
+                    data-bs-auto-close="outside" aria-label="Translate this page"
+                    title="Translate this page" id="eduaiPageTranslatorBtn">
+                <i class="bi bi-translate fs-6"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end p-2 eduai-translate-menu" data-page-translator>
+                <div class="px-2 pt-1 pb-2">
+                    <div class="fw-bold small" style="color:var(--text-primary,#1F2A28);">Translate page</div>
+                    <div class="small text-muted">Choose a language</div>
+                </div>
+                <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="English">English <i class="bi bi-check2 ms-auto"></i></button>
+                <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="Twi">Twi <i class="bi bi-check2 ms-auto d-none"></i></button>
+                <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="Ga">Ga <i class="bi bi-check2 ms-auto d-none"></i></button>
+                <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="Ewe">Ewe <i class="bi bi-check2 ms-auto d-none"></i></button>
+                <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="Yoruba">Yoruba <i class="bi bi-check2 ms-auto d-none"></i></button>
+                <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="French">French <i class="bi bi-check2 ms-auto d-none"></i></button>
+                <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="Arabic">Arabic <i class="bi bi-check2 ms-auto d-none"></i></button>
+                <div class="border-top mt-2 pt-2 px-2 pb-1">
+                    <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Translates the current page without changing its controls.</small>
+                </div>
+            </div>
+        </div>
+
         <!-- Theme Toggle -->
         <button class="eduai-icon-btn" type="button" onclick="window.toggleTheme()" aria-label="Toggle light and dark mode">
             <i class="bi bi-moon-stars-fill" data-theme-icon></i>
@@ -247,6 +272,135 @@
         </div>
     </div>
 </nav>
+
+<style>
+    .eduai-translate-menu {
+        min-width: 245px;
+        border-color: var(--surface-border, #E7E1D3);
+        background: var(--surface-bg, #fff);
+        box-shadow: 0 12px 35px rgba(31,42,40,.12);
+    }
+    .eduai-language-option {
+        display:flex; align-items:center; gap:8px;
+        color:var(--text-primary,#1F2A28); font-size:.85rem; padding:9px 10px;
+    }
+    .eduai-language-option:hover, .eduai-language-option.active {
+        background:rgba(148,107,28,.10); color:var(--text-primary,#1F2A28);
+    }
+    .eduai-language-option .bi-check2 { color:var(--eduai-gold,#946B1C); font-weight:800; }
+    .eduai-page-translating #mainContent { opacity:.72; transition:opacity .15s ease; }
+</style>
+
+<script>
+(function(){
+    const STORAGE_KEY = 'eduai_page_language';
+    const ORIGINAL_TEXT = new WeakMap();
+    const API_URL = "{% url 'ai_engine:language_translator_api' %}";
+    let observer = null;
+    let translating = false;
+
+    function getCsrf(){
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
+    }
+    function skip(el){
+        return !el || el.closest('[data-page-translator],script,style,noscript,template,svg,code,pre,input,textarea,select,option,[data-no-translate],.eduai-no-translate');
+    }
+    function collect(){
+        const nodes=[];
+        const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+        let n;
+        while(n=walker.nextNode()){
+            if((n.nodeValue||'').trim() && !skip(n.parentElement)) nodes.push(n);
+        }
+        return nodes;
+    }
+    function original(n){
+        if(!ORIGINAL_TEXT.has(n)) ORIGINAL_TEXT.set(n,n.nodeValue || '');
+        return ORIGINAL_TEXT.get(n) || '';
+    }
+    function restore(){
+        if(observer) observer.disconnect();
+        collect().forEach(n=>{
+            if(ORIGINAL_TEXT.has(n)) n.nodeValue=ORIGINAL_TEXT.get(n);
+        });
+        document.documentElement.lang='en';
+        setState('English');
+        if(observer) observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+    }
+    function setState(lang){
+        document.querySelectorAll('.eduai-language-option').forEach(btn=>{
+            const active=btn.dataset.pageLanguage===lang;
+            btn.classList.toggle('active',active);
+            btn.querySelector('.bi-check2')?.classList.toggle('d-none',!active);
+        });
+    }
+    function cacheKey(lang,text){ return 'eduai_translate:'+lang+':'+text; }
+    function cached(lang,text){ try{return sessionStorage.getItem(cacheKey(lang,text));}catch(e){return null;} }
+    function saveCache(lang,text,value){ try{sessionStorage.setItem(cacheKey(lang,text),value);}catch(e){} }
+
+    async function batch(lang,texts){
+        const out=new Array(texts.length), missing=[];
+        texts.forEach((text,i)=>{const c=cached(lang,text); if(c!==null) out[i]=c; else missing.push({i,text});});
+        if(!missing.length) return out;
+        const r=await fetch(API_URL,{
+            method:'POST', credentials:'same-origin',
+            headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf(),'X-Requested-With':'XMLHttpRequest'},
+            body:JSON.stringify({page_mode:true,source:'English',target:lang,items:missing.map(x=>x.text.slice(0,500))})
+        });
+        const d=await r.json();
+        if(!r.ok || !d.success || !Array.isArray(d.translations)) throw new Error(d.error || 'Page translation failed.');
+        missing.forEach((item,i)=>{out[item.i]=d.translations[i];saveCache(lang,item.text,d.translations[i]);});
+        return out;
+    }
+    function keepSpace(a,b){
+        const lead=(a.match(/^\s+/)||[''])[0], trail=(a.match(/\s+$/)||[''])[0];
+        return lead+(b||'').trim()+trail;
+    }
+    async function translate(lang){
+        if(translating) return;
+        translating=true; document.body.classList.add('eduai-page-translating'); if(observer) observer.disconnect();
+        try{
+            if(lang==='English'){restore();localStorage.setItem(STORAGE_KEY,'English');return;}
+            const entries=collect().map(n=>({n,text:original(n)})).filter(x=>x.text.trim());
+            for(let i=0;i<entries.length;i+=35){
+                const group=entries.slice(i,i+35);
+                const translations=await batch(lang,group.map(x=>x.text));
+                group.forEach((x,j)=>{if(translations[j]!=null)x.n.nodeValue=keepSpace(x.text,translations[j]);});
+            }
+            localStorage.setItem(STORAGE_KEY,lang);
+            document.documentElement.lang=({Ga:'gaa',Twi:'twi',Ewe:'ewe',Yoruba:'yor',French:'fr',Arabic:'ar',English:'eng'})[lang] || 'en';
+        }catch(e){
+            console.error('EduAI page translation:',e); alert(e.message || 'Unable to translate this page.'); setState('English');
+        }finally{
+            translating=false; document.body.classList.remove('eduai-page-translating');
+            if(observer) observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+        }
+    }
+
+    document.addEventListener('click',function(e){
+        const btn=e.target.closest('.eduai-language-option'); if(!btn) return;
+        e.preventDefault(); const lang=btn.dataset.pageLanguage; setState(lang);
+        const toggle=document.getElementById('eduaiPageTranslatorBtn');
+        if(toggle && window.bootstrap) bootstrap.Dropdown.getOrCreateInstance(toggle).hide();
+        translate(lang);
+    });
+
+    observer=new MutationObserver(function(mutations){
+        const lang=localStorage.getItem(STORAGE_KEY)||'English';
+        if(lang==='English'||translating) return;
+        if(!mutations.some(m=>m.type==='childList'&&m.addedNodes.length)) return;
+        clearTimeout(window._eduaiTranslationTimer);
+        window._eduaiTranslationTimer=setTimeout(()=>translate(lang),400);
+    });
+
+    document.addEventListener('DOMContentLoaded',function(){
+        const lang=localStorage.getItem(STORAGE_KEY)||'English'; setState(lang);
+        observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+        if(lang!=='English') setTimeout(()=>translate(lang),300);
+    });
+})();
+</script>
 
 {% block extra_js %}
 <script>

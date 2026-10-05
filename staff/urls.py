@@ -39,6 +39,7 @@ urlpatterns = [
          name='teacher_assignment_class_view'),
     path('assignments/class/<uuid:class_id>/assign-class-teacher/', views.class_teacher_assign,
          name='class_teacher_assign'),
+    path('assignments/subject-options/', views.teacher_assignment_subject_options, name='teacher_assignment_subject_options'),
     path('assignments/create/', views.teacher_assignment_create, name='teacher_assignment_create'),
     path('assignments/bulk-create/', views.teacher_assignment_bulk_create, name='teacher_assignment_bulk_create'),
     path('assignments/<uuid:assignment_id>/edit/', views.teacher_assignment_edit, name='teacher_assignment_edit'),

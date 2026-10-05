@@ -1,0 +1,218 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Subjects &amp; Teachers{% endblock %}
+
+{% block content %}
+<style>
+    .timetable-setup-page { --setup-gold: var(--primary-color,#946B1C); --setup-teal: var(--eduai-signal,#2C7A6D); }
+    .setup-hero { background: linear-gradient(135deg,rgba(148,107,28,.08),rgba(44,122,109,.045)); border:1px solid rgba(148,107,28,.14); }
+    .setup-kpi { height:100%; border:1px solid rgba(148,107,28,.12); background:var(--app-bg,#F7F4EC); }
+    .setup-toolbar { position:sticky; top:12px; z-index:20; background:var(--app-bg,#F7F4EC); border:1px solid rgba(148,107,28,.12); box-shadow:0 .5rem 1.5rem rgba(0,0,0,.06); }
+    .setup-class-card,.setup-capacity-card { border:1px solid rgba(148,107,28,.12)!important; background:var(--app-bg,#F7F4EC); overflow:hidden; }
+    .setup-class-card.is-open { border-color:rgba(148,107,28,.30)!important; }
+    .setup-class-header { width:100%; border:0; background:transparent; text-align:left; padding:1rem 1.25rem; cursor:pointer; color:inherit; }
+    .setup-class-header:hover { background:rgba(148,107,28,.035); }
+    .setup-class-chevron { transition:transform .2s ease; }
+    .setup-class-card.is-open .setup-class-chevron { transform:rotate(180deg); }
+    .setup-class-body { display:none; border-top:1px solid rgba(148,107,28,.10); }
+    .setup-class-card.is-open .setup-class-body { display:block; }
+    .setup-status { white-space:nowrap; border-radius:999px; padding:.4rem .7rem; font-size:.72rem; font-weight:700; }
+    .setup-status-ready { color:#166534; background:rgba(22,163,74,.09); }
+    .setup-status-warning { color:#92400e; background:rgba(245,158,11,.13); }
+    .setup-status-danger { color:#b91c1c; background:rgba(220,38,38,.09); }
+    .setup-table { --bs-table-bg:transparent; color:inherit; }
+    .setup-table thead th { background:rgba(148,107,28,.055); border-bottom:1px solid rgba(148,107,28,.10); font-size:.69rem; letter-spacing:.06em; padding:.75rem .8rem; }
+    .setup-table tbody td { padding:.75rem .8rem; border-color:rgba(148,107,28,.08); vertical-align:middle; }
+    .setup-teacher-select,.setup-period-input { min-height:40px; border-radius:10px; background:var(--app-bg,#F7F4EC); color:inherit; border-color:rgba(148,107,28,.16); }
+    .setup-teacher-select:focus,.setup-period-input:focus { border-color:rgba(148,107,28,.55); box-shadow:0 0 0 .2rem rgba(148,107,28,.10); }
+    .setup-metric { border:1px solid rgba(148,107,28,.10); background:rgba(148,107,28,.035); border-radius:14px; padding:.8rem 1rem; }
+    .setup-meter { height:7px; border-radius:999px; background:rgba(148,107,28,.10); overflow:hidden; }
+    .setup-meter > span { display:block; height:100%; border-radius:inherit; background:var(--setup-teal); }
+    .setup-meter > span.is-danger { background:#dc2626; }
+    .setup-meter > span.is-warning { background:#d97706; }
+    .setup-footer { position:sticky; bottom:12px; z-index:15; background:var(--app-bg,#F7F4EC); border:1px solid rgba(148,107,28,.12); box-shadow:0 -.3rem 1.25rem rgba(0,0,0,.05); }
+    @media(max-width:767.98px){.setup-toolbar,.setup-footer{position:static}.setup-class-header{padding:.9rem 1rem}.setup-class-meta{font-size:.76rem}}
+    @media print {.setup-toolbar,.setup-footer,.no-print{display:none!important}.setup-class-body{display:block!important}.setup-class-card{break-inside:avoid}}
+</style>
+
+<div class="container-fluid px-3 px-lg-4 py-3 timetable-setup-page">
+    <div class="card card-custom setup-hero border-0 shadow-sm rounded-4 mb-4">
+        <div class="p-4 p-lg-5">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="small text-uppercase fw-bold text-muted mb-2" style="letter-spacing:.12em;font-size:.72rem;">ACADEMICS · TIMETABLE</div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                        <h3 class="fw-bold mb-0">Subjects &amp; Teachers</h3>
+                        <span class="badge rounded-pill px-3 py-2" style="background:rgba(44,122,109,.10);color:var(--eduai-signal,#2C7A6D);"><i class="bi bi-wifi-off me-1"></i>Offline-capable</span>
+                    </div>
+                    <p class="text-muted mb-0" style="max-width:950px;">Configure teachers and weekly subject periods before generating the timetable. The capacity manager now separates <strong>class capacity</strong>, <strong>teacher hard capacity</strong>, and the teacher's softer workload reference.</p>
+                </div>
+                <a href="{% url 'academics:timetable_workspace' %}" class="btn btn-outline-secondary rounded-3"><i class="bi bi-arrow-left me-1"></i> Back to Timetabler</a>
+            </div>
+
+            <div class="row g-3 mt-4">
+                <div class="col-6 col-xl-3"><div class="setup-kpi rounded-4 p-3"><small class="text-muted d-block">Classes</small><strong class="fs-4">{{ class_cards|length }}</strong></div></div>
+                <div class="col-6 col-xl-3"><div class="setup-kpi rounded-4 p-3"><small class="text-muted d-block">Class Subjects</small><strong class="fs-4">{{ class_subject_count }}</strong></div></div>
+                <div class="col-6 col-xl-3"><div class="setup-kpi rounded-4 p-3"><small class="text-muted d-block">Capacity Blockers</small><strong class="fs-4 {% if class_capacity_issues or teacher_capacity_issues %}text-danger{% else %}text-success{% endif %}">{{ class_capacity_issues|add:teacher_capacity_issues }}</strong></div></div>
+                <div class="col-6 col-xl-3"><div class="setup-kpi rounded-4 p-3"><small class="text-muted d-block">Active Periods / Week</small><strong class="fs-4">{{ slots_count }}</strong></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card card-custom setup-capacity-card border-0 shadow-sm rounded-4 mb-4">
+        <div class="p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+                <div>
+                    <div class="small text-uppercase fw-bold text-muted mb-1" style="letter-spacing:.08em;">CAPACITY MANAGER</div>
+                    <h5 class="fw-bold mb-1">Teacher Weekly Capacity</h5>
+                    <p class="text-muted small mb-0">A teacher can physically teach at most <strong>{{ slots_count }}</strong> periods in the configured school week. The individual workload reference remains a softer planning warning.</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <span class="setup-status {% if teacher_capacity_issues %}setup-status-danger{% else %}setup-status-ready{% endif %}">
+                        <i class="bi {% if teacher_capacity_issues %}bi-exclamation-circle{% else %}bi-check-circle{% endif %} me-1"></i>
+                        {{ teacher_capacity_issues }} hard capacity blocker{{ teacher_capacity_issues|pluralize }}
+                    </span>
+                    <span class="setup-status setup-status-warning"><i class="bi bi-people me-1"></i>{{ teachers|length }} active teacher{{ teachers|length|pluralize }}</span>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-4"><div class="setup-metric"><small class="text-muted d-block">Class teaching demand</small><strong class="fs-5">{{ total_required_periods }}</strong><span class="text-muted small">periods/week</span></div></div>
+                <div class="col-md-4"><div class="setup-metric"><small class="text-muted d-block">Currently assigned to teachers</small><strong class="fs-5">{{ assigned_teacher_periods }}</strong><span class="text-muted small">periods/week</span></div></div>
+                <div class="col-md-4"><div class="setup-metric"><small class="text-muted d-block">Teacher hard capacity</small><strong class="fs-5">{{ total_teacher_capacity }}</strong><span class="text-muted small">{{ slots_count }} × {{ teachers|length }} teacher{{ teachers|length|pluralize }}</span></div></div>
+            </div>
+
+            {% if teacher_cards %}
+            <div class="table-responsive">
+                <table class="table setup-table align-middle mb-0">
+                    <thead><tr><th>Teacher</th><th style="min-width:180px;">Assigned Load</th><th class="text-center">Reference</th><th class="text-center">Hard Capacity</th><th class="text-end">Status</th></tr></thead>
+                    <tbody>
+                    {% for teacher in teacher_cards %}
+                    <tr>
+                        <td><div class="fw-semibold">{{ teacher.obj.user.get_full_name }}</div><small class="text-muted">{{ teacher.subjects }} class-subject assignment{{ teacher.subjects|pluralize }}</small></td>
+                        <td>
+                            <div class="d-flex justify-content-between small mb-1"><span>{{ teacher.load }} / {{ teacher.hard_capacity }}</span><span class="text-muted">periods</span></div>
+                            <div class="setup-meter"><span class="{% if teacher.hard_over %}is-danger{% elif teacher.reference_over %}is-warning{% endif %}" style="width:{% if teacher.hard_capacity and teacher.load > teacher.hard_capacity %}100{% else %}{{ teacher.load|floatformat:0 }}{% endif %}%;"></span></div>
+                        </td>
+                        <td class="text-center"><span class="badge rounded-pill" style="background:rgba(148,107,28,.08);color:var(--setup-gold);">{{ teacher.reference }}</span></td>
+                        <td class="text-center"><strong>{{ teacher.hard_capacity }}</strong></td>
+                        <td class="text-end">
+                            {% if teacher.hard_over %}
+                                <span class="setup-status setup-status-danger">Over by {{ teacher.hard_overage }}</span>
+                            {% elif teacher.reference_over %}
+                                <span class="setup-status setup-status-warning">Above reference</span>
+                            {% else %}
+                                <span class="setup-status setup-status-ready">Within capacity</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-warning border-0 rounded-3 mb-0">No active teachers are available for timetable assignment.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if class_capacity_issues %}
+    <div class="alert alert-warning border-0 rounded-4 shadow-sm mb-4 no-print">
+        <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ class_capacity_issues }} class{{ class_capacity_issues|pluralize }} exceed the {{ slots_count }}-period weekly class capacity.</div>
+        <div class="small">Use the period inputs inside each class below to adjust the subject allocations. The system does not silently reduce them.</div>
+    </div>
+    {% endif %}
+
+    {% if class_cards %}
+    <div class="setup-toolbar rounded-4 p-2 p-md-3 mb-3 no-print">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div><span class="fw-semibold"><i class="bi bi-layout-text-sidebar-reverse me-1" style="color:var(--setup-gold);"></i>Class Setup</span> <span class="text-muted small">{{ class_cards|length }} class{{ class_cards|length|pluralize }}</span></div>
+            <div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-secondary" id="expandAllClasses"><i class="bi bi-arrows-expand me-1"></i>Expand All</button><button type="button" class="btn btn-sm btn-outline-secondary" id="collapseAllClasses"><i class="bi bi-arrows-collapse me-1"></i>Collapse All</button></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="post" id="timetableSetupForm">
+        {% csrf_token %}
+        <div id="setupAccordion">
+        {% for card in class_cards %}
+            <section class="card card-custom setup-class-card border-0 shadow-sm rounded-4 mb-3 {% if forloop.first %}is-open{% endif %}" data-class-card>
+                <button type="button" class="setup-class-header" data-class-toggle aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="d-inline-flex align-items-center justify-content-center rounded-3 flex-shrink-0" style="width:42px;height:42px;background:rgba(148,107,28,.09);color:var(--setup-gold);"><i class="bi bi-building"></i></span>
+                        <span class="flex-grow-1 min-w-0">
+                            <span class="d-flex align-items-center gap-2 flex-wrap"><span class="h6 fw-bold mb-0">{{ card.obj.name }}</span><span class="text-muted small">{{ card.items|length }} subject{{ card.items|length|pluralize }}</span></span>
+                            <span class="d-flex align-items-center gap-2 flex-wrap mt-1 small text-muted">
+                                {% if card.class_teacher %}<span><i class="bi bi-person-check me-1"></i>Class Teacher: {{ card.class_teacher.user.get_full_name }}</span>{% else %}<span><i class="bi bi-person-x me-1"></i>Class Teacher: Not assigned</span>{% endif %}
+                                <span><i class="bi bi-clock me-1"></i>{{ card.total }} / {{ slots_count }} periods</span>
+                            </span>
+                        </span>
+                        <span class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+                            {% if card.missing %}<span class="setup-status setup-status-danger"><i class="bi bi-exclamation-circle me-1"></i>{{ card.missing }} missing</span>{% elif card.over_capacity %}<span class="setup-status setup-status-warning"><i class="bi bi-exclamation-triangle me-1"></i>Capacity issue</span>{% else %}<span class="setup-status setup-status-ready"><i class="bi bi-check-circle me-1"></i>Ready</span>{% endif %}
+                            <i class="bi bi-chevron-down setup-class-chevron text-muted"></i>
+                        </span>
+                    </div>
+                </button>
+                <div class="setup-class-body" data-class-body>
+                    <div class="p-3 p-lg-4">
+                        <div class="row g-3 align-items-end mb-3">
+                            <div class="col-lg-5">
+                                <label class="form-label small fw-semibold mb-1">Teacher Assignment Mode</label>
+                                <select name="mode_{{ card.obj.id }}" class="form-select setup-teacher-select">
+                                    <option value="subject" {% if card.mode == 'subject' %}selected{% endif %}>Subject Teachers — every subject needs a teacher</option>
+                                    <option value="mixed" {% if card.mode == 'mixed' %}selected{% endif %}>Mixed — class teacher covers unassigned subjects</option>
+                                    <option value="class" {% if card.mode == 'class' %}selected{% endif %}>Class Teacher — use class teacher as default</option>
+                                </select>
+                            </div>
+                            <div class="col-lg-7"><div class="small text-muted">{% if card.class_teacher %}<i class="bi bi-person-check me-1 text-success"></i><strong>Class Teacher:</strong> {{ card.class_teacher.user.get_full_name }}{% else %}<i class="bi bi-person-x me-1 text-danger"></i><strong>Class Teacher:</strong> Not assigned{% endif %}</div></div>
+                        </div>
+
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                            <div><div class="fw-semibold">Subjects, Teachers & Weekly Periods</div><small class="text-muted">Adjust periods here. If an advanced requirement exists, this input edits that requirement directly.</small></div>
+                            <a href="{% url 'staff:teacher_assignment_class_view' card.obj.id %}" class="btn btn-sm btn-outline-secondary rounded-3"><i class="bi bi-people me-1"></i>Manage Teachers</a>
+                        </div>
+
+                        {% if card.class_teacher and card.single_teacher_mode %}<div class="alert border-0 rounded-3 small mb-3" style="background:rgba(44,122,109,.07);"><i class="bi bi-info-circle-fill me-1" style="color:var(--setup-teal);"></i><strong>{{ card.class_teacher.user.get_full_name }}</strong> is the class teacher. Select <strong>Use Class Teacher</strong> for subjects without a separate subject-teacher assignment.</div>{% endif %}
+                        {% if card.over_capacity %}<div class="alert alert-warning border-0 rounded-3 small mb-3"><i class="bi bi-exclamation-triangle-fill me-1"></i>This class requires <strong>{{ card.total }}</strong> periods but only <strong>{{ slots_count }}</strong> are available — <strong>{{ card.total|add:card.capacity_difference }}</strong> periods over capacity.</div>{% endif %}
+
+                        <div class="table-responsive">
+                            <table class="table setup-table align-middle mb-0">
+                                <thead><tr><th>Subject</th><th>Curriculum</th><th style="min-width:300px;">Teacher</th><th class="text-end" style="width:155px;">Periods / Week</th></tr></thead>
+                                <tbody>
+                                {% for item in card.items %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ item.obj.subject.name }}</td>
+                                        <td><span class="badge rounded-pill" style="background:rgba(44,122,109,.10);color:var(--setup-teal);">{{ item.obj.subject.get_curriculum_level_display }}</span></td>
+                                        <td>
+                                            <select name="teacher_{{ item.obj.id }}" class="form-select setup-teacher-select" {% if not teachers %}disabled{% endif %}>
+                                                {% if card.class_teacher %}<option value="__CLASS_TEACHER__" {% if item.teacher_source == 'class' %}selected{% endif %}>Use Class Teacher — {{ card.class_teacher.user.get_full_name }}</option>{% endif %}
+                                                <option value="__NONE__" {% if item.teacher_source == 'missing' %}selected{% endif %}>No teacher assigned</option>
+                                                {% for teacher in teachers %}<option value="{{ teacher.id }}" {% if item.teacher_source == 'subject' and item.assignment and item.assignment.teacher_id == teacher.id %}selected{% endif %}>{{ teacher.user.get_full_name }}{% if teacher.staff_number %} ({{ teacher.staff_number }}){% endif %}</option>{% endfor %}
+                                            </select>
+                                            {% if item.teacher_source == 'class' %}<div class="form-text text-success"><i class="bi bi-check-circle-fill me-1"></i>Class teacher fallback</div>{% elif item.teacher_source == 'subject' %}<div class="form-text text-success"><i class="bi bi-person-check-fill me-1"></i>Subject teacher: {{ item.teacher.user.get_full_name }}</div>{% else %}<div class="form-text text-danger"><i class="bi bi-exclamation-circle-fill me-1"></i>Not assigned</div>{% endif %}
+                                        </td>
+                                        <td><input type="number" min="1" max="{{ slots_count|default:40 }}" name="periods_{{ item.obj.id }}" value="{{ item.periods }}" class="form-control setup-period-input text-end">{% if item.overridden %}<div class="form-text text-muted">Advanced requirement override</div>{% endif %}</td>
+                                    </tr>
+                                {% empty %}<tr><td colspan="4" class="text-center text-muted py-4">No active class subjects.</td></tr>{% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        {% endfor %}
+        </div>
+        {% if class_cards %}<div class="setup-footer rounded-4 p-3 mt-4 mb-5"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><div class="small text-muted"><i class="bi bi-shield-check me-1" style="color:var(--setup-teal);"></i>Period changes do not alter your curriculum subjects. Generation remains blocked while hard capacity conflicts exist.</div><div class="d-flex gap-2"><a href="{% url 'academics:timetable_workspace' %}" class="btn btn-outline-secondary rounded-3">Cancel</a><button type="submit" class="btn rounded-3 px-4" style="background:var(--primary-color,#946B1C);color:#fff;border-color:var(--primary-color,#946B1C);"><i class="bi bi-check2-circle me-1"></i>Save Subjects &amp; Teachers</button></div></div></div>{% endif %}
+    </form>
+</div>
+<script>
+(function(){
+ const cards=[...document.querySelectorAll('[data-class-card]')];
+ function setCard(card,open){card.classList.toggle('is-open',open);const b=card.querySelector('[data-class-toggle]');if(b)b.setAttribute('aria-expanded',open?'true':'false');}
+ cards.forEach(card=>{const b=card.querySelector('[data-class-toggle]');if(b)b.addEventListener('click',()=>setCard(card,!card.classList.contains('is-open')));});
+ const ex=document.getElementById('expandAllClasses'), co=document.getElementById('collapseAllClasses');
+ if(ex)ex.addEventListener('click',()=>cards.forEach(c=>setCard(c,true)));
+ if(co)co.addEventListener('click',()=>cards.forEach(c=>setCard(c,false)));
+})();
+</script>
+{% endblock %}

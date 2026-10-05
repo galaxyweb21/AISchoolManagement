@@ -33,7 +33,7 @@ def build_timetable_export_context(timetable, class_id=None):
             school=school,
         ).first()
 
-    entries = TimetableEntry.objects.filter(
+    entries = TimetableEntry._base_manager.filter(
         timetable=timetable,
     ).select_related(
         'school_class', 'subject', 'teacher__user', 'room', 'timeslot'
@@ -41,10 +41,13 @@ def build_timetable_export_context(timetable, class_id=None):
     if selected_class:
         entries = entries.filter(school_class=selected_class)
 
-    slot_lookup = {
-        (entry.timeslot.period_index, entry.timeslot.day): entry
-        for entry in entries
-    }
+    # Multiple classes can legitimately occupy the same period/day. Keep all
+    # lessons instead of silently overwriting them in a one-entry dictionary.
+    slot_lookup = {}
+    for entry in entries:
+        slot_lookup.setdefault((entry.timeslot.period_index, entry.timeslot.day), []).append(entry)
+    for key in slot_lookup:
+        slot_lookup[key].sort(key=lambda e: (e.school_class.name or '', e.subject.name or ''))
     slot_by_period_day = {
         (slot.period_index, slot.day): slot
         for slot in timeslots
@@ -138,20 +141,20 @@ def build_timetable_export_context(timetable, class_id=None):
 
         cells = []
         for day in days:
-            entry = slot_lookup.get((period, day))
-            if not entry:
-                cells.append(None)
-                continue
-            teacher_name = ''
-            if entry.teacher:
-                teacher_name = entry.teacher.user.get_full_name() or entry.teacher.user.username
-            cells.append({
-                'subject': entry.subject.name,
-                'class': entry.school_class.name,
-                'teacher': teacher_name,
-                'room': entry.room.name if entry.room else '',
-                'is_lab': bool(entry.is_lab),
-            })
+            slot_entries = slot_lookup.get((period, day), [])
+            cell_entries = []
+            for entry in slot_entries:
+                teacher_name = ''
+                if entry.teacher:
+                    teacher_name = entry.teacher.user.get_full_name() or entry.teacher.user.username
+                cell_entries.append({
+                    'subject': entry.subject.name,
+                    'class': entry.school_class.name,
+                    'teacher': teacher_name,
+                    'room': entry.room.name if entry.room else '',
+                    'is_lab': bool(entry.is_lab),
+                })
+            cells.append(cell_entries)
 
         rows.append({
             'type': 'period',

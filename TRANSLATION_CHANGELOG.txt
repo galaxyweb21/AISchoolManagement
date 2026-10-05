@@ -1,0 +1,16 @@
+EduAI Ghanaian Language Translation Upgrade
+
+Added:
+- ai_engine/services/translator.py
+- ai_engine/views/translator.py
+- templates/ai_engine/language_translator.html
+- Translation icon/dropdown in templates/base/navbar.html
+- Persistent in-place page translation for English/Twi/Ga
+- Configurable NLLB provider
+- Optional Google Cloud NMT provider for Twi
+- Groq fallback
+- Protected identifiers, URLs, numbers and Django tokens
+- TRANSLATION_SETUP.md
+
+No database migration is required.
+No finance, timetable, attendance, payment or notification models were changed.

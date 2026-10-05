@@ -192,6 +192,7 @@
                     </tbody>
                 </table>
             </div>
+            {% include "partials/pagination.html" with page_obj=absences %}
             <div id="searchEmptyState" class="text-center text-muted py-4" style="display: none;">
                 <i class="bi bi-search d-block mb-2 fs-3"></i>
                 <p>No absences match your search.</p>

@@ -46,6 +46,12 @@
         color: var(--bs-secondary-color);
         font-weight: 500;
     }
+    .timetable-entry {
+        line-height: 1.25;
+    }
+    .timetable-cell {
+        vertical-align: top;
+    }
     .stats-bar {
         display: flex;
         flex-wrap: wrap;
@@ -274,7 +280,7 @@
                     <form method="get" class="d-flex gap-2">
                         <select name="class_id" class="form-select form-select-sm" onchange="this.form.submit()" style="width: auto; min-width: 150px;">
                             <option value="">All Classes</option>
-                            {% for c in classes %}
+                            {% for c in school_classes %}
                                 <option value="{{ c.id }}" {% if selected_class_id == c.id|stringformat:"s" %}selected{% endif %}>
                                     {{ c.name }}
                                 </option>
@@ -383,8 +389,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% if rows %}
-                            {% for row in rows %}
+                        {% if timetable_rows %}
+                            {% for row in timetable_rows %}
                                 {% if row.type == 'break' or row.type == 'block' %}
                                     <tr class="timetable-break-row">
                                         <td class="fw-bold py-2">
@@ -429,22 +435,28 @@
                                                 {% endif %}
                                             {% endfor %}
                                         </td>
-                                        {% for entry in row.cells %}
+                                        {% for cell in row.cells %}
                                             <td class="timetable-cell">
-                                                {% if entry %}
-                                                    <div class="subject-name">{{ entry.subject.name }}</div>
-                                                    <div class="class-name">
-                                                        <i class="bi bi-people me-1"></i>{{ entry.school_class.name }}
-                                                    </div>
-                                                    <div class="teacher-name">
-                                                        <i class="bi bi-person me-1"></i>{{ entry.teacher.user.get_full_name }}
-                                                    </div>
-                                                    <div class="room-name">
-                                                        <i class="bi bi-door-open me-1"></i>{{ entry.room.name }}
-                                                        {% if entry.is_lab %}
-                                                            <span class="badge ms-1" style="background: var(--eduai-gold-soft, rgba(148,107,28,0.1)); color: var(--primary-color, #946B1C); font-size: 0.55rem;">Lab</span>
-                                                        {% endif %}
-                                                    </div>
+                                                {% if cell %}
+                                                    {% for entry in cell %}
+                                                        <div class="timetable-entry{% if not forloop.last %} mb-2 pb-2 border-bottom{% endif %}">
+                                                            <div class="subject-name">{{ entry.subject.name }}</div>
+                                                            <div class="class-name">
+                                                                <i class="bi bi-people me-1"></i>{{ entry.school_class.name }}
+                                                            </div>
+                                                            <div class="teacher-name">
+                                                                <i class="bi bi-person me-1"></i>{{ entry.teacher.user.get_full_name }}
+                                                            </div>
+                                                            <div class="room-name">
+                                                                <i class="bi bi-door-open me-1"></i>{{ entry.room.name }}
+                                                                {% if entry.is_lab %}
+                                                                    <span class="badge ms-1" style="background: var(--eduai-gold-soft, rgba(148,107,28,0.1)); color: var(--primary-color, #946B1C); font-size: 0.55rem;">Lab</span>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    {% empty %}
+                                                        <span class="text-muted">&mdash;</span>
+                                                    {% endfor %}
                                                 {% else %}
                                                     <span class="text-muted">&mdash;</span>
                                                 {% endif %}

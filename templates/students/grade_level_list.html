@@ -215,6 +215,8 @@
     </div>
 </div>
 
+{% include "partials/pagination.html" with page_obj=grade_levels %}
+
 {% endblock %}
 
 {% block extra_js %}
@@ -295,5 +297,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-{% include "partials/pagination.html" with page_obj=grade_levels %}
 {% endblock %}

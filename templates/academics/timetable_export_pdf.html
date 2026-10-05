@@ -14,6 +14,8 @@ th { background-color: #eee; text-align: center; font-weight: bold; }
 .period { width: 12%; text-align: center; font-weight: bold; }
 .lesson-subject { font-weight: bold; font-size: 8pt; }
 .lesson-class, .lesson-teacher, .lesson-room { font-size: 6.5pt; }
+.lesson { margin-bottom: 2px; }
+.lesson-separator { text-align: center; color: #888; font-size: 5pt; line-height: 5pt; }
 .block-row td { background-color: #f4f0e6; text-align: center; font-weight: bold; padding: 5px; }
 .footer { text-align: center; font-size: 6.5pt; margin-top: 8px; }
 </style>
@@ -42,12 +44,15 @@ Generations: {{ generations }} &nbsp; | &nbsp; Entries: {{ entries_count }}
 <td class="period">{{ row.period_label }}</td>
 {% for cell in row.cells %}
 <td>
-{% if cell %}
-<div class="lesson-subject">{{ cell.subject }}{% if cell.is_lab %} (Lab){% endif %}</div>
-<div class="lesson-class">{{ cell.class }}</div>
-{% if cell.teacher %}<div class="lesson-teacher">{{ cell.teacher }}</div>{% endif %}
-{% if cell.room %}<div class="lesson-room">{{ cell.room }}</div>{% endif %}
-{% endif %}
+{% for lesson in cell %}
+<div class="lesson">
+<div class="lesson-subject">{{ lesson.subject }}{% if lesson.is_lab %} (Lab){% endif %}</div>
+<div class="lesson-class">{{ lesson.class }}</div>
+{% if lesson.teacher %}<div class="lesson-teacher">{{ lesson.teacher }}</div>{% endif %}
+{% if lesson.room %}<div class="lesson-room">{{ lesson.room }}</div>{% endif %}
+</div>
+{% if not forloop.last %}<div class="lesson-separator">—</div>{% endif %}
+{% endfor %}
 </td>
 {% endfor %}
 </tr>

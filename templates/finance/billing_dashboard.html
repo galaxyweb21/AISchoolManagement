@@ -1,20 +1,15 @@
 {% extends 'base/base.html' %}
-{% block page_title %}Financial Collections Workspace{% endblock %}
+{% block page_title %}Finance Dashboard{% endblock %}
 
 {% block content %}
 <style>
-    .text-gold {
-        color: var(--eduai-gold, #946B1C) !important;
-    }
-    .bg-gold-soft {
-        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
-    }
-    .bg-teal-soft {
-        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
-    }
-    .text-teal {
-        color: var(--eduai-signal, #2C7A6D) !important;
-    }
+    /* ============================================================ */
+    /* THEME TOKENS                                                 */
+    /* ============================================================ */
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+    .bg-teal-soft { background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important; }
+    .text-teal { color: var(--eduai-signal, #2C7A6D) !important; }
     .btn-gold {
         background-color: var(--eduai-gold, #946B1C) !important;
         border-color: var(--eduai-gold, #946B1C) !important;
@@ -42,6 +37,11 @@
         background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
         color: var(--eduai-signal, #2C7A6D) !important;
     }
+    .spinner-gold { color: var(--eduai-gold, #946B1C) !important; }
+
+    /* ============================================================ */
+    /* PAGE DESCRIPTION                                             */
+    /* ============================================================ */
     .page-description {
         background: var(--bs-tertiary-bg);
         border-radius: 12px;
@@ -64,30 +64,377 @@
         color: var(--bs-secondary-color);
         margin-bottom: 0;
     }
+
+    /* ============================================================ */
+    /* NAV TABS                                                     */
+    /* ============================================================ */
+    .finance-nav {
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 14px;
+        padding: 0.4rem;
+    }
+    .finance-nav .nav-link {
+        border-radius: 10px;
+        color: var(--bs-secondary-color);
+        font-weight: 600;
+        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+        transition: all 0.15s ease;
+    }
+    .finance-nav .nav-link:hover {
+        background: var(--eduai-gold-soft);
+        color: var(--eduai-gold, #946B1C);
+    }
+    .finance-nav .nav-link.active {
+        background: var(--eduai-gold, #946B1C);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(148, 107, 28, 0.25);
+    }
+
+    /* ============================================================ */
+    /* KPI CARDS                                                    */
+    /* ============================================================ */
+    .kpi-card {
+        border-radius: 16px;
+        padding: 1.15rem 1.25rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    .kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    }
+    .kpi-card .kpi-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+    }
+    .kpi-card .kpi-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+    .kpi-card .kpi-trend {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.25rem 0.6rem;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .kpi-card .kpi-trend.up { background: rgba(25, 135, 84, 0.12); color: #198754; }
+    .kpi-card .kpi-trend.down { background: rgba(220, 53, 69, 0.12); color: #dc3545; }
+    .kpi-card .kpi-trend.neutral { background: rgba(108, 117, 125, 0.12); color: #6c757d; }
+    .kpi-card .kpi-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--bs-secondary-color);
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+    }
+    .kpi-card .kpi-number {
+        font-size: 1.5rem;
+        font-weight: 800;
+        line-height: 1.15;
+        margin-bottom: 0.35rem;
+        font-variant-numeric: tabular-nums;
+    }
+    .kpi-card .kpi-footnote {
+        font-size: 0.75rem;
+        color: var(--bs-secondary-color);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* ============================================================ */
+    /* LEDGER CARD                                                  */
+    /* ============================================================ */
+    .ledger-card {
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 18px;
+        overflow: hidden;
+    }
+    .ledger-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--bs-border-color);
+        background: linear-gradient(90deg, rgba(148, 107, 28, 0.05), rgba(44, 122, 109, 0.02));
+    }
+    .ledger-title {
+        font-weight: 700;
+        font-size: 1.05rem;
+        margin-bottom: 0.15rem;
+    }
+    .ledger-sub {
+        font-size: 0.8rem;
+        color: var(--bs-secondary-color);
+        margin: 0;
+    }
+
+    /* ============================================================ */
+    /* FILTER CHIPS                                                 */
+    /* ============================================================ */
+    .filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        background: transparent;
+        color: var(--bs-secondary-color);
+    }
+    .filter-chip:hover {
+        background: var(--bs-body-bg);
+        border-color: var(--bs-border-color);
+    }
+    .filter-chip.active {
+        background: var(--eduai-gold, #946B1C);
+        color: #fff;
+        border-color: var(--eduai-gold, #946B1C);
+    }
+    .filter-chip .chip-count {
+        background: rgba(255, 255, 255, 0.25);
+        border-radius: 10px;
+        padding: 0.05rem 0.45rem;
+        font-size: 0.68rem;
+    }
+    .filter-chip.active .chip-count {
+        background: rgba(255, 255, 255, 0.28);
+    }
+    .filter-chip:not(.active) .chip-count {
+        background: var(--bs-tertiary-bg);
+        color: var(--bs-body-color);
+    }
+
+    /* ============================================================ */
+    /* MODERN TABLE                                                 */
+    /* ============================================================ */
+    .ledger-table {
+        width: 100%;
+        margin: 0;
+    }
+    .ledger-table thead th {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 700;
+        color: var(--bs-secondary-color);
+        background: var(--bs-tertiary-bg);
+        border-bottom: 1px solid var(--bs-border-color);
+        padding: 0.85rem 1rem;
+        white-space: nowrap;
+    }
+    .ledger-table tbody td {
+        padding: 0.9rem 1rem;
+        vertical-align: middle;
+        border-color: var(--bs-border-color);
+        color: var(--bs-body-color);
+    }
+    .ledger-table tbody tr {
+        transition: background 0.12s ease;
+    }
+    .ledger-table tbody tr:hover {
+        background: rgba(148, 107, 28, 0.04);
+    }
+    .ledger-table .student-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .ledger-table .student-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        font-weight: 800;
+        flex-shrink: 0;
+        background: linear-gradient(135deg, var(--eduai-gold-soft), rgba(44, 122, 109, 0.14));
+        color: var(--eduai-gold, #946B1C);
+    }
+    .ledger-table .student-name {
+        font-weight: 700;
+        font-size: 0.88rem;
+        line-height: 1.2;
+    }
+    .ledger-table .student-meta {
+        font-size: 0.72rem;
+        color: var(--bs-secondary-color);
+    }
+    .ledger-table .invoice-tag {
+        font-family: 'Courier New', monospace;
+        font-size: 0.75rem;
+        background: var(--bs-body-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 6px;
+        padding: 0.25rem 0.5rem;
+        display: inline-block;
+        color: var(--bs-body-color);
+    }
+    .ledger-table .money-cell {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+    }
+    .ledger-table .money-cell.balance-due {
+        color: #dc3545;
+        font-weight: 700;
+    }
+    .ledger-table .money-cell.balance-cleared {
+        color: var(--eduai-signal, #2C7A6D);
+        font-weight: 700;
+    }
+
+    /* ============================================================ */
+    /* STATUS PILLS                                                 */
+    /* ============================================================ */
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 0.32rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+    .status-pill.paid {
+        background: var(--eduai-signal-soft, rgba(44, 122, 109, 0.14));
+        color: var(--eduai-signal, #2C7A6D);
+    }
+    .status-pill.partial {
+        background: rgba(217, 119, 6, 0.14);
+        color: #b45309;
+    }
+    .status-pill.unpaid {
+        background: rgba(220, 53, 69, 0.14);
+        color: #b02a37;
+    }
+
+    /* ============================================================ */
+    /* SEARCH INPUT                                                 */
+    /* ============================================================ */
+    .modern-search {
+        position: relative;
+    }
+    .modern-search .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--bs-secondary-color);
+        font-size: 0.85rem;
+        pointer-events: none;
+    }
+    .modern-search input {
+        padding-left: 34px;
+        height: 38px;
+        border-radius: 10px;
+        border: 1px solid var(--bs-border-color);
+        background: var(--bs-body-bg);
+        font-size: 0.85rem;
+    }
+    .modern-search input:focus {
+        border-color: var(--eduai-gold, #946B1C);
+        box-shadow: 0 0 0 3px rgba(148, 107, 28, 0.12);
+        outline: 0;
+    }
+
+    /* ============================================================ */
+    /* EMPTY STATE                                                  */
+    /* ============================================================ */
+    .empty-ledger {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--bs-secondary-color);
+    }
+    .empty-ledger i {
+        font-size: 2.5rem;
+        color: var(--bs-secondary-color);
+        opacity: 0.5;
+    }
+
+    /* ============================================================ */
+    /* RESPONSIVE                                                   */
+    /* ============================================================ */
+    @media (max-width: 768px) {
+        .kpi-card .kpi-number { font-size: 1.25rem; }
+        .ledger-header { padding: 1rem; }
+        .ledger-table thead th,
+        .ledger-table tbody td { padding: 0.65rem 0.75rem; }
+        .ledger-table .student-avatar { width: 32px; height: 32px; font-size: 0.7rem; }
+    }
 </style>
 
-<!-- How Billing Dashboard Works -->
-<div class="page-description">
-    <div class="d-flex align-items-start">
-        <i class="bi bi-info-circle-fill icon"></i>
-        <div>
-            <div class="title">How Billing Dashboard Works</div>
-            <p class="text">
-                This dashboard provides a comprehensive view of your school's financial collections.
-                The KPI cards show <strong>Total Billed</strong>, <strong>Revenue Collected</strong>,
-                <strong>Outstanding Balance</strong>, and <strong>Collection Rate</strong>.
-                The <strong>Accounts Receivable Ledger</strong> lists all invoices with their status.
-                Use the search box below to filter invoices by student name, invoice number, or status.
-                Click <strong>"Record Payment"</strong> on any unpaid invoice to process a payment.
-            </p>
+<!-- ========================================================== -->
+<!-- NAV TABS                                                   -->
+<!-- ========================================================== -->
+<div class="container-fluid px-4 pt-3">
+    <div class="finance-nav d-flex flex-wrap gap-1">
+        <a href="{% url 'finance:billing_dashboard' %}" class="nav-link active">
+            <i class="bi bi-wallet2 me-1"></i>Finance Dashboard
+        </a>
+        <a href="{% url 'finance:invoice_list' %}" class="nav-link">
+            <i class="bi bi-receipt me-1"></i>Invoices
+        </a>
+        <a href="{% url 'finance:fee_preparation' %}" class="nav-link">
+            <i class="bi bi-clipboard-check me-1"></i>Fee Management
+        </a>
+        <a href="{% url 'finance:fee_structure_list' %}" class="nav-link ms-auto">
+            <i class="bi bi-sliders2 me-1"></i>Fee Setup
+        </a>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- PAGE DESCRIPTION                                           -->
+<!-- ========================================================== -->
+<div class="container-fluid px-4 pt-3">
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle-fill icon"></i>
+            <div>
+                <div class="title">How Billing Dashboard Works</div>
+                <p class="text">
+                    This dashboard shows your school's financial collections at a glance. The KPI cards
+                    summarise <strong>Total Billed</strong>, <strong>Revenue Collected</strong>,
+                    <strong>Outstanding Balance</strong>, and <strong>Collection Rate</strong>.
+                    The <strong>Accounts Receivable Ledger</strong> lists every invoice with its status.
+                    Use the <strong>search box</strong> and <strong>status filters</strong> to narrow down,
+                    and click <strong>"Record Payment"</strong> on any unpaid invoice to process a payment.
+                </p>
+            </div>
         </div>
     </div>
 </div>
 
+<!-- ========================================================== -->
+<!-- MESSAGES                                                   -->
+<!-- ========================================================== -->
 <div class="container-fluid px-4" id="messagesContainer">
     {% if messages %}
         {% for message in messages %}
-        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show" role="alert">
             <div class="d-flex align-items-center gap-2">
                 <i class="bi
                     {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
@@ -104,169 +451,297 @@
     {% endif %}
 </div>
 
-<!-- KPI Cards -->
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="card card-custom border-0 shadow-sm rounded-4">
-            <div class="p-4">
-                <h6 class="text-muted text-uppercase small fw-bold">Total Billed</h6>
-                <h2 class="fw-bold mb-0">GH¢ {{ total_billed|floatformat:2 }}</h2>
-                <small class="text-muted">{{ invoice_counts.total }} invoices</small>
+<!-- ========================================================== -->
+<!-- KPI CARDS                                                  -->
+<!-- ========================================================== -->
+<div class="container-fluid px-4 pb-2">
+    <div class="row g-3 mb-4">
+        <!-- Total Billed -->
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <div class="kpi-icon bg-gold-soft text-gold">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                    <span class="kpi-trend neutral">
+                        <i class="bi bi-receipt"></i> {{ invoice_counts.total }}
+                    </span>
+                </div>
+                <div class="kpi-label">Total Billed</div>
+                <div class="kpi-number text-gold">GH¢ {{ total_billed|floatformat:2 }}</div>
+                <div class="kpi-footnote">
+                    <i class="bi bi-journal-text"></i>
+                    Across {{ invoice_counts.total }} invoice{{ invoice_counts.total|pluralize }}
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-custom border-0 shadow-sm rounded-4">
-            <div class="p-4">
-                <h6 class="text-muted text-uppercase small fw-bold text-teal">Revenue Collected</h6>
-                <h2 class="fw-bold text-teal mb-0">GH¢ {{ total_collected|floatformat:2 }}</h2>
-                <small class="text-muted">{{ invoice_counts.paid }} paid invoices</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-custom border-0 shadow-sm rounded-4">
-            <div class="p-4">
-                <h6 class="text-muted text-uppercase small fw-bold text-danger">Outstanding Balance</h6>
-                <h2 class="fw-bold text-danger mb-0">GH¢ {{ total_receivables|floatformat:2 }}</h2>
-                <small class="text-muted">{{ invoice_counts.unpaid|add:invoice_counts.partial }} unpaid/partial</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card card-custom border-0 shadow-sm rounded-4">
-            <div class="p-4">
-                <h6 class="text-muted text-uppercase small fw-bold">Collection Rate</h6>
-                <h2 class="fw-bold mb-0">
-                    {% if total_billed > 0 %}
-                        {{ collection_rate|floatformat:1 }}%
-                    {% else %}
-                        0%
-                    {% endif %}
-                </h2>
-                <small class="text-muted">of total billed collected</small>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Invoice Status Breakdown -->
-<div class="row g-4 mb-4">
-    <div class="col-md-4">
-        <div class="card card-custom border-0 shadow-sm rounded-4">
-            <div class="p-4">
-                <h6 class="text-muted text-uppercase small fw-bold text-danger">Unpaid</h6>
-                <h3 class="fw-bold text-danger mb-0">GH¢ {{ unpaid_total|floatformat:2 }}</h3>
-                <small class="text-muted">{{ invoice_counts.unpaid }} invoices</small>
+        <!-- Revenue Collected -->
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <div class="kpi-icon bg-teal-soft text-teal">
+                        <i class="bi bi-cash-coin"></i>
+                    </div>
+                    <span class="kpi-trend up">
+                        <i class="bi bi-arrow-up-right"></i>
+                        {% if total_billed > 0 %}{{ collection_rate|floatformat:1 }}%{% else %}0%{% endif %}
+                    </span>
+                </div>
+                <div class="kpi-label">Revenue Collected</div>
+                <div class="kpi-number text-teal">GH¢ {{ total_collected|floatformat:2 }}</div>
+                <div class="kpi-footnote">
+                    <i class="bi bi-check-circle"></i>
+                    {{ invoice_counts.paid }} paid invoice{{ invoice_counts.paid|pluralize }}
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card card-custom border-0 shadow-sm rounded-4">
-            <div class="p-4">
-                <h6 class="text-muted text-uppercase small fw-bold text-warning">Partially Paid</h6>
-                <h3 class="fw-bold text-warning mb-0">GH¢ {{ partial_total|floatformat:2 }}</h3>
-                <small class="text-muted">{{ invoice_counts.partial }} invoices</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card card-custom border-0 shadow-sm rounded-4">
-            <div class="p-4">
-                <h6 class="text-muted text-uppercase small fw-bold text-teal">Paid</h6>
-                <h3 class="fw-bold text-teal mb-0">GH¢ {{ paid_total|floatformat:2 }}</h3>
-                <small class="text-muted">{{ invoice_counts.paid }} invoices</small>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Accounts Receivable Ledger -->
-<div class="card card-custom border-0 shadow-sm rounded-4">
-    <div class="p-4">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-            <div>
-                <h5 class="fw-bold mb-0"><i class="bi bi-receipt-cutoff text-gold me-2"></i>Accounts Receivable Ledger</h5>
-                <p class="text-muted small mb-0">All invoices with their current status and payment information</p>
-            </div>
-            <div>
-                <span class="badge bg-light text-dark border me-1">Total: {{ invoice_counts.total }}</span>
-                <span class="badge bg-danger-subtle text-danger border">Unpaid: {{ invoice_counts.unpaid }}</span>
-                <span class="badge bg-warning-subtle text-warning border">Partial: {{ invoice_counts.partial }}</span>
-                <span class="badge badge-teal border">Paid: {{ invoice_counts.paid }}</span>
+        <!-- Outstanding -->
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <div class="kpi-icon bg-danger-subtle text-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                    <span class="kpi-trend down">
+                        <i class="bi bi-exclamation-circle"></i>
+                        {{ invoice_counts.unpaid|add:invoice_counts.partial }}
+                    </span>
+                </div>
+                <div class="kpi-label">Outstanding Balance</div>
+                <div class="kpi-number text-danger">GH¢ {{ total_receivables|floatformat:2 }}</div>
+                <div class="kpi-footnote">
+                    <i class="bi bi-hourglass-split"></i>
+                    {{ invoice_counts.unpaid|add:invoice_counts.partial }} unpaid / partial
+                </div>
             </div>
         </div>
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-            <div class="d-flex gap-2 align-items-center">
-                <span class="text-muted small" id="filterStatus"></span>
+
+        <!-- Collection Rate -->
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <div class="kpi-icon bg-info-subtle text-info">
+                        <i class="bi bi-speedometer2"></i>
+                    </div>
+                    <span class="kpi-trend {% if collection_rate >= 75 %}up{% elif collection_rate >= 40 %}neutral{% else %}down{% endif %}">
+                        <i class="bi bi-graph-up"></i>
+                        {% if collection_rate >= 75 %}Healthy{% elif collection_rate >= 40 %}Fair{% else %}Low{% endif %}
+                    </span>
+                </div>
+                <div class="kpi-label">Collection Rate</div>
+                <div class="kpi-number">
+                    {% if total_billed > 0 %}{{ collection_rate|floatformat:1 }}%{% else %}0%{% endif %}
+                </div>
+                <div class="kpi-footnote">
+                    <i class="bi bi-percent"></i>
+                    Of total billed collected
+                </div>
             </div>
-            <input type="text" id="invoiceSearchInput" class="form-control form-control-sm" placeholder="Search invoices..." style="max-width: 250px;">
         </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- STATUS BREAKDOWN STRIP                                     -->
+    <!-- ========================================================== -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-3 d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-danger-subtle text-danger" style="width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;">
+                        <i class="bi bi-hourglass-bottom"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="kpi-label">Unpaid</div>
+                        <div class="fw-bold text-danger" style="font-size:1.1rem;">GH¢ {{ unpaid_total|floatformat:2 }}</div>
+                    </div>
+                    <span class="badge bg-danger-subtle text-danger rounded-pill">{{ invoice_counts.unpaid }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-3 d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-warning-subtle text-warning" style="width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;">
+                        <i class="bi bi-hourglass-split"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="kpi-label">Partially Paid</div>
+                        <div class="fw-bold text-warning" style="font-size:1.1rem;">GH¢ {{ partial_total|floatformat:2 }}</div>
+                    </div>
+                    <span class="badge bg-warning-subtle text-warning rounded-pill">{{ invoice_counts.partial }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-3 d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-teal-soft text-teal" style="width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;">
+                        <i class="bi bi-check2-circle"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="kpi-label">Paid</div>
+                        <div class="fw-bold text-teal" style="font-size:1.1rem;">GH¢ {{ paid_total|floatformat:2 }}</div>
+                    </div>
+                    <span class="badge badge-teal rounded-pill">{{ invoice_counts.paid }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- ACCOUNTS RECEIVABLE LEDGER                                 -->
+    <!-- ========================================================== -->
+    <div class="ledger-card mb-4">
+        <!-- Header -->
+        <div class="ledger-header">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="ledger-title">
+                        <i class="bi bi-receipt-cutoff text-gold me-2"></i>
+                        Accounts Receivable Ledger
+                    </div>
+                    <p class="ledger-sub">All invoices with their current status and payment information</p>
+                </div>
+                <div class="modern-search" style="min-width: 260px;">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" id="invoiceSearchInput"
+                           placeholder="Search by student, invoice #, status...">
+                </div>
+            </div>
+
+            <!-- Filter chips -->
+            <div class="d-flex flex-wrap gap-2 mt-3" id="statusFilterChips">
+                <button type="button" class="filter-chip active" data-status="">
+                    <i class="bi bi-grid-fill"></i> All
+                    <span class="chip-count">{{ invoice_counts.total }}</span>
+                </button>
+                <button type="button" class="filter-chip" data-status="UNPAID">
+                    <i class="bi bi-hourglass-bottom"></i> Unpaid
+                    <span class="chip-count">{{ invoice_counts.unpaid }}</span>
+                </button>
+                <button type="button" class="filter-chip" data-status="PARTIAL">
+                    <i class="bi bi-hourglass-split"></i> Partial
+                    <span class="chip-count">{{ invoice_counts.partial }}</span>
+                </button>
+                <button type="button" class="filter-chip" data-status="PAID">
+                    <i class="bi bi-check2-circle"></i> Paid
+                    <span class="chip-count">{{ invoice_counts.paid }}</span>
+                </button>
+            </div>
+            <div class="mt-2">
+                <small class="text-muted" id="filterStatus"></small>
+            </div>
+        </div>
+
+        <!-- Table -->
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="invoicesTable">
+            <table class="table ledger-table align-middle mb-0" id="invoicesTable">
                 <thead>
                     <tr>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Student Info</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Invoice #</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Total Due</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Amount Paid</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Balance</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Due Date</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Status</th>
-                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-center">Action</th>
+                        <th>Student</th>
+                        <th>Invoice #</th>
+                        <th class="text-end">Total Due</th>
+                        <th class="text-end">Amount Paid</th>
+                        <th class="text-end">Balance</th>
+                        <th>Due Date</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end">Action</th>
                     </tr>
                 </thead>
-                <tbody class="border-top-0" id="invoiceTableBody">
+                <tbody id="invoiceTableBody">
                     {% for inv in invoices %}
-                    <tr id="invoice-row-{{ inv.id }}" class="border-bottom invoice-row" data-search="{{ inv.student.user.get_full_name }} {{ inv.invoice_number }}">
-                        <td class="py-3 ps-0">
-                            <span class="fw-bold d-block">{{ inv.student.user.get_full_name }}</span>
-                            <small class="text-muted">ID: {{ inv.student.admission_number }}</small>
+                    <tr id="invoice-row-{{ inv.id }}" class="invoice-row"
+                        data-status="{{ inv.status }}"
+                        data-search="{{ inv.student.user.get_full_name }} {{ inv.invoice_number }} {{ inv.status }}">
+                        <td>
+                            <div class="student-cell">
+                                <div class="student-avatar">
+                                    {{ inv.student.user.first_name|first|upper }}{{ inv.student.user.last_name|first|upper }}
+                                </div>
+                                <div>
+                                    <div class="student-name">{{ inv.student.user.get_full_name }}</div>
+                                    <div class="student-meta">
+                                        {{ inv.student.admission_number }}
+                                        {% if inv.student.school_class %} · {{ inv.student.school_class.name }}{% endif %}
+                                    </div>
+                                </div>
+                            </div>
                         </td>
-                        <td class="py-3"><code class="small">{{ inv.invoice_number }}</code></td>
-                        <td class="fw-semibold py-3">GH¢ {{ inv.total_amount|floatformat:2 }}</td>
-                        <td id="paid-text-{{ inv.id }}" class="text-secondary py-3">GH¢ {{ inv.amount_paid|floatformat:2 }}</td>
-                        <td class="fw-semibold py-3 {% if inv.balance_due > 0 %}text-danger{% else %}text-teal{% endif %}">
+                        <td>
+                            <span class="invoice-tag">{{ inv.invoice_number }}</span>
+                        </td>
+                        <td class="text-end money-cell">GH¢ {{ inv.total_amount|floatformat:2 }}</td>
+                        <td id="paid-text-{{ inv.id }}" class="text-end money-cell text-muted">
+                            GH¢ {{ inv.amount_paid|floatformat:2 }}
+                        </td>
+                        <td class="text-end money-cell {% if inv.balance_due > 0 %}balance-due{% else %}balance-cleared{% endif %}">
                             GH¢ {{ inv.balance_due|floatformat:2 }}
                         </td>
-                        <td class="py-3"><span class="text-muted small">{{ inv.due_date|date:"M d, Y" }}</span></td>
-                        <td class="py-3">
-                            <span id="badge-{{ inv.id }}" class="badge
-                                {% if inv.status == 'PAID' %}badge-teal
-                                {% elif inv.status == 'PARTIAL' %}bg-warning-subtle text-warning
-                                {% else %}bg-danger-subtle text-danger{% endif %} border px-2.5 py-1.5 rounded-pill">
-                                {{ inv.status }}
+                        <td>
+                            <div class="student-meta">
+                                <i class="bi bi-calendar3 me-1"></i>{{ inv.due_date|date:"M d, Y" }}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <span id="badge-{{ inv.id }}" class="status-pill
+                                {% if inv.status == 'PAID' %}paid
+                                {% elif inv.status == 'PARTIAL' %}partial
+                                {% else %}unpaid{% endif %}">
+                                {% if inv.status == 'PAID' %}
+                                    <i class="bi bi-check-circle-fill"></i> Paid
+                                {% elif inv.status == 'PARTIAL' %}
+                                    <i class="bi bi-hourglass-split"></i> Partial
+                                {% else %}
+                                    <i class="bi bi-hourglass-bottom"></i> Unpaid
+                                {% endif %}
                             </span>
                         </td>
-                        <td class="text-center py-3 pe-0">
+                        <td class="text-end">
                             {% if inv.status != 'PAID' %}
-                            <button type="button" class="btn btn-sm btn-outline-gold px-3"
+                            <button type="button" class="btn btn-sm btn-outline-gold"
                                     onclick="loadPaymentModal('{{ inv.id }}', '{{ inv.student.user.get_full_name|escapejs }}', '{{ inv.total_amount }}', '{{ inv.amount_paid }}')">
-                                Record Payment
+                                <i class="bi bi-cash-coin me-1"></i>Record Payment
                             </button>
                             {% else %}
-                            <span class="text-muted small fw-medium"><i class="bi bi-check-circle-fill text-teal"></i> Cleared</span>
-                            {% with inv.payments.all|first as latest_payment %}
-                            {% if latest_payment and latest_payment.status == 'CONFIRMED' %}
-                            <a href="{% url 'finance:payment_receipt' latest_payment.id %}" target="_blank"
-                               class="btn btn-sm btn-outline-secondary ms-2" title="View receipt">
-                                <i class="bi bi-receipt"></i>
-                            </a>
-                            {% endif %}
-                            {% endwith %}
+                            <div class="d-inline-flex align-items-center gap-2">
+                                <span class="text-teal small fw-semibold">
+                                    <i class="bi bi-check-circle-fill"></i> Cleared
+                                </span>
+                                {% with inv.payments.all|first as latest_payment %}
+                                {% if latest_payment and latest_payment.status == 'CONFIRMED' %}
+                                <a href="{% url 'finance:payment_receipt' latest_payment.id %}" target="_blank"
+                                   class="btn btn-sm btn-outline-secondary" title="View receipt">
+                                    <i class="bi bi-receipt"></i>
+                                </a>
+                                {% endif %}
+                                {% endwith %}
+                            </div>
                             {% endif %}
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="8" class="text-center text-muted py-5">No invoices found.</td></tr>
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-ledger">
+                                <i class="bi bi-inbox d-block mb-2"></i>
+                                <p class="mb-0">No invoices found.</p>
+                                <small>Invoices will appear here once fees are prepared and invoiced.</small>
+                            </div>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        {% include "partials/pagination.html" with page_obj=invoices %}
     </div>
 </div>
 
-<!-- Payment Modal -->
+<!-- ========================================================== -->
+<!-- PAYMENT MODAL                                              -->
+<!-- ========================================================== -->
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-sm rounded-4">
@@ -282,7 +757,9 @@
     </div>
 </div>
 
-<!-- Toast Container -->
+<!-- ========================================================== -->
+<!-- TOAST CONTAINER                                            -->
+<!-- ========================================================== -->
 <div class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">
     <div id="liveToast" class="toast align-items-center border-0 shadow-sm rounded-4" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">
@@ -295,12 +772,12 @@
     </div>
 </div>
 
+{% endblock %}
+
 {% block extra_js %}
 <script>
-    <!-- Update the loadPaymentModal function in billing_dashboard.html -->
-
     // ============================================================
-    // LOAD PAYMENT MODAL - FIXED
+    // LOAD PAYMENT MODAL - UNCHANGED
     // ============================================================
     function loadPaymentModal(invoiceId, studentName, totalAmount, amountPaid) {
         console.log('[billing] loadPaymentModal called with invoiceId:', invoiceId);
@@ -317,7 +794,6 @@
             </div>
         `;
 
-        // Load the payment modal with invoice_id parameter
         let url = '/finance/api/payment-modal/?invoice_id=' + invoiceId;
 
         fetch(url, {
@@ -327,16 +803,11 @@
             }
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to load payment form');
-            }
+            if (!response.ok) throw new Error('Failed to load payment form');
             return response.text();
         })
         .then(html => {
-            console.log('[billing] Payment modal HTML loaded');
             modalContent.innerHTML = html;
-
-            // Re-execute scripts in the loaded content
             modalContent.querySelectorAll('script').forEach(function(oldScript) {
                 const newScript = document.createElement('script');
                 newScript.textContent = oldScript.textContent;
@@ -344,7 +815,6 @@
             });
             if (typeof window.initPaymentModal === 'function') window.initPaymentModal();
 
-            // After the modal is loaded, pre-fill the amount
             setTimeout(function() {
                 const remaining = parseFloat(totalAmount) - parseFloat(amountPaid);
                 const amountInput = document.getElementById('paymentAmount');
@@ -353,28 +823,19 @@
                     amountInput.max = remaining;
                     amountInput.placeholder = remaining.toFixed(2);
                 }
-
-                // Auto-select the invoice if there's only one
                 const checkboxes = document.querySelectorAll('.invoice-checkbox');
                 if (checkboxes.length === 1) {
                     checkboxes[0].checked = true;
-                    // Trigger the change event to update the summary
                     const event = new Event('change', { bubbles: true });
                     checkboxes[0].dispatchEvent(event);
                 }
-
-                // Also update the select all checkbox if all are selected
                 const selectAll = document.getElementById('selectAllInvoices');
                 if (selectAll && checkboxes.length > 0) {
                     const allChecked = Array.from(checkboxes).every(cb => cb.checked);
                     selectAll.checked = allChecked;
                 }
-
-                // Update payment summary after pre-fill
                 const updateFn = window._updatePaymentSummary || function() {};
-                if (typeof updateFn === 'function') {
-                    updateFn();
-                }
+                if (typeof updateFn === 'function') updateFn();
             }, 300);
         })
         .catch(err => {
@@ -397,36 +858,56 @@
         modalInstance.show();
     }
 
-
     document.addEventListener("DOMContentLoaded", function() {
         // ============================================================
-        // SEARCH / AUTO FILTER
+        // SEARCH + STATUS FILTER
         // ============================================================
         const invoiceSearchInput = document.getElementById('invoiceSearchInput');
         const filterStatus = document.getElementById('filterStatus');
         const allRows = document.querySelectorAll('.invoice-row');
+        const filterChips = document.querySelectorAll('#statusFilterChips .filter-chip');
+        let activeStatus = '';
+
+        function applyFilters() {
+            const query = (invoiceSearchInput?.value || '').toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const text = row.textContent.toLowerCase();
+                const rowStatus = row.getAttribute('data-status') || '';
+
+                const matchesSearch = query === '' || text.includes(query);
+                const matchesStatus = activeStatus === '' || rowStatus === activeStatus;
+
+                const isVisible = matchesSearch && matchesStatus;
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (filterStatus) {
+                if (query || activeStatus) {
+                    const parts = [];
+                    if (activeStatus) parts.push(activeStatus.toLowerCase());
+                    if (query) parts.push(`"${query}"`);
+                    filterStatus.textContent = `Showing ${visibleCount} of ${allRows.length} invoices ${parts.length ? '— ' + parts.join(' / ') : ''}`;
+                } else {
+                    filterStatus.textContent = '';
+                }
+            }
+        }
 
         if (invoiceSearchInput && allRows.length > 0) {
-            invoiceSearchInput.addEventListener('input', function() {
-                const query = this.value.toLowerCase().trim();
-                let visibleCount = 0;
-
-                allRows.forEach(function(row) {
-                    const text = row.textContent.toLowerCase();
-                    const isVisible = text.includes(query);
-                    row.style.display = isVisible ? '' : 'none';
-                    if (isVisible) visibleCount++;
-                });
-
-                if (filterStatus) {
-                    if (query) {
-                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
-                    } else {
-                        filterStatus.textContent = '';
-                    }
-                }
-            });
+            invoiceSearchInput.addEventListener('input', applyFilters);
         }
+
+        filterChips.forEach(function(chip) {
+            chip.addEventListener('click', function() {
+                filterChips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                activeStatus = chip.getAttribute('data-status') || '';
+                applyFilters();
+            });
+        });
 
         // ============================================================
         // TOAST NOTIFICATION
@@ -446,11 +927,7 @@
                 toast.className = 'toast align-items-center border-0 shadow-sm rounded-4 bg-info-subtle';
             }
 
-            const toastInstance = new bootstrap.Toast(toast, {
-                autohide: true,
-                delay: 4000
-            });
-            toastInstance.show();
+            new bootstrap.Toast(toast, { autohide: true, delay: 4000 }).show();
         }
 
         // ============================================================
@@ -470,10 +947,7 @@
         if (modalElement) {
             modalElement.addEventListener('hidden.bs.modal', function() {
                 document.body.classList.remove('modal-open');
-                const backdrops = document.querySelectorAll('.modal-backdrop');
-                backdrops.forEach(function(backdrop) {
-                    backdrop.remove();
-                });
+                document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
                 document.body.style.paddingRight = '';
                 document.body.style.overflow = '';
             });
@@ -486,5 +960,4 @@
         window.loadPaymentModal = loadPaymentModal;
     });
 </script>
-{% endblock %}
 {% endblock %}

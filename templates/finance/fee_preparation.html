@@ -1,7 +1,7 @@
 {% extends "base/base.html" %}
 {% load static %}
 
-{% block page_title %}Fee Preparation{% endblock %}
+{% block page_title %}Fee Management{% endblock %}
 
 {% block content %}
 <style>
@@ -115,11 +115,22 @@
     {% endif %}
 </div>
 
+<div class="container-fluid px-4 pt-3">
+    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between rounded-4 p-2 border bg-body shadow-sm">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'finance:fee_preparation' %}" class="btn btn-sm btn-gold"><i class="bi bi-clipboard-check me-1"></i>Fee Management</a>
+            <a href="{% url 'finance:student_fees_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-people me-1"></i>Student Fees</a>
+            <a href="{% url 'finance:invoice_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-receipt me-1"></i>Invoices</a>
+        </div>
+        <a href="{% url 'finance:fee_structure_list' %}" class="btn btn-sm btn-outline-gold"><i class="bi bi-sliders2 me-1"></i>Fee Setup</a>
+    </div>
+</div>
+
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="mb-1">Fee Preparation</h2>
-            <p class="text-muted mb-0">Prepare and approve student fees before invoicing.</p>
+            <h2 class="mb-1">Fee Management</h2>
+            <p class="text-muted mb-0">Prepare, review and approve student fees before invoicing.</p>
         </div>
     </div>
 
@@ -341,6 +352,7 @@
                 </tbody>
             </table>
         </div>
+        {% include "partials/pagination.html" with page_obj=student_fees %}
     </div>
 </div>
 
