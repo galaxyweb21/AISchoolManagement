@@ -1,0 +1,337 @@
+{% extends 'base/base.html' %}
+{% block page_title %}Staff Attendance{% endblock %}
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <i class="bi bi-person-check-fill text-gold fs-4"></i>
+        <h4 class="fw-bold mb-0">Staff Attendance</h4>
+      </div>
+      <p class="text-muted mb-0">Record staff attendance manually or use registered face recognition at the attendance desk.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <button id="openStaffFaceBtn" class="btn btn-outline-gold" type="button">
+        <i class="bi bi-person-bounding-box me-1"></i> Register Face
+      </button>
+      <button id="openStaffScanBtn" class="btn btn-gold" type="button">
+        <i class="bi bi-camera me-1"></i> Face Attendance
+      </button>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-xl"><div class="stat-card"><span>Staff</span><strong>{{ staff_total }}</strong></div></div>
+    <div class="col-6 col-xl"><div class="stat-card"><span>Present</span><strong>{{ summary.present }}</strong></div></div>
+    <div class="col-6 col-xl"><div class="stat-card"><span>Late</span><strong>{{ summary.late }}</strong></div></div>
+    <div class="col-6 col-xl"><div class="stat-card"><span>Absent</span><strong>{{ summary.absent }}</strong></div></div>
+    <div class="col-6 col-xl"><div class="stat-card"><span>Unmarked</span><strong>{{ summary.unmarked }}</strong></div></div>
+  </div>
+
+  {% if not face_recognition_available %}
+  <div class="alert bg-gold-soft border-0 rounded-3 mb-4">
+    <i class="bi bi-info-circle text-gold me-2"></i>
+    Face recognition is currently optional and is not installed in this Python environment. Manual staff attendance remains fully available. The face controls are ready for an environment where the optional face-recognition dependency is installed.
+  </div>
+  {% endif %}
+
+  <div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-0">
+      <div class="p-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <form method="get" class="d-flex gap-2 align-items-center">
+          <label class="small fw-semibold text-muted">Attendance date</label>
+          <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" class="form-control form-control-sm" onchange="this.form.submit()">
+        </form>
+        <small class="text-muted">Page {{ staff_page.number }} of {{ staff_page.paginator.num_pages }}</small>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead><tr>
+            <th class="ps-4">Staff</th><th>Department</th><th>Face</th><th>Status</th><th>Check-in</th><th>Check-out</th><th class="text-end pe-4">Action</th>
+          </tr></thead>
+          <tbody>
+          {% for staff in staff_page %}
+            <tr data-staff-row="{{ staff.id }}">
+              <td class="ps-4"><div class="fw-semibold">{{ staff.user.get_full_name|default:staff.staff_id }}</div><small class="text-muted">{{ staff.staff_id }} · {{ staff.get_staff_position_display }}</small></td>
+              <td>{{ staff.department.name|default:'—' }}</td>
+              <td>{% if staff.face_registered %}<span class="badge bg-success-subtle text-success">Registered</span>{% else %}<span class="badge bg-secondary-subtle text-secondary">Not registered</span>{% endif %}</td>
+              <td><span class="status-badge status-{{ staff.current_attendance|lower }}">{{ staff.current_attendance|title }}</span></td>
+              <td class="check-in">{% if staff.current_record.check_in %}{{ staff.current_record.check_in|date:'H:i' }}{% else %}—{% endif %}</td>
+              <td class="check-out">{% if staff.current_record.check_out %}{{ staff.current_record.check_out|date:'H:i' }}{% else %}—{% endif %}</td>
+              <td class="text-end pe-4">
+                <div class="btn-group btn-group-sm">
+                  <button type="button" class="btn btn-outline-success" data-staff-present="{{ staff.id }}">Present</button>
+                  <button type="button" class="btn btn-outline-warning" data-staff-late="{{ staff.id }}">Late</button>
+                  <button type="button" class="btn btn-outline-danger" data-staff-absent="{{ staff.id }}">Absent</button>
+                  {% if staff.current_record.check_in and not staff.current_record.check_out %}<button type="button" class="btn btn-outline-secondary" data-staff-checkout="{{ staff.id }}">Out</button>{% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="text-center py-5 text-muted">No active staff records found.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include 'partials/pagination.html' with page_obj=staff_page %}
+    </div>
+  </div>
+</div>
+
+<!-- Face registration -->
+<div class="modal fade" id="staffFaceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 shadow">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-person-bounding-box me-2 text-gold"></i>Register Staff Face</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="row g-3">
+        <div class="col-md-5"><label class="form-label fw-semibold">Staff member</label><select id="faceStaffId" class="form-select"><option value="">Select staff</option>{% for staff in staff_page.paginator.object_list %}<option value="{{ staff.id }}">{{ staff.user.get_full_name|default:staff.staff_id }} — {{ staff.staff_id }}</option>{% endfor %}</select><small class="text-muted d-block mt-2">Registration is stored separately from HR/payroll records.</small></div>
+        <div class="col-md-7"><video id="registerVideo" class="camera-video" autoplay muted playsinline></video><canvas id="registerCanvas" class="d-none"></canvas><div class="d-flex gap-2 mt-2"><button class="btn btn-outline-secondary" type="button" id="registerStartCamera">Start camera</button><button class="btn btn-gold" type="button" id="registerCaptureBtn">Capture & Register</button></div></div>
+      </div>
+      <div id="registerStatus" class="mt-3"></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- Face attendance -->
+<div class="modal fade" id="staffScanModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content border-0 rounded-4 shadow">
+    <div class="modal-header"><div><h5 class="modal-title"><i class="bi bi-camera me-2 text-gold"></i>Staff Face Attendance</h5><small class="text-muted">One registered face is matched at a time. Attendance is recorded as Present.</small></div><button class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><div class="row g-4"><div class="col-lg-7"><video id="scanVideo" class="camera-video" autoplay muted playsinline></video><canvas id="scanCanvas" class="d-none"></canvas><div class="d-flex gap-2 mt-3"><button class="btn btn-outline-secondary" type="button" id="scanStartCamera">Start camera</button><button class="btn btn-gold" type="button" id="scanFaceBtn">Scan Face</button></div></div><div class="col-lg-5"><div class="p-3 rounded-3 bg-light"><div class="small text-muted">Selected date</div><div class="fw-bold mb-3">{{ selected_date|date:'d M Y' }}</div><div id="scanStatus" class="small">Position one staff member clearly in front of the camera, then scan.</div></div></div></div></div>
+  </div></div>
+</div>
+
+<style>
+.text-gold{color:var(--eduai-gold,#946B1C)!important}.bg-gold-soft{background:var(--eduai-gold-soft,rgba(148,107,28,.12))!important}.btn-gold{background:var(--eduai-gold,#946B1C);border-color:var(--eduai-gold,#946B1C);color:#fff}.btn-gold:hover{background:#7a5917;border-color:#7a5917;color:#fff}.btn-outline-gold{border-color:var(--eduai-gold,#946B1C);color:var(--eduai-gold,#946B1C)}.btn-outline-gold:hover{background:var(--eduai-gold,#946B1C);color:#fff}.stat-card{background:var(--surface-bg,#fff);border:1px solid var(--surface-border,#e7e1d3);border-radius:16px;padding:14px 16px;box-shadow:0 4px 14px rgba(31,42,40,.05)}.stat-card span{display:block;color:#6c757d;font-size:.78rem}.stat-card strong{font-size:1.45rem}.status-badge{display:inline-block;border-radius:999px;padding:.35rem .65rem;font-size:.74rem;font-weight:700}.status-unmarked{background:#f1f3f5;color:#6c757d}.status-present{background:#dff4e8;color:#18794e}.status-late{background:#fff0c9;color:#8a6500}.status-absent{background:#fde2e2;color:#b42318}.status-excused{background:#e4ecff;color:#315ca8}.camera-video{width:100%;min-height:300px;background:#182321;border-radius:16px;object-fit:cover}
+</style>
+<form id="staffAttendanceCsrfForm" class="d-none">{% csrf_token %}</form>
+<script>
+(function () {
+  'use strict';
+
+  const STAFF_ATTENDANCE_DATE = '{{ selected_date|date:"Y-m-d" }}';
+  const streams = {};
+
+  function csrfToken() {
+    return document.querySelector('#staffAttendanceCsrfForm input[name="csrfmiddlewaretoken"]')?.value ||
+      document.cookie.split('; ').find(x => x.startsWith('csrftoken='))?.split('=')[1] || '';
+  }
+
+  async function postJSON(url, body) {
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': decodeURIComponent(csrfToken()),
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await response.json().catch(() => ({success: false, error: 'Invalid server response.'}));
+    if (!response.ok || !data.success) throw new Error(data.error || 'Request failed.');
+    return data;
+  }
+
+  function modal(id) {
+    const element = document.getElementById(id);
+    if (!element) return null;
+    if (!window.bootstrap || !bootstrap.Modal) {
+      showStatus(id === 'staffFaceModal' ? 'registerStatus' : 'scanStatus', 'danger', 'Bootstrap modal support is not available on this page. Please refresh the page.');
+      return null;
+    }
+    return bootstrap.Modal.getOrCreateInstance(element, {backdrop: true, keyboard: true});
+  }
+
+  function openModal(id) {
+    const instance = modal(id);
+    if (instance) instance.show();
+  }
+
+  function showStatus(id, type, message) {
+    const element = document.getElementById(id);
+    if (!element) return;
+    element.innerHTML = '<div class="alert alert-' + type + ' mb-0">' + escapeHtml(message) + '</div>';
+  }
+
+  function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+  }
+
+  function rowStatus(row, status) {
+    if (!row) return;
+    const badge = row.querySelector('.status-badge');
+    if (badge) {
+      badge.textContent = status.charAt(0) + status.slice(1).toLowerCase();
+      badge.className = 'status-badge status-' + status.toLowerCase();
+    }
+    if (['PRESENT', 'LATE'].includes(status)) {
+      const checkIn = row.querySelector('.check-in');
+      if (checkIn && checkIn.textContent.trim() === '—') {
+        checkIn.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      }
+    }
+  }
+
+  async function markStaff(id, status) {
+    try {
+      const data = await postJSON('{% url "attendance:api_staff_toggle_attendance" %}', {
+        staff_id: id, status: status, date: STAFF_ATTENDANCE_DATE
+      });
+      rowStatus(document.querySelector('[data-staff-row="' + id + '"]'), data.status);
+      showToast('success', data.staff_name + ' marked ' + data.status.toLowerCase() + '.');
+    } catch (error) {
+      showToast('danger', error.message);
+    }
+  }
+
+  async function checkoutStaff(id) {
+    try {
+      const data = await postJSON('{% url "attendance:api_staff_checkout" %}', {
+        staff_id: id, date: STAFF_ATTENDANCE_DATE
+      });
+      const row = document.querySelector('[data-staff-row="' + id + '"]');
+      if (row) row.querySelector('.check-out').textContent = new Date(data.check_out).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      showToast('success', 'Check-out recorded.');
+    } catch (error) {
+      showToast('danger', error.message);
+    }
+  }
+
+  async function startCamera(id) {
+    const video = document.getElementById(id);
+    if (!video) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showStatus(id === 'registerVideo' ? 'registerStatus' : 'scanStatus', 'danger', 'Camera access is not supported by this browser.');
+      return;
+    }
+    try {
+      if (streams[id]) {
+        video.srcObject = streams[id];
+        return;
+      }
+      streams[id] = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'user'}, audio: false});
+      video.srcObject = streams[id];
+      await video.play().catch(() => {});
+      showStatus(id === 'registerVideo' ? 'registerStatus' : 'scanStatus', 'success', 'Camera ready. Position one face clearly in the frame.');
+    } catch (error) {
+      console.error('Camera error:', error);
+      showStatus(id === 'registerVideo' ? 'registerStatus' : 'scanStatus', 'danger', 'Camera access failed. Allow camera access for this site and try again.');
+    }
+  }
+
+  function capture(videoId, canvasId) {
+    const video = document.getElementById(videoId);
+    const canvas = document.getElementById(canvasId);
+    if (!video || !canvas || !video.videoWidth || !video.videoHeight) return null;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.85);
+  }
+
+  async function registerStaffFace() {
+    const staffId = document.getElementById('faceStaffId')?.value;
+    if (!staffId) {
+      showStatus('registerStatus', 'warning', 'Select a staff member first.');
+      return;
+    }
+    const image = capture('registerVideo', 'registerCanvas');
+    if (!image) {
+      showStatus('registerStatus', 'warning', 'Start the camera and wait until the live preview appears.');
+      return;
+    }
+    showStatus('registerStatus', 'info', 'Processing face registration…');
+    try {
+      const data = await postJSON('{% url "attendance:api_register_staff_face" %}', {staff_id: staffId, image: image});
+      showStatus('registerStatus', 'success', data.message || 'Staff face registered successfully.');
+      setTimeout(() => window.location.reload(), 900);
+    } catch (error) {
+      showStatus('registerStatus', 'danger', error.message);
+    }
+  }
+
+  async function scanStaffFace() {
+    const image = capture('scanVideo', 'scanCanvas');
+    if (!image) {
+      showStatus('scanStatus', 'warning', 'Start the camera and wait until the live preview appears.');
+      return;
+    }
+    showStatus('scanStatus', 'info', 'Scanning face…');
+    try {
+      const data = await postJSON('{% url "attendance:api_staff_live_capture" %}', {image: image, date: STAFF_ATTENDANCE_DATE});
+      if (data.recognized) {
+        showStatus('scanStatus', 'success', data.staff_name + ' marked Present at ' + new Date(data.check_in).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + '.');
+        setTimeout(() => window.location.reload(), 1200);
+      } else {
+        showStatus('scanStatus', 'warning', data.message || 'No registered staff face matched.');
+      }
+    } catch (error) {
+      showStatus('scanStatus', 'danger', error.message);
+    }
+  }
+
+  function stopCamera(id) {
+    if (!streams[id]) return;
+    streams[id].getTracks().forEach(track => track.stop());
+    delete streams[id];
+    const video = document.getElementById(id);
+    if (video) video.srcObject = null;
+  }
+
+  function stopAllCameras() {
+    Object.keys(streams).forEach(stopCamera);
+  }
+
+  function showToast(type, message) {
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, type);
+      return;
+    }
+    const element = document.createElement('div');
+    element.className = 'alert alert-' + type + ' position-fixed shadow';
+    element.style.cssText = 'right:20px;bottom:20px;z-index:2000;min-width:260px';
+    element.textContent = message;
+    document.body.appendChild(element);
+    setTimeout(() => element.remove(), 2600);
+  }
+
+  function init() {
+    document.getElementById('openStaffFaceBtn')?.addEventListener('click', function (event) {
+      event.preventDefault();
+      openModal('staffFaceModal');
+    });
+    document.getElementById('openStaffScanBtn')?.addEventListener('click', function (event) {
+      event.preventDefault();
+      openModal('staffScanModal');
+    });
+
+    document.querySelectorAll('[data-staff-present]').forEach(btn => btn.addEventListener('click', () => markStaff(btn.dataset.staffPresent, 'PRESENT')));
+    document.querySelectorAll('[data-staff-late]').forEach(btn => btn.addEventListener('click', () => markStaff(btn.dataset.staffLate, 'LATE')));
+    document.querySelectorAll('[data-staff-absent]').forEach(btn => btn.addEventListener('click', () => markStaff(btn.dataset.staffAbsent, 'ABSENT')));
+    document.querySelectorAll('[data-staff-checkout]').forEach(btn => btn.addEventListener('click', () => checkoutStaff(btn.dataset.staffCheckout)));
+
+    document.getElementById('registerStartCamera')?.addEventListener('click', () => startCamera('registerVideo'));
+    document.getElementById('registerCaptureBtn')?.addEventListener('click', registerStaffFace);
+    document.getElementById('scanStartCamera')?.addEventListener('click', () => startCamera('scanVideo'));
+    document.getElementById('scanFaceBtn')?.addEventListener('click', scanStaffFace);
+
+    document.getElementById('staffFaceModal')?.addEventListener('shown.bs.modal', () => startCamera('registerVideo'));
+    document.getElementById('staffScanModal')?.addEventListener('shown.bs.modal', () => startCamera('scanVideo'));
+    document.getElementById('staffFaceModal')?.addEventListener('hidden.bs.modal', () => stopCamera('registerVideo'));
+    document.getElementById('staffScanModal')?.addEventListener('hidden.bs.modal', () => stopCamera('scanVideo'));
+  }
+
+  window.markStaff = markStaff;
+  window.checkoutStaff = checkoutStaff;
+  window.startCamera = startCamera;
+  window.registerStaffFace = registerStaffFace;
+  window.scanStaffFace = scanStaffFace;
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once: true});
+  else init();
+})();
+</script>
+{% endblock %}

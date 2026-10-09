@@ -35,6 +35,16 @@ GROQ_COMMENT_MODEL = os.getenv("GROQ_COMMENT_MODEL", "openai/gpt-oss-20b")
 GROQ_TIMEOUT = int(os.getenv("GROQ_TIMEOUT", "60"))
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 
+# =========================
+# KHAYA TRANSLATION CONFIG
+# =========================
+KHAYA_API_KEY = os.getenv("KHAYA_API_KEY", "").strip()
+KHAYA_API_URL = os.getenv(
+    "KHAYA_API_URL",
+    "https://translation-api.ghananlp.org/v2/translate",
+).strip()
+KHAYA_TIMEOUT = int(os.getenv("KHAYA_TIMEOUT", "20"))
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -90,6 +100,7 @@ INSTALLED_APPS = [
     'school',
     'accounts',
     'students',
+    'admissions',
     'staff',
     'academics',
     'ai_engine',

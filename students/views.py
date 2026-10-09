@@ -100,6 +100,12 @@ def student_list(request):
     elif face_filter == 'unregistered':
         students = students.filter(face_registered=False)
 
+    active_filter = request.GET.get('status', '').strip()
+    if active_filter == 'active':
+        students = students.filter(is_active=True)
+    elif active_filter == 'inactive':
+        students = students.filter(is_active=False)
+
     grade_levels = GradeLevel.objects.filter(school=school).order_by('order')
 
     if request.GET.get('format') == 'json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -129,6 +135,7 @@ def student_list(request):
         'query': query,
         'grade_filter': grade_filter,
         'face_filter': face_filter,
+        'active_filter': active_filter,
         'grade_levels': grade_levels,
         'can_manage': request.user.role in MANAGE_ROLES,
         'can_edit': request.user.role in EDIT_ROLES,
@@ -192,6 +199,22 @@ def create_student(request):
     id_card_type = request.POST.get('id_card_type', '').strip()
     id_card_number = request.POST.get('id_card_number', '').strip()
 
+    create_new_parent = request.POST.get('create_new_parent') == 'on'
+    if create_new_parent:
+        parent_first_name = request.POST.get('parent_first_name', '').strip()
+        parent_last_name = request.POST.get('parent_last_name', '').strip()
+        parent_email = request.POST.get('parent_email', '').strip()
+        if not parent_first_name or not parent_last_name or not parent_email:
+            messages.error(request, "New parent / guardian first name, last name and email are required.")
+            return render(request, 'students/student_form.html', {
+                'existing_parents': existing_parents,
+                'school_classes': school_classes,
+                'enrollment_types': enrollment_types,
+                'current_term': current_term,
+                'mode': 'create',
+                'form_data': request.POST,
+            })
+
     if not all([first_name, last_name, date_of_birth, school_class_id]):
         messages.error(request, "First name, last name, date of birth, and class are required.")
         return render(request, 'students/student_form.html', {
@@ -237,8 +260,6 @@ def create_student(request):
                 parent_last_name = request.POST.get('parent_last_name', '').strip()
                 parent_email = request.POST.get('parent_email', '').strip()
                 parent_phone = request.POST.get('parent_phone', '').strip()
-                create_new_parent = request.POST.get('create_new_parent') == 'on'
-
                 if create_new_parent and parent_first_name and parent_last_name and parent_email:
                     parent_username = _generate_username(parent_email)
                     parent_temp_password = _generate_temp_password()
@@ -501,9 +522,48 @@ def edit_student(request, student_id):
         student.school_class = None
         student.grade_level = None
 
-    # Parent
+    # Parent / Guardian
+    # The create and edit screens use the same workflow: keep an existing
+    # parent, switch to another parent, create a new parent inline, or leave
+    # the student without a linked parent.
     parent_id = request.POST.get('parent_id', '').strip()
-    student.parent = get_object_or_404(User, id=parent_id, school=school, role='PARENT') if parent_id else None
+    create_new_parent = request.POST.get('create_new_parent') == 'on'
+    parent = None
+
+    if create_new_parent:
+        parent_first_name = request.POST.get('parent_first_name', '').strip()
+        parent_last_name = request.POST.get('parent_last_name', '').strip()
+        parent_email = request.POST.get('parent_email', '').strip()
+        parent_phone = request.POST.get('parent_phone', '').strip()
+        if not parent_first_name or not parent_last_name or not parent_email:
+            messages.error(request, 'New parent / guardian first name, last name and email are required.')
+            return render(request, 'students/student_form.html', {
+                'existing_parents': parents,
+                'school_classes': school_classes,
+                'enrollment_types': enrollment_types,
+                'mode': 'edit',
+                'student': student,
+                'form_data': request.POST,
+            })
+
+        parent_username = _generate_username(parent_email)
+        parent_temp_password = _generate_temp_password()
+        parent = User.objects.create_user(
+            username=parent_username,
+            email=parent_email,
+            password=parent_temp_password,
+            first_name=parent_first_name,
+            last_name=parent_last_name,
+            school=school,
+            role='PARENT',
+            is_active=True,
+            phone_number=parent_phone,
+            default_password=parent_temp_password,
+        )
+    elif parent_id:
+        parent = get_object_or_404(User, id=parent_id, school=school, role='PARENT')
+
+    student.parent = parent
 
     # Enrollment type: changing it updates the student's profile only. Existing
     # StudentFeeEnrollment records remain untouched so historical invoices stay correct.
@@ -536,6 +596,64 @@ def edit_student(request, student_id):
 
 
 @login_required
+@require_POST
+def manage_student_guardian(request, student_id):
+    """Link an existing parent or create a new parent from the student workspace."""
+    if request.user.role not in EDIT_ROLES:
+        messages.error(request, "You don't have permission to manage parent / guardian details.")
+        return redirect('students:student_detail', student_id=student_id)
+
+    school = getattr(request.user, 'school', None)
+    if school is None:
+        messages.error(request, "Your account is not linked to a school.")
+        return redirect('students:student_list')
+
+    student = get_object_or_404(Student, id=student_id, school=school)
+    parent_id = request.POST.get('parent_id', '').strip()
+
+    try:
+        with transaction.atomic():
+            if parent_id:
+                parent = get_object_or_404(User, id=parent_id, school=school, role='PARENT')
+            else:
+                first_name = request.POST.get('parent_first_name', '').strip()
+                last_name = request.POST.get('parent_last_name', '').strip()
+                email = request.POST.get('parent_email', '').strip()
+                phone = request.POST.get('parent_phone', '').strip()
+
+                if not first_name or not last_name or not email:
+                    messages.error(request, 'First name, last name and email are required to create a guardian.')
+                    return redirect('students:student_detail', student_id=student.id)
+                if User.objects.filter(email__iexact=email).exists():
+                    messages.error(request, 'That email address is already in use. Select the existing guardian if this is their account.')
+                    return redirect('students:student_detail', student_id=student.id)
+
+                username = _generate_username(email.split('@', 1)[0])
+                temporary_password = _generate_temp_password()
+                parent = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=temporary_password,
+                    first_name=first_name,
+                    last_name=last_name,
+                    school=school,
+                    role='PARENT',
+                    is_active=True,
+                    phone_number=phone,
+                    default_password=temporary_password,
+                )
+
+            student.parent = parent
+            student.save(update_fields=['parent'])
+
+        messages.success(request, '{} is now linked as parent / guardian.'.format(parent.get_full_name()))
+    except Exception:
+        messages.error(request, 'Unable to save guardian details. Please check the information and try again.')
+
+    return redirect('students:student_detail', student_id=student.id)
+
+
+@login_required
 def student_detail(request, student_id):
     school = request.user.school
     if request.user.role not in STAFF_ROLES:
@@ -560,6 +678,17 @@ def student_detail(request, student_id):
         '-assessment__created_at')[:8]
     invoices = Invoice.objects.filter(student=student).exclude(status='PAID')
     outstanding = sum((inv.balance_due for inv in invoices), 0)
+
+    # Parent/guardian workspace: show other students linked to the same
+    # parent, while keeping the query tenant-safe. This lets staff manage
+    # family relationships from the student's profile without duplicating
+    # parent records.
+    linked_siblings = Student.objects.filter(
+        school=school,
+        parent_id=student.parent_id,
+    ).exclude(id=student.id).select_related(
+        'user', 'school_class', 'grade_level'
+    ).order_by('user__last_name', 'user__first_name') if student.parent_id else Student.objects.none()
     latest_risk = None
     try:
         from ai_engine.models import StudentRiskAssessment
@@ -574,6 +703,8 @@ def student_detail(request, student_id):
         'recent_grades': recent_grades,
         'invoices': invoices,
         'outstanding': outstanding,
+        'linked_siblings': linked_siblings,
+        'existing_parents': User.objects.filter(school=school, role='PARENT').order_by('first_name', 'last_name'),
         'latest_risk': latest_risk,
         'can_manage': request.user.role in MANAGE_ROLES,
         'can_edit': request.user.role in EDIT_ROLES,

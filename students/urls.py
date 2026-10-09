@@ -10,6 +10,7 @@ urlpatterns = [
     path('create/', views.create_student, name='create_student'),
     path('<uuid:student_id>/', views.student_detail, name='student_detail'),
     path('<uuid:student_id>/edit/', views.edit_student, name='edit_student'),
+    path('<uuid:student_id>/guardian/manage/', views.manage_student_guardian, name='manage_student_guardian'),
     path('<uuid:student_id>/toggle-active/', views.toggle_student_active, name='toggle_student_active'),
 
     # Face registration

@@ -187,6 +187,9 @@
                 <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="Ga">Ga <i class="bi bi-check2 ms-auto d-none"></i></button>
                 <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="Ewe">Ewe <i class="bi bi-check2 ms-auto d-none"></i></button>
                 <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="Yoruba">Yoruba <i class="bi bi-check2 ms-auto d-none"></i></button>
+                <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="Fante">Fante <i class="bi bi-check2 ms-auto d-none"></i></button>
+                <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="Dagbani">Dagbani <i class="bi bi-check2 ms-auto d-none"></i></button>
+                <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="Kusaal">Kusaal <i class="bi bi-check2 ms-auto d-none"></i></button>
                 <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="French">French <i class="bi bi-check2 ms-auto d-none"></i></button>
                 <button type="button" class="dropdown-item rounded-2 eduai-language-option" data-page-language="Arabic">Arabic <i class="bi bi-check2 ms-auto d-none"></i></button>
                 <div class="border-top mt-2 pt-2 px-2 pb-1">
@@ -288,17 +291,38 @@
         background:rgba(148,107,28,.10); color:var(--text-primary,#1F2A28);
     }
     .eduai-language-option .bi-check2 { color:var(--eduai-gold,#946B1C); font-weight:800; }
-    .eduai-page-translating #mainContent { opacity:.72; transition:opacity .15s ease; }
 </style>
 
 <script>
 (function(){
+    // Page translation is deliberately isolated from the rest of the navbar.
+    // The selected language is persisted with localStorage, which survives
+    // normal full-page navigation.  We do not alter routing, forms or links.
     const STORAGE_KEY = 'eduai_page_language';
     const ORIGINAL_TEXT = new WeakMap();
     const API_URL = "{% url 'ai_engine:language_translator_api' %}";
+    const KHAYA_GUARD_KEY = 'eduai_translation_provider_guard_until';
+    // Provider failures are handled by the server fallback. Do not create a
+    // long browser-side lockout from a normal 503/partial response.
+    const PAGE_BATCH_SIZE = 80;
+    // Do not watch the whole document for mutations. Bootstrap modals,
+    // dropdowns, notification refreshes and other UI updates create DOM
+    // mutations; translating the entire page again for each one makes the
+    // application slow and can leave modal backdrops looking disabled.
     let observer = null;
     let translating = false;
+    let translationUnavailable = false;
+    let offlineNoticeShown = false;
+    let currentLanguage = 'English';
 
+    function getSavedLanguage(){
+        try { return localStorage.getItem(STORAGE_KEY) || 'English'; }
+        catch(e) { return 'English'; }
+    }
+    function saveLanguage(lang){
+        currentLanguage = lang || 'English';
+        try { localStorage.setItem(STORAGE_KEY, currentLanguage); } catch(e) {}
+    }
     function getCsrf(){
         return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
                document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
@@ -324,9 +348,9 @@
         collect().forEach(n=>{
             if(ORIGINAL_TEXT.has(n)) n.nodeValue=ORIGINAL_TEXT.get(n);
         });
+        saveLanguage('English');
         document.documentElement.lang='en';
         setState('English');
-        if(observer) observer.observe(document.body,{subtree:true,childList:true,characterData:true});
     }
     function setState(lang){
         document.querySelectorAll('.eduai-language-option').forEach(btn=>{
@@ -335,70 +359,196 @@
             btn.querySelector('.bi-check2')?.classList.toggle('d-none',!active);
         });
     }
-    function cacheKey(lang,text){ return 'eduai_translate:'+lang+':'+text; }
-    function cached(lang,text){ try{return sessionStorage.getItem(cacheKey(lang,text));}catch(e){return null;} }
-    function saveCache(lang,text,value){ try{sessionStorage.setItem(cacheKey(lang,text),value);}catch(e){} }
+    function cacheKey(lang,text){ return 'eduai_translate_v4:'+lang+':'+text; }
+    function cached(lang,text){
+        try{
+            const key=cacheKey(lang,text);
+            const value=localStorage.getItem(key);
+            return value===null ? sessionStorage.getItem(key) : value;
+        }catch(e){
+            try{return sessionStorage.getItem(cacheKey(lang,text));}catch(_){return null;}
+        }
+    }
+    function saveCache(lang,text,value){
+        try{ localStorage.setItem(cacheKey(lang,text),value); }
+        catch(e){ try{sessionStorage.setItem(cacheKey(lang,text),value);}catch(_){} }
+    }
+
+    function showOfflineTranslationNotice(message){
+        if(offlineNoticeShown) return;
+        offlineNoticeShown = true;
+        translationUnavailable = true;
+        if(observer) observer.disconnect();
+        const existing=document.getElementById('eduai-translation-offline-notice');
+        if(existing) return;
+        const notice=document.createElement('div');
+        notice.id='eduai-translation-offline-notice';
+        notice.className='alert alert-warning alert-dismissible fade show position-fixed shadow-lg';
+        notice.style.cssText='top:76px;right:20px;z-index:1085;max-width:430px;';
+        notice.innerHTML='<div class=\"d-flex gap-2 align-items-start\"><i class=\"bi bi-wifi-off fs-5\"></i><div><strong>No internet connection</strong><div class=\"small mt-1\">'+(message||'Language translation requires an internet connection to reach Khaya.')+'</div><button type=\"button\" class=\"btn btn-sm btn-outline-dark mt-2\" id=\"eduai-translation-retry\">Try again</button></div></div><button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"alert\" aria-label=\"Close\"></button>';
+        document.body.appendChild(notice);
+        document.getElementById('eduai-translation-retry')?.addEventListener('click',()=>{
+            if(!navigator.onLine){ return; }
+            offlineNoticeShown=false; translationUnavailable=false; notice.remove();
+            const lang=getSavedLanguage();
+            if(lang && lang!=='English') translate(lang);
+        });
+    }
+
+    function clearOfflineTranslationNotice(){
+        translationUnavailable=false;
+        offlineNoticeShown=false;
+        document.getElementById('eduai-translation-offline-notice')?.remove();
+    }
 
     async function batch(lang,texts){
         const out=new Array(texts.length), missing=[];
-        texts.forEach((text,i)=>{const c=cached(lang,text); if(c!==null) out[i]=c; else missing.push({i,text});});
-        if(!missing.length) return out;
-        const r=await fetch(API_URL,{
-            method:'POST', credentials:'same-origin',
-            headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf(),'X-Requested-With':'XMLHttpRequest'},
-            body:JSON.stringify({page_mode:true,source:'English',target:lang,items:missing.map(x=>x.text.slice(0,500))})
+        texts.forEach((text,i)=>{
+            const c=cached(lang,text);
+            if(c!==null) out[i]=c; else missing.push({i,text});
         });
-        const d=await r.json();
-        if(!r.ok || !d.success || !Array.isArray(d.translations)) throw new Error(d.error || 'Page translation failed.');
-        missing.forEach((item,i)=>{out[item.i]=d.translations[i];saveCache(lang,item.text,d.translations[i]);});
+        if(!missing.length) return out;
+        if(!navigator.onLine){
+            showOfflineTranslationNotice('You are offline. Reconnect to the internet to translate this page.');
+            throw new Error('No internet connection.');
+        }
+        try {
+            if(Number(sessionStorage.getItem(KHAYA_GUARD_KEY) || 0) > Date.now()) {
+                throw new Error('Translation provider temporarily unavailable.');
+            }
+        } catch(e) {
+            if(e && e.message === 'Translation provider temporarily unavailable.') throw e;
+        }
+        let r;
+        try {
+            r=await fetch(API_URL,{
+                method:'POST', credentials:'same-origin',
+                headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf(),'X-Requested-With':'XMLHttpRequest'},
+                body:JSON.stringify({page_mode:true,source:'English',target:lang,items:missing.map(x=>x.text.slice(0,500))})
+            });
+        } catch(error) {
+            showOfflineTranslationNotice('No internet connection. Reconnect to the internet to use language translation.');
+            throw new Error('No internet connection.');
+        }
+        let d={};
+        try { d=await r.json(); } catch(e) {}
+        if(!r.ok || !d.success || !Array.isArray(d.translations)) {
+            throw new Error(d.error || ('Page translation failed (HTTP '+r.status+').'));
+        }
+        const partial=Boolean(d.partial);
+        missing.forEach((item,i)=>{
+            out[item.i]=d.translations[i] ?? item.text;
+            // Never cache a partially translated batch. A provider outage or
+            // rate-limit must not permanently cache the original English text.
+            if(!partial) saveCache(lang,item.text,out[item.i]);
+        });
         return out;
     }
     function keepSpace(a,b){
         const lead=(a.match(/^\s+/)||[''])[0], trail=(a.match(/\s+$/)||[''])[0];
         return lead+(b||'').trim()+trail;
     }
+
     async function translate(lang){
-        if(translating) return;
-        translating=true; document.body.classList.add('eduai-page-translating'); if(observer) observer.disconnect();
-        try{
-            if(lang==='English'){restore();localStorage.setItem(STORAGE_KEY,'English');return;}
-            const entries=collect().map(n=>({n,text:original(n)})).filter(x=>x.text.trim());
-            for(let i=0;i<entries.length;i+=35){
-                const group=entries.slice(i,i+35);
-                const translations=await batch(lang,group.map(x=>x.text));
-                group.forEach((x,j)=>{if(translations[j]!=null)x.n.nodeValue=keepSpace(x.text,translations[j]);});
-            }
-            localStorage.setItem(STORAGE_KEY,lang);
-            document.documentElement.lang=({Ga:'gaa',Twi:'twi',Ewe:'ewe',Yoruba:'yor',French:'fr',Arabic:'ar',English:'eng'})[lang] || 'en';
-        }catch(e){
-            console.error('EduAI page translation:',e); alert(e.message || 'Unable to translate this page.'); setState('English');
-        }finally{
-            translating=false; document.body.classList.remove('eduai-page-translating');
-            if(observer) observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+        if(translating || translationUnavailable) return;
+        if(!navigator.onLine){
+            showOfflineTranslationNotice('Language translation requires an internet connection to reach Khaya.');
+            return;
         }
+        if(!lang || lang==='English'){ restore(); return; }
+        translating=true;
+        currentLanguage=lang;
+        saveLanguage(lang);
+        setState(lang);
+        // Translation is non-blocking. Never dim or disable the application
+        // while the provider is working; modals and forms must remain usable.
+        if(observer) observer.disconnect();
+        try{
+            const cleanEntries=collect().map(n=>({n,text:original(n)})).filter(x=>x.text.trim());
+            for(let i=0;i<cleanEntries.length;i+=35){
+                // If the user selected another language while a request was
+                // running, stop without changing the saved preference.
+                if(getSavedLanguage()!==lang) return;
+                const group=cleanEntries.slice(i,i+PAGE_BATCH_SIZE);
+                const translations=await batch(lang,group.map(x=>x.text));
+                group.forEach((x,j)=>{
+                    if(translations[j]!=null) x.n.nodeValue=keepSpace(x.text,translations[j]);
+                });
+            }
+            saveLanguage(lang);
+            document.documentElement.lang=({Ga:'gaa',Twi:'twi',Ewe:'ewe',Yoruba:'yor',Fante:'fat',Dagbani:'dag',Kusaal:'kus',French:'fr',Arabic:'ar',English:'eng'})[lang] || 'en';
+            setState(lang);
+        }catch(e){
+            console.error('EduAI page translation:',e);
+            setState(lang);
+            if(!navigator.onLine || /No internet connection|Khaya connection failed|NameResolutionError|Failed to fetch/i.test(String(e.message||''))){
+                showOfflineTranslationNotice('No internet connection. Reconnect to the internet to use language translation.');
+            } else if(typeof window.showToast === 'function') {
+                try { window.showToast(e.message || 'Translation failed.', 'danger'); } catch(_) {}
+            }
+        }finally{
+            translating=false;
+            }
     }
 
     document.addEventListener('click',function(e){
-        const btn=e.target.closest('.eduai-language-option'); if(!btn) return;
-        e.preventDefault(); const lang=btn.dataset.pageLanguage; setState(lang);
-        const toggle=document.getElementById('eduaiPageTranslatorBtn');
-        if(toggle && window.bootstrap) bootstrap.Dropdown.getOrCreateInstance(toggle).hide();
-        translate(lang);
+        const btn=e.target.closest('.eduai-language-option');
+        if(btn){
+            e.preventDefault();
+            const lang=btn.dataset.pageLanguage || 'English';
+            saveLanguage(lang);
+            setState(lang);
+            const toggle=document.getElementById('eduaiPageTranslatorBtn');
+            if(toggle && window.bootstrap) bootstrap.Dropdown.getOrCreateInstance(toggle).hide();
+            if(lang==='English') restore(); else translate(lang);
+            return;
+        }
+        // localStorage is synchronous, but explicitly save before internal
+        // navigation as an extra guard against page lifecycle interruption.
+        if(currentLanguage!=='English'){
+            const link=e.target.closest('a[href]');
+            if(link && !link.target && !e.defaultPrevented){
+                try{
+                    const url=new URL(link.href,window.location.href);
+                    if(url.origin===window.location.origin) saveLanguage(currentLanguage);
+                }catch(err){}
+            }
+        }
+    },true);
+
+    // Intentionally no global MutationObserver. Page translation happens once
+    // after navigation/selection. Dynamic Bootstrap UI must not trigger a full
+    // page translation request.
+
+    window.addEventListener('offline',()=>{
+        if(getSavedLanguage()!=='English') showOfflineTranslationNotice('No internet connection. Reconnect to the internet to use language translation.');
+    });
+    window.addEventListener('online',()=>{
+        clearOfflineTranslationNotice();
+        const lang=getSavedLanguage();
+        if(lang && lang!=='English'){ setTimeout(()=>translate(lang),250); }
     });
 
-    observer=new MutationObserver(function(mutations){
-        const lang=localStorage.getItem(STORAGE_KEY)||'English';
-        if(lang==='English'||translating) return;
-        if(!mutations.some(m=>m.type==='childList'&&m.addedNodes.length)) return;
-        clearTimeout(window._eduaiTranslationTimer);
-        window._eduaiTranslationTimer=setTimeout(()=>translate(lang),400);
-    });
+    function init(){
+        const lang=getSavedLanguage();
+        currentLanguage=lang;
+        setState(lang);
+        if(lang==='English'){
+            return;
+        }
+        // Start on the current DOM immediately after the page is ready.
+        if(!navigator.onLine){
+            showOfflineTranslationNotice('No internet connection. Reconnect to the internet to use language translation.');
+            return;
+        }
+        setTimeout(()=>translate(lang),50);
+    }
 
-    document.addEventListener('DOMContentLoaded',function(){
-        const lang=localStorage.getItem(STORAGE_KEY)||'English'; setState(lang);
-        observer.observe(document.body,{subtree:true,childList:true,characterData:true});
-        if(lang!=='English') setTimeout(()=>translate(lang),300);
-    });
+    if(document.readyState==='loading'){
+        document.addEventListener('DOMContentLoaded',init,{once:true});
+    }else{
+        init();
+    }
 })();
 </script>
 

@@ -1,0 +1,160 @@
+{% extends 'base/base.html' %}
+{% block title %}New Admission Application{% endblock %}
+{% block content %}
+<style>
+    .app-shell{max-width:1180px;margin:0 auto}
+    .app-hero{background:linear-gradient(135deg,rgba(148,107,28,.11),rgba(44,122,109,.08));border:1px solid var(--surface-border)}
+    .app-card{background:var(--surface-bg);border:1px solid var(--surface-border);box-shadow:0 10px 28px rgba(31,42,40,.055)}
+    html[data-bs-theme="dark"] .app-card{box-shadow:0 10px 28px rgba(0,0,0,.18)}
+    .stepper{display:flex;gap:.5rem;overflow:auto;padding-bottom:.2rem}
+    .step{display:flex;align-items:center;gap:.6rem;min-width:150px;padding:.7rem .85rem;border:1px solid var(--surface-border);border-radius:14px;background:var(--surface-bg);color:var(--text-muted);font-size:.82rem;font-weight:700}
+    .step .num{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:rgba(108,117,125,.12);font-size:.78rem}
+    .step.active{border-color:rgba(148,107,28,.4);color:var(--eduai-gold);background:rgba(148,107,28,.06)}
+    .step.active .num{background:var(--eduai-gold);color:#fff}
+    .section-kicker{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:var(--text-muted)}
+    .form-label{font-weight:650;font-size:.86rem}
+    .required::after{content:' *';color:#dc3545}
+    .review-box{background:rgba(44,122,109,.055);border:1px solid rgba(44,122,109,.16);border-radius:16px}
+    .form-step{display:none}.form-step.active{display:block}
+    .field-error{color:#dc3545;font-size:.78rem;margin-top:.25rem}
+</style>
+
+<div class="container-fluid py-3">
+<div class="app-shell">
+    <div class="app-hero rounded-4 p-4 p-lg-5 mb-4">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+                <div class="section-kicker mb-2">Admissions · New Application</div>
+                <h2 class="fw-bold mb-1">Create an applicant application</h2>
+                <p class="text-muted mb-0">Capture the applicant and guardian information once. A student record is created only after admission approval.</p>
+            </div>
+            <a href="{% url 'admissions:application_list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Application Register</a>
+        </div>
+    </div>
+
+    {% if errors %}
+    <div class="alert alert-danger border-0 rounded-4 shadow-sm mb-4">
+        <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Please review the following</div>
+        <ul class="mb-0 ps-3">{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+
+    <div class="stepper mb-4" id="admissionStepper">
+        <div class="step active" data-step="1"><span class="num">1</span><span>Applicant</span></div>
+        <div class="step" data-step="2"><span class="num">2</span><span>Parent / Guardian</span></div>
+        <div class="step" data-step="3"><span class="num">3</span><span>Application Details</span></div>
+        <div class="step" data-step="4"><span class="num">4</span><span>Review & Submit</span></div>
+    </div>
+
+    <form method="post" id="admissionForm" novalidate>
+        {% csrf_token %}
+        <div class="app-card rounded-4 p-4 p-lg-5">
+            <div class="form-step active" data-form-step="1">
+                <div class="section-kicker mb-2">Step 1</div>
+                <h4 class="fw-bold mb-1">Applicant information</h4>
+                <p class="text-muted mb-4">Enter the prospective student's personal and contact details.</p>
+                <div class="row g-3">
+                    <div class="col-md-4"><label class="form-label required">First name</label><input name="first_name" value="{{ form_data.first_name|default:'' }}" class="form-control" autocomplete="given-name"></div>
+                    <div class="col-md-4"><label class="form-label">Middle name</label><input name="middle_name" value="{{ form_data.middle_name|default:'' }}" class="form-control"></div>
+                    <div class="col-md-4"><label class="form-label required">Last name</label><input name="last_name" value="{{ form_data.last_name|default:'' }}" class="form-control" autocomplete="family-name"></div>
+                    <div class="col-md-4"><label class="form-label required">Date of birth</label><input type="date" name="date_of_birth" value="{{ form_data.date_of_birth|default:'' }}" class="form-control"></div>
+                    <div class="col-md-4"><label class="form-label required">Gender</label><select name="gender" class="form-select"><option value="">Select gender</option><option value="MALE" {% if form_data.gender == 'MALE' %}selected{% endif %}>Male</option><option value="FEMALE" {% if form_data.gender == 'FEMALE' %}selected{% endif %}>Female</option><option value="OTHER" {% if form_data.gender == 'OTHER' %}selected{% endif %}>Other</option></select></div>
+                    <div class="col-md-4"><label class="form-label">Applicant phone</label><input name="applicant_phone" value="{{ form_data.applicant_phone|default:'' }}" class="form-control" inputmode="tel"></div>
+                    <div class="col-md-6"><label class="form-label">Applicant email</label><input type="email" name="applicant_email" value="{{ form_data.applicant_email|default:'' }}" class="form-control"></div>
+                    <div class="col-md-6"><label class="form-label">Previous school</label><input name="previous_school" value="{{ form_data.previous_school|default:'' }}" class="form-control"></div>
+                    <div class="col-12"><label class="form-label">Applicant address</label><textarea name="applicant_address" class="form-control" rows="3" placeholder="Residential / postal address">{{ form_data.applicant_address|default:'' }}</textarea></div>
+                </div>
+                <div class="d-flex justify-content-end mt-4"><button type="button" class="btn btn-primary next-step">Continue <i class="bi bi-arrow-right ms-1"></i></button></div>
+            </div>
+
+            <div class="form-step" data-form-step="2">
+                <div class="section-kicker mb-2">Step 2</div>
+                <h4 class="fw-bold mb-1">Parent / guardian</h4>
+                <p class="text-muted mb-4">Link an existing parent account or capture a new guardian's details for admission.</p>
+                <div class="review-box p-3 mb-4">
+                    <label class="form-label mb-2">Existing parent account</label>
+                    <select name="parent_id" id="parentSelect" class="form-select">
+                        <option value="">Create / capture new guardian details</option>
+                        {% for parent in parents %}<option value="{{ parent.id }}" {% if form_data.parent_id == parent.id|stringformat:'s' %}selected{% endif %}>{{ parent.get_full_name|default:parent.username }}{% if parent.phone_number %} · {{ parent.phone_number }}{% endif %}</option>{% endfor %}
+                    </select>
+                    <div class="form-text">Selecting an existing account will pre-fill the guardian identity at admission.</div>
+                </div>
+                <div id="newParentFields">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label required">First name</label><input name="parent_first_name" value="{{ form_data.parent_first_name|default:'' }}" class="form-control" autocomplete="given-name"></div>
+                        <div class="col-md-6"><label class="form-label required">Last name</label><input name="parent_last_name" value="{{ form_data.parent_last_name|default:'' }}" class="form-control" autocomplete="family-name"></div>
+                        <div class="col-md-6"><label class="form-label">Relationship</label><select name="parent_relationship" class="form-select"><option value="">Select relationship</option><option value="Father" {% if form_data.parent_relationship == 'Father' %}selected{% endif %}>Father</option><option value="Mother" {% if form_data.parent_relationship == 'Mother' %}selected{% endif %}>Mother</option><option value="Guardian" {% if form_data.parent_relationship == 'Guardian' %}selected{% endif %}>Guardian</option><option value="Uncle" {% if form_data.parent_relationship == 'Uncle' %}selected{% endif %}>Uncle</option><option value="Aunt" {% if form_data.parent_relationship == 'Aunt' %}selected{% endif %}>Aunt</option><option value="Sponsor" {% if form_data.parent_relationship == 'Sponsor' %}selected{% endif %}>Sponsor</option><option value="Other" {% if form_data.parent_relationship == 'Other' %}selected{% endif %}>Other</option></select></div>
+                        <div class="col-md-6"><label class="form-label required">Phone</label><input name="parent_phone" value="{{ form_data.parent_phone|default:'' }}" class="form-control" inputmode="tel"></div>
+                        <div class="col-md-6"><label class="form-label">Email</label><input type="email" name="parent_email" value="{{ form_data.parent_email|default:'' }}" class="form-control"></div>
+                        <div class="col-12"><label class="form-label">Address</label><textarea name="parent_address" class="form-control" rows="3">{{ form_data.parent_address|default:'' }}</textarea></div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mt-4"><button type="button" class="btn btn-outline-secondary prev-step"><i class="bi bi-arrow-left me-1"></i>Back</button><button type="button" class="btn btn-primary next-step">Continue <i class="bi bi-arrow-right ms-1"></i></button></div>
+            </div>
+
+            <div class="form-step" data-form-step="3">
+                <div class="section-kicker mb-2">Step 3</div>
+                <h4 class="fw-bold mb-1">Application details</h4>
+                <p class="text-muted mb-4">Select the academic year and level. Classes are restricted to the school's admissions configuration.</p>
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label required">Academic year</label><select name="academic_year" class="form-select"><option value="">Select academic year</option>{% for y in academic_years %}<option value="{{ y.id }}" {% if form_data.academic_year == y.id|stringformat:'s' %}selected{% endif %}>{{ y.name }}</option>{% endfor %}</select></div>
+                    <div class="col-md-6"><label class="form-label required">Applying grade / level</label><select name="grade_level" id="gradeSelect" class="form-select"><option value="">Select grade / level</option>{% for g in grade_levels %}<option value="{{ g.id }}" {% if form_data.grade_level == g.id|stringformat:'s' %}selected{% endif %}>{{ g.name }} — {{ g.get_stage_display }}</option>{% endfor %}</select></div>
+                    <div class="col-md-8"><label class="form-label">Preferred class</label><select name="school_class" id="classSelect" class="form-select"><option value="">Assign class later</option>{% for c in school_classes %}<option value="{{ c.id }}" data-grade="{{ c.grade_level_id }}" {% if form_data.school_class == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select><div class="form-text">Only active classes belonging to the selected grade are shown.</div></div>
+                    <div class="col-md-4"><label class="form-label">Admissions mode</label><div class="form-control bg-body-secondary"><i class="bi bi-shield-check me-1 text-success"></i>{% if admissions_mode == 'JHS_SHS' %}JHS & SHS{% else %}All school levels{% endif %}</div></div>
+                    <div class="col-12"><label class="form-label">Internal notes</label><textarea name="notes" class="form-control" rows="4" placeholder="Optional notes for the admissions/review team">{{ form_data.notes|default:'' }}</textarea></div>
+                </div>
+                <div class="d-flex justify-content-between mt-4"><button type="button" class="btn btn-outline-secondary prev-step"><i class="bi bi-arrow-left me-1"></i>Back</button><button type="button" class="btn btn-primary next-step">Review Application <i class="bi bi-arrow-right ms-1"></i></button></div>
+            </div>
+
+            <div class="form-step" data-form-step="4">
+                <div class="section-kicker mb-2">Step 4</div>
+                <h4 class="fw-bold mb-1">Review & submit</h4>
+                <p class="text-muted mb-4">Confirm the details before submitting this application to the admissions register.</p>
+                <div class="row g-3">
+                    <div class="col-lg-6"><div class="review-box p-4 h-100"><div class="section-kicker mb-2">Applicant</div><h5 class="fw-bold mb-3" id="reviewApplicant">—</h5><div class="small text-muted" id="reviewApplicantMeta">—</div><hr><div class="small" id="reviewApplicantContact">—</div></div></div>
+                    <div class="col-lg-6"><div class="review-box p-4 h-100"><div class="section-kicker mb-2">Parent / Guardian</div><h5 class="fw-bold mb-3" id="reviewParent">—</h5><div class="small text-muted" id="reviewParentMeta">—</div><hr><div class="small" id="reviewParentContact">—</div></div></div>
+                    <div class="col-12"><div class="app-card rounded-4 p-4"><div class="section-kicker mb-2">Placement</div><div class="row g-3"><div class="col-md-4"><div class="small text-muted">Academic year</div><div class="fw-semibold" id="reviewYear">—</div></div><div class="col-md-4"><div class="small text-muted">Applying grade</div><div class="fw-semibold" id="reviewGrade">—</div></div><div class="col-md-4"><div class="small text-muted">Preferred class</div><div class="fw-semibold" id="reviewClass">Assign later</div></div></div></div></div>
+                </div>
+                <div class="d-flex justify-content-between mt-4"><button type="button" class="btn btn-outline-secondary prev-step"><i class="bi bi-arrow-left me-1"></i>Edit</button><button type="submit" class="btn btn-primary px-4"><i class="bi bi-check2-circle me-1"></i>Submit Application</button></div>
+            </div>
+        </div>
+    </form>
+</div>
+</div>
+<script>
+(function(){
+    const form=document.getElementById('admissionForm');
+    const steps=[...document.querySelectorAll('[data-form-step]')];
+    const pills=[...document.querySelectorAll('#admissionStepper .step')];
+    const grade=document.getElementById('gradeSelect');
+    const cls=document.getElementById('classSelect');
+    const parentSelect=document.getElementById('parentSelect');
+    let current=1;
+    function show(n){current=Math.max(1,Math.min(4,n));steps.forEach(x=>x.classList.toggle('active',Number(x.dataset.formStep)===current));pills.forEach(x=>x.classList.toggle('active',Number(x.dataset.step)===current));if(current===4)review();window.scrollTo({top:0,behavior:'smooth'});}
+    function val(name){const el=form.elements[name];return el?el.value.trim():''}
+    function requiredStep(n){if(n!==1)return true;const required=['first_name','last_name','date_of_birth','gender'];let ok=true;required.forEach(name=>{const el=form.elements[name];if(!el.value.trim()){el.classList.add('is-invalid');ok=false}else el.classList.remove('is-invalid')});return ok}
+    document.querySelectorAll('.next-step').forEach(b=>b.addEventListener('click',()=>{if(requiredStep(current))show(current+1)}));
+    document.querySelectorAll('.prev-step').forEach(b=>b.addEventListener('click',()=>show(current-1)));
+    pills.forEach(p=>p.addEventListener('click',()=>{const n=Number(p.dataset.step);if(n<current)show(n)}));
+    function filterClasses(){if(!grade||!cls)return;const gid=grade.value;[...cls.options].forEach((o,i)=>{if(i===0)return;o.hidden=!!gid&&o.dataset.grade!==gid;if(o.hidden&&o.selected)cls.value='';});}
+    grade?.addEventListener('change',filterClasses);filterClasses();
+    function review(){
+        const full=[val('first_name'),val('middle_name'),val('last_name')].filter(Boolean).join(' ');
+        document.getElementById('reviewApplicant').textContent=full||'—';
+        document.getElementById('reviewApplicantMeta').textContent=(val('date_of_birth')?('DOB '+val('date_of_birth')):'')+(val('gender')?' · '+val('gender').replace('_',' '):'');
+        document.getElementById('reviewApplicantContact').textContent=[val('applicant_phone'),val('applicant_email'),val('applicant_address')].filter(Boolean).join(' · ')||'No additional applicant contact provided';
+        const selectedParent=parentSelect?.selectedOptions[0];
+        const parentName=parentSelect?.value?(selectedParent?.textContent.split(' · ')[0]||'Existing parent account'):[val('parent_first_name'),val('parent_last_name')].filter(Boolean).join(' ');
+        document.getElementById('reviewParent').textContent=parentName||'—';
+        document.getElementById('reviewParentMeta').textContent=val('parent_relationship')||'Parent / Guardian';
+        document.getElementById('reviewParentContact').textContent=[val('parent_phone'),val('parent_email'),val('parent_address')].filter(Boolean).join(' · ')||'No additional guardian contact provided';
+        document.getElementById('reviewYear').textContent=form.elements.academic_year.selectedOptions[0]?.textContent||'—';
+        document.getElementById('reviewGrade').textContent=form.elements.grade_level.selectedOptions[0]?.textContent||'—';
+        document.getElementById('reviewClass').textContent=form.elements.school_class.selectedOptions[0]?.textContent||'Assign later';
+    }
+    function toggleParent(){document.getElementById('newParentFields').style.display=parentSelect.value?'none':''}
+    parentSelect?.addEventListener('change',toggleParent);toggleParent();
+    form.addEventListener('submit',e=>{if(!requiredStep(1)){e.preventDefault();show(1);return}if(!val('academic_year')||!val('grade_level')||!val('parent_phone')||(!val('parent_first_name')&&!parentSelect.value)||(!val('parent_last_name')&&!parentSelect.value)){e.preventDefault();alert('Please complete the required academic year, grade and parent/guardian details before submitting.');show(!val('academic_year')||!val('grade_level')?3:2)}});
+})();
+</script>
+{% endblock %}

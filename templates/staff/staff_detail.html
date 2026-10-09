@@ -218,6 +218,9 @@
 
                 {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
                 <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn {% if staff.face_registered %}btn-outline-success{% else %}btn-outline-gold{% endif %}" id="staffFaceRegisterOpen">
+                        <i class="bi bi-camera me-1"></i>{% if staff.face_registered %}Update Face{% else %}Register Face{% endif %}
+                    </button>
                     <button type="button" class="btn btn-outline-gold" data-bs-toggle="modal" data-bs-target="#editStaffModal"
                             data-action="edit" data-url="{% url 'staff:staff_edit' staff.id %}">
                         <i class="bi bi-pencil me-1"></i>Edit
@@ -537,6 +540,78 @@
         </div>
     </div>
 </div>
+
+
+<div class="modal fade" id="staffFaceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold"><i class="bi bi-camera text-gold me-2"></i>Staff Face Registration</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="row g-4 align-items-center">
+          <div class="col-lg-7">
+            <div class="rounded-4 overflow-hidden border bg-dark">
+              <video id="staffFaceVideo" autoplay muted playsinline style="width:100%;display:block;min-height:320px;object-fit:cover;"></video>
+              <canvas id="staffFaceCanvas" class="d-none"></canvas>
+            </div>
+            <div class="d-flex gap-2 flex-wrap mt-3">
+              <button type="button" class="btn btn-gold" id="staffFaceStart"><i class="bi bi-camera-video me-1"></i>Start Camera</button>
+              <button type="button" class="btn btn-success" id="staffFaceCapture" disabled><i class="bi bi-camera me-1"></i>Capture</button>
+              <button type="button" class="btn btn-secondary" id="staffFaceStop"><i class="bi bi-stop-circle me-1"></i>Stop</button>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="border rounded-4 p-3 bg-body-tertiary">
+              <div class="fw-semibold mb-1">{{ staff.user.get_full_name }}</div>
+              <div class="small text-muted mb-3">{{ staff.staff_id }} · {{ staff.get_staff_position_display }}</div>
+              <div id="staffFaceStatus" class="small text-muted">Start the camera and position one face clearly in the frame.</div>
+              <img id="staffFacePreview" class="img-fluid rounded-3 mt-3 d-none" alt="Captured staff face">
+              <button type="button" class="btn btn-gold w-100 mt-3 d-none" id="staffFaceSave"><i class="bi bi-check2-circle me-1"></i>Save Face Registration</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const modalEl=document.getElementById('staffFaceModal');
+  const openBtn=document.getElementById('staffFaceRegisterOpen');
+  if(!modalEl||!openBtn) return;
+  const video=document.getElementById('staffFaceVideo'), canvas=document.getElementById('staffFaceCanvas');
+  const start=document.getElementById('staffFaceStart'), capture=document.getElementById('staffFaceCapture'), stop=document.getElementById('staffFaceStop'), save=document.getElementById('staffFaceSave'), preview=document.getElementById('staffFacePreview'), status=document.getElementById('staffFaceStatus');
+  let stream=null, imageData=null;
+  const setStatus=(msg,type='muted')=>{status.className='small text-'+type; status.textContent=msg;};
+  const stopCamera=()=>{ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} video.srcObject=null; capture.disabled=true; };
+  const startCamera=async()=>{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){setStatus('Camera access is not supported by this browser.','danger');return;}
+    try{ stopCamera(); stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false}); video.srcObject=stream; await video.play(); capture.disabled=false; setStatus('Camera ready. Look directly at the camera with good lighting.','success'); }
+    catch(e){ console.error(e); setStatus('Camera access was blocked. Allow camera permission for this site and try again.','danger'); }
+  };
+  openBtn.addEventListener('click',()=>bootstrap.Modal.getOrCreateInstance(modalEl).show());
+  modalEl.addEventListener('shown.bs.modal',()=>{ imageData=null; preview.classList.add('d-none'); save.classList.add('d-none'); startCamera(); });
+  modalEl.addEventListener('hidden.bs.modal',stopCamera);
+  start.addEventListener('click',startCamera); stop.addEventListener('click',()=>{stopCamera();setStatus('Camera stopped.','muted');});
+  capture.addEventListener('click',()=>{
+    if(!video.videoWidth){setStatus('Camera is not ready yet.','warning');return;}
+    canvas.width=video.videoWidth; canvas.height=video.videoHeight; canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+    imageData=canvas.toDataURL('image/jpeg',0.88); preview.src=imageData; preview.classList.remove('d-none'); save.classList.remove('d-none'); setStatus('Face captured. Review the image and click Save Face Registration.','success');
+  });
+  save.addEventListener('click',async()=>{
+    if(!imageData)return; save.disabled=true; save.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+    try{
+      const response=await fetch('{% url "staff:staff_register_face" staff.id %}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':(document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)||[])[1]||'','X-Requested-With':'XMLHttpRequest'},body:JSON.stringify({image:imageData})});
+      const data=await response.json().catch(()=>({error:'Invalid server response.'}));
+      if(!response.ok||!data.success) throw new Error(data.error||'Face registration failed.');
+      setStatus('Face registered successfully.','success'); setTimeout(()=>window.location.reload(),700);
+    }catch(e){setStatus(e.message||'Face registration failed.','danger'); save.disabled=false; save.innerHTML='<i class="bi bi-check2-circle me-1"></i>Save Face Registration';}
+  });
+})();
+</script>
 
 <div class="modal fade" id="editStaffModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-modal-handler>
     <div class="modal-dialog modal-dialog-centered modal-lg">

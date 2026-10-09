@@ -101,6 +101,7 @@
         color: var(--eduai-gold, #946B1C);
         font-weight: 500;
     }
+    .quick-view-admission{display:inline-flex;align-items:center;padding:.45rem .7rem;border-radius:10px;background:rgba(148,107,28,.09);color:var(--eduai-gold,#946B1C);font:600 .78rem/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;}
 </style>
 
 <div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
@@ -181,10 +182,15 @@
                     <i class="bi bi-x-circle"></i> No Face
                 </option>
             </select>
+            <select name="status" class="form-select" style="max-width: 160px;" id="statusFilter">
+                <option value="">All statuses</option>
+                <option value="active" {% if active_filter == 'active' %}selected{% endif %}>Active</option>
+                <option value="inactive" {% if active_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+            </select>
             <button type="submit" class="btn btn-outline-gold">
                 <i class="bi bi-funnel me-1"></i> Filter
             </button>
-            {% if query or grade_filter or face_filter %}
+            {% if query or grade_filter or face_filter or active_filter %}
             <a href="{% url 'students:student_list' %}" class="btn btn-outline-secondary">
                 <i class="bi bi-x-circle me-1"></i> Clear
             </a>
@@ -292,8 +298,21 @@
                     </td>
                     <td class="text-end py-3 pe-0 text-nowrap">
                         <div class="btn-group" role="group">
-                            <a href="{% url 'students:student_detail' s.id %}" class="btn btn-sm btn-outline-gold px-3 view-btn">
-                                <i class="bi bi-eye me-1"></i> View
+                            <button type="button" class="btn btn-sm btn-outline-gold px-3 quick-view-btn"
+                                    data-bs-toggle="modal" data-bs-target="#studentQuickViewModal"
+                                    data-student-name="{{ s.user.get_full_name|escapejs }}"
+                                    data-admission="{{ s.admission_number|escapejs }}"
+                                    data-grade="{{ s.grade_level.name|default:'Not assigned'|escapejs }}"
+                                    data-class="{{ s.school_class.name|default:'Not assigned'|escapejs }}"
+                                    data-parent="{{ s.parent.get_full_name|default:'Not linked'|escapejs }}"
+                                    data-phone="{{ s.parent.phone_number|default:'Not provided'|escapejs }}"
+                                    data-status="{% if s.is_active %}Active{% else %}Inactive{% endif %}"
+                                    data-url="{% url 'students:student_detail' s.id %}"
+                                    data-edit-url="{% if can_edit %}{% url 'students:edit_student' s.id %}{% endif %}">
+                                <i class="bi bi-eye me-1"></i> Quick View
+                            </button>
+                            <a href="{% url 'students:student_detail' s.id %}" class="btn btn-sm btn-outline-secondary px-3 view-btn">
+                                <i class="bi bi-box-arrow-up-right"></i>
                             </a>
                             {% if can_edit %}
                             <a href="{% url 'students:edit_student' s.id %}" class="btn btn-sm btn-outline-secondary px-3 edit-btn">
@@ -384,6 +403,35 @@
         </div>
     </div>
 </div>
+<!-- Student Quick View -->
+<div class="modal fade" id="studentQuickViewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 px-4 pt-4 pb-2">
+                <div>
+                    <div class="small text-uppercase text-muted fw-bold">Student snapshot</div>
+                    <h5 class="modal-title fw-bold" id="quickViewName">Student</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body px-4 pb-4">
+                <div class="quick-view-admission mb-3" id="quickViewAdmission">—</div>
+                <div class="row g-3">
+                    <div class="col-6"><small class="text-muted d-block">Grade</small><strong id="quickViewGrade">—</strong></div>
+                    <div class="col-6"><small class="text-muted d-block">Class</small><strong id="quickViewClass">—</strong></div>
+                    <div class="col-12"><small class="text-muted d-block">Parent / Guardian</small><strong id="quickViewParent">—</strong><div class="small text-muted" id="quickViewPhone">—</div></div>
+                    <div class="col-12"><small class="text-muted d-block">Status</small><span class="badge badge-teal" id="quickViewStatus">Active</span></div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="#" class="btn btn-gold" id="quickViewOpen">Open Profile <i class="bi bi-arrow-right ms-1"></i></a>
+                {% if can_edit %}<a href="#" class="btn btn-outline-gold" id="quickViewEdit"><i class="bi bi-pencil me-1"></i>Edit</a>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
 {% include "partials/pagination.html" with page_obj=students %}
 
 {% endblock %}
@@ -397,6 +445,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
     const gradeFilter = document.getElementById('gradeFilter');
     const faceFilter = document.getElementById('faceFilter');
+    const statusFilter = document.getElementById('statusFilter');
     const filterStatus = document.getElementById('filterStatus');
     const studentCount = document.getElementById('studentCount');
     const allRows = document.querySelectorAll('.student-row');
@@ -406,6 +455,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
         const gradeValue = gradeFilter ? gradeFilter.value : '';
         const faceValue = faceFilter ? faceFilter.value : '';
+        const statusValue = statusFilter ? statusFilter.value : '';
         let visibleCount = 0;
 
         allRows.forEach(function(row) {
@@ -432,6 +482,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
+            // Status filter
+            if (isVisible && statusValue) {
+                const statusCell = row.querySelector('[data-field="is_active"]');
+                const statusText = statusCell ? statusCell.textContent.toLowerCase() : '';
+                if (statusValue === 'active' && !statusText.includes('active') || statusValue === 'active' && statusText.includes('inactive')) isVisible = false;
+                if (statusValue === 'inactive' && !statusText.includes('inactive')) isVisible = false;
+            }
+
             // Face filter
             if (isVisible && faceValue) {
                 const faceCell = row.querySelector('[data-field="face_registered"]');
@@ -451,7 +509,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update count
         if (studentCount) {
-            const hasFilter = searchQuery || gradeValue || faceValue;
+            const hasFilter = searchQuery || gradeValue || faceValue || statusValue;
             if (hasFilter) {
                 studentCount.textContent = visibleCount;
                 if (filterStatus) {
@@ -487,6 +545,25 @@ document.addEventListener('DOMContentLoaded', function() {
     if (faceFilter) {
         faceFilter.addEventListener('change', applyFilters);
     }
+    if (statusFilter) {
+        statusFilter.addEventListener('change', applyFilters);
+    }
+
+    document.addEventListener('click', function(e){
+        const btn=e.target.closest('.quick-view-btn');
+        if(!btn) return;
+        const get=k=>btn.getAttribute('data-'+k)||'—';
+        document.getElementById('quickViewName').textContent=get('student-name');
+        document.getElementById('quickViewAdmission').textContent=get('admission');
+        document.getElementById('quickViewGrade').textContent=get('grade');
+        document.getElementById('quickViewClass').textContent=get('class');
+        document.getElementById('quickViewParent').textContent=get('parent');
+        document.getElementById('quickViewPhone').textContent=get('phone');
+        document.getElementById('quickViewStatus').textContent=get('status');
+        document.getElementById('quickViewOpen').href=get('url');
+        const edit=document.getElementById('quickViewEdit');
+        if(edit) edit.href=get('edit-url');
+    });
 
     // Initial filter application (for existing filter values from page load)
     if (document.querySelector('#filterForm')) {

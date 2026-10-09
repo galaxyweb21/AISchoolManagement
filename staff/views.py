@@ -6,6 +6,7 @@ import secrets
 import string
 import calendar
 
+from attendance.face_service import FaceRecognitionService, FACE_RECOGNITION_AVAILABLE
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -14,6 +15,7 @@ from django.http import JsonResponse, HttpResponse
 from django.db import transaction
 from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.files.base import ContentFile
 from django.db.models import Prefetch
 from django.db.models import Sum, Count, Q
 
@@ -806,6 +808,59 @@ def staff_detail(request, staff_id):
         'active_tab': 'staff'
     }
     return render(request, 'staff/staff_detail.html', context)
+
+
+# ============================================================
+# STAFF FACE REGISTRATION
+# ============================================================
+
+@login_required
+def staff_register_face(request, staff_id):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "POST request required."}, status=405)
+    if request.user.role not in ["SUPER_ADMIN", "SCHOOL_ADMIN"]:
+        return JsonResponse({"success": False, "error": "You do not have permission to register staff faces."}, status=403)
+    school = request.user.school
+    staff = get_object_or_404(StaffProfile, id=staff_id, school=school, is_active=True)
+    if not FACE_RECOGNITION_AVAILABLE:
+        return JsonResponse({"success": False, "error": "Face recognition is not installed on this server. Manual staff attendance remains available. Install the optional face-recognition dependencies to enable face registration."}, status=503)
+    try:
+        import json, base64, binascii
+        data = json.loads(request.body.decode("utf-8") or "{}")
+    except (TypeError, ValueError, UnicodeDecodeError):
+        return JsonResponse({"success": False, "error": "Invalid registration data."}, status=400)
+    image_data = data.get("image")
+    if not image_data:
+        return JsonResponse({"success": False, "error": "No camera image was provided."}, status=400)
+    encoding, message = FaceRecognitionService.encode_face(image_data)
+    if not encoding:
+        return JsonResponse({"success": False, "error": message or "Could not register the face."}, status=400)
+    staff.face_encoding = encoding
+    staff.face_registered = True
+    staff.face_registered_at = timezone.now()
+    staff.face_registered_by = request.user
+    if isinstance(image_data, str) and "," in image_data:
+        try:
+            header, encoded = image_data.split(",", 1)
+            extension = "png" if "image/png" in header else "jpg"
+            staff.face_photo.save(
+                f"{staff.staff_id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.{extension}",
+                ContentFile(base64.b64decode(encoded)),
+                save=False,
+            )
+        except (ValueError, binascii.Error):
+            pass
+    staff.save(update_fields=["face_encoding", "face_registered", "face_registered_at", "face_registered_by", "face_photo"])
+    # Keep the old compatibility record synchronized when it exists.
+    try:
+        from attendance.models import StaffFaceProfile
+        StaffFaceProfile.objects.update_or_create(
+            school=school, staff=staff,
+            defaults={"encoding": encoding, "registered_at": staff.face_registered_at, "registered_by": request.user, "is_active": True},
+        )
+    except Exception:
+        pass
+    return JsonResponse({"success": True, "message": "Staff face registered successfully.", "staff_id": str(staff.id)})
 
 
 # ============================================================

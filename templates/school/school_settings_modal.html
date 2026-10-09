@@ -567,6 +567,25 @@
         </div>
 
         <!-- ========================================== -->
+        <!-- ADMISSIONS WORKFLOW                       -->
+        <!-- ========================================== -->
+        <div class="form-section-title mt-4">
+            <i class="bi bi-person-plus"></i>
+            Admissions Workflow
+        </div>
+        <div class="row g-3">
+            <div class="col-12 form-field-modern">
+                <label class="form-label">Admission workflow</label>
+                <select name="admissions_mode" class="form-select">
+                    <option value="OFF" {% if school.admissions_mode == 'OFF' %}selected{% endif %}>Disabled — use Students → Create Student</option>
+                    <option value="JHS_SHS" {% if school.admissions_mode == 'JHS_SHS' %}selected{% endif %}>Enabled for JHS and SHS</option>
+                    <option value="ALL" {% if school.admissions_mode == 'ALL' %}selected{% endif %}>Enabled for all school levels</option>
+                </select>
+                <div class="form-text">Admissions is optional. When disabled, your existing direct student registration workflow is unchanged. JHS/SHS is the recommended Ghana-focused option.</div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
         <!-- INFO ALERT                                 -->
         <!-- ========================================== -->
         <div class="info-alert-modern">

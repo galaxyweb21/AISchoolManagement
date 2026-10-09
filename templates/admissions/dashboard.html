@@ -1,0 +1,103 @@
+{% extends 'base/base.html' %}
+{% block title %}Admissions Dashboard{% endblock %}
+{% block content %}
+<style>
+    .btn-gold{background:#946B1C;border-color:#946B1C;color:#fff}.btn-gold:hover{background:#7c5917;border-color:#7c5917;color:#fff}.btn-outline-gold{border-color:#946B1C;color:#946B1C}.btn-outline-gold:hover{background:#946B1C;color:#fff}
+    .kpi-link{color:inherit;text-decoration:none}.kpi-link:hover .adm-kpi{transform:translateY(-2px);border-color:rgba(148,107,28,.35)}.adm-kpi{transition:.18s ease}
+    .adm-hero{background:linear-gradient(135deg,rgba(148,107,28,.12),rgba(44,122,109,.10));border:1px solid var(--surface-border);}
+    .adm-card{background:var(--surface-bg);border:1px solid var(--surface-border);box-shadow:0 8px 24px rgba(31,42,40,.06);}
+    html[data-bs-theme="dark"] .adm-card{box-shadow:0 8px 24px rgba(0,0,0,.18)}
+    .adm-kpi{min-height:126px;position:relative;overflow:hidden}
+    .adm-kpi:after{content:"";position:absolute;right:-25px;bottom:-38px;width:105px;height:105px;border-radius:50%;background:var(--eduai-gold-soft)}
+    .adm-icon{width:42px;height:42px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:var(--eduai-gold-soft);color:var(--eduai-gold);font-size:1.15rem}
+    .adm-icon.teal{background:var(--eduai-signal-soft);color:var(--eduai-signal)}
+    .adm-table th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);font-weight:700;white-space:nowrap}
+    .adm-table td{border-color:var(--surface-border)}
+    .status-pill{font-size:.72rem;font-weight:700;padding:.38rem .58rem;border-radius:999px;white-space:nowrap}
+    .status-submitted{background:rgba(148,107,28,.13);color:var(--eduai-gold)}
+    .status-review{background:rgba(44,122,109,.13);color:var(--eduai-signal)}
+    .status-approved,.status-admitted{background:rgba(25,135,84,.13);color:#198754}
+    .status-rejected{background:rgba(220,53,69,.12);color:#dc3545}
+    .status-draft{background:rgba(108,117,125,.12);color:var(--text-muted)}
+    .pipeline-item{border-left:3px solid var(--surface-border);padding:.2rem 0 .2rem 1rem}
+    .pipeline-item.active{border-left-color:var(--eduai-gold)}
+</style>
+
+<div class="container-fluid py-3">
+    <div class="adm-hero rounded-4 p-4 p-lg-5 mb-4">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <div class="small text-uppercase fw-bold text-muted mb-2">Student &amp; Academics · Admissions</div>
+                <h2 class="fw-bold mb-2">Admissions Dashboard</h2>
+                <p class="text-muted mb-0" style="max-width:720px;">Manage applicants from initial submission through review, approval and admission into the active student registry.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{% url 'admissions:application_list' %}" class="btn btn-outline-gold"><i class="bi bi-list-ul me-1"></i>View Applications</a>
+                <a href="{% url 'admissions:application_create' %}" class="btn btn-gold"><i class="bi bi-person-plus me-1"></i>New Application</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-2"><div class="adm-card adm-kpi rounded-4 p-3 h-100"><div class="adm-icon mb-3"><i class="bi bi-people"></i></div><div class="small text-muted">Total Applications</div><div class="fs-3 fw-bold">{{ total }}</div></div></div>
+        <div class="col-6 col-xl-2"><a class="kpi-link" href="{% url 'admissions:application_list' %}?status=SUBMITTED"><div class="adm-card adm-kpi rounded-4 p-3 h-100"><div class="adm-icon mb-3"><i class="bi bi-inbox"></i></div><div class="small text-muted">Submitted</div><div class="fs-3 fw-bold">{{ counts.SUBMITTED }}</div></div></a></div>
+        <div class="col-6 col-xl-2"><a class="kpi-link" href="{% url 'admissions:application_list' %}?status=REVIEW"><div class="adm-card adm-kpi rounded-4 p-3 h-100"><div class="adm-icon teal mb-3"><i class="bi bi-search"></i></div><div class="small text-muted">Under Review</div><div class="fs-3 fw-bold">{{ counts.REVIEW }}</div></div></a></div>
+        <div class="col-6 col-xl-2"><a class="kpi-link" href="{% url 'admissions:application_list' %}?status=APPROVED"><div class="adm-card adm-kpi rounded-4 p-3 h-100"><div class="adm-icon teal mb-3"><i class="bi bi-check2-circle"></i></div><div class="small text-muted">Approved</div><div class="fs-3 fw-bold">{{ counts.APPROVED }}</div></div></a></div>
+        <div class="col-6 col-xl-2"><a class="kpi-link" href="{% url 'admissions:application_list' %}?status=ADMITTED"><div class="adm-card adm-kpi rounded-4 p-3 h-100"><div class="adm-icon mb-3"><i class="bi bi-person-check"></i></div><div class="small text-muted">Admitted</div><div class="fs-3 fw-bold">{{ counts.ADMITTED }}</div></div></a></div>
+        <div class="col-6 col-xl-2"><a class="kpi-link" href="{% url 'admissions:application_list' %}?status=REJECTED"><div class="adm-card adm-kpi rounded-4 p-3 h-100"><div class="adm-icon mb-3"><i class="bi bi-x-circle"></i></div><div class="small text-muted">Rejected</div><div class="fs-3 fw-bold">{{ counts.REJECTED }}</div></div></a></div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-8">
+            <div class="adm-card rounded-4 overflow-hidden h-100">
+                <div class="p-4 border-bottom" style="border-color:var(--surface-border)!important;">
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <div><h5 class="fw-bold mb-1">Recent Applications</h5><div class="small text-muted">Latest applicants requiring attention or follow-up.</div></div>
+                        <a href="{% url 'admissions:application_list' %}" class="btn btn-sm btn-outline-gold">View all</a>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table adm-table table-hover align-middle mb-0">
+                        <thead><tr><th class="ps-4">Application</th><th>Applicant</th><th>Applying For</th><th>Year</th><th>Status</th><th class="pe-4"></th></tr></thead>
+                        <tbody>
+                        {% for a in recent_applications %}
+                            <tr>
+                                <td class="ps-4"><div class="fw-bold">{{ a.application_number }}</div><div class="small text-muted">{{ a.created_at|date:"d M Y" }}</div></td>
+                                <td><div class="fw-semibold">{{ a.applicant_name }}</div><div class="small text-muted">{{ a.parent_name }}</div></td>
+                                <td>{{ a.grade_level.name }}{% if a.school_class %}<div class="small text-muted">{{ a.school_class.name }}</div>{% endif %}</td>
+                                <td>{{ a.academic_year.name }}</td>
+                                <td><span class="status-pill status-{{ a.status|lower }}">{{ a.get_status_display }}</span></td>
+                                <td class="text-end pe-4"><a href="{% url 'admissions:application_detail' a.id %}" class="btn btn-sm btn-outline-gold">Open</a></td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="6" class="text-center py-5"><div class="adm-icon mb-3"><i class="bi bi-person-plus"></i></div><div class="fw-semibold">No applications yet</div><div class="small text-muted">Create the first admission application to start the workflow.</div></td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <div class="adm-card rounded-4 p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3"><div><h5 class="fw-bold mb-1">Application Pipeline</h5><div class="small text-muted">Current workflow position</div></div><i class="bi bi-diagram-3 text-primary fs-4"></i></div>
+                {% for key,value in pipeline.items %}
+                    <div class="pipeline-item {% if value %}active{% endif %} mb-3">
+                        <div class="d-flex justify-content-between"><span class="small fw-semibold">{% if key == 'REVIEW' %}Under Review{% else %}{{ key|title }}{% endif %}</span><strong>{{ value }}</strong></div>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="adm-card rounded-4 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3"><div><h5 class="fw-bold mb-1">Applications by Class</h5><div class="small text-muted">Where applicants are applying</div></div><i class="bi bi-mortarboard text-primary fs-4"></i></div>
+                {% for row in class_rows %}
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom" style="border-color:var(--surface-border)!important;">
+                        <div><div class="fw-semibold small">{{ row.school_class__name }}</div><div class="text-muted small">{{ row.grade_level__name }}</div></div><span class="badge text-bg-light rounded-pill">{{ row.total }}</span>
+                    </div>
+                {% empty %}
+                    <div class="small text-muted py-3">No class assignments recorded yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

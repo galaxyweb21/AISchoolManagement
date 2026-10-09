@@ -809,6 +809,13 @@
             </a>
         </li>
         <li>
+            <a href="{% url 'attendance:staff_attendance_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_attendance_dashboard' %}active{% endif %}">
+                <i class="bi bi-person-check-fill"></i>
+                <span class="eduai-label">Staff Attendance</span>
+                <span class="eduai-badge eduai-badge-hr">HR</span>
+            </a>
+        </li>
+        <li>
             <a href="{% url 'staff:staff_grade_list' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_grade_list' %}active{% endif %}">
                 <i class="bi bi-layers"></i>
                 <span class="eduai-label">Staff Grades</span>
@@ -990,6 +997,9 @@
         </div>
         <ul>
             <li><a href="{% url 'students:student_list' %}" id="eduaiStudentsMenu" data-guide-target="students" data-eduai-tour="students-menu" class="nav-link {% if request.resolver_match.url_name == 'student_list' %}active{% endif %}"><i class="bi bi-people"></i><span class="eduai-label">Students</span></a></li>
+            {% if user.school and user.school.admissions_mode != 'OFF' and user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,REGISTRAR' %}
+            <li><a href="{% url 'admissions:dashboard' %}" class="nav-link {% if request.resolver_match.namespace == 'admissions' %}active{% endif %}"><i class="bi bi-person-plus"></i><span class="eduai-label">Admissions</span></a></li>
+            {% endif %}
             {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}
             <li><a href="{% url 'students:bulk_face_registration' %}" class="nav-link {% if request.resolver_match.url_name == 'bulk_face_registration' %}active{% endif %}"><i class="bi bi-person-bounding-box"></i><span class="eduai-label">Bulk Face Registration</span></a></li>
             {% endif %}
