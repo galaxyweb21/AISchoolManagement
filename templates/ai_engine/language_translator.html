@@ -7,7 +7,40 @@
       <div class="d-flex align-items-center gap-2 mb-1"><i class="bi bi-translate text-gold fs-4"></i><h4 class="fw-bold mb-0">Language Translator</h4></div>
       <p class="text-muted mb-0">Translate school messages and notices into Ghanaian and international languages.</p>
     </div>
-    <span class="badge rounded-pill bg-teal-soft text-teal px-3 py-2">Twi · Ga · Ewe · Yoruba · French · Arabic</span>
+    <span class="badge rounded-pill bg-teal-soft text-teal px-3 py-2">Twi · Ga · Ewe · Yoruba · Fante · Dagbani · Kusaal · French · Arabic</span>
+  </div>
+  <div class="card border-0 shadow-sm rounded-4 mb-4" data-page-translator>
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+        <div>
+          <h5 class="fw-bold mb-1"><i class="bi bi-database-check text-teal me-2"></i>Offline language packs</h5>
+          <p class="text-muted small mb-0">Import your own approved JSON phrase translations. Imported packs stay in this browser and can be used without contacting a translation API.</p>
+        </div>
+        <span class="badge rounded-pill bg-teal-soft text-teal px-3 py-2" id="offlinePackSummary">No packs imported</span>
+      </div>
+      <div class="row g-3 align-items-end">
+        <div class="col-lg-7">
+          <label for="offlinePackFile" class="form-label fw-semibold">JSON language pack</label>
+          <input id="offlinePackFile" type="file" class="form-control" accept=".json,application/json">
+          <div class="form-text">UTF-8 JSON, up to 3 MB per import. You can import one language or several at once.</div>
+        </div>
+        <div class="col-lg-5 d-flex flex-wrap gap-2">
+          <button id="importOfflinePackBtn" type="button" class="btn btn-gold"><i class="bi bi-upload me-1"></i>Import JSON</button>
+          <button id="downloadOfflineTemplateBtn" type="button" class="btn btn-outline-secondary"><i class="bi bi-filetype-json me-1"></i>Download template</button>
+        </div>
+      </div>
+      <div id="offlinePackMessage" class="small mt-3" role="status" aria-live="polite"></div>
+      <div class="table-responsive mt-3">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Language</th><th>Code</th><th>Saved phrases</th><th>Last imported</th><th class="text-end">Action</th></tr></thead>
+          <tbody id="offlinePackRows"><tr><td colspan="5" class="text-muted text-center py-3">No offline language packs imported yet.</td></tr></tbody>
+        </table>
+      </div>
+      <div class="alert bg-gold-soft border-0 rounded-3 mt-3 mb-0 small">
+        <i class="bi bi-info-circle me-1 text-gold"></i>
+        Offline packs translate exact phrases that exist in the JSON file; they do not translate arbitrary new sentences. Missing phrases use the online provider when connected. For a fully offline school deployment, EduAI itself must also be hosted on the school's computer or local network.
+      </div>
+    </div>
   </div>
   <div class="card border-0 shadow-sm rounded-4"><div class="card-body p-4">
     <div class="row g-4">
@@ -30,5 +63,96 @@
   </div></div>
 </div>
 <style>.text-gold{color:var(--eduai-gold,#946B1C)!important}.text-teal{color:var(--eduai-signal,#2C7A6D)!important}.bg-gold-soft{background:var(--eduai-gold-soft,rgba(148,107,28,.12))!important}.bg-teal-soft{background:var(--eduai-signal-soft,rgba(44,122,109,.12))!important}.btn-gold{background:var(--eduai-gold,#946B1C);border-color:var(--eduai-gold,#946B1C);color:#fff}.btn-gold:hover{background:#7a5917;border-color:#7a5917;color:#fff}</style>
-<script>(function(){const b=document.getElementById('translateBtn'),s=document.getElementById('sourceLanguage'),t=document.getElementById('targetLanguage'),x=document.getElementById('sourceText'),o=document.getElementById('translationOutput'),m=document.getElementById('translatorStatus'),c=document.getElementById('copyTranslation');b.addEventListener('click',async()=>{const v=x.value.trim();if(!v){m.textContent='Enter text to translate.';x.focus();return}b.disabled=true;m.textContent='Translating…';o.textContent='';c.disabled=true;try{const body=new URLSearchParams({text:v,source:s.value,target:t.value});const r=await fetch('{% url "ai_engine:language_translator_api" %}',{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}','Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body});const d=await r.json();if(!r.ok||!d.success)throw new Error(d.error||'Translation failed.');o.textContent=d.translation||'';m.textContent='Translation complete.';c.disabled=false}catch(e){m.textContent=e.message||'Translation failed.'}finally{b.disabled=false}});c.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(o.textContent);m.textContent='Copied to clipboard.'}catch(e){m.textContent='Unable to copy automatically.'}})})();</script>
+<script>
+(function(){
+  const PACK_PREFIX='eduai_offline_language_pack_v1:';
+  const supported=['English','Twi','Ga','Ewe','Yoruba','Fante','Dagbani','Kusaal','French','Arabic'];
+  const byId=id=>document.getElementById(id);
+  const fileInput=byId('offlinePackFile'), importBtn=byId('importOfflinePackBtn');
+  const message=byId('offlinePackMessage'), summary=byId('offlinePackSummary'), rows=byId('offlinePackRows');
+  const langCode={English:'en',Twi:'twi',Ga:'gaa',Ewe:'ewe',Yoruba:'yor',Fante:'fat',Dagbani:'dag',Kusaal:'kus',French:'fr',Arabic:'ar'};
+  function tell(text,ok){if(!message)return;message.textContent=text;message.className='small mt-3 '+(ok?'text-success':'text-danger');}
+  function cleanPhrase(s){return String(s==null?'':s).replace(/\s+/g,' ').trim();}
+  function packKey(lang){return PACK_PREFIX+lang;}
+  function readPack(lang){try{const raw=localStorage.getItem(packKey(lang));return raw?JSON.parse(raw):null;}catch(e){return null;}}
+  function normalisePack(item){
+    if(!item||typeof item!=='object'||Array.isArray(item))throw new Error('Each language pack must be a JSON object.');
+    const lang=String(item.language_name||item.language||item.name||'').trim();
+    const code=String(item.language_code||item.code||'').trim();
+    if(!supported.includes(lang)||lang==='English')throw new Error('Unsupported target language: '+(lang||'(missing)')+'. Use one of: '+supported.filter(x=>x!=='English').join(', ')+'.');
+    if(!item.translations||typeof item.translations!=='object'||Array.isArray(item.translations))throw new Error('The '+lang+' pack must include a "translations" object.');
+    const translations={}; let count=0;
+    if(Array.isArray(item.translations)){
+      item.translations.forEach(entry=>{if(entry&&typeof entry==='object'){const source=cleanPhrase(entry.source||entry.english||entry.en);const target=String(entry.target||entry.translation||'').trim();if(source&&target){translations[source]=target;count++;}}});
+    }else{
+      Object.entries(item.translations).forEach(([source,target])=>{const key=cleanPhrase(source);if(key&&typeof target==='string'&&target.trim()){translations[key]=target.trim();count++;}});
+    }
+    if(!count)throw new Error('The '+lang+' pack has no valid source-to-translation phrases.');
+    if(count>20000)throw new Error('A language pack may contain no more than 20,000 phrases.');
+    return {language:lang,code:code||langCode[lang]||lang.toLowerCase(),translations,phrase_count:count,imported_at:new Date().toISOString(),version:1};
+  }
+  function unpackJson(data){
+    if(data&&Array.isArray(data.languages))return data.languages.map(normalisePack);
+    if(data&&Array.isArray(data.packs))return data.packs.map(normalisePack);
+    return [normalisePack(data)];
+  }
+  function refreshPacks(){
+    if(!rows)return; const packs=[];
+    supported.filter(x=>x!=='English').forEach(lang=>{const p=readPack(lang);if(p)packs.push(p);});
+    summary.textContent=packs.length?packs.length+' language pack'+(packs.length===1?'':'s')+' saved':'No packs imported';
+    if(!packs.length){rows.innerHTML='<tr><td colspan="5" class="text-muted text-center py-3">No offline language packs imported yet.</td></tr>';return;}
+    rows.innerHTML=''; packs.forEach(p=>{
+      const tr=document.createElement('tr');
+      [p.language,p.code,String(p.phrase_count||Object.keys(p.translations||{}).length),p.imported_at?new Date(p.imported_at).toLocaleString():'—'].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td);});
+      const action=document.createElement('td');action.className='text-end';const del=document.createElement('button');del.type='button';del.className='btn btn-sm btn-outline-danger';del.textContent='Remove';del.addEventListener('click',()=>{try{localStorage.removeItem(packKey(p.language));tell(p.language+' offline pack removed from this browser.',true);refreshPacks();}catch(e){tell('Could not remove the pack. Browser storage may be disabled.',false);}});action.appendChild(del);tr.appendChild(action);rows.appendChild(tr);
+    });
+  }
+  function lookupOffline(lang,text){
+    const pack=readPack(lang);if(!pack||!pack.translations)return null;
+    const source=cleanPhrase(text);if(!source)return '';
+    if(Object.prototype.hasOwnProperty.call(pack.translations,source))return pack.translations[source];
+    const lower=source.toLocaleLowerCase();
+    const found=Object.keys(pack.translations).find(k=>cleanPhrase(k).toLocaleLowerCase()===lower);
+    return found?pack.translations[found]:null;
+  }
+  window.EduAIOfflineLanguagePacks={lookup:lookupOffline,has:lang=>!!readPack(lang),list:()=>supported.filter(x=>x!=='English').map(readPack).filter(Boolean)};
+  importBtn?.addEventListener('click',async()=>{
+    const file=fileInput?.files?.[0];if(!file){tell('Choose a JSON file first.',false);return;}
+    if(file.size>3*1024*1024){tell('This file is larger than the 3 MB import limit.',false);return;}
+    importBtn.disabled=true;
+    try{
+      const data=JSON.parse(await file.text());const packs=unpackJson(data);
+      if(!packs.length)throw new Error('No language packs were found in the JSON file.');
+      const totalBytes=packs.reduce((n,p)=>n+JSON.stringify(p).length,0);
+      if(totalBytes>3*1024*1024)throw new Error('The expanded language packs exceed the 3 MB storage limit.');
+      // Validate every pack before writing any pack, so malformed imports do not partially replace existing data.
+      packs.forEach(p=>{if(p.translations&&Object.keys(p.translations).length>20000)throw new Error(p.language+' has too many phrases.');});
+      packs.forEach(p=>localStorage.setItem(packKey(p.language),JSON.stringify(p)));
+      tell('Imported '+packs.length+' language pack'+(packs.length===1?'':'s')+'. They are saved in this browser for offline phrase lookup.',true);
+      refreshPacks();fileInput.value='';
+    }catch(e){tell(e instanceof SyntaxError?'The file is not valid JSON. Check its format and UTF-8 encoding.':(e.message||'Could not import this language pack.'),false);}
+    finally{importBtn.disabled=false;}
+  });
+  byId('downloadOfflineTemplateBtn')?.addEventListener('click',()=>{
+    const template={format:'eduai-language-packs',version:1,languages:[{language_name:'Twi',language_code:'twi',translations:{'Dashboard':'','Students':'','Parents / Guardians':''}}]};
+    const blob=new Blob([JSON.stringify(template,null,2)],{type:'application/json;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='eduai-language-pack-template.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  });
+  refreshPacks();
+
+  const b=byId('translateBtn'),s=byId('sourceLanguage'),t=byId('targetLanguage'),x=byId('sourceText'),o=byId('translationOutput'),m=byId('translatorStatus'),c=byId('copyTranslation');
+  b?.addEventListener('click',async()=>{
+    const v=x.value.trim();if(!v){m.textContent='Enter text to translate.';x.focus();return;}
+    if(s.value==='English'&&t.value!=='English'){
+      const local=lookupOffline(t.value,v);
+      if(local!==null){o.textContent=local;m.textContent='Translated using the imported offline '+t.value+' pack.';c.disabled=false;return;}
+      if(!navigator.onLine){o.textContent='';m.textContent='This phrase is not in the imported offline '+t.value+' pack. Import a pack containing this exact phrase, or reconnect for online translation.';c.disabled=true;return;}
+    }
+    if(!navigator.onLine){m.textContent='No internet connection. Offline packs currently support exact English-to-target phrase matches.';return;}
+    b.disabled=true;m.textContent='Translating…';o.textContent='';c.disabled=true;
+    try{const body=new URLSearchParams({text:v,source:s.value,target:t.value});const r=await fetch('{% url "ai_engine:language_translator_api" %}',{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}','Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body});const d=await r.json();if(!r.ok||!d.success)throw new Error(d.error||'Translation failed.');o.textContent=d.translation||'';m.textContent='Translation complete.';c.disabled=false;}
+    catch(e){m.textContent=e.message||'Translation failed.';}finally{b.disabled=false;}
+  });
+  c?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(o.textContent);m.textContent='Copied to clipboard.';}catch(e){m.textContent='Unable to copy automatically.';}});
+})();
+</script>
 {% endblock %}

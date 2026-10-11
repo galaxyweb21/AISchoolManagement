@@ -12,5 +12,9 @@ class ReportCommentServiceSafetyTests(TestCase):
 
     @patch('ai_engine.services.report_comment_service.AIService.generate_report_comment', return_value='A concise professional comment.')
     def test_generate_single_requires_valid_type(self, mocked):
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, 'Invalid comment type'):
             ReportCommentService.generate_single(None, None, 'invalid')
+
+    def test_generate_single_requires_report_card(self):
+        with self.assertRaisesRegex(ValueError, 'report card is required'):
+            ReportCommentService.generate_single(None, None, 'teacher')

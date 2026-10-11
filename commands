@@ -174,3 +174,10 @@ python manage.py verify_demo_school
 If you want a completely clean demo-only environment
 **************************************
 python manage.py seed_demo_school --reset
+
+
+**********************************************
+
+generate new secret key
+
+python -c "import secrets; print(secrets.token_urlsafe(50))"

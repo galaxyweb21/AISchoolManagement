@@ -37,7 +37,6 @@ class LeaveLifecycleTests(TestCase):
         self.school = School.objects.create(
             name="Test School",
             subdomain="test",
-            domain="test.local",
         )
 
         # Create a user and staff profile
@@ -97,6 +96,14 @@ class LeaveLifecycleTests(TestCase):
 
         # Get current period
         self.period_start, self.period_end = get_current_leave_period()
+
+        # Use a deterministic Monday-Friday test window. Using "today"
+        # made these tests depend on the weekday the suite was run, while
+        # LeaveRequest.save() recalculates working days automatically.
+        today = timezone.now().date()
+        self.leave_start_date = today + timezone.timedelta(
+            days=(7 - today.weekday()) % 7
+        )
 
     def test_initial_balance_creation(self):
         """Test that leave balance is created when requested."""
@@ -180,8 +187,8 @@ class LeaveLifecycleTests(TestCase):
             school=self.school,
             staff=self.staff,
             leave_type=self.annual_leave,
-            start_date=timezone.now().date(),
-            end_date=timezone.now().date() + timezone.timedelta(days=4),
+            start_date=self.leave_start_date,
+            end_date=self.leave_start_date + timezone.timedelta(days=4),
             status='PENDING',
             reason="Vacation",
             requested_days=Decimal('5'),
@@ -217,8 +224,8 @@ class LeaveLifecycleTests(TestCase):
             school=self.school,
             staff=self.staff,
             leave_type=self.annual_leave,
-            start_date=timezone.now().date(),
-            end_date=timezone.now().date() + timezone.timedelta(days=4),
+            start_date=self.leave_start_date,
+            end_date=self.leave_start_date + timezone.timedelta(days=4),
             status='PENDING',
             reason="Vacation",
             requested_days=Decimal('5'),
@@ -264,8 +271,8 @@ class LeaveLifecycleTests(TestCase):
             school=self.school,
             staff=self.staff,
             leave_type=self.annual_leave,
-            start_date=timezone.now().date(),
-            end_date=timezone.now().date() + timezone.timedelta(days=4),
+            start_date=self.leave_start_date,
+            end_date=self.leave_start_date + timezone.timedelta(days=4),
             status='PENDING',
             reason="Vacation",
             requested_days=Decimal('5'),
@@ -310,8 +317,8 @@ class LeaveLifecycleTests(TestCase):
             school=self.school,
             staff=self.staff,
             leave_type=self.annual_leave,
-            start_date=timezone.now().date(),
-            end_date=timezone.now().date() + timezone.timedelta(days=4),
+            start_date=self.leave_start_date,
+            end_date=self.leave_start_date + timezone.timedelta(days=4),
             status='PENDING',
             reason="Vacation",
             requested_days=Decimal('5'),
@@ -353,8 +360,8 @@ class LeaveLifecycleTests(TestCase):
             school=self.school,
             staff=self.staff,
             leave_type=self.annual_leave,
-            start_date=timezone.now().date(),
-            end_date=timezone.now().date() + timezone.timedelta(days=4),
+            start_date=self.leave_start_date,
+            end_date=self.leave_start_date + timezone.timedelta(days=4),
             status='PENDING',
             reason="Vacation",
             requested_days=Decimal('5'),
@@ -393,8 +400,8 @@ class LeaveLifecycleTests(TestCase):
             school=self.school,
             staff=self.staff,
             leave_type=self.annual_leave,
-            start_date=timezone.now().date(),
-            end_date=timezone.now().date() + timezone.timedelta(days=4),
+            start_date=self.leave_start_date,
+            end_date=self.leave_start_date + timezone.timedelta(days=4),
             status='PENDING',
             reason="Vacation",
             requested_days=Decimal('5'),
@@ -430,8 +437,8 @@ class LeaveLifecycleTests(TestCase):
             school=self.school,
             staff=self.staff,
             leave_type=self.annual_leave,
-            start_date=timezone.now().date(),
-            end_date=timezone.now().date() + timezone.timedelta(days=4),
+            start_date=self.leave_start_date,
+            end_date=self.leave_start_date + timezone.timedelta(days=4),
             status='PENDING',
             reason="Vacation",
             requested_days=Decimal('5'),
@@ -462,8 +469,8 @@ class LeaveLifecycleTests(TestCase):
             school=self.school,
             staff=self.staff,
             leave_type=self.annual_leave,
-            start_date=timezone.now().date(),
-            end_date=timezone.now().date() + timezone.timedelta(days=4),
+            start_date=self.leave_start_date,
+            end_date=self.leave_start_date + timezone.timedelta(days=4),
             status='PENDING',
             reason="Vacation",
             requested_days=Decimal('5'),
@@ -505,8 +512,8 @@ class LeaveLifecycleTests(TestCase):
             school=self.school,
             staff=self.staff,
             leave_type=self.annual_leave,
-            start_date=timezone.now().date(),
-            end_date=timezone.now().date() + timezone.timedelta(days=4),
+            start_date=self.leave_start_date,
+            end_date=self.leave_start_date + timezone.timedelta(days=4),
             status='PENDING',
             reason="Annual vacation",
             requested_days=Decimal('5'),

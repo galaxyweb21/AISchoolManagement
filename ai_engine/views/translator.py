@@ -1,7 +1,10 @@
 import json
+import logging
 import os
+import time
 
 import requests
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -9,158 +12,169 @@ from django.views.decorators.http import require_POST
 
 from ai_engine.services.services import AIService
 
+logger = logging.getLogger(__name__)
+
 LANGUAGES = {
     "English": "English",
     "Twi": "Twi (Akan)",
     "Ga": "Ga (Gã)",
     "Ewe": "Ewe",
     "Yoruba": "Yoruba",
+    "Fante": "Fante",
+    "Dagbani": "Dagbani",
+    "Kusaal": "Kusaal",
     "French": "French",
     "Arabic": "Arabic",
 }
 
-# Khaya/GhanaNLP language codes.  Keep these separate from the UI labels.
 KHAYA_CODES = {
-    # Khaya Translation API v2 requires ISO 639-3 language codes.
-    "English": "eng",
-    "Twi": "twi",
-    "Ga": "gaa",
-    "Ewe": "ewe",
-    "Yoruba": "yor",
+    "English": "eng", "Twi": "twi", "Ga": "gaa", "Ewe": "ewe",
+    "Yoruba": "yor", "Fante": "fat", "Dagbani": "dag", "Kusaal": "kus",
 }
 
-# Khaya Translation API v2 endpoint. Do not use the deprecated v1 endpoint.
-KHAYA_API_URL = os.getenv("KHAYA_API_URL", "https://translation-api.ghananlp.org/v2/translate")
-KHAYA_API_KEY = os.getenv("KHAYA_API_KEY", "").strip()
-KHAYA_TIMEOUT = max(5, int(os.getenv("KHAYA_TIMEOUT", "20")))
-
+KHAYA_DEFAULT_API_URL = "https://translation-api.ghananlp.org/v2/translate"
+KHAYA_DEFAULT_TIMEOUT = 20
 MAX_TEXT_LENGTH = 4000
-MAX_PAGE_TEXT_LENGTH = 12000
-MAX_PAGE_ITEMS = 35
+MAX_PAGE_TEXT_LENGTH = 24000
+MAX_PAGE_ITEMS = 80
+KHAYA_BATCH_SIZE = 20
+
+# Provider circuit breakers. A failed Khaya subscription must never make
+# every page load repeat the same 403 request. Network failures are also
+# suppressed briefly so an offline browser does not wait on provider timeouts.
+KHAYA_AUTH_COOLDOWN = 600
+KHAYA_NETWORK_COOLDOWN = 60
+_KHAYA_AUTH_UNAVAILABLE_UNTIL = 0.0
+_KHAYA_NETWORK_UNAVAILABLE_UNTIL = 0.0
+
+
+def _khaya_config():
+    key = str(getattr(settings, "KHAYA_API_KEY", "") or os.getenv("KHAYA_API_KEY", "") or "").strip()
+    url = str(getattr(settings, "KHAYA_API_URL", "") or os.getenv("KHAYA_API_URL", "") or KHAYA_DEFAULT_API_URL).strip()
+    timeout_raw = getattr(settings, "KHAYA_TIMEOUT", None) or os.getenv("KHAYA_TIMEOUT", str(KHAYA_DEFAULT_TIMEOUT))
+    try:
+        timeout = max(5, int(timeout_raw))
+    except (TypeError, ValueError):
+        timeout = KHAYA_DEFAULT_TIMEOUT
+    return key, url, timeout
 
 
 def _language_instruction(language):
-    if language == "Ga":
-        return """
-Translate into natural, contemporary Ga (Gã), the language of the Ga people of Greater Accra, Ghana.
-This is Ga, NOT Twi, Ewe, Ghanaian Pidgin, or a generic Ghanaian-language approximation.
-Preserve names, personal names, school names, class names, subjects, dates, fees, IDs, URLs,
-numbers, abbreviations and product/module names unless they are ordinary translatable words.
-Do not invent a Ga word when you are uncertain. Keep uncertain proper nouns unchanged.
-"""
-    if language == "Twi":
-        return """
-Translate into natural contemporary Twi (Akan) suitable for a Ghanaian school-management application.
-Do not use Ghanaian Pidgin. Preserve names, school names, class names, subjects, dates, amounts,
-IDs, URLs, numbers, abbreviations and product/module names.
-"""
-    if language == "Ewe":
-        return """
-Translate into natural contemporary Ewe suitable for a Ghanaian school-management application.
-Do not substitute Twi, Ga, Ghanaian Pidgin, or another Ghanaian language.
-Preserve names, school names, class names, subjects, dates, amounts, IDs, URLs and numbers.
-"""
-    if language == "Yoruba":
-        return """
-Translate into natural contemporary Yoruba suitable for a professional school-management application.
-Preserve Yoruba tone marks/diacritics where appropriate. Do not substitute Twi, Ga, Ewe, or Nigerian Pidgin.
-Preserve names, school names, class names, subjects, dates, amounts, IDs, URLs and numbers.
-"""
-    if language == "French":
-        return """
-Translate into clear, professional French suitable for a school-management application.
-Preserve names, school names, class names, dates, amounts, IDs, URLs and numbers.
-"""
-    if language == "Arabic":
-        return """
-Translate into clear Modern Standard Arabic suitable for a school-management application.
-Preserve names, school names, class names, dates, amounts, IDs, URLs and numbers.
-"""
-    return """
-Translate into clear, natural English suitable for a professional school-management application.
-Preserve names, school names, class names, dates, amounts, IDs, URLs and numbers.
-"""
+    instructions = {
+        "Twi": "Translate into natural contemporary Twi (Akan) suitable for a Ghanaian school-management application.",
+        "Ga": "Translate into natural contemporary Ga (Gã) used in Greater Accra, Ghana. Do not substitute Twi or Ewe.",
+        "Ewe": "Translate into natural contemporary Ewe. Do not substitute Twi or Ga.",
+        "Yoruba": "Translate into natural contemporary Yoruba and preserve appropriate diacritics.",
+        "Fante": "Translate into natural contemporary Fante suitable for a Ghanaian school-management application.",
+        "Dagbani": "Translate into natural contemporary Dagbani suitable for a Ghanaian school-management application.",
+        "Kusaal": "Translate into natural contemporary Kusaal suitable for a Ghanaian school-management application.",
+        "French": "Translate into clear professional French.",
+        "Arabic": "Translate into clear Modern Standard Arabic.",
+    }
+    return instructions.get(language, "Translate into clear natural English.")
 
 
 def _khaya_pair(source, target):
-    """Return the Khaya language pair, or None when Khaya does not cover it."""
     if source not in KHAYA_CODES or target not in KHAYA_CODES or source == target:
         return None
     return f"{KHAYA_CODES[source]}-{KHAYA_CODES[target]}"
 
 
 def _extract_khaya_translation(data):
-    """Handle the response shapes used by current/older GhanaNLP clients."""
     if isinstance(data, str):
         return data.strip()
+    if isinstance(data, list):
+        for item in data:
+            value = _extract_khaya_translation(item)
+            if value:
+                return value
+        return ""
     if not isinstance(data, dict):
         return ""
-
-    # Current API/library variants commonly expose the translated value as
-    # 'out', 'translation', or 'translated_text'. Keep this tolerant so a
-    # gateway response change does not crash the Django view.
     for key in ("out", "translation", "translated_text", "text", "result"):
         value = data.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
-
-    # Some wrappers return {"data": {"out": "..."}}.
     nested = data.get("data")
     if isinstance(nested, dict):
-        for key in ("out", "translation", "translated_text", "text", "result"):
-            value = nested.get(key)
-            if isinstance(value, str) and value.strip():
-                return value.strip()
-
+        return _extract_khaya_translation(nested)
     return ""
 
 
 def _translate_with_khaya(text, source, target):
-    """Translate Ghanaian-language pairs through Khaya/GhanaNLP."""
-    global KHAYA_API_KEY
+    global _KHAYA_AUTH_UNAVAILABLE_UNTIL, _KHAYA_NETWORK_UNAVAILABLE_UNTIL
 
     pair = _khaya_pair(source, target)
     if not pair:
         return None, ""
-    if not KHAYA_API_KEY:
+
+    now = time.monotonic()
+    if now < _KHAYA_AUTH_UNAVAILABLE_UNTIL:
+        return None, "Khaya access is temporarily unavailable (HTTP 403). Using the translation fallback without retrying Khaya."
+    if now < _KHAYA_NETWORK_UNAVAILABLE_UNTIL:
+        return None, "No internet connection. EduAI language translation requires an internet connection to reach Khaya."
+
+    api_key, api_url, timeout = _khaya_config()
+    if not api_key:
+        logger.error("Khaya translation: KHAYA_API_KEY is empty.")
         return None, "KHAYA_API_KEY is not configured."
 
     try:
         response = requests.post(
-            KHAYA_API_URL,
+            api_url,
             headers={
                 "Content-Type": "application/json",
-                "Cache-Control": "no-cache",
-                "Ocp-Apim-Subscription-Key": KHAYA_API_KEY,
+                "Accept": "application/json, text/plain, */*",
+                "Ocp-Apim-Subscription-Key": api_key,
             },
             json={"in": text, "lang": pair},
-            timeout=KHAYA_TIMEOUT,
+            timeout=timeout,
         )
+    except requests.exceptions.ConnectionError:
+        _KHAYA_NETWORK_UNAVAILABLE_UNTIL = time.monotonic() + KHAYA_NETWORK_COOLDOWN
+        logger.warning("Khaya unavailable: no internet/DNS connection for %s", pair)
+        return None, "No internet connection. EduAI language translation requires an internet connection to reach Khaya. Please reconnect and try again."
+    except requests.exceptions.Timeout:
+        _KHAYA_NETWORK_UNAVAILABLE_UNTIL = time.monotonic() + KHAYA_NETWORK_COOLDOWN
+        logger.warning("Khaya request timed out for %s", pair)
+        return None, "Khaya translation timed out. Please check your internet connection and try again."
     except requests.RequestException as exc:
-        return None, f"Khaya connection failed: {exc}"
+        _KHAYA_NETWORK_UNAVAILABLE_UNTIL = time.monotonic() + KHAYA_NETWORK_COOLDOWN
+        logger.warning("Khaya request failed for %s: %s", pair, exc)
+        return None, "Khaya translation is temporarily unavailable. Please check your internet connection and try again."
+
+    logger.info("Khaya translation response: pair=%s status=%s bytes=%s", pair, response.status_code, len(response.content or b""))
 
     if response.status_code != 200:
-        # Never expose the secret key or a full provider response to users.
         detail = ""
         try:
             body = response.json()
             if isinstance(body, dict):
-                detail = str(body.get("message") or body.get("error") or "")
+                error = body.get("error")
+                if isinstance(error, dict):
+                    detail = str(error.get("message") or "")
+                else:
+                    detail = str(body.get("message") or "")
         except (ValueError, TypeError):
             pass
-        if response.status_code in (401, 403):
-            return None, "Khaya authentication failed. Check KHAYA_API_KEY and the Khaya subscription key permissions."
+        if response.status_code == 401:
+            _KHAYA_AUTH_UNAVAILABLE_UNTIL = time.monotonic() + KHAYA_AUTH_COOLDOWN
+            return None, "Khaya rejected the subscription key (HTTP 401). Please verify the Khaya subscription key configuration."
+        if response.status_code == 403:
+            _KHAYA_AUTH_UNAVAILABLE_UNTIL = time.monotonic() + KHAYA_AUTH_COOLDOWN
+            return None, "Khaya denied access (HTTP 403). Using the translation fallback without repeatedly contacting Khaya."
+        if response.status_code == 429:
+            return None, "Khaya translation limit reached (HTTP 429). Please wait a moment and try again."
         return None, f"Khaya returned HTTP {response.status_code}{(': ' + detail) if detail else '.'}"
 
     try:
         data = response.json()
     except ValueError:
-        # Accept a plain-text translation as well as the documented JSON
-        # translation response.
         data = response.text
 
     translation = _extract_khaya_translation(data)
     if not translation:
+        logger.error("Khaya returned HTTP 200 but no translation for pair=%s. Response=%r", pair, response.text[:500])
         return None, "Khaya returned no translation."
     return translation, ""
 
@@ -171,31 +185,135 @@ You are the professional translation assistant for EduAI School Management, a Gh
 Source language: {LANGUAGES[source]}
 Target language: {LANGUAGES[target]}
 {_language_instruction(target)}
-Preserve paragraph structure and punctuation. Return only the translation.
+Preserve names, school names, class names, dates, amounts, IDs, URLs, numbers and abbreviations.
+Return only the translation.
 """
-    return AIService._call_groq(
-        system_prompt,
-        text,
-        max_tokens=1800,
-        temperature=0.1,
-        model="openai/gpt-oss-120b" if target in ("Ga", "Twi", "Ewe", "Yoruba") else None,
-    )
+    return AIService._call_groq(system_prompt, text, max_tokens=1800, temperature=0.1, model=None)
 
 
 def _translate_single(text, source, target):
-    """Primary Khaya for Ghanaian pairs; Groq remains a safe fallback."""
     if source == target:
         return text, ""
+    if _khaya_pair(source, target):
+        translated, error = _translate_with_khaya(text, source, target)
+        # Khaya remains the preferred provider for Ghanaian languages. If the
+        # subscription is currently returning 401/403, however, keep the
+        # translator usable by falling back to one Groq translation request.
+        # This is deliberately a single fallback, never a retry storm.
+        if translated:
+            return translated, ""
+        if error and ("HTTP 401" in error or "HTTP 403" in error):
+            result = _translate_with_groq(text, source, target)
+            if result:
+                logger.warning("Khaya unavailable for %s; used Groq fallback.", _khaya_pair(source, target))
+                return result.strip(), ""
+        return None, error
+    result = _translate_with_groq(text, source, target)
+    if result:
+        return result.strip(), ""
+    return None, AIService.LAST_ERROR or "Translation service is unavailable."
 
-    khaya_result, khaya_error = _translate_with_khaya(text, source, target)
-    if khaya_result:
-        return khaya_result, ""
 
-    groq_result = _translate_with_groq(text, source, target)
-    if groq_result:
-        return groq_result.strip(), khaya_error
+def _parse_groq_translation_batch(result, expected):
+    """Parse a numbered Groq translation batch without requiring one line/item.
 
-    return None, khaya_error or AIService.LAST_ERROR or "Translation service is unavailable."
+    Translated text can legitimately contain line breaks, so the old
+    splitlines() parser could report a perfectly valid response as
+    "incomplete" and turn a successful request into HTTP 503.
+    """
+    if not result:
+        return None
+    text = str(result).strip()
+    # Prefer a JSON array when the model followed the requested format.
+    try:
+        candidate = text
+        if candidate.startswith("```"):
+            candidate = candidate.strip("`").strip()
+            if candidate.lower().startswith("json"):
+                candidate = candidate[4:].strip()
+        data = json.loads(candidate)
+        if isinstance(data, list) and len(data) == expected:
+            values = [str(x).strip() for x in data]
+            if all(values):
+                return values
+    except (ValueError, TypeError):
+        pass
+
+    # Fallback: numbered sections. A translation may contain newlines; keep
+    # those lines attached to the current numbered item.
+    import re
+    matches = list(re.finditer(r"(?m)^\s*(\d+)\.\s*", text))
+    if not matches:
+        return None
+    values = [None] * expected
+    for pos, match in enumerate(matches):
+        try:
+            index = int(match.group(1)) - 1
+        except ValueError:
+            continue
+        if not 0 <= index < expected:
+            continue
+        end = matches[pos + 1].start() if pos + 1 < len(matches) else len(text)
+        value = text[match.end():end].strip()
+        if value:
+            values[index] = value
+    if all(values):
+        return values
+    return None
+
+
+def _translate_with_groq_batch(items, source, target):
+    system_prompt = f"""
+You are the professional translation assistant for EduAI School Management, a Ghanaian school-management application.
+Translate the input items from {LANGUAGES[source]} to {LANGUAGES[target]}.
+{_language_instruction(target)}
+Preserve names, school names, class names, dates, amounts, IDs, URLs, numbers and abbreviations.
+Return ONLY a valid JSON array containing exactly {len(items)} strings, in the same order as the input items.
+Do not add markdown fences, numbering, commentary, or extra fields.
+"""
+    numbered = json.dumps(items, ensure_ascii=False)
+    result = AIService._call_groq(
+        system_prompt,
+        numbered,
+        max_tokens=max(700, min(6000, sum(len(x) for x in items) * 2)),
+        temperature=0.1,
+        model="openai/gpt-oss-20b",
+    )
+    values = _parse_groq_translation_batch(result, len(items))
+    if values:
+        return values, ""
+    return [None] * len(items), AIService.LAST_ERROR or "The translation service returned an invalid batch response."
+
+
+def _khaya_page_batch(items, source, target):
+    """Translate a small group in one Khaya request to avoid a request storm.
+
+    Khaya v2 accepts one text field per request. A stable delimiter lets us
+    send several UI strings together while preserving their order.
+    """
+    marker = "\n\n<<<EDUAI_ITEM_%02d>>>\n\n"
+    text = "".join(marker % i + item for i, item in enumerate(items))
+    translated, error = _translate_with_khaya(text, source, target)
+    if not translated:
+        return [None] * len(items), error
+
+    parts = translated.split("<<<EDUAI_ITEM_")
+    if len(parts) != len(items) + 1:
+        logger.warning("Khaya batch delimiter was not preserved for %s items.", len(items))
+        return [None] * len(items), "Khaya returned an invalid batch response."
+
+    result = [None] * len(items)
+    for part in parts[1:]:
+        try:
+            number_text, value = part.split(">>>", 1)
+            index = int(number_text.split("_")[-1])
+            if 0 <= index < len(items):
+                result[index] = value.strip()
+        except (ValueError, IndexError):
+            return [None] * len(items), "Khaya returned an invalid batch response."
+    if any(not value for value in result):
+        return [None] * len(items), "Khaya returned an incomplete batch."
+    return result, ""
 
 
 @login_required
@@ -206,7 +324,6 @@ def language_translator(request):
 @login_required
 @require_POST
 def language_translator_api(request):
-    """Translate standalone text and batches of visible rendered page text."""
     content_type = request.META.get("CONTENT_TYPE", "")
     if "application/json" in content_type:
         try:
@@ -219,7 +336,6 @@ def language_translator_api(request):
     target = str(payload.get("target") or "").strip()
     source = str(payload.get("source") or "English").strip()
     page_mode = str(payload.get("page_mode") or "").strip().lower() in ("1", "true", "yes")
-
     if source not in LANGUAGES or target not in LANGUAGES:
         return JsonResponse({"success": False, "error": "Please select supported languages."}, status=400)
 
@@ -229,116 +345,73 @@ def language_translator_api(request):
             return JsonResponse({"success": False, "error": "Enter text to translate."}, status=400)
         if len(text) > MAX_TEXT_LENGTH:
             return JsonResponse({"success": False, "error": f"Please keep the text below {MAX_TEXT_LENGTH:,} characters."}, status=400)
-
         translation, provider_error = _translate_single(text, source, target)
         if translation is None:
-            return JsonResponse({
-                "success": False,
-                "error": provider_error or AIService.LAST_ERROR or "Translation service is unavailable.",
-            }, status=503)
-
+            return JsonResponse({"success": False, "error": provider_error or "Translation service is unavailable."}, status=503)
         return JsonResponse({"success": True, "translation": translation, "source": source, "target": target})
 
     raw_items = payload.get("items")
     if not raw_items or len(raw_items) > MAX_PAGE_ITEMS:
         return JsonResponse({"success": False, "error": "Invalid page translation batch."}, status=400)
-
     items = [str(item or "")[:500] for item in raw_items]
     if sum(len(item) for item in items) > MAX_PAGE_TEXT_LENGTH:
         return JsonResponse({"success": False, "error": "Page translation batch is too large."}, status=400)
     if source == target:
         return JsonResponse({"success": True, "translations": items, "source": source, "target": target})
 
-    translations = []
-    errors = []
-
-    # Khaya's documented endpoint translates one text payload at a time. We
-    # therefore translate each visible text node independently when a Khaya
-    # pair is available. This costs more API calls but prevents one failed or
-    # malformed node from shifting every subsequent page translation.
-    if _khaya_pair(source, target) and KHAYA_API_KEY:
-        for item in items:
-            translated, error = _translate_with_khaya(item, source, target)
-            if translated:
-                translations.append(translated)
-            else:
-                fallback = _translate_with_groq(item, source, target)
-                if fallback:
-                    translations.append(fallback.strip())
-                else:
-                    errors.append(error or AIService.LAST_ERROR or "Translation failed.")
-                    translations.append(item)
-
-        if errors and len(errors) > max(2, len(items) // 3):
+    if _khaya_pair(source, target):
+        # Try Khaya once for this page. If the subscription is denied, or
+        # Khaya is unreachable, immediately switch to ONE Groq batch. Never
+        # retry Khaya once the circuit breaker has opened.
+        values, khaya_error = _khaya_page_batch(items, source, target)
+        if not khaya_error and all(values):
             return JsonResponse({
-                "success": False,
-                "error": "The Ghanaian-language translation service is temporarily unavailable. Please try again.",
-            }, status=503)
+                "success": True,
+                "translations": values,
+                "source": source,
+                "target": target,
+            })
 
-        return JsonResponse({"success": True, "translations": translations, "source": source, "target": target})
+        fallback_values, fallback_error = _translate_with_groq_batch(items, source, target)
+        if fallback_values and all(fallback_values):
+            return JsonResponse({
+                "success": True,
+                "translations": fallback_values,
+                "source": source,
+                "target": target,
+                "provider_fallback": True,
+            })
 
-    # Non-Khaya pairs (French/Arabic, or a missing Khaya key) retain the
-    # previous batched Groq path so the page translator remains functional.
-    numbered = "\n".join(f"{index + 1}. {item}" for index, item in enumerate(items))
-    system_prompt = f"""
-You are the page-translation engine for EduAI School Management, a Ghanaian school-management application.
-Source language: {LANGUAGES[source]}
-Target language: {LANGUAGES[target]}
-{_language_instruction(target)}
-
-Translate every numbered item independently and preserve the exact order.
-Return exactly one translated line for each input item.
-Do not add numbering, explanations, markdown, quotation marks, or extra commentary.
-If an item is a proper name, identifier, number, URL, abbreviation, or product/module name that should remain unchanged, return it unchanged.
-"""
-    # Keep the historical batch request for efficiency, but never make the
-    # whole page fail just because the model returned fewer lines than asked.
-    result = AIService._call_groq(
-        system_prompt,
-        numbered,
-        max_tokens=max(500, min(2200, sum(len(x) for x in items) * 2)),
-        temperature=0.1,
-        model="openai/gpt-oss-120b" if target in ("Ga", "Twi", "Ewe", "Yoruba") else None,
-    )
-
-    def parse_lines(value):
-        if not value:
-            return []
-        parsed = []
-        for line in str(value).splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            if ". " in line and line.split(". ", 1)[0].isdigit():
-                line = line.split(". ", 1)[1].strip()
-            parsed.append(line)
-        return parsed
-
-    lines = parse_lines(result)
-
-    # If the batch response is malformed/incomplete, translate each item
-    # independently. This is slower but guarantees positional integrity.
-    if len(lines) != len(items):
-        translations = []
-        failed = 0
-        for item in items:
-            single, _ = _translate_single(item, source, target)
-            if single:
-                translations.append(single.strip())
-            else:
-                translations.append(item)
-                failed += 1
-
-        # Returning the original text for a failed node is preferable to
-        # breaking the entire UI. The caller can still see which nodes were
-        # not translated rather than receiving a misleading partial batch.
+        # Keep the page usable even when the fallback provider has a bad
+        # response. Returning 503 caused the browser translator to enter a
+        # long provider-unavailable state and stop translating later pages.
+        # The original text is safe for failed items and the caller can keep
+        # working normally.
         return JsonResponse({
             "success": True,
-            "translations": translations,
+            "translations": items,
             "source": source,
             "target": target,
-            "partial": bool(failed),
-            "failed_items": failed,
+            "partial": True,
+            "failed_items": len(items),
+            "error": fallback_error or khaya_error or "Some page text could not be translated yet.",
         })
 
+    numbered = "\n".join(f"{index + 1}. {item}" for index, item in enumerate(items))
+    system_prompt = f"""
+Translate every numbered item independently from {LANGUAGES[source]} to {LANGUAGES[target]}.
+{_language_instruction(target)}
+Return exactly one translated line for each input item, preserving order.
+"""
+    result = AIService._call_groq(system_prompt, numbered, max_tokens=max(500, min(2200, sum(len(x) for x in items) * 2)), temperature=0.1, model=None)
+    lines = []
+    if result:
+        for line in str(result).splitlines():
+            line = line.strip()
+            if line:
+                if ". " in line and line.split(". ", 1)[0].isdigit():
+                    line = line.split(". ", 1)[1].strip()
+                lines.append(line)
+    if len(lines) != len(items):
+        return JsonResponse({"success": True, "translations": items, "source": source, "target": target, "partial": True, "failed_items": len(items), "error": "The translation service returned an incomplete batch. Please try again."})
     return JsonResponse({"success": True, "translations": lines, "source": source, "target": target})

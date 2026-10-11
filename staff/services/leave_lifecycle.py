@@ -14,6 +14,14 @@ from staff.models import (
 )
 
 
+class InvalidLeaveTransition(ValidationError):
+    """Raised when a leave request cannot move from its current state.
+
+    Subclassing Django's ValidationError preserves compatibility with existing
+    callers that already handle validation failures.
+    """
+
+
 class LeaveLifecycleService:
     """
     Central service for the complete staff leave lifecycle.
@@ -470,7 +478,7 @@ class LeaveLifecycleService:
         )
 
         if leave_request.status != "DRAFT":
-            raise ValidationError(
+            raise InvalidLeaveTransition(
                 "Only draft leave requests can be submitted."
             )
 
@@ -609,8 +617,14 @@ class LeaveLifecycleService:
             leave_request
         )
 
+        # Approval is idempotent: if another request or an earlier
+        # call has already approved this leave, return the persisted
+        # record without changing balances or writing a second ledger entry.
+        if leave_request.status == "APPROVED":
+            return leave_request
+
         if leave_request.status != "PENDING":
-            raise ValidationError(
+            raise InvalidLeaveTransition(
                 "Only pending leave requests can be approved."
             )
 
@@ -756,7 +770,7 @@ class LeaveLifecycleService:
         )
 
         if leave_request.status != "PENDING":
-            raise ValidationError(
+            raise InvalidLeaveTransition(
                 "Only pending leave requests can be rejected."
             )
 
@@ -895,7 +909,7 @@ class LeaveLifecycleService:
         }
 
         if leave_request.status not in allowed_statuses:
-            raise ValidationError(
+            raise InvalidLeaveTransition(
                 "Only pending, approved, or taken leave "
                 "requests can be cancelled."
             )
@@ -1049,7 +1063,7 @@ class LeaveLifecycleService:
         )
 
         if leave_request.status != "APPROVED":
-            raise ValidationError(
+            raise InvalidLeaveTransition(
                 "Only approved leave requests can be "
                 "marked as taken."
             )
@@ -1104,7 +1118,7 @@ class LeaveLifecycleService:
             "APPROVED",
             "TAKEN",
         }:
-            raise ValidationError(
+            raise InvalidLeaveTransition(
                 "Only approved or taken leave can be released."
             )
 

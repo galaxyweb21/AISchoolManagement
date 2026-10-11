@@ -1,0 +1,208 @@
+{% extends 'base/base.html' %}
+{% block title %}{{ application.application_number }} · Admissions{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admission-shell{--ad-gold:#946B1C;--ad-teal:#2C7A6D;--ad-ink:#17212b;}
+    .admission-hero{background:linear-gradient(135deg,rgba(148,107,28,.11),rgba(44,122,109,.09));border:1px solid rgba(148,107,28,.16)}
+    .admission-avatar{width:64px;height:64px;border-radius:18px;display:grid;place-items:center;background:rgba(44,122,109,.12);color:var(--ad-teal);font-size:1.45rem;font-weight:800}
+    .status-pill{display:inline-flex;align-items:center;gap:.4rem;padding:.38rem .7rem;border-radius:999px;font-size:.78rem;font-weight:700}
+    .status-submitted{background:rgba(148,107,28,.12);color:#765514}.status-review{background:rgba(148,107,28,.12);color:#765514}.status-approved{background:rgba(25,135,84,.12);color:#198754}.status-rejected{background:rgba(220,53,69,.10);color:#dc3545}.status-admitted{background:rgba(44,122,109,.13);color:#24695f}.status-draft{background:rgba(108,117,125,.12);color:#6c757d}
+    .info-card{height:100%;border:1px solid var(--bs-border-color);border-radius:18px;background:var(--bs-body-bg)}
+    .info-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--bs-secondary-color);font-weight:700;margin-bottom:.2rem}
+    .info-value{font-weight:600;word-break:break-word}
+    .timeline{position:relative;margin-left:.4rem}.timeline:before{content:"";position:absolute;left:10px;top:10px;bottom:10px;width:2px;background:var(--bs-border-color)}
+    .timeline-item{position:relative;padding-left:34px;padding-bottom:1.35rem}.timeline-item:last-child{padding-bottom:0}.timeline-dot{position:absolute;left:3px;top:2px;width:16px;height:16px;border-radius:50%;background:var(--ad-teal);box-shadow:0 0 0 4px var(--bs-body-bg),0 0 0 5px rgba(44,122,109,.2)}
+    .summary-step{border-radius:14px;background:var(--bs-tertiary-bg);padding:.8rem}.summary-step .icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(44,122,109,.12);color:var(--ad-teal)}
+    .action-panel{position:sticky;top:1rem}.btn-gold{background:#946B1C;border-color:#946B1C;color:#fff}.btn-gold:hover{background:#7c5917;border-color:#7c5917;color:#fff}.btn-outline-gold{border-color:#946B1C;color:#946B1C}.btn-outline-gold:hover{background:#946B1C;color:#fff}
+    .rejection-box{border-left:4px solid #dc3545;background:rgba(220,53,69,.06)}
+    @media(max-width:991.98px){.action-panel{position:static}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 admission-shell">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="admission-avatar"><i class="bi bi-person-vcard"></i></div>
+            <div>
+                <div class="small text-muted mb-1">Admissions · Applicant Review</div>
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <h3 class="fw-bold mb-0">{{ application.applicant_name }}</h3>
+                    <span class="status-pill status-{{ application.status|lower }}"><i class="bi bi-circle-fill" style="font-size:.42rem"></i>{{ application.get_status_display }}</span>
+                </div>
+                <div class="text-muted small mt-1">{{ application.application_number }} · {{ application.academic_year.name }}</div>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'admissions:application_list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Application Register</a>
+        </div>
+    </div>
+
+    <div class="card admission-hero border-0 rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="row g-3 align-items-center">
+                <div class="col-lg-8">
+                    <div class="small text-muted text-uppercase fw-bold mb-1">Admission summary</div>
+                    <h5 class="fw-bold mb-2">Application → Review → Decision → Student</h5>
+                    <p class="text-muted mb-0">Review the applicant, record a decision, and admit the applicant into the normal Student register when approved.</p>
+                </div>
+                <div class="col-lg-4">
+                    <div class="d-flex gap-2 justify-content-lg-end flex-wrap">
+                        <div class="summary-step flex-fill"><div class="d-flex align-items-center gap-2"><span class="icon"><i class="bi bi-file-earmark-text"></i></span><div><div class="small text-muted">Application</div><strong>{{ application.application_number }}</strong></div></div></div>
+                        <div class="summary-step flex-fill"><div class="d-flex align-items-center gap-2"><span class="icon"><i class="bi bi-person-check"></i></span><div><div class="small text-muted">Student</div><strong>{% if application.admitted_student %}Created{% else %}Pending{% endif %}</strong></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-8">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="info-card p-4">
+                        <div class="d-flex justify-content-between mb-3"><h6 class="fw-bold mb-0">Applicant profile</h6><i class="bi bi-person text-muted"></i></div>
+                        <div class="row g-3">
+                            <div class="col-12"><div class="info-label">Full name</div><div class="info-value">{{ application.applicant_name }}</div></div>
+                            <div class="col-6"><div class="info-label">Date of birth</div><div class="info-value">{{ application.date_of_birth|date:'d M Y'|default:'—' }}</div></div>
+                            <div class="col-6"><div class="info-label">Gender</div><div class="info-value">{{ application.gender|default:'—' }}</div></div>
+                            <div class="col-12"><div class="info-label">Previous school</div><div class="info-value">{{ application.previous_school|default:'—' }}</div></div><div class="col-md-6"><div class="info-label">Phone</div><div class="info-value">{{ application.applicant_phone|default:'—' }}</div></div><div class="col-md-6"><div class="info-label">Email</div><div class="info-value">{{ application.applicant_email|default:'—' }}</div></div><div class="col-12"><div class="info-label">Address</div><div class="info-value">{{ application.applicant_address|default:'—'|linebreaksbr }}</div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-card p-4">
+                        <div class="d-flex justify-content-between mb-3"><h6 class="fw-bold mb-0">Placement request</h6><i class="bi bi-mortarboard text-muted"></i></div>
+                        <div class="row g-3">
+                            <div class="col-12"><div class="info-label">Applying for</div><div class="info-value">{{ application.grade_level.name }}</div></div>
+                            <div class="col-12"><div class="info-label">Class placement</div><div class="info-value">{% if application.school_class %}{{ application.school_class.name }}{% else %}To be assigned{% endif %}</div></div>
+                            <div class="col-12"><div class="info-label">Academic year</div><div class="info-value">{{ application.academic_year.name }}</div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="info-card p-4">
+                        <div class="d-flex justify-content-between mb-3"><h6 class="fw-bold mb-0">Parent / guardian</h6><i class="bi bi-people text-muted"></i></div>
+                        <div class="row g-3">
+                            <div class="col-md-4"><div class="info-label">Name</div><div class="info-value">{{ application.parent_name }}</div></div>
+                            <div class="col-md-4"><div class="info-label">Phone</div><div class="info-value">{{ application.parent_phone }}</div></div>
+                            <div class="col-md-4"><div class="info-label">Email</div><div class="info-value">{{ application.parent_email|default:'—' }}</div></div>
+                            <div class="col-md-4"><div class="info-label">Relationship</div><div class="info-value">{{ application.parent_relationship|default:'Parent / Guardian' }}</div></div><div class="col-12"><div class="info-label">Address</div><div class="info-value">{{ application.parent_address|default:'—'|linebreaksbr }}</div></div><div class="col-12"><div class="info-label">Parent account</div><div class="info-value">{% if application.parent %}{{ application.parent.get_full_name|default:application.parent.username }}{% else %}Will be linked or created when admitted{% endif %}</div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="info-card p-4">
+                        <h6 class="fw-bold mb-3">Application notes</h6>
+                        <div class="text-muted">{{ application.notes|default:'No additional notes were provided.'|linebreaksbr }}</div>
+                    </div>
+                </div>
+                {% if application.rejection_reason %}
+                <div class="col-12"><div class="rejection-box rounded-3 p-3"><div class="fw-bold text-danger mb-1"><i class="bi bi-x-circle me-1"></i>Rejection reason</div><div>{{ application.rejection_reason|linebreaksbr }}</div></div></div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <div class="action-panel">
+                <div class="info-card p-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3"><h6 class="fw-bold mb-0">Review workspace</h6><i class="bi bi-shield-check text-muted"></i></div>
+                    {% if application.status == 'SUBMITTED' %}
+                        <form method="post" action="{% url 'admissions:application_status' application.id 'review' %}" class="mb-2">{% csrf_token %}<button class="btn btn-outline-gold w-100"><i class="bi bi-search me-1"></i>Move to Review</button></form>
+                    {% endif %}
+                    {% if application.status == 'SUBMITTED' or application.status == 'REVIEW' %}
+                        <button type="button" class="btn btn-gold w-100 mb-2" data-bs-toggle="modal" data-bs-target="#approveApplicationModal"><i class="bi bi-check2-circle me-1"></i>Approve Application</button>
+                        <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#rejectApplicationModal"><i class="bi bi-x-circle me-1"></i>Reject Application</button>
+                    {% endif %}
+                    {% if application.can_admit %}
+                        <hr>
+                        <div class="small text-muted mb-2">The applicant has been approved and is ready to become a normal Student record.</div>
+                        <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#admitApplicationModal"><i class="bi bi-person-check me-1"></i>Admit Applicant</button>
+                    {% endif %}
+                    {% if application.admitted_student %}
+                        <hr>
+                        <div class="small text-muted mb-2">This application has been converted into a Student record.</div>
+                        <a href="{% url 'students:student_detail' application.admitted_student.id %}" class="btn btn-outline-gold w-100"><i class="bi bi-person-lines-fill me-1"></i>Open Student Record</a>
+                    {% endif %}
+                    {% if application.status == 'REJECTED' %}<div class="alert alert-danger mt-3 mb-0 small"><strong>Application rejected.</strong> No further review action is available.</div>{% endif %}
+                </div>
+
+                <div class="info-card p-4">
+                    <h6 class="fw-bold mb-3">Application timeline</h6>
+                    <div class="timeline">
+                        <div class="timeline-item"><span class="timeline-dot"></span><div class="fw-semibold">Application created</div><div class="small text-muted">{{ application.created_at|date:'d M Y, H:i' }}{% if application.created_by %} · {{ application.created_by.get_full_name|default:application.created_by.username }}{% endif %}</div></div>
+                        {% if application.status == 'REVIEW' or application.reviewed_at or application.status == 'APPROVED' or application.status == 'REJECTED' or application.status == 'ADMITTED' %}
+                        <div class="timeline-item"><span class="timeline-dot"></span><div class="fw-semibold">Under review</div><div class="small text-muted">Review stage recorded as part of the application workflow.</div></div>
+                        {% endif %}
+                        {% if application.status == 'APPROVED' or application.status == 'ADMITTED' %}
+                        <div class="timeline-item"><span class="timeline-dot"></span><div class="fw-semibold">Application approved</div><div class="small text-muted">{% if application.reviewed_at %}{{ application.reviewed_at|date:'d M Y, H:i' }}{% endif %}{% if application.reviewed_by %} · {{ application.reviewed_by.get_full_name|default:application.reviewed_by.username }}{% endif %}</div></div>
+                        {% endif %}
+                        {% if application.status == 'REJECTED' %}
+                        <div class="timeline-item"><span class="timeline-dot"></span><div class="fw-semibold">Application rejected</div><div class="small text-muted">{% if application.reviewed_at %}{{ application.reviewed_at|date:'d M Y, H:i' }}{% endif %}{% if application.reviewed_by %} · {{ application.reviewed_by.get_full_name|default:application.reviewed_by.username }}{% endif %}</div></div>
+                        {% endif %}
+                        {% if application.admitted_student %}
+                        <div class="timeline-item"><span class="timeline-dot"></span><div class="fw-semibold">Applicant admitted</div><div class="small text-muted">{% if application.admitted_at %}{{ application.admitted_at|date:'d M Y, H:i' }}{% endif %} · Student {{ application.admitted_student.admission_number|default:application.admitted_student.id }}</div></div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="approveApplicationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <form method="post" action="{% url 'admissions:application_status' application.id 'approve' %}">
+                {% csrf_token %}
+                <div class="modal-header border-0"><div><h5 class="modal-title fw-bold">Approve application</h5><div class="small text-muted">{{ application.application_number }}</div></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="rounded-3 p-3 mb-3" style="background:rgba(44,122,109,.07)"><div class="fw-bold">{{ application.applicant_name }}</div><div class="small text-muted">{{ application.grade_level.name }} · {{ application.academic_year.name }}</div></div>
+                    <p class="text-muted mb-0">Approve this application and make it eligible for the final admission step. No Student record will be created yet.</p>
+                </div>
+                <div class="modal-footer border-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-gold"><i class="bi bi-check2-circle me-1"></i>Approve Application</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="rejectApplicationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <form method="post" action="{% url 'admissions:application_status' application.id 'reject' %}">
+                {% csrf_token %}
+                <div class="modal-header border-0"><div><h5 class="modal-title fw-bold">Reject application</h5><div class="small text-muted">{{ application.application_number }}</div></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body"><label class="form-label fw-semibold">Reason <span class="text-muted fw-normal">(optional)</span></label><textarea name="rejection_reason" class="form-control" rows="4" placeholder="Enter the reason for rejection..."></textarea></div>
+                <div class="modal-footer border-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-danger"><i class="bi bi-x-circle me-1"></i>Reject Application</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="admitApplicationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <form method="post" action="{% url 'admissions:admit_application' application.id %}">
+                {% csrf_token %}
+                <div class="modal-header border-0"><div><h5 class="modal-title fw-bold">Confirm admission</h5><div class="small text-muted">Final step · {{ application.application_number }}</div></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="alert alert-success border-0 small"><i class="bi bi-check2-circle me-1"></i>This application is approved. Confirming will create the normal Student record and link/create the parent account.</div>
+                    <div class="row g-3">
+                        <div class="col-md-6"><div class="small text-muted text-uppercase fw-bold">Applicant</div><div class="fw-bold">{{ application.applicant_name }}</div></div>
+                        <div class="col-md-6"><div class="small text-muted text-uppercase fw-bold">Date of birth</div><div class="fw-semibold">{{ application.date_of_birth|date:'d M Y'|default:'—' }}</div></div>
+                        <div class="col-md-6"><div class="small text-muted text-uppercase fw-bold">Applying for</div><div class="fw-semibold">{{ application.grade_level.name }}</div></div>
+                        <div class="col-md-6"><div class="small text-muted text-uppercase fw-bold">Class placement</div><div class="fw-semibold">{% if application.school_class %}{{ application.school_class.name }}{% else %}To be assigned{% endif %}</div></div>
+                        <div class="col-md-6"><div class="small text-muted text-uppercase fw-bold">Academic year</div><div class="fw-semibold">{{ application.academic_year.name }}</div></div>
+                        <div class="col-md-6"><div class="small text-muted text-uppercase fw-bold">Parent / guardian</div><div class="fw-semibold">{{ application.parent_name }}</div></div>
+                    </div>
+                    <hr>
+                    <div class="small text-muted">The admission uses the existing student and finance workflow. Do not click twice while the request is processing.</div>
+                </div>
+                <div class="modal-footer border-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-success"><i class="bi bi-person-check me-1"></i>Confirm &amp; Admit Applicant</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -331,6 +331,32 @@ class StaffProfile(models.Model):
         help_text="Upload a professional headshot (JPEG/PNG)."
     )
 
+    # Face recognition enrollment (kept on the staff profile, just like
+    # student face registration). Attendance only consumes these fields.
+    face_encoding = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Face encoding data used for staff face attendance."
+    )
+    face_registered = models.BooleanField(
+        default=False,
+        help_text="Whether this staff member has a registered face."
+    )
+    face_photo = models.ImageField(
+        upload_to='staff_faces/%Y/%m/',
+        blank=True,
+        null=True,
+        help_text="Reference photo captured during face registration."
+    )
+    face_registered_at = models.DateTimeField(null=True, blank=True)
+    face_registered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='registered_staff_profile_faces',
+    )
+
     # Official report-card signature. Staff upload this once and the
     # report-card engine automatically uses it for authorized signatures.
     signature_image = models.ImageField(

@@ -33,6 +33,20 @@ class School(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
+    # Optional admissions workflow. OFF keeps the normal direct
+    # Students -> Create Student workflow unchanged. JHS_SHS is the
+    # Ghana-focused option for schools that want admissions for JHS/SHS,
+    # while ALL allows the workflow for every configured grade stage.
+    ADMISSIONS_MODE_CHOICES = (
+        ('OFF', 'Disabled'),
+        ('JHS_SHS', 'JHS and SHS only'),
+        ('ALL', 'All school levels'),
+    )
+    admissions_mode = models.CharField(
+        max_length=10, choices=ADMISSIONS_MODE_CHOICES, default='OFF',
+        help_text='Controls whether the optional Admissions workflow is available and which school levels may use it.'
+    )
+
     def _generate_unique_subdomain(self):
         """Generate a unique subdomain from the school name."""
         base_slug = slugify(self.name)[:90]

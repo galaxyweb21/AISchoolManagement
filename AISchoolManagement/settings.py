@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 # =========================
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env", override=True)
+load_dotenv(BASE_DIR / ".env", override=False)
 
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
@@ -35,16 +35,36 @@ GROQ_COMMENT_MODEL = os.getenv("GROQ_COMMENT_MODEL", "openai/gpt-oss-20b")
 GROQ_TIMEOUT = int(os.getenv("GROQ_TIMEOUT", "60"))
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 
+# =========================
+# KHAYA TRANSLATION CONFIG
+# =========================
+KHAYA_API_KEY = os.getenv("KHAYA_API_KEY", "").strip()
+KHAYA_API_URL = os.getenv(
+    "KHAYA_API_URL",
+    "https://translation-api.ghananlp.org/v2/translate",
+).strip()
+KHAYA_TIMEOUT = int(os.getenv("KHAYA_TIMEOUT", "20"))
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
-DEBUG = os.getenv("DEBUG", "True").strip().lower() in {"1", "true", "yes", "on"}
+# Keep local development convenient, but default to production-safe settings
+# when running on Render. Explicit DEBUG environment values always take priority.
+_render_environment = bool(os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip())
+_debug_default = "False" if _render_environment else "True"
+DEBUG = os.getenv("DEBUG", _debug_default).strip().lower() in {"1", "true", "yes", "on"}
 _secret_key = os.getenv("SECRET_KEY", "").strip()
 if DEBUG:
     SECRET_KEY = _secret_key or "django-insecure-local-development-key-change-me"
 else:
     if not _secret_key:
         raise RuntimeError("SECRET_KEY must be set when DEBUG=False")
+    if len(_secret_key) < 50 or len(set(_secret_key)) < 5 or _secret_key.startswith("django-insecure-"):
+        raise RuntimeError(
+            "Production SECRET_KEY must be at least 50 characters, contain varied characters, "
+            "and must not use Django's insecure development prefix. Generate a new secret "
+            "and set it in the deployment environment."
+        )
     SECRET_KEY = _secret_key
 
 def _csv_env(name):
@@ -90,6 +110,7 @@ INSTALLED_APPS = [
     'school',
     'accounts',
     'students',
+    'admissions',
     'staff',
     'academics',
     'ai_engine',
@@ -301,10 +322,20 @@ LOGOUT_REDIRECT_URL = 'accounts:login'
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+
+    # Render terminates TLS at its proxy. Trust the forwarded scheme only in
+    # this known deployment configuration.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True").strip().lower() in {"1", "true", "yes", "on"}
+
+    # Start with a short HSTS period. Increase only after confirming HTTPS is
+    # consistently available for the production hostname. Do not enable
+    # subdomains/preload by default.
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "3600"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS", "False").strip().lower() in {"1", "true", "yes", "on"}
+    SECURE_HSTS_PRELOAD = os.getenv("SECURE_HSTS_PRELOAD", "False").strip().lower() in {"1", "true", "yes", "on"}
+
     SECURE_REFERRER_POLICY = "same-origin"
     X_FRAME_OPTIONS = "DENY"
 

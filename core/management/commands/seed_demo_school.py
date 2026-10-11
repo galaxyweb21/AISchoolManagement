@@ -93,8 +93,7 @@ class Command(BaseCommand):
             )
             admin_profile.staff_position = "SCHOOL_ADMIN"
             admin_profile.is_headteacher = True
-            admin_profile.default_password = password
-            admin_profile.save(update_fields=["staff_position", "is_headteacher", "default_password"])
+            admin_profile.save(update_fields=["staff_position", "is_headteacher"])
 
             parent_users = [
                 self._user(school, f"demo_parent{i}", "Demo Parent", str(i), "PARENT", password)
@@ -161,7 +160,6 @@ class Command(BaseCommand):
         user.last_name = last
         user.email = f"{username}@eduai.school"
         user.phone_number = "+233200000000"
-        user.default_password = password
         user.set_password(password)
         user.is_active = True
 
@@ -213,7 +211,6 @@ class Command(BaseCommand):
             profile.staff_grade = grade
             profile.department = departments[dept_code]
             profile.staff_id = number
-            profile.default_password = password
             profile.has_changed_password = False
             profile.save()
             teacher, _ = Teacher.objects.get_or_create(school=school, user=user, defaults={"staff_number": number, "department": dept})
@@ -270,7 +267,6 @@ class Command(BaseCommand):
             user.first_name = first_names[(i - 1) % len(first_names)]
             user.last_name = last_names[(i - 1) % len(last_names)]
             user.email = f"{username}@eduai.school"
-            user.default_password = password
             user.set_password(password)
             user.save()
             cls = class_list[(i - 1) % len(class_list)]
@@ -283,7 +279,6 @@ class Command(BaseCommand):
             student.parent = parents[(i - 1) % len(parents)]
             student.address = "Accra, Ghana"
             student.contact_phone = "+233 24 000 0000"
-            student.default_password = password
             student.is_active = True
             student.save()
             result.append(student)

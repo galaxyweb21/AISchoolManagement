@@ -40,6 +40,7 @@ def school_settings(request):
     phone_number = request.POST.get('phone_number', '').strip()
     address = request.POST.get('address', '').strip()
     logo = request.FILES.get('logo')
+    admissions_mode = request.POST.get('admissions_mode', 'OFF').strip().upper()
 
     if not all([name, contact_email, phone_number, address]):
         return JsonResponse({'success': False, 'error': "All fields are required."})
@@ -48,6 +49,8 @@ def school_settings(request):
     school.contact_email = contact_email
     school.phone_number = phone_number
     school.address = address
+    if admissions_mode in dict(School.ADMISSIONS_MODE_CHOICES):
+        school.admissions_mode = admissions_mode
 
     if logo:
         # Delete old logo if it exists

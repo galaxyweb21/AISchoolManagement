@@ -1,0 +1,99 @@
+{% extends 'base/base.html' %}
+{% block title %}Admission Applications{% endblock %}
+{% block content %}
+<style>
+    .adm-page-head{background:linear-gradient(135deg,rgba(148,107,28,.08),rgba(44,122,109,.06));border:1px solid var(--surface-border)}
+    .adm-card{background:var(--surface-bg);border:1px solid var(--surface-border);box-shadow:0 8px 24px rgba(31,42,40,.05)}
+    html[data-bs-theme="dark"] .adm-card{box-shadow:0 8px 24px rgba(0,0,0,.18)}
+    .adm-table th{font-size:.72rem;text-transform:uppercase;letter-spacing:.055em;color:var(--text-muted);white-space:nowrap}
+    .adm-table td{border-color:var(--surface-border)}
+    .status-pill{font-size:.72rem;font-weight:700;padding:.38rem .62rem;border-radius:999px;white-space:nowrap}
+    .status-submitted{background:rgba(148,107,28,.13);color:var(--eduai-gold)}
+    .status-review{background:rgba(44,122,109,.13);color:var(--eduai-signal)}
+    .status-approved,.status-admitted{background:rgba(25,135,84,.13);color:#198754}
+    .status-rejected{background:rgba(220,53,69,.12);color:#dc3545}
+    .status-draft{background:rgba(108,117,125,.12);color:var(--text-muted)}
+    .adm-filter-tile{background:var(--surface-bg);border:1px solid var(--surface-border);color:var(--bs-body-color);transition:.18s ease}.adm-filter-tile:hover,.adm-filter-tile.active{border-color:rgba(148,107,28,.45);transform:translateY(-1px);box-shadow:0 6px 18px rgba(31,42,40,.06)}
+    .btn-gold{background:#946B1C;border-color:#946B1C;color:#fff}.btn-gold:hover{background:#7c5917;border-color:#7c5917;color:#fff}.btn-outline-gold{border-color:#946B1C;color:#946B1C}.btn-outline-gold:hover{background:#946B1C;color:#fff}
+    .filter-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700;color:var(--text-muted)}
+</style>
+
+<div class="container-fluid py-3">
+    <div class="adm-page-head rounded-4 p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <div class="small text-uppercase fw-bold text-muted mb-2">Admissions</div>
+                <h2 class="fw-bold mb-1">Application Register</h2>
+                <p class="text-muted mb-0">Search, review and manage applicants before they become active students.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{% url 'admissions:dashboard' %}" class="btn btn-outline-gold"><i class="bi bi-grid-1x2 me-1"></i>Dashboard</a>
+                <a href="{% url 'admissions:application_create' %}" class="btn btn-gold"><i class="bi bi-person-plus me-1"></i>New Application</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="adm-card rounded-4 p-3 p-lg-4 mb-4">
+        <form method="get">
+            <div class="row g-3 align-items-end">
+                <div class="col-lg-6">
+                    <label class="filter-label mb-2">Search</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent"><i class="bi bi-search"></i></span>
+                        <input class="form-control" name="q" value="{{ query }}" placeholder="Application number, applicant, parent or phone">
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3">
+                    <label class="filter-label mb-2">Status</label>
+                    <select class="form-select" name="status">
+                        <option value="">All statuses</option>
+                        {% for value,label in status_choices %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-sm-6 col-lg-3 d-flex gap-2">
+                    <button class="btn btn-gold flex-fill" type="submit"><i class="bi bi-funnel me-1"></i>Apply Filters</button>
+                    {% if query or status %}<a class="btn btn-outline-secondary" href="{% url 'admissions:application_list' %}">Clear</a>{% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="row g-2 mb-4">
+        <div class="col-6 col-md-3 col-xl"><a class="adm-filter-tile d-block rounded-4 p-3 text-decoration-none" href="{% url 'admissions:application_list' %}"><div class="small text-muted">All applications</div><div class="fw-bold fs-5">{{ total_matching }}</div></a></div>
+        {% for value,label in status_choices %}
+        <div class="col-6 col-md-3 col-xl"><a class="adm-filter-tile d-block rounded-4 p-3 text-decoration-none {% if status == value %}active{% endif %}" href="?status={{ value }}{% if query %}&q={{ query|urlencode }}{% endif %}"><div class="d-flex justify-content-between align-items-center gap-2"><div class="small text-muted">{{ label }}</div><span class="badge rounded-pill text-bg-light">{% if value == 'DRAFT' %}{{ status_counts.DRAFT }}{% elif value == 'SUBMITTED' %}{{ status_counts.SUBMITTED }}{% elif value == 'REVIEW' %}{{ status_counts.REVIEW }}{% elif value == 'APPROVED' %}{{ status_counts.APPROVED }}{% elif value == 'REJECTED' %}{{ status_counts.REJECTED }}{% elif value == 'ADMITTED' %}{{ status_counts.ADMITTED }}{% endif %}</span></div><div class="fw-bold">{% if value == 'SUBMITTED' %}Needs review{% elif value == 'REVIEW' %}In review{% elif value == 'APPROVED' %}Ready to admit{% elif value == 'ADMITTED' %}Admitted{% elif value == 'REJECTED' %}Rejected{% else %}Draft{% endif %}</div></a></div>
+        {% endfor %}
+    </div>
+
+    <div class="adm-card rounded-4 overflow-hidden">
+        <div class="p-3 p-lg-4 border-bottom" style="border-color:var(--surface-border)!important;">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div><h5 class="fw-bold mb-1">Applications</h5><div class="small text-muted">{{ total_matching }} matching application{{ total_matching|pluralize }}</div></div>
+                {% if query or status %}<div class="small text-muted"><i class="bi bi-funnel me-1"></i>Filtered results</div>{% endif %}
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table adm-table table-hover align-middle mb-0">
+                <thead><tr><th class="ps-4">Application</th><th>Applicant</th><th>Applying For</th><th>Academic Year</th><th>Parent / Guardian</th><th>Status</th><th class="pe-4 text-end">Action</th></tr></thead>
+                <tbody>
+                {% for a in applications %}
+                    <tr>
+                        <td class="ps-4"><div class="fw-bold">{{ a.application_number }}</div><div class="small text-muted">{{ a.created_at|date:"d M Y" }}</div></td>
+                        <td><div class="fw-semibold">{{ a.applicant_name }}</div>{% if a.date_of_birth %}<div class="small text-muted">DOB {{ a.date_of_birth|date:"d M Y" }}</div>{% endif %}</td>
+                        <td><div class="fw-semibold">{{ a.grade_level.name }}</div>{% if a.school_class %}<div class="small text-muted">{{ a.school_class.name }}</div>{% endif %}</td>
+                        <td>{{ a.academic_year.name }}</td>
+                        <td><div class="fw-semibold">{{ a.parent_name }}</div><div class="small text-muted">{{ a.parent_phone }}</div></td>
+                        <td><span class="status-pill status-{{ a.status|lower }}">{{ a.get_status_display }}</span></td>
+                        <td class="pe-4 text-end"><a class="btn btn-sm btn-outline-gold" href="{% url 'admissions:application_detail' a.id %}"><i class="bi bi-arrow-right me-1"></i>Open</a></td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="7" class="text-center py-5"><div class="fs-2 text-muted mb-2"><i class="bi bi-person-vcard"></i></div><div class="fw-semibold">No admission applications found</div><div class="small text-muted mb-3">Try changing your search or status filter.</div><a href="{% url 'admissions:application_create' %}" class="btn btn-sm btn-gold"><i class="bi bi-plus-lg me-1"></i>Create Application</a></td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% include "partials/pagination.html" with page_obj=page_obj %}
+</div>
+{% endblock %}

@@ -635,7 +635,6 @@ def staff_create(request):
                 department=department,
                 employment_type=employment_type,
                 profile_picture=profile_picture,
-                default_password=temp_password,
                 has_changed_password=False,
                 employment_date=(
                     employment_date
@@ -5360,6 +5359,6 @@ def staff_get_credentials(request, staff_id):
     data = {
         'username': staff.user.username,
         'has_changed_password': staff.has_changed_password,
-        'default_password': staff.default_password if not staff.has_changed_password else None,
+        'password_reset_required': not staff.has_changed_password,
     }
     return JsonResponse({'success': True, 'data': data})

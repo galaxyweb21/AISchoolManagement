@@ -5,11 +5,16 @@ from . import views
 app_name = 'students'
 
 urlpatterns = [
+    # Parent / guardian register
+    path('parents-guardians/', views.parent_guardian_list, name='parent_guardian_list'),
+    path('parents-guardians/create/', views.parent_guardian_create, name='parent_guardian_create'),
+    path('parents-guardians/<uuid:parent_id>/update/', views.parent_guardian_update, name='parent_guardian_update'),
     # Student views
     path('', views.student_list, name='student_list'),
     path('create/', views.create_student, name='create_student'),
     path('<uuid:student_id>/', views.student_detail, name='student_detail'),
     path('<uuid:student_id>/edit/', views.edit_student, name='edit_student'),
+    path('<uuid:student_id>/guardian/manage/', views.manage_student_guardian, name='manage_student_guardian'),
     path('<uuid:student_id>/toggle-active/', views.toggle_student_active, name='toggle_student_active'),
 
     # Face registration

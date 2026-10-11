@@ -112,10 +112,14 @@ Subject results:
     @classmethod
     @transaction.atomic
     def generate_single(cls, card, user, comment_type, force=False):
-        if card.is_finalized:
-            raise ValueError('Finalized report cards are locked.')
+        # Validate the operation before touching the supplied card. This keeps
+        # invalid requests deterministic and avoids AttributeError for None.
         if comment_type not in ('teacher', 'headteacher'):
             raise ValueError('Invalid comment type.')
+        if card is None:
+            raise ValueError('A report card is required.')
+        if card.is_finalized:
+            raise ValueError('Finalized report cards are locked.')
         if comment_type == 'teacher' and card.teacher_comment_source == 'MANUAL' and not force:
             return False, 'Manual teacher comment preserved.'
         if comment_type == 'headteacher' and card.headteacher_comment_source == 'MANUAL' and not force:

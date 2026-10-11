@@ -79,6 +79,19 @@
     .staff-row.hidden-row { display: none !important; }
     .staff-row.visible-row { display: table-row !important; }
 
+    .staff-position {
+        background-color: rgba(148, 107, 28, 0.14) !important;
+        color: #6f4f12 !important;
+        border: 1px solid rgba(148, 107, 28, 0.28);
+        font-weight: 700;
+    }
+    [data-bs-theme="dark"] .staff-position,
+    .dark-mode .staff-position {
+        background-color: rgba(201, 164, 82, 0.18) !important;
+        color: #e4c77f !important;
+        border-color: rgba(201, 164, 82, 0.34);
+    }
+
     .badge-status-active { background: var(--eduai-signal-soft); color: var(--eduai-signal); }
     .badge-status-inactive { background: rgba(108,117,125,0.14); color: #6c757d; }
 
@@ -224,7 +237,7 @@
                             </div>
                         </td>
                         <td>
-                            <span class="badge badge-gold rounded-pill px-3 py-2 staff-position">
+                            <span class="badge rounded-pill px-3 py-2 staff-position">
                                 {{ s.get_staff_position_display }}
                             </span>
                         </td>
@@ -282,6 +295,9 @@
                 <div class="d-grid gap-2">
                     <button type="button" class="btn btn-outline-gold py-3" id="actionEditBtn">
                         <i class="bi bi-pencil-square me-2"></i> Edit Staff
+                    </button>
+                    <button type="button" class="btn btn-outline-gold py-3" id="actionFaceBtn">
+                        <i class="bi bi-person-bounding-box me-2"></i> Register / Update Face
                     </button>
                     <button type="button" class="btn btn-outline-danger py-3" id="actionDeleteBtn">
                         <i class="bi bi-trash me-2"></i> Delete Staff
@@ -529,6 +545,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 editBtn.setAttribute('data-staff-id', staffId || '');
             }
             const deleteBtn = document.getElementById('actionDeleteBtn');
+            const faceBtn = document.getElementById('actionFaceBtn');
+            if (faceBtn) faceBtn.setAttribute('data-staff-id', staffId || '');
+
             if (deleteBtn) {
                 const baseUrl = "{% url 'staff:staff_delete' '00000000-0000-0000-0000-000000000000' %}";
                 const url = baseUrl.replace('00000000-0000-0000-0000-000000000000', staffId || '');
@@ -547,6 +566,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const actionModalInstance = bootstrap.Modal.getInstance(document.getElementById('staffActionModal'));
             if (actionModalInstance) actionModalInstance.hide();
             openStaffModal('edit', url, staffId);
+        });
+    }
+
+    const faceBtn = document.getElementById('actionFaceBtn');
+    if (faceBtn) {
+        faceBtn.addEventListener('click', function() {
+            const staffId = this.getAttribute('data-staff-id');
+            if (!staffId) return;
+            const actionModalInstance = bootstrap.Modal.getInstance(document.getElementById('staffActionModal'));
+            if (actionModalInstance) actionModalInstance.hide();
+            const baseUrl = "{% url 'staff:staff_detail' '00000000-0000-0000-0000-000000000000' %}";
+            window.location.href = baseUrl.replace('00000000-0000-0000-0000-000000000000', staffId);
         });
     }
 
