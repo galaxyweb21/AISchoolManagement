@@ -218,8 +218,8 @@
 
                 {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
                 <div class="d-flex gap-2 flex-wrap">
-                    <button type="button" class="btn {% if staff.face_registered %}btn-outline-success{% else %}btn-outline-gold{% endif %}" id="staffFaceRegisterOpen">
-                        <i class="bi bi-camera me-1"></i>{% if staff.face_registered %}Update Face{% else %}Register Face{% endif %}
+                    <button type="button" class="btn {% if has_face_registration %}btn-outline-success{% else %}btn-outline-gold{% endif %}" id="staffFaceRegisterOpen">
+                        <i class="bi bi-camera me-1"></i>{% if has_face_registration %}Update Face{% else %}Register Face{% endif %}
                     </button>
                     <button type="button" class="btn btn-outline-gold" data-bs-toggle="modal" data-bs-target="#editStaffModal"
                             data-action="edit" data-url="{% url 'staff:staff_edit' staff.id %}">
@@ -563,7 +563,10 @@
               <div class="small text-muted mb-3">{{ staff.staff_id }} · {{ staff.get_staff_position_display }}</div>
               <div id="staffFaceStatus" class="small text-muted">Start the camera and position one face clearly in the frame.</div>
               <img id="staffFacePreview" class="img-fluid rounded-3 mt-3 d-none" alt="Captured staff face">
+              <div class="form-check mt-3"><input class="form-check-input" type="checkbox" id="staffFaceUseProfilePicture"><label class="form-check-label small" for="staffFaceUseProfilePicture">Also use this capture as the staff profile picture</label></div>
+              <div class="form-check mt-2"><input class="form-check-input" type="checkbox" id="staffFaceConsent"><label class="form-check-label small" for="staffFaceConsent">I confirm the staff member has been informed and agrees to face-based attendance registration.</label></div>
               <button type="button" class="btn btn-gold w-100 mt-3 d-none" id="staffFaceSave"><i class="bi bi-check2-circle me-1"></i>Save Face Registration</button>
+              {% if has_face_registration %}<button type="button" class="btn btn-outline-danger w-100 mt-2" id="staffFaceRemove"><i class="bi bi-person-x me-1"></i>Clear current face registration</button><div class="small text-muted mt-1">Use this only to remove an incorrect or duplicate enrollment before registering the correct face.</div>{% endif %}
             </div>
           </div>
         </div>
@@ -579,6 +582,7 @@
   if(!modalEl||!openBtn) return;
   const video=document.getElementById('staffFaceVideo'), canvas=document.getElementById('staffFaceCanvas');
   const start=document.getElementById('staffFaceStart'), capture=document.getElementById('staffFaceCapture'), stop=document.getElementById('staffFaceStop'), save=document.getElementById('staffFaceSave'), preview=document.getElementById('staffFacePreview'), status=document.getElementById('staffFaceStatus');
+  const removeFace=document.getElementById('staffFaceRemove');
   let stream=null, imageData=null;
   const setStatus=(msg,type='muted')=>{status.className='small text-'+type; status.textContent=msg;};
   const stopCamera=()=>{ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} video.srcObject=null; capture.disabled=true; };
@@ -596,13 +600,25 @@
     canvas.width=video.videoWidth; canvas.height=video.videoHeight; canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
     imageData=canvas.toDataURL('image/jpeg',0.88); preview.src=imageData; preview.classList.remove('d-none'); save.classList.remove('d-none'); setStatus('Face captured. Review the image and click Save Face Registration.','success');
   });
-  save.addEventListener('click',async()=>{
-    if(!imageData)return; save.disabled=true; save.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+  if(removeFace) removeFace.addEventListener('click',async()=>{
+    if(!window.confirm('Remove this staff member’s face registration? Face attendance will not work for this person until a correct face is registered again.')) return;
+    removeFace.disabled=true; setStatus('Removing face registration…','muted');
     try{
-      const response=await fetch('{% url "staff:staff_register_face" staff.id %}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':(document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)||[])[1]||'','X-Requested-With':'XMLHttpRequest'},body:JSON.stringify({image:imageData})});
+      const response=await fetch('{% url "staff:staff_unregister_face" staff.id %}',{method:'POST',headers:{'X-CSRFToken':(document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)||[])[1]||'','X-Requested-With':'XMLHttpRequest'}});
+      const data=await response.json().catch(()=>({error:'Invalid server response.'}));
+      if(!response.ok||!data.success) throw new Error(data.error||'Could not remove face registration.');
+      setStatus(data.message||'Face registration removed.','success'); setTimeout(()=>window.location.reload(),700);
+    }catch(e){setStatus(e.message||'Could not remove face registration.','danger');removeFace.disabled=false;}
+  });
+  save.addEventListener('click',async()=>{
+    if(!imageData)return;
+    if(!document.getElementById('staffFaceConsent')?.checked){setStatus('Confirm that the staff member has been informed and agrees before registering their face.','danger');return;}
+    save.disabled=true; save.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Checking for duplicates...';
+    try{
+      const response=await fetch('{% url "staff:staff_register_face" staff.id %}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':(document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)||[])[1]||'','X-Requested-With':'XMLHttpRequest'},body:JSON.stringify({image:imageData,face_registration_consent:true,use_as_profile_picture:!!document.getElementById('staffFaceUseProfilePicture')?.checked})});
       const data=await response.json().catch(()=>({error:'Invalid server response.'}));
       if(!response.ok||!data.success) throw new Error(data.error||'Face registration failed.');
-      setStatus('Face registered successfully.','success'); setTimeout(()=>window.location.reload(),700);
+      setStatus(data.message||'Face registered successfully.','success'); setTimeout(()=>window.location.reload(),700);
     }catch(e){setStatus(e.message||'Face registration failed.','danger'); save.disabled=false; save.innerHTML='<i class="bi bi-check2-circle me-1"></i>Save Face Registration';}
   });
 })();

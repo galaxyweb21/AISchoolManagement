@@ -57,10 +57,9 @@
 <div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 p-4">
         <div>
-            <h5 class="fw-bold mb-1"><i class="bi bi-stars text-primary me-2" style="color: var(--primary-color, #946B1C) !important;"></i>AI Timetabler</h5>
+            <h5 class="fw-bold mb-1"><i class="bi bi-calendar-week me-2" style="color: var(--primary-color, #946B1C) !important;"></i>{% if teacher_view_only %}My Timetable{% else %}AI Timetabler{% endif %}</h5>
             <p class="text-muted mb-0">
-                Generates a conflict-free weekly timetable using a genetic algorithm that checks
-                every teacher, room and class for double-bookings, lab requirements and capacity limits.
+                {% if teacher_view_only %}View the published timetable for your assigned subjects and, where you are a class teacher, the full timetable for your class.{% else %}Generates a conflict-aware weekly timetable using an AI scheduling process that checks teacher, room and class availability.{% endif %}
             </p>
             {% if active_term %}
                 <small class="text-muted">Active term: <strong>{{ active_term }}</strong></small>
@@ -92,6 +91,7 @@
     </div>
 </div>
 
+{% if can_manage_allocations %}
 <div class="card card-custom border-0 shadow-sm rounded-4 mb-4" id="readiness">
     <div class="p-4">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -247,10 +247,12 @@
         {% endif %}
     </div>
 </div>
+{% endif %}
 
 <div class="card card-custom border-0 shadow-sm rounded-4">
     <div class="p-4">
-        <h6 class="fw-bold mb-3">Recent Runs</h6>
+        <h6 class="fw-bold mb-3">{% if teacher_view_only %}Published Timetable{% else %}Recent Runs{% endif %}</h6>
+        {% if teacher_view_only and not timetables %}<div class="alert alert-light border mb-0">There is no published timetable for the active term yet. Please check with the school administrator.</div>{% else %}
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead>
@@ -308,6 +310,7 @@
                 </tbody>
             </table>
         </div>
+        {% endif %}
     </div>
 </div>
 
@@ -417,4 +420,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<style>
+/* EduAI Phase 7: scoped timetable/academic presentation polish; no behavior changes. */
+.timetable-workspace, .schedule-page, .eduai-tt-setup { color: var(--bs-body-color, var(--text-primary, #26332f)); }
+.timetable-workspace .tw-hero, .timetable-workspace .tw-card, .schedule-page .section-card, .schedule-page .page-hero, .eduai-tt-setup .tt-hero, .eduai-tt-setup .tt-card { box-shadow: 0 .45rem 1.5rem rgba(28, 42, 36, .065); }
+.timetable-workspace .tw-hero, .timetable-workspace .tw-card, .schedule-page .section-card, .schedule-page .page-hero, .eduai-tt-setup .tt-hero, .eduai-tt-setup .tt-card { transition: box-shadow .18s ease, border-color .18s ease; }
+.timetable-workspace .tw-card:hover, .schedule-page .section-card:hover, .eduai-tt-setup .tt-card:hover { border-color: var(--eduai-signal, #2C7A6D); }
+.timetable-workspace :is(input, select, textarea, .form-control, .form-select), .schedule-page :is(input, select, textarea, .form-control, .form-select), .eduai-tt-setup :is(input, select, textarea, .form-control, .form-select) { border-radius: .7rem; min-height: 2.65rem; }
+.timetable-workspace :is(input, select, textarea, button, a, .form-control, .form-select):focus-visible, .schedule-page :is(input, select, textarea, button, a, .form-control, .form-select):focus-visible, .eduai-tt-setup :is(input, select, textarea, button, a, .form-control, .form-select):focus-visible { outline: 3px solid rgba(44, 122, 109, .28); outline-offset: 2px; }
+.timetable-workspace .table-responsive, .schedule-page .table-responsive, .eduai-tt-setup .table-responsive { border-radius: .85rem; }
+.timetable-workspace table, .schedule-page table, .eduai-tt-setup table { vertical-align: middle; }
+.timetable-workspace .btn, .schedule-page .btn, .eduai-tt-setup .btn { border-radius: .7rem; font-weight: 600; }
+@media (max-width: 767.98px) { .timetable-workspace .tw-hero, .schedule-page .page-hero, .eduai-tt-setup .tt-hero { padding: 1rem; border-radius: 1rem; } .timetable-workspace .tw-actions { justify-content: flex-start; } .timetable-workspace .tw-actions .btn, .schedule-page .btn, .eduai-tt-setup .btn { max-width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .timetable-workspace *, .schedule-page *, .eduai-tt-setup * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+</style>
+
 {% endblock %}

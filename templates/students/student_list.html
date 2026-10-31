@@ -1,9 +1,11 @@
 <!-- students/templates/students/student_list.html -->
 {% extends 'base/base.html' %}
+{% load static %}
 
 {% block page_title %}Students{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{% static 'css/eduai-core-lists-polish.css' %}?v=1.0">
 
 <style>
     .info-card {
@@ -101,7 +103,12 @@
         color: var(--eduai-gold, #946B1C);
         font-weight: 500;
     }
-    .quick-view-admission{display:inline-flex;align-items:center;padding:.45rem .7rem;border-radius:10px;background:rgba(148,107,28,.09);color:var(--eduai-gold,#946B1C);font:600 .78rem/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;}
+    .btn-class-credentials{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:40px;padding:.58rem .9rem;border:1px solid var(--eduai-gold,#946B1C);border-radius:10px;background:var(--bs-body-bg);color:var(--eduai-gold,#946B1C)!important;font-weight:650;line-height:1.25;text-decoration:none;box-shadow:0 1px 2px rgba(0,0,0,.05);transition:background-color .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease;}
+.btn-class-credentials:hover,.btn-class-credentials:focus-visible{background:var(--eduai-gold,#946B1C);border-color:var(--eduai-gold,#946B1C);color:#fff!important;box-shadow:0 0 0 .2rem rgba(148,107,28,.18);}
+.btn-class-credentials:focus-visible{outline:2px solid var(--eduai-gold,#946B1C);outline-offset:2px;}
+[data-bs-theme="dark"] .btn-class-credentials{background:var(--bs-tertiary-bg);color:#e9c875!important;border-color:rgba(233,200,117,.7);}
+[data-bs-theme="dark"] .btn-class-credentials:hover,[data-bs-theme="dark"] .btn-class-credentials:focus-visible{background:var(--eduai-gold,#946B1C);border-color:var(--eduai-gold,#946B1C);color:#fff!important;}
+.quick-view-admission{display:inline-flex;align-items:center;padding:.45rem .7rem;border-radius:10px;background:rgba(148,107,28,.09);color:var(--eduai-gold,#946B1C);font:600 .78rem/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;}
 </style>
 
 <div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
@@ -124,6 +131,11 @@
                 <a href="{% url 'students:create_student' %}" id="eduaiAddStudentBtn" data-eduai-tour="student-add" class="btn btn-gold">
                     <i class="bi bi-plus-lg me-1"></i>Add Student
                 </a>
+                {% if can_manage %}
+                <a href="{% url 'students:bulk_class_credentials' %}" class="btn-class-credentials">
+                    <i class="bi bi-key me-1" aria-hidden="true"></i><span>Class Login Credentials</span>
+                </a>
+                {% endif %}
                 <a href="{% url 'students:bulk_face_registration' %}" class="btn btn-outline-success">
                     <i class="bi bi-camera me-1"></i>Bulk Face Register
                 </a>

@@ -1,0 +1,43 @@
+{% extends 'base/base.html' %}
+{% block page_title %}My Staff Attendance{% endblock %}
+{% block content %}
+<style>
+.my-attendance{max-width:850px;margin:0 auto}.my-attendance .att-card{background:var(--surface-bg,#fff);border:1px solid var(--surface-border,rgba(108,117,125,.2));border-radius:18px}.my-attendance .btn-gold{background:var(--eduai-gold,#946B1C);border-color:var(--eduai-gold,#946B1C);color:#fff}.my-attendance .btn-outline-secondary{border-color:var(--eduai-signal,#2C7A6D);color:var(--eduai-signal,#2C7A6D)}
+</style>
+<div class="container-fluid py-4 px-3 px-lg-4"><div class="my-attendance">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4"><div><div class="small text-uppercase fw-bold text-muted mb-2">Staff operations</div><h1 class="h3 fw-bold mb-1">My Attendance</h1><p class="text-muted mb-0">{{ today|date:'l, d F Y' }} · {{ staff_member.user.get_full_name|default:staff_member.staff_id }}</p></div></div>
+  <div class="d-none">{% csrf_token %}</div><div id="attendanceMessage" aria-live="polite"></div>
+  <div class="att-card p-4 p-lg-5">
+    {% if record %}
+      <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4"><div><div class="small text-muted mb-1">Today's status</div><div class="h3 fw-bold mb-0">{{ record.get_status_display }}</div><div class="text-muted small mt-1">Recorded via {{ record.get_method_display }}</div></div><span class="badge rounded-pill px-3 py-2 {% if record.check_out %}text-bg-secondary{% elif record.status == 'PRESENT' or record.status == 'LATE' %}text-bg-success{% else %}text-bg-light{% endif %}">{% if record.check_out %}Signed out{% elif record.status == 'PRESENT' or record.status == 'LATE' %}Checked in{% else %}Attendance recorded{% endif %}</span></div>
+      <div class="row g-3 mb-4"><div class="col-md-6"><div class="p-3 rounded-3 border"><div class="small text-muted">Check-in time</div><div class="fw-bold">{{ record.check_in|date:'H:i'|default:'Not recorded' }}</div></div></div><div class="col-md-6"><div class="p-3 rounded-3 border"><div class="small text-muted">Check-out time</div><div class="fw-bold" id="checkoutTime">{{ record.check_out|date:'H:i'|default:'Not signed out' }}</div></div></div></div>
+      {% if record.status == 'PRESENT' or record.status == 'LATE' %}
+        {% if record.check_out %}<div class="alert alert-success mb-0">Your sign-out is complete. You cannot sign out again today.</div>{% else %}<button id="selfCheckoutBtn" type="button" class="btn btn-gold"><i class="bi bi-box-arrow-right me-1"></i>Sign out for today</button><p class="small text-muted mt-2 mb-0">{% if settings_obj.enforce_time_windows %}Sign-out becomes available from {{ settings_obj.school_end|time:'H:i' }}.{% else %}Sign-out is recorded against today's attendance.{% endif %}</p>{% endif %}
+      {% else %}<div class="alert alert-light border mb-0">Your attendance status does not require sign-out. Contact the attendance officer if this looks incorrect.</div>{% endif %}
+    {% else %}
+      <div class="text-center py-4"><i class="bi bi-calendar2-check display-5 text-muted"></i><h2 class="h5 fw-bold mt-3">No attendance record yet</h2><p class="text-muted mb-0">Your attendance has not been marked today. Please check in with the attendance officer or use the school's approved face-attendance station.</p></div>
+    {% endif %}
+  </div>
+</div></div>
+{% if record and not record.check_out and record.status == 'PRESENT' or record and not record.check_out and record.status == 'LATE' %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+ const btn=document.getElementById('selfCheckoutBtn'); if(!btn)return;
+ btn.addEventListener('click', async function(){
+  if(!window.confirm('Sign out for today?')) return;
+  btn.disabled=true; const original=btn.innerHTML; btn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Signing out…';
+  const csrf=document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+  const body=new FormData(); body.append('csrfmiddlewaretoken',csrf);
+  try{
+   const response=await fetch("{% url 'attendance:api_staff_self_checkout' %}",{method:'POST',body:body,headers:{'X-Requested-With':'XMLHttpRequest','X-CSRFToken':csrf}});
+   const result=await response.json();
+   if(!response.ok || !result.success) throw new Error(result.error || 'Unable to sign out.');
+   document.getElementById('checkoutTime').textContent=new Date(result.check_out).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+   const box=document.getElementById('attendanceMessage'); box.innerHTML='<div class="alert alert-success">'+result.message+'</div>';
+   btn.outerHTML='<div class="alert alert-success mb-0">Your sign-out is complete. You cannot sign out again today.</div>';
+  }catch(error){const box=document.getElementById('attendanceMessage');box.innerHTML='<div class="alert alert-danger">'+error.message+'</div>';btn.disabled=false;btn.innerHTML=original;}
+ });
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -7,6 +7,20 @@
 
 {% block content %}
 <style>
+
+/* Phase 10: financial account presentation polish */
+.fin-account-phase10 .card,.student-financial-account .card{border-radius:1rem;border-color:var(--bs-border-color);}
+.fin-account-phase10 .stat-card,.student-financial-account .stat-card{border-radius:1rem;box-shadow:0 5px 18px rgba(25,35,45,.045);}
+.fin-account-phase10 .table-responsive,.student-financial-account .table-responsive{border-radius:.8rem;}
+.fin-account-phase10 table thead th,.student-financial-account table thead th{font-size:.76rem;letter-spacing:.035em;text-transform:uppercase;color:var(--bs-secondary-color);background:var(--bs-tertiary-bg);}
+.fin-account-phase10 .btn,.student-financial-account .btn{transition:box-shadow .16s ease,transform .16s ease;}
+.fin-account-phase10 .btn:focus-visible,.student-financial-account .btn:focus-visible{outline:3px solid color-mix(in srgb,var(--eduai-signal,#2C7A6D) 45%,transparent);outline-offset:2px;}
+@media(max-width:767.98px){.fin-account-phase10 .card-body,.student-financial-account .card-body{padding:1rem;}.fin-account-phase10 .stat-card,.student-financial-account .stat-card{padding:1rem!important;}.fin-account-phase10 .stat-card .number,.student-financial-account .stat-card .number{font-size:1.45rem;}}
+@media(prefers-reduced-motion:reduce){.fin-account-phase10 *,.student-financial-account *{transition:none!important;}}
+
+</style>
+
+<style>
     .stat-card {
         border-radius: 12px;
         padding: 1.25rem;

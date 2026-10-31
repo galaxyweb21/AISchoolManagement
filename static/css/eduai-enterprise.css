@@ -1,0 +1,57 @@
+/* EduAI shared enterprise UI foundation. Safe, reusable classes for gradual page upgrades. */
+:root {
+  --eduai-radius-sm: .65rem;
+  --eduai-radius-md: 1rem;
+  --eduai-radius-lg: 1.25rem;
+  --eduai-shadow-soft: 0 8px 28px rgba(31, 42, 40, .055);
+  --eduai-shadow-hover: 0 12px 34px rgba(31, 42, 40, .09);
+}
+
+.eduai-page-header { min-width: 0; }
+.eduai-page-header h1, .eduai-page-header h2 { letter-spacing: -.025em; font-weight: 750; }
+.eduai-eyebrow-label { color: var(--eduai-signal, #2C7A6D); font-size: .68rem; font-weight: 800; letter-spacing: .12em; margin-bottom: .4rem; }
+.eduai-panel { background: var(--surface-bg, var(--bs-body-bg)); color: var(--text-primary, var(--bs-body-color)); border: 1px solid var(--surface-border, var(--bs-border-color)); border-radius: var(--eduai-radius-lg); box-shadow: var(--eduai-shadow-soft); overflow: hidden; }
+.eduai-panel > .card-header { border-color: var(--surface-border, var(--bs-border-color)) !important; }
+.eduai-stat-card { height: 100%; display: flex; flex-direction: column; gap: .28rem; padding: 1.1rem 1.2rem; background: var(--surface-bg, var(--bs-body-bg)); border: 1px solid var(--surface-border, var(--bs-border-color)); border-radius: var(--eduai-radius-md); box-shadow: var(--eduai-shadow-soft); }
+.eduai-stat-label { color: var(--text-muted, var(--bs-secondary-color)); font-size: .76rem; font-weight: 700; }
+.eduai-stat-card strong { color: var(--text-primary, var(--bs-body-color)); font-size: clamp(1.45rem, 2.5vw, 2rem); font-weight: 800; letter-spacing: -.04em; line-height: 1.2; }
+.eduai-stat-card strong small { font-size: .75rem; letter-spacing: 0; font-weight: 600; }
+.eduai-filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .8rem; border: 1px solid var(--surface-border, var(--bs-border-color)); background: var(--surface-bg, var(--bs-body-bg)); border-radius: var(--eduai-radius-md); }
+.eduai-empty-state { text-align: center; padding: 3rem 1.25rem; }
+.eduai-empty-state > i { display: inline-flex; align-items: center; justify-content: center; width: 3rem; height: 3rem; border-radius: 1rem; background: var(--eduai-signal-soft, rgba(44,122,109,.12)); color: var(--eduai-signal, #2C7A6D); font-size: 1.4rem; margin-bottom: .9rem; }
+.eduai-empty-state h2 { font-weight: 750; }
+.eduai-panel .table { --bs-table-bg: transparent; --bs-table-color: var(--text-primary, var(--bs-body-color)); --bs-table-border-color: var(--surface-border, var(--bs-border-color)); }
+.eduai-panel .table thead th { color: var(--text-muted, var(--bs-secondary-color)); background: color-mix(in srgb, var(--surface-bg, #fff) 88%, var(--eduai-gold, #946B1C)); font-size: .72rem; font-weight: 800; letter-spacing: .045em; text-transform: uppercase; white-space: nowrap; border-bottom-width: 1px; }
+.eduai-panel .table tbody tr { transition: background-color .15s ease; }
+.eduai-panel .table tbody tr:hover { background: color-mix(in srgb, var(--eduai-signal-soft, rgba(44,122,109,.12)) 42%, transparent); }
+.eduai-panel .table td, .eduai-panel .table th { padding: .9rem 1rem; vertical-align: middle; }
+.eduai-panel .form-control, .eduai-panel .form-select, .eduai-filter-bar .form-control, .eduai-filter-bar .form-select { border-radius: .7rem; border-color: var(--surface-border, var(--bs-border-color)); min-height: 2.7rem; }
+.eduai-panel .form-control:focus, .eduai-panel .form-select:focus { border-color: var(--eduai-signal, #2C7A6D); box-shadow: 0 0 0 .22rem var(--eduai-signal-soft, rgba(44,122,109,.14)); }
+.btn { border-radius: .7rem; font-weight: 650; transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease; }
+.btn:not(:disabled):hover { transform: translateY(-1px); }
+.btn:focus-visible, .nav-link:focus-visible { outline: 3px solid var(--eduai-signal, #2C7A6D); outline-offset: 2px; }
+.eduai-exam-shell { max-width: 1040px; margin: 0 auto; padding-bottom: 5rem; }
+.eduai-exam-topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.15rem 1.35rem; border: 1px solid var(--surface-border, var(--bs-border-color)); border-radius: var(--eduai-radius-lg); background: var(--surface-bg, var(--bs-body-bg)); box-shadow: var(--eduai-shadow-soft); }
+.eduai-exam-clock { min-width: 120px; text-align: center; padding: .65rem .85rem; border-radius: .9rem; border: 1px solid var(--surface-border, var(--bs-border-color)); background: var(--app-bg, var(--bs-tertiary-bg)); font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.eduai-exam-clock small { display: block; color: var(--text-muted, var(--bs-secondary-color)); font-size: .68rem; font-weight: 600; }
+.eduai-question-card { scroll-margin-top: 1rem; }
+.eduai-answer-option { display: flex; align-items: flex-start; gap: .4rem; padding: .8rem .9rem; border: 1px solid var(--surface-border, var(--bs-border-color)); border-radius: .75rem; cursor: pointer; transition: border-color .15s ease, background-color .15s ease; }
+.eduai-answer-option:hover { border-color: var(--eduai-signal, #2C7A6D); background: var(--eduai-signal-soft, rgba(44,122,109,.1)); }
+.eduai-answer-option input { flex-shrink: 0; margin-top: .18rem; }
+.eduai-answer-input { min-height: 5rem; }
+.eduai-submit-bar { position: sticky; bottom: .75rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: 1rem 1.1rem; border: 1px solid var(--surface-border, var(--bs-border-color)); border-radius: var(--eduai-radius-lg); background: var(--surface-bg, var(--bs-body-bg)); box-shadow: 0 12px 40px rgba(0,0,0,.12); }
+.eduai-success-icon { width: 4rem; height: 4rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 1.3rem; background: var(--eduai-signal-soft, rgba(44,122,109,.12)); color: var(--eduai-signal, #2C7A6D); font-size: 2rem; }
+.eduai-result-score { display: flex; flex-direction: column; gap: .15rem; margin: 1.25rem auto; padding: 1.2rem; max-width: 260px; border: 1px solid var(--surface-border, var(--bs-border-color)); border-radius: 1rem; background: var(--app-bg, var(--bs-tertiary-bg)); }
+.eduai-result-score span, .eduai-result-score small { color: var(--text-muted, var(--bs-secondary-color)); font-size: .8rem; }
+.eduai-result-score strong { font-size: 2rem; font-weight: 850; color: var(--eduai-signal, #2C7A6D); }
+@media (max-width: 767.98px) {
+  .eduai-exam-topbar { align-items: flex-start; padding: 1rem; }
+  .eduai-exam-clock { min-width: 92px; font-size: 1.05rem; }
+  .eduai-submit-bar { align-items: stretch; }
+  .eduai-submit-bar .btn { width: 100%; }
+  .eduai-panel .table td, .eduai-panel .table th { padding: .75rem .7rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn, .eduai-panel .table tbody tr, .eduai-answer-option { transition: none !important; }
+  .btn:not(:disabled):hover { transform: none; }
+}

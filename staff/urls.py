@@ -15,6 +15,7 @@ urlpatterns = [
     path('<uuid:staff_id>/delete/', views.staff_delete, name='staff_delete'),
     path('<uuid:staff_id>/toggle-active/', views.toggle_staff_active, name='toggle_staff_active'),
     path('<uuid:staff_id>/register-face/', views.staff_register_face, name='staff_register_face'),
+    path('<uuid:staff_id>/unregister-face/', views.staff_unregister_face, name='staff_unregister_face'),
 
     # ==========================================================
     # DEPARTMENT MANAGEMENT

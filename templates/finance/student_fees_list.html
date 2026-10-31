@@ -4,6 +4,40 @@
 {% block page_title %}Prepared Student Fees{% endblock %}
 
 {% block content %}
+<style id="eduai-finance-phase8-polish">
+/* EduAI Phase 8: presentation-only finance polish */
+.finance-phase8-scope { --finance-card-radius: 1rem; }
+.container-fluid.px-4.pt-3 > .d-flex.flex-wrap.gap-2.align-items-center.justify-content-between.rounded-4 {
+  border-radius: 1rem !important; padding: .85rem !important; gap: .65rem !important;
+  box-shadow: 0 5px 18px rgba(20, 35, 45, .045);
+}
+.container-fluid.px-4.pt-3 .card, .container-fluid.py-4 .card, .container-fluid .card {
+  border-color: var(--bs-border-color, #dee2e6); border-radius: 1rem;
+}
+.container-fluid .card-header { background: var(--bs-tertiary-bg, #f8f9fa); border-bottom-color: var(--bs-border-color, #dee2e6); }
+.container-fluid .table-responsive { border-radius: .8rem; }
+.container-fluid .table { --bs-table-bg: transparent; vertical-align: middle; margin-bottom: 0; }
+.container-fluid .table thead th { font-size: .76rem; font-weight: 700; letter-spacing: .035em; text-transform: uppercase; white-space: nowrap; color: var(--bs-secondary-color); }
+.container-fluid .table tbody td { padding-top: .8rem; padding-bottom: .8rem; }
+.container-fluid .form-control, .container-fluid .form-select, .modal .form-control, .modal .form-select { border-radius: .65rem; min-height: 2.45rem; }
+.container-fluid .form-control:focus, .container-fluid .form-select:focus, .modal .form-control:focus, .modal .form-select:focus { border-color: var(--eduai-signal, #2C7A6D); box-shadow: 0 0 0 .2rem rgba(44, 122, 109, .14); }
+.container-fluid .btn, .modal .btn { border-radius: .65rem; }
+.container-fluid .btn-gold { box-shadow: 0 2px 6px rgba(148, 107, 28, .12); }
+.container-fluid .badge { font-weight: 600; letter-spacing: .01em; }
+.container-fluid .pagination { gap: .25rem; flex-wrap: wrap; }
+.container-fluid .page-link { border-radius: .5rem; }
+.container-fluid a:focus-visible, .container-fluid button:focus-visible, .modal a:focus-visible, .modal button:focus-visible { outline: 3px solid rgba(44, 122, 109, .55); outline-offset: 2px; }
+[data-bs-theme="dark"] .container-fluid.px-4.pt-3 > .d-flex.flex-wrap.gap-2.align-items-center.justify-content-between.rounded-4 { box-shadow: none; background: var(--bs-tertiary-bg); }
+[data-bs-theme="dark"] .container-fluid .card-header { background: rgba(255,255,255,.025); }
+@media (max-width: 767.98px) {
+  .container-fluid.px-4.pt-3 { padding-left: .75rem !important; padding-right: .75rem !important; }
+  .container-fluid .table { font-size: .9rem; }
+  .container-fluid .table tbody td { padding-top: .65rem; padding-bottom: .65rem; }
+  .container-fluid .btn { max-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .container-fluid *, .modal * { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+</style>
+
 <div class="container-fluid px-4 pt-3">
     <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between rounded-4 p-2 border bg-body shadow-sm">
         <div class="d-flex flex-wrap gap-2">

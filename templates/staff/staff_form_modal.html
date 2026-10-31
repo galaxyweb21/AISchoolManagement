@@ -1,361 +1,78 @@
-<!-- staff/staff_form_modal.html - Completely Redesigned -->
 <style>
-    .text-gold {
-        color: var(--eduai-gold, #946B1C) !important;
-    }
-    .bg-gold-soft {
-        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
-    }
-    .btn-gold {
-        background-color: var(--eduai-gold, #946B1C) !important;
-        border-color: var(--eduai-gold, #946B1C) !important;
-        color: #fff !important;
-    }
-    .btn-gold:hover {
-        background-color: #7a5917 !important;
-        border-color: #7a5917 !important;
-        color: #fff !important;
-    }
-    .badge-gold {
-        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
-        color: var(--eduai-gold, #946B1C) !important;
-    }
-    .spinner-gold {
-        color: var(--eduai-gold, #946B1C) !important;
-    }
-    .form-description {
-        background: var(--bs-tertiary-bg);
-        border-radius: 8px;
-        padding: 0.75rem 1rem;
-        margin-bottom: 1.25rem;
-        border-left: 3px solid var(--eduai-gold, #946B1C);
-        font-size: 0.85rem;
-        color: var(--bs-secondary-color);
-    }
-    .form-description i {
-        color: var(--eduai-gold, #946B1C);
-        margin-right: 0.5rem;
-    }
-    .form-description strong {
-        color: var(--bs-body-color);
-    }
+.staff-wizard{--staff-gold:var(--eduai-gold,#946B1C);--staff-teal:var(--eduai-signal,#2C7A6D)}
+.staff-wizard .text-gold{color:var(--staff-gold)!important}.staff-wizard .btn-gold{background:var(--staff-gold);border-color:var(--staff-gold);color:#fff}.staff-wizard .btn-gold:hover{filter:brightness(.92);color:#fff}
+.staff-wizard .wizard-step{display:none}.staff-wizard .wizard-step.active{display:block}
+.staff-wizard .wizard-stepper{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin-bottom:1.25rem}
+.staff-wizard .wizard-pill{display:flex;align-items:center;gap:.5rem;padding:.65rem .55rem;border:1px solid var(--bs-border-color);border-radius:12px;color:var(--bs-secondary-color);font-size:.78rem;font-weight:600;background:var(--bs-tertiary-bg)}
+.staff-wizard .wizard-pill .number{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:var(--bs-secondary-bg);font-size:.75rem;flex-shrink:0}
+.staff-wizard .wizard-pill.active{border-color:var(--staff-gold);color:var(--bs-body-color);background:rgba(148,107,28,.08)}.staff-wizard .wizard-pill.active .number,.staff-wizard .wizard-pill.completed .number{background:var(--staff-gold);color:white}
+.staff-wizard .wizard-pill.completed{border-color:rgba(44,122,109,.4);color:var(--staff-teal)}
+.staff-wizard .section-card{border:1px solid var(--bs-border-color);border-radius:14px;padding:1rem;background:var(--bs-body-bg)}
+.staff-wizard .required-label:after{content:' *';color:#dc3545}.staff-wizard .review-value{font-weight:600;overflow-wrap:anywhere}.staff-wizard .help-note{font-size:.8rem;color:var(--bs-secondary-color)}
+@media(max-width:575px){.staff-wizard .wizard-stepper{grid-template-columns:repeat(2,minmax(0,1fr))}.staff-wizard .wizard-pill{font-size:.72rem}}
 </style>
-
-<form method="post" enctype="multipart/form-data" action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url staff.id %}{% endif %}">
+<form class="staff-wizard" method="post" enctype="multipart/form-data" action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url staff.id %}{% endif %}" novalidate>
     {% csrf_token %}
-
-    <div class="modal-body p-4">
-        <!-- Form Description -->
-        <div class="form-description">
-            <i class="bi bi-info-circle"></i>
+    <div class="modal-body p-3 p-md-4">
+        <div class="alert alert-light border rounded-3 small mb-3"><i class="bi bi-info-circle text-gold me-2"></i>{% if mode == 'create' %}Complete the four steps to create the staff profile and account. Choose a password for the staff member; it will be securely hashed and never stored as plain text.{% else %}Update the staff member's profile and employment details. Passwords are not changed from this edit form.{% endif %}</div>
+        <div class="wizard-stepper" id="staffWizardStepper">
+            <div class="wizard-pill active" data-wizard-pill="1"><span class="number">1</span><span>Personal</span></div>
+            <div class="wizard-pill" data-wizard-pill="2"><span class="number">2</span><span>Employment</span></div>
+            <div class="wizard-pill" data-wizard-pill="3"><span class="number">3</span><span>Account</span></div>
+            <div class="wizard-pill" data-wizard-pill="4"><span class="number">4</span><span>Review</span></div>
+        </div>
+        <div class="wizard-step active" data-wizard-step="1">
+            <div class="mb-3"><div class="small text-gold fw-bold text-uppercase">Step 1 of 4</div><h5 class="fw-bold mb-1">Personal information</h5><p class="text-muted small mb-0">Enter the staff member's contact and profile details.</p></div>
+            <div class="section-card"><div class="row g-3">
+                <div class="col-md-6"><label class="form-label required-label">First name</label><input name="first_name" class="form-control" autocomplete="given-name" value="{% if mode == 'edit' %}{{ staff.user.first_name }}{% endif %}" required></div>
+                <div class="col-md-6"><label class="form-label required-label">Last name</label><input name="last_name" class="form-control" autocomplete="family-name" value="{% if mode == 'edit' %}{{ staff.user.last_name }}{% endif %}" required></div>
+                <div class="col-md-6"><label class="form-label required-label">Email address</label><input type="email" name="email" class="form-control" autocomplete="email" value="{% if mode == 'edit' %}{{ staff.user.email }}{% endif %}" required><div class="help-note mt-1">Used for account notifications.</div></div>
+                <div class="col-md-6"><label class="form-label">Phone number</label><input name="phone_number" class="form-control" inputmode="tel" autocomplete="tel" placeholder="+233 XX XXX XXXX" value="{% if mode == 'edit' %}{{ staff.user.phone_number }}{% endif %}"></div>
+                <div class="col-md-6"><label class="form-label">Gender</label><select name="gender" class="form-select"><option value="">Select gender</option><option value="MALE" {% if mode == 'edit' and staff.user.gender == 'MALE' %}selected{% endif %}>Male</option><option value="FEMALE" {% if mode == 'edit' and staff.user.gender == 'FEMALE' %}selected{% endif %}>Female</option><option value="OTHER" {% if mode == 'edit' and staff.user.gender == 'OTHER' %}selected{% endif %}>Other</option><option value="PREFER_NOT_TO_SAY" {% if mode == 'edit' and staff.user.gender == 'PREFER_NOT_TO_SAY' %}selected{% endif %}>Prefer not to say</option></select></div>
+                <div class="col-md-6"><label class="form-label">Profile picture</label><input type="file" name="profile_picture" id="staffProfilePictureUpload" class="form-control" accept="image/jpeg,image/png,image/webp">{% if mode == 'edit' and staff.profile_picture %}<div class="help-note mt-1">Current photo: <a href="{{ staff.profile_picture.url }}" target="_blank" rel="noopener">View image</a></div>{% else %}<div class="help-note mt-1">Optional JPG, PNG or WebP image.</div>{% endif %}</div>
+            </div>
             {% if mode == 'create' %}
-                <strong>Adding a new staff member:</strong> Fill in the personal and employment details below.
-                The system will automatically generate a username and temporary password.
-                The staff member will receive an email with their login credentials.
-            {% else %}
-                <strong>Editing {{ staff.user.get_full_name }}:</strong> Update the staff member's personal and employment details.
-                Changes to the <strong>Staff Position</strong> will update the user's system role automatically.
-                Selecting a <strong>Staff Grade</strong> will show the associated salary and leave benefits.
+            <hr class="my-4">
+            <div class="d-flex align-items-start gap-3 mb-3"><div class="rounded-3 p-2 bg-body-tertiary"><i class="bi bi-person-bounding-box fs-4 text-gold"></i></div><div><h6 class="fw-bold mb-1">Optional face registration</h6><p class="help-note mb-0">Capture the staff member’s face now to enable face attendance. Duplicate faces are checked before the staff account is created.</p></div></div>
+            <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" name="register_face_during_creation" value="1" id="registerFaceDuringCreation"><label class="form-check-label fw-semibold" for="registerFaceDuringCreation">Register face during staff creation</label></div>
+            <div id="staffFaceCapturePanel" class="border rounded-3 p-3" hidden>
+              <div class="row g-3 align-items-start"><div class="col-lg-7"><div class="ratio ratio-4x3 bg-dark rounded-3 overflow-hidden"><video id="staffFaceVideo" autoplay playsinline muted class="w-100 h-100" style="object-fit:cover"></video><canvas id="staffFaceCanvas" hidden></canvas></div><img id="staffFacePreview" class="img-fluid rounded-3 mt-2" alt="Captured staff face preview" hidden></div><div class="col-lg-5"><div class="d-grid gap-2"><button type="button" class="btn btn-outline-secondary" id="staffFaceStartCamera"><i class="bi bi-camera-video me-1"></i>Start camera</button><button type="button" class="btn btn-gold" id="staffFaceCaptureButton" disabled><i class="bi bi-camera me-1"></i>Capture face</button><button type="button" class="btn btn-outline-secondary" id="staffFaceRetakeButton" hidden><i class="bi bi-arrow-clockwise me-1"></i>Retake</button></div><div class="form-check form-switch mt-3"><input class="form-check-input" type="checkbox" name="use_face_as_profile_picture" value="1" id="useFaceAsProfilePicture" checked><label class="form-check-label" for="useFaceAsProfilePicture">Use captured face as profile picture</label></div><p class="help-note mt-2">If you upload a separate profile picture above, that picture takes priority. Camera access requires HTTPS or localhost.</p><div id="staffFaceCaptureStatus" class="small mt-2" role="status" aria-live="polite"></div></div></div>
+              <input type="hidden" name="face_capture_image" id="staffFaceCaptureImage" value="">
+              <div class="form-check mt-3"><input class="form-check-input" type="checkbox" name="face_registration_consent" value="1" id="faceRegistrationConsent"><label class="form-check-label small" for="faceRegistrationConsent">I confirm the staff member has been informed and has agreed to face-based attendance registration.</label></div>
+            </div>
             {% endif %}
+            </div>
+            <div class="d-flex justify-content-end mt-4"><button type="button" class="btn btn-gold" data-wizard-next>Continue <i class="bi bi-arrow-right ms-1"></i></button></div>
         </div>
-
-        <!-- ============================================ -->
-        <!-- PERSONAL INFORMATION                         -->
-        <!-- ============================================ -->
-        <h6 class="fw-bold mb-3 pb-2 border-bottom">
-            <i class="bi bi-person-badge text-gold me-2"></i>Personal Information
-        </h6>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">First Name <span class="text-danger">*</span></label>
-                <input type="text" name="first_name" class="form-control form-control-sm"
-                       placeholder="Enter first name"
-                       value="{% if mode == 'edit' %}{{ staff.user.first_name }}{% endif %}" required>
-                <small class="text-muted">Used for display and system identification</small>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">Last Name <span class="text-danger">*</span></label>
-                <input type="text" name="last_name" class="form-control form-control-sm"
-                       placeholder="Enter last name"
-                       value="{% if mode == 'edit' %}{{ staff.user.last_name }}{% endif %}" required>
-                <small class="text-muted">Used for display and system identification</small>
-            </div>
+        <div class="wizard-step" data-wizard-step="2">
+            <div class="mb-3"><div class="small text-gold fw-bold text-uppercase">Step 2 of 4</div><h5 class="fw-bold mb-1">Employment & authorization</h5><p class="text-muted small mb-0">Set the role, department, grade and official report-card permissions.</p></div>
+            <div class="section-card mb-3"><div class="row g-3">
+                <div class="col-md-6"><label class="form-label required-label">Staff position</label><select name="staff_position" class="form-select" required><option value="">Select position</option>{% for value,label in staff_positions %}<option value="{{ value }}" {% if mode == 'edit' and staff.staff_position == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><div class="help-note mt-1">Determines the staff member's system role.</div></div>
+                <div class="col-md-6"><label class="form-label">Employment type</label><select name="employment_type" class="form-select"><option value="PERMANENT" {% if mode == 'edit' and staff.employment_type == 'PERMANENT' %}selected{% endif %}>Permanent</option><option value="CONTRACT" {% if mode == 'edit' and staff.employment_type == 'CONTRACT' %}selected{% endif %}>Contract</option><option value="TEMPORARY" {% if mode == 'edit' and staff.employment_type == 'TEMPORARY' %}selected{% endif %}>Temporary</option><option value="PART_TIME" {% if mode == 'edit' and staff.employment_type == 'PART_TIME' %}selected{% endif %}>Part-time</option><option value="INTERN" {% if mode == 'edit' and staff.employment_type == 'INTERN' %}selected{% endif %}>Intern</option></select></div>
+                <div class="col-md-6"><label class="form-label">Department</label><select name="department" class="form-select" id="departmentSelect"><option value="">Select department</option>{% for dept in departments %}<option value="{{ dept.id }}" {% if mode == 'edit' and staff.department_id == dept.id %}selected{% endif %}>{{ dept.name }}</option>{% endfor %}</select></div>
+                <div class="col-md-6"><label class="form-label">Staff grade</label><select name="staff_grade" class="form-select" id="staffGradeSelect"><option value="">Select grade</option>{% for grade in grades %}<option value="{{ grade.id }}" data-salary="{{ grade.base_salary }}" data-leave="{{ grade.annual_leave_days }}" data-sick="{{ grade.sick_leave_days }}" data-code="{{ grade.code }}" {% if mode == 'edit' and staff.staff_grade_id == grade.id %}selected{% endif %}>{{ grade.name }} ({{ grade.code }})</option>{% endfor %}</select></div>
+                <div class="col-md-6"><label class="form-label">Employment date</label><input type="date" name="employment_date" class="form-control" value="{% if mode == 'edit' %}{{ staff.employment_date|date:'Y-m-d' }}{% endif %}"></div>
+                <div class="col-12" id="gradeBenefitsPreview" style="{% if mode != 'edit' or not staff.staff_grade %}display:none;{% endif %}"><div class="rounded-3 p-3 bg-body-tertiary border"><div class="d-flex justify-content-between align-items-center mb-2"><strong class="small">Grade benefits preview</strong><span class="badge text-bg-light" id="gradeCodeDisplay">{% if mode == 'edit' and staff.staff_grade %}{{ staff.staff_grade.code }}{% else %}—{% endif %}</span></div><div class="row text-center"><div class="col-4"><small class="text-muted d-block">Salary</small><strong id="previewSalary">{% if mode == 'edit' and staff.staff_grade %}₵{{ staff.staff_grade.base_salary|floatformat:2 }}{% else %}₵0.00{% endif %}</strong></div><div class="col-4"><small class="text-muted d-block">Annual leave</small><strong id="previewLeave">{% if mode == 'edit' and staff.staff_grade %}{{ staff.staff_grade.annual_leave_days }}{% else %}0{% endif %}</strong></div><div class="col-4"><small class="text-muted d-block">Sick leave</small><strong id="previewSick">{% if mode == 'edit' and staff.staff_grade %}{{ staff.staff_grade.sick_leave_days }}{% else %}0{% endif %}</strong></div></div></div></div>
+            </div></div>
+            <div class="section-card"><h6 class="fw-bold mb-3"><i class="bi bi-pen text-gold me-2"></i>Report-card signature & authorization</h6><div class="row g-3">
+                <div class="col-md-7"><label class="form-label">Official signature image</label><input type="file" name="signature_image" class="form-control" accept="image/png,image/jpeg,image/webp">{% if mode == 'edit' and staff.signature_image %}<div class="help-note mt-1">A signature is already uploaded.</div><div class="form-check mt-2"><input class="form-check-input" type="checkbox" name="remove_signature" value="1" id="removeSignature"><label class="form-check-label" for="removeSignature">Remove current signature</label></div>{% else %}<div class="help-note mt-1">Optional; transparent PNG recommended.</div>{% endif %}<div class="form-check form-switch mt-2"><input class="form-check-input" type="checkbox" name="signature_is_active" value="1" id="signatureIsActive" {% if mode == 'create' or mode == 'edit' and staff.signature_is_active %}checked{% endif %}><label class="form-check-label" for="signatureIsActive">Use signature on report cards</label></div></div>
+                <div class="col-md-5"><div class="form-check form-switch mt-2"><input class="form-check-input" type="checkbox" name="is_headteacher" value="1" id="isHeadteacher" {% if mode == 'edit' and staff.is_headteacher %}checked{% endif %}><label class="form-check-label fw-semibold" for="isHeadteacher">Headteacher / Head of School</label></div><div class="help-note mt-1">Designates the official headteacher for report-card authorization.</div></div>
+            </div></div>
+            <div class="d-flex justify-content-between mt-4"><button type="button" class="btn btn-outline-secondary" data-wizard-prev><i class="bi bi-arrow-left me-1"></i>Previous</button><button type="button" class="btn btn-gold" data-wizard-next>Continue <i class="bi bi-arrow-right ms-1"></i></button></div>
         </div>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">Email <span class="text-danger">*</span></label>
-                <input type="email" name="email" class="form-control form-control-sm"
-                       placeholder="email@example.com"
-                       value="{% if mode == 'edit' %}{{ staff.user.email }}{% endif %}" required>
-                <small class="text-muted">Used for login and notifications</small>
+        <div class="wizard-step" data-wizard-step="3">
+            <div class="mb-3"><div class="small text-gold fw-bold text-uppercase">Step 3 of 4</div><h5 class="fw-bold mb-1">Account & password</h5><p class="text-muted small mb-0">Create secure login credentials for the staff member.</p></div>
+            {% if mode == 'create' %}
+            <div class="section-card"><div class="alert alert-info small"><i class="bi bi-shield-lock me-2"></i>The username will be generated automatically. The password you enter is stored only as a secure hash, not as readable text.</div><div class="mb-3"><label class="form-label">Username format</label><div class="form-control bg-body-tertiary" aria-readonly="true"><i class="bi bi-person-check text-gold me-2"></i>Generated from first initial + surname, with a number if needed</div></div>
+                <div class="row g-3"><div class="col-md-6"><label class="form-label required-label">Create password</label><div class="input-group"><input type="password" name="password" id="staffCreatePassword" class="form-control" minlength="8" autocomplete="new-password" required><button type="button" class="btn btn-outline-secondary" data-toggle-password="staffCreatePassword" aria-label="Show password"><i class="bi bi-eye"></i></button></div><div class="help-note mt-1">Use at least 8 characters; Django's password rules will also be applied.</div></div><div class="col-md-6"><label class="form-label required-label">Confirm password</label><div class="input-group"><input type="password" name="confirm_password" id="staffConfirmPassword" class="form-control" minlength="8" autocomplete="new-password" required><button type="button" class="btn btn-outline-secondary" data-toggle-password="staffConfirmPassword" aria-label="Show password"><i class="bi bi-eye"></i></button></div><div class="invalid-feedback" id="staffPasswordMatchError">Passwords must match.</div></div></div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">Phone Number</label>
-                <input type="text" name="phone_number" class="form-control form-control-sm"
-                       placeholder="+233 XX XXX XXXX"
-                       value="{% if mode == 'edit' %}{{ staff.user.phone_number }}{% endif %}">
-                <small class="text-muted">Optional: For emergency contact</small>
-            </div>
+            {% else %}<div class="section-card"><div class="d-flex gap-3 align-items-start"><i class="bi bi-shield-check fs-3 text-gold"></i><div><h6 class="fw-bold">Login security</h6><p class="text-muted small mb-1">Username: <strong>{{ staff.user.username }}</strong></p><p class="text-muted small mb-0">This form does not change the password. Use the account's password reset workflow if a reset is required.</p></div></div></div>{% endif %}
+            <div class="d-flex justify-content-between mt-4"><button type="button" class="btn btn-outline-secondary" data-wizard-prev><i class="bi bi-arrow-left me-1"></i>Previous</button><button type="button" class="btn btn-gold" data-wizard-next>Review details <i class="bi bi-arrow-right ms-1"></i></button></div>
         </div>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">Gender</label>
-                <select name="gender" class="form-select form-select-sm">
-                    <option value="">Select Gender</option>
-                    <option value="MALE" {% if mode == 'edit' and staff.user.gender == 'MALE' %}selected{% endif %}>Male</option>
-                    <option value="FEMALE" {% if mode == 'edit' and staff.user.gender == 'FEMALE' %}selected{% endif %}>Female</option>
-                    <option value="OTHER" {% if mode == 'edit' and staff.user.gender == 'OTHER' %}selected{% endif %}>Other</option>
-                    <option value="PREFER_NOT_TO_SAY" {% if mode == 'edit' and staff.user.gender == 'PREFER_NOT_TO_SAY' %}selected{% endif %}>Prefer not to say</option>
-                </select>
-            </div>
+        <div class="wizard-step" data-wizard-step="4">
+            <div class="mb-3"><div class="small text-gold fw-bold text-uppercase">Step 4 of 4</div><h5 class="fw-bold mb-1">Review & save</h5><p class="text-muted small mb-0">Check the information before saving the staff record.</p></div>
+            <div class="row g-3"><div class="col-md-6"><div class="section-card h-100"><h6 class="fw-bold"><i class="bi bi-person text-gold me-2"></i>Personal details</h6><div class="review-value" id="reviewStaffName">—</div><div class="text-muted small" id="reviewStaffContact">—</div></div></div><div class="col-md-6"><div class="section-card h-100"><h6 class="fw-bold"><i class="bi bi-briefcase text-gold me-2"></i>Employment</h6><div class="review-value" id="reviewStaffPosition">—</div><div class="text-muted small" id="reviewStaffDepartment">—</div><div class="text-muted small" id="reviewStaffGrade">—</div></div></div><div class="col-12"><div class="section-card"><h6 class="fw-bold"><i class="bi bi-shield-lock text-gold me-2"></i>Account</h6><div class="small" id="reviewStaffAccount">{% if mode == 'edit' %}Username: {{ staff.user.username }}{% else %}Username will be generated when the staff account is created.{% endif %}</div><div class="text-muted small">Password is never displayed in this review or returned by the server.</div></div></div></div>
+            <div class="d-flex justify-content-between mt-4"><button type="button" class="btn btn-outline-secondary" data-wizard-prev><i class="bi bi-arrow-left me-1"></i>Previous</button><button type="submit" class="btn btn-gold px-4"><i class="bi {% if mode == 'create' %}bi-person-plus-fill{% else %}bi-check2-circle{% endif %} me-1"></i>{% if mode == 'create' %}Create staff account{% else %}Save changes{% endif %}</button></div>
         </div>
-
-        <!-- Profile Picture -->
-        <div class="mb-3">
-            <label class="form-label fw-semibold small">Profile Picture</label>
-            <div class="d-flex align-items-center gap-3">
-                {% if mode == 'edit' and staff.profile_picture %}
-                    <img src="{{ staff.profile_picture.url }}" alt="Current Profile"
-                         class="rounded-circle border shadow-sm" style="width: 50px; height: 50px; object-fit: cover;">
-                {% else %}
-                    <div class="rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center border"
-                         style="width: 50px; height: 50px; color: var(--text-muted);">
-                        <i class="bi bi-person fs-3"></i>
-                    </div>
-                {% endif %}
-                <input type="file" name="profile_picture" class="form-control form-control-sm" accept="image/*">
-            </div>
-            <small class="text-muted">Upload a professional headshot (JPEG/PNG). Max 5MB.</small>
-        </div>
-
-        <!-- ============================================ -->
-        <!-- REPORT CARD AUTHORIZATION                   -->
-        <!-- ============================================ -->
-        <h6 class="fw-bold mb-3 pb-2 border-bottom">
-            <i class="bi bi-pen text-gold me-2"></i>Report Card Signature &amp; Authorization
-        </h6>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">Official Signature</label>
-                <div class="d-flex align-items-center gap-3">
-                    {% if mode == 'edit' and staff.signature_image %}
-                        <div class="border rounded bg-white p-1" style="width:150px;height:58px;display:flex;align-items:center;justify-content:center;">
-                            <img src="{{ staff.signature_image.url }}" alt="Current signature" style="max-width:140px;max-height:48px;object-fit:contain;">
-                        </div>
-                    {% else %}
-                        <div class="border rounded bg-light-subtle text-muted d-flex align-items-center justify-content-center" style="width:150px;height:58px;font-size:.75rem;">No signature</div>
-                    {% endif %}
-                    <input type="file" name="signature_image" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp">
-                </div>
-                <small class="text-muted">Upload once for automatic report-card signing. A transparent PNG is recommended.</small>
-                <div class="form-check form-switch mt-2">
-                    <input class="form-check-input" type="checkbox" name="signature_is_active" value="1" id="signatureIsActive" {% if mode == 'create' or mode == 'edit' and staff.signature_is_active %}checked{% endif %}>
-                    <label class="form-check-label small" for="signatureIsActive">Use this signature on report cards</label>
-                </div>
-                {% if mode == 'edit' and staff.signature_image %}
-                <div class="form-check mt-2">
-                    <input class="form-check-input" type="checkbox" name="remove_signature" value="1" id="removeSignature">
-                    <label class="form-check-label small" for="removeSignature">Remove current signature</label>
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="col-md-6">
-                <div class="form-check form-switch mt-md-2">
-                    <input class="form-check-input" type="checkbox" name="is_headteacher" value="1" id="isHeadteacher" {% if mode == 'edit' and staff.is_headteacher %}checked{% endif %}>
-                    <label class="form-check-label fw-semibold small" for="isHeadteacher">Headteacher / Head of School</label>
-                </div>
-                <small class="text-muted d-block mt-1">Designate this staff member as the school's official headteacher for report-card signatures. Existing School Administrators remain a fallback.</small>
-            </div>
-        </div>
-
-        <!-- ============================================ -->
-        <!-- EMPLOYMENT DETAILS                           -->
-        <!-- ============================================ -->
-        <h6 class="fw-bold mb-3 pb-2 border-bottom">
-            <i class="bi bi-briefcase text-gold me-2"></i>Employment Details
-        </h6>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">Staff Position <span class="text-danger">*</span></label>
-                <select name="staff_position" class="form-select form-select-sm" required>
-                    <option value="">Select Position</option>
-                    {% for value, label in staff_positions %}
-                        <option value="{{ value }}" {% if mode == 'edit' and staff.staff_position == value %}selected{% endif %}>
-                            {{ label }}
-                        </option>
-                    {% endfor %}
-                </select>
-                <small class="text-muted">Determines system role and permissions</small>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">Employment Type</label>
-                <select name="employment_type" class="form-select form-select-sm">
-                    <option value="PERMANENT" {% if mode == 'edit' and staff.employment_type == 'PERMANENT' %}selected{% endif %}>Permanent</option>
-                    <option value="CONTRACT" {% if mode == 'edit' and staff.employment_type == 'CONTRACT' %}selected{% endif %}>Contract</option>
-                    <option value="TEMPORARY" {% if mode == 'edit' and staff.employment_type == 'TEMPORARY' %}selected{% endif %}>Temporary</option>
-                    <option value="PART_TIME" {% if mode == 'edit' and staff.employment_type == 'PART_TIME' %}selected{% endif %}>Part-Time</option>
-                    <option value="INTERN" {% if mode == 'edit' and staff.employment_type == 'INTERN' %}selected{% endif %}>Intern</option>
-                </select>
-                <small class="text-muted">Affects payroll and benefits calculation</small>
-            </div>
-        </div>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">Department</label>
-                <select name="department" class="form-select form-select-sm" id="departmentSelect">
-                    <option value="">Select Department</option>
-                    {% for dept in departments %}
-                        <option value="{{ dept.id }}" {% if mode == 'edit' and staff.department.id == dept.id %}selected{% endif %}>
-                            {{ dept.name }}
-                        </option>
-                    {% endfor %}
-                </select>
-                <small class="text-muted">Organizational unit for reporting</small>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold small">Staff Grade</label>
-                <select name="staff_grade" class="form-select form-select-sm" id="staffGradeSelect">
-                    <option value="">Select Grade</option>
-                    {% for grade in grades %}
-                        <option value="{{ grade.id }}"
-                                data-salary="{{ grade.base_salary }}"
-                                data-leave="{{ grade.annual_leave_days }}"
-                                data-sick="{{ grade.sick_leave_days }}"
-                                data-code="{{ grade.code }}"
-                                data-name="{{ grade.name }}"
-                                {% if mode == 'edit' and staff.staff_grade.id == grade.id %}selected{% endif %}>
-                            {{ grade.name }} ({{ grade.code }})
-                        </option>
-                    {% endfor %}
-                </select>
-                <small class="text-muted">Determines salary scale and leave entitlements</small>
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label fw-semibold small">Employment Date</label>
-            <input type="date" name="employment_date" class="form-control form-control-sm"
-                   value="{% if mode == 'edit' %}{{ staff.employment_date|date:'Y-m-d' }}{% endif %}">
-            <small class="text-muted">Date the staff member started working</small>
-        </div>
-
-        <!-- ============================================ -->
-        <!-- GRADE BENEFITS PREVIEW                       -->
-        <!-- ============================================ -->
-        <div class="mb-0" id="gradeBenefitsPreview" style="{% if not mode == 'edit' or not staff.staff_grade %}display: none;{% endif %}">
-            <div class="bg-light rounded-3 p-3 border">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="fw-semibold small">
-                        <i class="bi bi-info-circle text-gold me-1"></i>Grade Benefits
-                    </span>
-                    <span class="badge badge-gold" id="gradeCodeDisplay">
-                        {% if mode == 'edit' and staff.staff_grade %}{{ staff.staff_grade.code }}{% else %}—{% endif %}
-                    </span>
-                </div>
-                <div class="row g-2">
-                    <div class="col-4">
-                        <div class="text-center">
-                            <small class="text-muted d-block">Salary</small>
-                            <span class="fw-bold" id="previewSalary">
-                                {% if mode == 'edit' and staff.staff_grade %}₵{{ staff.staff_grade.base_salary|floatformat:2 }}{% else %}₵0.00{% endif %}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-center">
-                            <small class="text-muted d-block">Annual Leave</small>
-                            <span class="fw-bold" id="previewLeave">
-                                {% if mode == 'edit' and staff.staff_grade %}{{ staff.staff_grade.annual_leave_days }}{% else %}0{% endif %}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-center">
-                            <small class="text-muted d-block">Sick Leave</small>
-                            <span class="fw-bold" id="previewSick">
-                                {% if mode == 'edit' and staff.staff_grade %}{{ staff.staff_grade.sick_leave_days }}{% else %}0{% endif %}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ============================================ -->
-    <!-- FORM ACTIONS                                -->
-    <!-- ============================================ -->
-    <div class="modal-footer border-0 px-4 pb-4">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="staffFormCancelBtn">
-            <i class="bi bi-x-circle me-1"></i>Cancel
-        </button>
-        <button type="submit" class="btn btn-gold">
-            <i class="bi {% if mode == 'create' %}bi-person-plus-fill{% else %}bi-pencil-square{% endif %} me-1"></i>
-            {% if mode == 'create' %}Add Staff{% else %}Save Changes{% endif %}
-        </button>
     </div>
 </form>
-
-<script>
-// ============================================
-// AUTO-PREVIEW GRADE BENEFITS
-// ============================================
-(function() {
-    const gradeSelect = document.getElementById('staffGradeSelect');
-    const previewSalary = document.getElementById('previewSalary');
-    const previewLeave = document.getElementById('previewLeave');
-    const previewSick = document.getElementById('previewSick');
-    const gradeCodeDisplay = document.getElementById('gradeCodeDisplay');
-    const gradeBenefitsPreview = document.getElementById('gradeBenefitsPreview');
-
-    function updateGradePreview() {
-        const selected = gradeSelect.options[gradeSelect.selectedIndex];
-        if (selected && selected.value) {
-            const salary = selected.getAttribute('data-salary') || '0';
-            const leave = selected.getAttribute('data-leave') || '0';
-            const sick = selected.getAttribute('data-sick') || '0';
-            const code = selected.getAttribute('data-code') || '';
-
-            previewSalary.textContent = '₵' + parseFloat(salary).toFixed(2);
-            previewLeave.textContent = leave;
-            previewSick.textContent = sick;
-            gradeCodeDisplay.textContent = code || '—';
-
-            gradeBenefitsPreview.style.display = 'block';
-        } else {
-            previewSalary.textContent = '₵0.00';
-            previewLeave.textContent = '0';
-            previewSick.textContent = '0';
-            gradeCodeDisplay.textContent = '—';
-            gradeBenefitsPreview.style.display = 'none';
-        }
-    }
-
-    if (gradeSelect) {
-        gradeSelect.addEventListener('change', updateGradePreview);
-        updateGradePreview();
-    }
-
-    // Handle cancel button
-    const cancelBtn = document.getElementById('staffFormCancelBtn');
-    if (cancelBtn) {
-        cancelBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const modal = document.getElementById('staffModal') || document.getElementById('editStaffModal');
-            if (modal) {
-                const modalInstance = bootstrap.Modal.getInstance(modal);
-                if (modalInstance) {
-                    modalInstance.hide();
-                }
-            }
-        });
-    }
-})();
-</script>

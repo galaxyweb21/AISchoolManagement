@@ -7,8 +7,10 @@ import string
 import calendar
 
 from attendance.face_service import FaceRecognitionService, FACE_RECOGNITION_AVAILABLE
+from attendance.staff_face_utils import DuplicateStaffFaceError, find_duplicate_staff_face, save_staff_face
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.password_validation import validate_password
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponse
@@ -459,7 +461,7 @@ def staff_create(request):
 
         return render(
             request,
-            "staff/staff_form_modal.html",
+            "staff/staff_form_page.html",
             {
                 "mode": "create",
                 "staff_positions": (
@@ -525,6 +527,12 @@ def staff_create(request):
         "",
     ).strip()
 
+    # Passwords are required only when creating a new staff account.
+    # Django stores a password hash through create_user(); never store or return
+    # the raw password in StaffProfile or the JSON response.
+    password = request.POST.get("password", "")
+    confirm_password = request.POST.get("confirm_password", "")
+
     profile_picture = request.FILES.get(
         "profile_picture"
     )
@@ -560,6 +568,29 @@ def staff_create(request):
         messages.error(request, error_msg)
         return redirect('staff:staff_list')
 
+    if not password or not confirm_password:
+        error_msg = "Create a password and confirm it before saving the staff account."
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({"success": False, "error": error_msg}, status=400)
+        messages.error(request, error_msg)
+        return redirect('staff:staff_list')
+
+    if password != confirm_password:
+        error_msg = "The passwords do not match."
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({"success": False, "error": error_msg}, status=400)
+        messages.error(request, error_msg)
+        return redirect('staff:staff_list')
+
+    try:
+        validate_password(password)
+    except ValidationError as exc:
+        error_msg = " ".join(exc.messages)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({"success": False, "error": error_msg}, status=400)
+        messages.error(request, error_msg)
+        return redirect('staff:staff_list')
+
     if staff_position not in dict(
         StaffProfile.STAFF_POSITION_CHOICES
     ):
@@ -575,6 +606,32 @@ def staff_create(request):
         messages.error(request, error_msg)
         return redirect('staff:staff_list')
 
+    # Optional face enrollment during staff creation. Validate the capture and
+    # reject duplicate identities before creating the user/staff database rows.
+    register_face_during_creation = request.POST.get("register_face_during_creation") == "1"
+    use_face_as_profile_picture = request.POST.get("use_face_as_profile_picture") == "1"
+    face_capture_image = request.POST.get("face_capture_image", "").strip()
+    face_encoding = None
+    if register_face_during_creation:
+        if request.POST.get("face_registration_consent") != "1":
+            messages.error(request, "Confirm that the staff member has been informed and agreed before registering face-based attendance.")
+            return redirect('staff:staff_create')
+        if not FACE_RECOGNITION_AVAILABLE:
+            error_msg = "Face recognition is not available on this server. Create the staff account without face registration and register the face later."
+            messages.error(request, error_msg)
+            return redirect('staff:staff_create')
+        if not face_capture_image:
+            messages.error(request, "You selected face registration but have not captured a face. Start the camera and capture the staff member's face, or turn off face registration.")
+            return redirect('staff:staff_create')
+        face_encoding, face_message = FaceRecognitionService.encode_face(face_capture_image)
+        if not face_encoding:
+            messages.error(request, face_message)
+            return redirect('staff:staff_create')
+        duplicate = find_duplicate_staff_face(school, face_encoding, tolerance=0.45)
+        if duplicate:
+            messages.error(request, "This face is already registered to {} ({}). No staff account was created. Verify the person or resolve the existing registration first.".format(duplicate.user.get_full_name() or duplicate.staff_id, duplicate.staff_id))
+            return redirect('staff:staff_create')
+
     try:
 
         with transaction.atomic():
@@ -586,10 +643,6 @@ def staff_create(request):
             username = _generate_username(
                 first_name,
                 last_name,
-            )
-
-            temp_password = (
-                _generate_temp_password()
             )
 
             staff_id = _generate_staff_id(
@@ -608,7 +661,7 @@ def staff_create(request):
 
             user = User.objects.create_user(
                 username=username,
-                password=temp_password,
+                password=password,
                 first_name=first_name,
                 last_name=last_name,
                 email=email,
@@ -665,13 +718,23 @@ def staff_create(request):
                 signature_uploaded_at=timezone.now() if signature_image else None,
                 signature_is_active=bool(signature_image) and signature_is_active,
                 is_headteacher=is_headteacher,
-                has_changed_password=False,
+                has_changed_password=True,
+                password_changed_at=timezone.now(),
                 employment_date=(
                     employment_date
                     if employment_date
                     else None
                 ),
             )
+
+            if register_face_during_creation and face_encoding:
+                # Keep the captured face as the reference image. The profile photo
+                # is replaced only when the administrator has opted in and has not
+                # explicitly uploaded a separate profile picture.
+                save_staff_face(
+                    staff, face_encoding, face_capture_image, request.user,
+                    use_as_profile_picture=use_face_as_profile_picture and not profile_picture,
+                )
 
             if is_headteacher:
                 StaffProfile.objects.filter(
@@ -711,9 +774,14 @@ def staff_create(request):
                 {
                     "success": True,
                     "message": success_msg,
+                    "id": str(staff.id),
                     "username": username,
-                    "password": temp_password,
                     "staff_id": staff_id,
+                    "full_name": user.get_full_name(),
+                    "email": user.email,
+                    "initials": ((first_name[:1] + last_name[:1]).upper()),
+                    "position": staff_position,
+                    "position_display": staff.get_staff_position_display(),
                     "grade": (
                         staff_grade.name
                         if staff_grade
@@ -722,9 +790,14 @@ def staff_create(request):
                     "teacher_profile_created": bool(
                         teacher
                     ),
+                    "face_registered": bool(register_face_during_creation and face_encoding),
                 }
             )
 
+        if register_face_during_creation and face_encoding:
+            success_msg += " Face registered successfully."
+            if use_face_as_profile_picture and not profile_picture:
+                success_msg += " The captured face was also used as the profile picture."
         messages.success(request, success_msg)
         return redirect('staff:staff_list')
 
@@ -755,6 +828,13 @@ def staff_detail(request, staff_id):
         id=staff_id,
         school=school
     )
+    try:
+        from attendance.models import StaffFaceProfile
+        has_face_registration = bool(staff.face_registered) or StaffFaceProfile.objects.filter(
+            school=school, staff=staff, is_active=True, encoding__isnull=False
+        ).exists()
+    except Exception:
+        has_face_registration = bool(staff.face_registered)
     is_default_password = not staff.has_changed_password
 
     # Only SUPER_ADMIN and SCHOOL_ADMIN can see login credentials
@@ -795,6 +875,7 @@ def staff_detail(request, staff_id):
 
     context = {
         'staff': staff,
+        'has_face_registration': has_face_registration,
         'is_default_password': is_default_password,
         'username': staff.user.username,
         'leaves': leaves,
@@ -823,42 +904,66 @@ def staff_register_face(request, staff_id):
     if not FACE_RECOGNITION_AVAILABLE:
         return JsonResponse({"success": False, "error": "Face recognition is not installed on this server. Manual staff attendance remains available. Install the optional face-recognition dependencies to enable face registration."}, status=503)
     try:
-        import json, base64, binascii
+        import json
         data = json.loads(request.body.decode("utf-8") or "{}")
     except (TypeError, ValueError, UnicodeDecodeError):
         return JsonResponse({"success": False, "error": "Invalid registration data."}, status=400)
     image_data = data.get("image")
     if not image_data:
         return JsonResponse({"success": False, "error": "No camera image was provided."}, status=400)
+    if str(data.get("face_registration_consent", "")).lower() not in {"1", "true", "on", "yes"}:
+        return JsonResponse({"success": False, "error": "Confirm that the staff member has been informed and agrees before registering face-based attendance."}, status=400)
     encoding, message = FaceRecognitionService.encode_face(image_data)
     if not encoding:
         return JsonResponse({"success": False, "error": message or "Could not register the face."}, status=400)
-    staff.face_encoding = encoding
-    staff.face_registered = True
-    staff.face_registered_at = timezone.now()
-    staff.face_registered_by = request.user
-    if isinstance(image_data, str) and "," in image_data:
-        try:
-            header, encoded = image_data.split(",", 1)
-            extension = "png" if "image/png" in header else "jpg"
-            staff.face_photo.save(
-                f"{staff.staff_id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.{extension}",
-                ContentFile(base64.b64decode(encoded)),
-                save=False,
-            )
-        except (ValueError, binascii.Error):
-            pass
+    duplicate = find_duplicate_staff_face(school, encoding, exclude_staff_id=staff.id, tolerance=0.45)
+    if duplicate:
+        return JsonResponse({
+            "success": False, "duplicate_face": True,
+            "error": "This face is already registered to {} ({}). Each staff member must have a unique face registration.".format(duplicate.user.get_full_name() or duplicate.staff_id, duplicate.staff_id),
+        }, status=409)
+    use_as_profile_picture = str(data.get("use_as_profile_picture", "")).lower() in {"1", "true", "on", "yes"}
+    try:
+        save_staff_face(staff, encoding, image_data, request.user, use_as_profile_picture=use_as_profile_picture)
+    except DuplicateStaffFaceError as exc:
+        return JsonResponse({"success": False, "duplicate_face": True, "error": str(exc)}, status=409)
+    except ValueError as exc:
+        return JsonResponse({"success": False, "error": str(exc)}, status=400)
+    message_text = "Staff face registered successfully."
+    if use_as_profile_picture:
+        message_text += " The captured image was also saved as the staff profile picture."
+    return JsonResponse({"success": True, "message": message_text, "staff_id": str(staff.id)})
+
+
+@login_required
+@require_POST
+def staff_unregister_face(request, staff_id):
+    """Remove a staff member's biometric registration so an admin can safely resolve old duplicates."""
+    if request.user.role not in ["SUPER_ADMIN", "SCHOOL_ADMIN"]:
+        return JsonResponse({"success": False, "error": "You do not have permission to remove staff face registrations."}, status=403)
+    school = request.user.school
+    staff = get_object_or_404(StaffProfile, id=staff_id, school=school, is_active=True)
+    if staff.face_photo:
+        staff.face_photo.delete(save=False)
+    staff.face_encoding = None
+    staff.face_registered = False
+    staff.face_registered_at = None
+    staff.face_registered_by = None
     staff.save(update_fields=["face_encoding", "face_registered", "face_registered_at", "face_registered_by", "face_photo"])
-    # Keep the old compatibility record synchronized when it exists.
     try:
         from attendance.models import StaffFaceProfile
-        StaffFaceProfile.objects.update_or_create(
-            school=school, staff=staff,
-            defaults={"encoding": encoding, "registered_at": staff.face_registered_at, "registered_by": request.user, "is_active": True},
-        )
+        profile = StaffFaceProfile.objects.filter(school=school, staff=staff).first()
+        if profile:
+            if profile.photo:
+                profile.photo.delete(save=False)
+            profile.encoding = None
+            profile.registered_at = None
+            profile.registered_by = None
+            profile.is_active = False
+            profile.save(update_fields=["encoding", "photo", "registered_at", "registered_by", "is_active"])
     except Exception:
-        pass
-    return JsonResponse({"success": True, "message": "Staff face registered successfully.", "staff_id": str(staff.id)})
+        logger.exception("Could not clear legacy face profile for staff %s", staff.pk)
+    return JsonResponse({"success": True, "message": "Face registration removed. You can now register the correct face for this staff member."})
 
 
 # ============================================================

@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_POST
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_http_methods
 import json
 from datetime import datetime, timedelta
@@ -50,6 +50,8 @@ from academics.services.ges_schedule import (
 def timetable_export_pdf(request, timetable_id):
     """Render a completed timetable as a PDF using the shared export context."""
     school = request.user.school
+    if str(getattr(request.user, 'role', '') or '').upper() == 'TEACHER':
+        return HttpResponse('Use the timetable page print option to print your permitted timetable view.', status=403)
     timetable = get_object_or_404(Timetable, id=timetable_id, school=school)
     if timetable.status in ('PENDING', 'RUNNING'):
         return JsonResponse({'error': 'The timetable is still being generated. Please wait and try again.'}, status=409)
@@ -73,6 +75,8 @@ def timetable_export_pdf(request, timetable_id):
 def timetable_export_word(request, timetable_id):
     """Export a completed timetable as a Word document using the shared context."""
     school = request.user.school
+    if str(getattr(request.user, 'role', '') or '').upper() == 'TEACHER':
+        return HttpResponse('Use the timetable page print option to print your permitted timetable view.', status=403)
     timetable = get_object_or_404(Timetable, id=timetable_id, school=school)
     if timetable.status in ('PENDING', 'RUNNING'):
         return JsonResponse({'error': 'The timetable is still being generated. Please wait and try again.'}, status=409)
@@ -189,19 +193,28 @@ def timetable_workspace(request):
         academic_year__school=school, academic_year__is_active=True, is_active=True
     ).first()
 
+    role = str(getattr(request.user, 'role', '') or '').upper()
     timetables = Timetable.objects.filter(school=school)
     if active_term:
         timetables = timetables.filter(academic_term=active_term)
+    # Teachers must never browse draft/failed timetables or the school's
+    # timetable-generation workspace. They only see the active published plan.
+    if role == 'TEACHER':
+        if active_term:
+            timetables = timetables.filter(is_published=True, status='COMPLETE')
+        else:
+            timetables = timetables.none()
     timetables = timetables.order_by('-generated_at')[:10]
 
-    readiness = TimetableReadiness(school, active_term).run()
+    readiness = TimetableReadiness(school, active_term).run() if role in {'SUPER_ADMIN', 'SCHOOL_ADMIN', 'HOD'} else None
 
     context = {
         'active_term': active_term,
         'timetables': timetables,
-        'can_generate': request.user.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'],
-        'can_manage_allocations': request.user.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'HOD'],
+        'can_generate': role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'],
+        'can_manage_allocations': role in ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'HOD'],
         'readiness': readiness,
+        'teacher_view_only': role == 'TEACHER',
     }
     return render(request, 'academics/timetable_workspace.html', context)
 
@@ -280,25 +293,51 @@ def generate_timetable(request):
 def timetable_detail(request, timetable_id):
     school = request.user.school
     timetable = get_object_or_404(Timetable, id=timetable_id, school=school)
+    if str(getattr(request.user, 'role', '') or '').upper() == 'TEACHER':
+        active_term = AcademicTerm.objects.filter(
+            academic_year__school=school, academic_year__is_active=True, is_active=True
+        ).first()
+        if (not active_term or timetable.academic_term_id != active_term.id
+                or not timetable.is_published or timetable.status != 'COMPLETE'):
+            return HttpResponseForbidden('Only the published timetable for the active term is available to teachers.')
 
     if timetable.status in ('PENDING', 'RUNNING'):
         return render(request, 'academics/timetable_generating.html', {'timetable': timetable})
 
-    entries_count = TimetableEntry._base_manager.filter(timetable=timetable).count()
+    role = str(getattr(request.user, 'role', '') or '').upper()
     entries = TimetableEntry._base_manager.filter(
         timetable=timetable
     ).select_related('school_class', 'subject', 'teacher__user', 'room', 'timeslot')
+    classes = SchoolClass.objects.filter(school=school).order_by('name')
+    teacher = None
+    homeroom_class_ids = []
+    if role == 'TEACHER':
+        from staff.models import Teacher
+        teacher = Teacher.objects.filter(user=request.user, school=school, is_active=True).first()
+        if not teacher:
+            return HttpResponseForbidden('Your account does not have an active teacher profile.')
+        from .models import TeacherClassAssignment
+        homeroom_class_ids = list(TeacherClassAssignment.objects.filter(
+            school=school, teacher=teacher, is_active=True
+        ).values_list('school_class_id', flat=True))
+        # Subject teachers see their own lessons. Homeroom/class teachers also
+        # see every lesson on the timetable for their assigned class(es).
+        entries = entries.filter(Q(teacher=teacher) | Q(school_class_id__in=homeroom_class_ids))
+        allowed_class_ids = set(entries.values_list('school_class_id', flat=True).distinct())
+        classes = classes.filter(id__in=allowed_class_ids)
+    entries_count = entries.count()
 
     days = ['MON', 'TUE', 'WED', 'THU', 'FRI']
     timeslots = list(TimeSlot.objects.filter(school=school, is_active=True).order_by('period_index', 'day'))
     period_indexes = sorted(set(s.period_index for s in timeslots))
-    classes = SchoolClass.objects.filter(school=school).order_by('name')
     selected_class_id = request.GET.get('class_id')
     selected_class_display = None
     if selected_class_id:
-        selected_class = SchoolClass.objects.filter(id=selected_class_id, school=school).first()
+        selected_class = classes.filter(id=selected_class_id).first()
         if selected_class:
             selected_class_display = selected_class.name
+        else:
+            selected_class_id = None
 
     # Multiple classes can legitimately occupy the same period/day.
     # Keep every lesson instead of overwriting earlier classes in the
@@ -390,6 +429,8 @@ def timetable_detail(request, timetable_id):
         'selected_class_display': selected_class_display,
         'entries_count': entries_count,
         'can_publish': request.user.role in ['SUPER_ADMIN', 'SCHOOL_ADMIN'],
+        'is_teacher_view': role == 'TEACHER',
+        'can_export_timetable': role != 'TEACHER',
         'schedule_config': config,
         'schedule_blocks': explicit_blocks,
     }

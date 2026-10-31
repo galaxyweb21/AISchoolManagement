@@ -531,4 +531,20 @@
         </section>
     </div>
 </div>
+
+<style>
+/* EduAI Phase 7: scoped timetable/academic presentation polish; no behavior changes. */
+.timetable-workspace, .schedule-page, .eduai-tt-setup { color: var(--bs-body-color, var(--text-primary, #26332f)); }
+.timetable-workspace .tw-hero, .timetable-workspace .tw-card, .schedule-page .section-card, .schedule-page .page-hero, .eduai-tt-setup .tt-hero, .eduai-tt-setup .tt-card { box-shadow: 0 .45rem 1.5rem rgba(28, 42, 36, .065); }
+.timetable-workspace .tw-hero, .timetable-workspace .tw-card, .schedule-page .section-card, .schedule-page .page-hero, .eduai-tt-setup .tt-hero, .eduai-tt-setup .tt-card { transition: box-shadow .18s ease, border-color .18s ease; }
+.timetable-workspace .tw-card:hover, .schedule-page .section-card:hover, .eduai-tt-setup .tt-card:hover { border-color: var(--eduai-signal, #2C7A6D); }
+.timetable-workspace :is(input, select, textarea, .form-control, .form-select), .schedule-page :is(input, select, textarea, .form-control, .form-select), .eduai-tt-setup :is(input, select, textarea, .form-control, .form-select) { border-radius: .7rem; min-height: 2.65rem; }
+.timetable-workspace :is(input, select, textarea, button, a, .form-control, .form-select):focus-visible, .schedule-page :is(input, select, textarea, button, a, .form-control, .form-select):focus-visible, .eduai-tt-setup :is(input, select, textarea, button, a, .form-control, .form-select):focus-visible { outline: 3px solid rgba(44, 122, 109, .28); outline-offset: 2px; }
+.timetable-workspace .table-responsive, .schedule-page .table-responsive, .eduai-tt-setup .table-responsive { border-radius: .85rem; }
+.timetable-workspace table, .schedule-page table, .eduai-tt-setup table { vertical-align: middle; }
+.timetable-workspace .btn, .schedule-page .btn, .eduai-tt-setup .btn { border-radius: .7rem; font-weight: 600; }
+@media (max-width: 767.98px) { .timetable-workspace .tw-hero, .schedule-page .page-hero, .eduai-tt-setup .tt-hero { padding: 1rem; border-radius: 1rem; } .timetable-workspace .tw-actions { justify-content: flex-start; } .timetable-workspace .tw-actions .btn, .schedule-page .btn, .eduai-tt-setup .btn { max-width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .timetable-workspace *, .schedule-page *, .eduai-tt-setup * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+</style>
+
 {% endblock %}

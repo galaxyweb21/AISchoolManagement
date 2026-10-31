@@ -120,6 +120,8 @@ INSTALLED_APPS = [
     'dashboard',
     'finance',
     'library',
+    'lesson_plans',
+    'online_exams',
 ]
 
 MIDDLEWARE = [
@@ -371,3 +373,4 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 900.0,
     },
 }
+

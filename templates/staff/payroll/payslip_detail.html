@@ -26,9 +26,31 @@
         border-color: #7a5917 !important;
         color: #fff !important;
     }
+
+/* Phase 11: scoped payroll presentation polish; no form, route or data logic changes. */
+.payroll-phase11 { color: var(--bs-body-color); min-width: 0; }
+.payroll-phase11 .card { border-color: var(--bs-border-color, #dee2e6); transition: box-shadow .18s ease, border-color .18s ease; }
+.payroll-phase11 .card.shadow-sm { box-shadow: 0 .25rem 1rem rgba(20, 32, 50, .055) !important; }
+.payroll-phase11 .table-responsive { border-radius: .75rem; }
+.payroll-phase11 .table { --bs-table-bg: transparent; margin-bottom: 0; vertical-align: middle; }
+.payroll-phase11 .table thead th { color: var(--bs-secondary-color, #6c757d); font-size: .72rem; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; white-space: nowrap; border-bottom-width: 1px; }
+.payroll-phase11 .table tbody td { padding-top: .8rem; padding-bottom: .8rem; }
+.payroll-phase11 .form-control, .payroll-phase11 .form-select { min-height: 2.55rem; border-color: var(--bs-border-color, #dee2e6); border-radius: .65rem; }
+.payroll-phase11 .form-control:focus, .payroll-phase11 .form-select:focus { border-color: var(--eduai-gold, #946B1C); box-shadow: 0 0 0 .2rem rgba(148, 107, 28, .14); }
+.payroll-phase11 .btn { border-radius: .65rem; font-weight: 600; }
+.payroll-phase11 .badge { font-weight: 650; letter-spacing: .01em; }
+.payroll-phase11 .pagination { flex-wrap: wrap; gap: .15rem; }
+.payroll-phase11 .pagination .page-link { border-radius: .5rem; }
+@media (max-width: 767.98px) {
+  .payroll-phase11 { padding-left: .75rem !important; padding-right: .75rem !important; }
+  .payroll-phase11 .card-body, .payroll-phase11 .p-4 { padding: 1rem !important; }
+  .payroll-phase11 .table { font-size: .875rem; }
+  .payroll-phase11 .d-flex.justify-content-between { align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) { .payroll-phase11 .card { transition: none; } }
 </style>
 
-<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4 payroll-phase11">
     <div class="p-4">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>

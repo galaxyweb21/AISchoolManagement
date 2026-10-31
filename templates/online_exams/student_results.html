@@ -1,0 +1,28 @@
+{% extends 'base/base.html' %}
+{% block content %}
+<div class="eduai-page-header mb-4">
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+    <div><div class="eduai-eyebrow-label">STUDENT PORTAL</div><h1 class="h3 mb-1">My exam results</h1><p class="text-muted mb-0">Review released marks and check when results are still being prepared.</p></div>
+    <a class="btn btn-outline-secondary" href="{% url 'online_exams:exam_list' %}"><i class="bi bi-arrow-left me-1"></i> My examinations</a>
+  </div>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6 col-xl-4"><div class="eduai-stat-card h-100"><span class="eduai-stat-label">Results released</span><strong>{{ released_count }}</strong><span class="small text-muted">Graded results available to you</span></div></div>
+  <div class="col-12 col-sm-6 col-xl-4"><div class="eduai-stat-card h-100"><span class="eduai-stat-label">Awaiting release</span><strong>{{ pending_count }}</strong><span class="small text-muted">Marks remain hidden until release</span></div></div>
+</div>
+<div class="card eduai-panel"><div class="card-body p-0">
+  {% if attempts %}
+    <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th class="ps-4">Examination</th><th>Submitted</th><th>Status</th><th>Score</th><th class="text-end pe-4">Review</th></tr></thead><tbody>
+    {% for attempt in attempts %}<tr>
+      <td class="ps-4"><div class="fw-semibold">{{ attempt.exam.title }}</div><div class="small text-muted">{{ attempt.exam.subject.name }} · {{ attempt.exam.academic_term }}</div></td>
+      <td><span class="small">{% if attempt.submitted_at %}{{ attempt.submitted_at|date:'d M Y, H:i' }}{% else %}—{% endif %}</span></td>
+      <td>{% if attempt.result_is_visible %}<span class="badge text-bg-success">Released</span>{% else %}<span class="badge text-bg-secondary">Awaiting release</span>{% endif %}</td>
+      <td>{% if attempt.result_is_visible %}<div class="fw-semibold">{{ attempt.score_awarded }} / {{ attempt.total_marks }}</div><div class="small text-muted">{{ attempt.percentage }}%</div>{% else %}<span class="small text-muted">Not available yet</span>{% endif %}</td>
+      <td class="text-end pe-4">{% if attempt.result_is_visible %}<a class="btn btn-sm btn-outline-primary" href="{% url 'online_exams:student_result_detail' attempt.exam_id %}">View result <i class="bi bi-arrow-right ms-1"></i></a>{% else %}<button class="btn btn-sm btn-outline-secondary" type="button" disabled>Unavailable</button>{% endif %}</td>
+    </tr>{% endfor %}
+    </tbody></table></div>
+  {% else %}<div class="eduai-empty-state"><i class="bi bi-clipboard-data"></i><h2 class="h6">No submitted examinations yet</h2><p class="text-muted mb-3">When you submit an online examination, its result status will appear here.</p><a class="btn btn-primary" href="{% url 'online_exams:exam_list' %}">Browse examinations</a></div>{% endif %}
+</div></div>
+{% if page_obj.paginator.num_pages > 1 %}<nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3" aria-label="Results pagination"><span class="small text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} attempts</span><ul class="pagination pagination-sm mb-0">{% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>{% else %}<li class="page-item disabled"><span class="page-link">Previous</span></li>{% endif %}{% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>{% else %}<li class="page-item disabled"><span class="page-link">Next</span></li>{% endif %}</ul></nav>{% endif %}
+<p class="small text-muted mt-3 mb-0">Pass/fail indicator uses a 50% reference threshold for guidance; follow your school's official grading policy.</p>
+{% endblock %}

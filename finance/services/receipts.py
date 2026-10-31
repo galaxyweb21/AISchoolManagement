@@ -7,9 +7,9 @@ Payment receipt generation and delivery.
 - send_receipt_notifications(payment) -> emails the PDF to the parent and texts
                                           a confirmation, using the existing
                                           communication.NotificationService
-- send_receipt_notifications_async(payment) -> same, fired on a background
-                                                thread so it never slows down
-                                                the payment API response
+- send_receipt_notifications_async(payment) -> backward-compatible name;
+                                                delivery is attempted synchronously after
+                                                the payment transaction commits
 
 Everything here is best-effort: a missing parent, a missing email/phone, or
 an SMS/email provider failure is logged and returned in the result dict --
@@ -19,7 +19,6 @@ failure for the person recording it.
 import io
 import logging
 import os
-import threading
 from decimal import Decimal
 
 from django.conf import settings
@@ -171,7 +170,7 @@ def send_receipt_notifications(payment, send_email=True, send_sms=True, create_i
     from communication.services import NotificationService
     from communication.models import NotificationCategory, NotificationChannel
 
-    result = {'email_sent': False, 'sms_sent': False, 'reason': None}
+    result = {'email_sent': False, 'sms_sent': False, 'reason': None, 'email_error': None, 'sms_error': None}
 
     invoice = payment.invoice
     student = invoice.student
@@ -179,6 +178,7 @@ def send_receipt_notifications(payment, send_email=True, send_sms=True, create_i
 
     if not parent:
         result['reason'] = 'No parent/guardian is linked to this student, so no receipt could be sent.'
+        result['email_error'] = result['reason'] if send_email else None
         logger.info(f"Receipt: no parent linked to student {student.id} -- skipping notification.")
         return result
 
@@ -198,8 +198,8 @@ def send_receipt_notifications(payment, send_email=True, send_sms=True, create_i
         f"Thank you.\n{invoice.school.name}"
     )
 
-    recipient_email = NotificationService.get_recipient_email(parent) if send_email else None
-    recipient_phone = NotificationService.get_recipient_phone(parent) if send_sms else None
+    recipient_email = (NotificationService.get_recipient_email(parent) or '').strip() if send_email else None
+    recipient_phone = (NotificationService.get_recipient_phone(parent) or '').strip() if send_sms else None
 
     # ---- Email, with the PDF attached ----
     if send_email:
@@ -220,11 +220,23 @@ def send_receipt_notifications(payment, send_email=True, send_sms=True, create_i
                     recipient_email, subject, message,
                     html_message=html_message,
                     attachments=attachments,
+                    raise_on_error=True,
                 ))
+                if not result['email_sent']:
+                    result['email_error'] = (
+                        'The configured email backend did not accept the message. '
+                        'Run `python manage.py email_smoke_test recipient@example.com` and check the terminal logs.'
+                    )
+                    logger.error(
+                        'Receipt email delivery failed for payment %s to configured parent email.',
+                        payment.id,
+                    )
             except Exception as exc:
-                logger.error(f"Receipt: email failed for payment {payment.id}: {exc}")
+                result['email_error'] = str(exc)[:500]
+                logger.exception("Receipt: email failed for payment %s", payment.id)
         else:
-            logger.info(f"Receipt: parent of student {student.id} has no email on file -- skipping receipt email.")
+            result['email_error'] = 'The parent/guardian account has no email address.'
+            logger.warning("Receipt: parent of student %s has no email on file; payment=%s", student.id, payment.id)
 
     # ---- SMS confirmation ----
     if send_sms:
@@ -236,17 +248,22 @@ def send_receipt_notifications(payment, send_email=True, send_sms=True, create_i
             )
             try:
                 result['sms_sent'] = bool(NotificationService.send_sms(recipient_phone, sms_text[:160]))
+                if not result['sms_sent']:
+                    result['sms_error'] = 'The SMS provider did not confirm delivery.'
             except Exception as exc:
-                logger.error(f"Receipt: SMS failed for payment {payment.id}: {exc}")
+                result['sms_error'] = str(exc)[:500]
+                logger.exception("Receipt: SMS failed for payment %s", payment.id)
         else:
-            logger.info(f"Receipt: parent of student {student.id} has no phone on file -- skipping receipt SMS.")
+            result['sms_error'] = 'The parent/guardian account has no phone number.'
+            logger.info("Receipt: parent of student %s has no phone on file; payment=%s", student.id, payment.id)
 
-    if send_email and send_sms and not recipient_email and not recipient_phone:
-        result['reason'] = "The parent/guardian on file has no email or phone number to send a receipt to."
-    elif send_email and not send_sms and not recipient_email:
-        result['reason'] = "The parent/guardian on file has no email address to send a receipt to."
-    elif send_sms and not send_email and not recipient_phone:
-        result['reason'] = "The parent/guardian on file has no phone number to send a receipt to."
+    failures = []
+    if send_email and not result['email_sent']:
+        failures.append(result['email_error'] or 'Receipt email could not be delivered.')
+    if send_sms and not result['sms_sent']:
+        failures.append(result['sms_error'] or 'Receipt SMS could not be delivered.')
+    if failures:
+        result['reason'] = ' '.join(failures)
 
     # Optional for resend flows. The payment-recording flow creates the
     # in-app notification synchronously after the accounting transaction commits.
@@ -260,7 +277,11 @@ def send_receipt_notifications(payment, send_email=True, send_sms=True, create_i
 
 
 def send_receipt_notifications_async(payment):
-    """Fire-and-forget email/SMS receipt delivery. In-app is handled synchronously."""
-    thread = threading.Thread(target=send_receipt_notifications, args=(payment,), kwargs={'create_in_app': False})
-    thread.daemon = True
-    thread.start()
+    """Backward-compatible wrapper that delivers before returning.
+
+    A daemon thread can be terminated when a web worker is recycled (common on
+    hosted platforms), silently dropping payment receipts. Callers that need a
+    reliable delivery attempt use this wrapper; accounting has already committed
+    before it is called. The result exposes failures to the payment workflow.
+    """
+    return send_receipt_notifications(payment, create_in_app=False)

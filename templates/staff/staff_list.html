@@ -1,9 +1,11 @@
 <!-- staff_list.html -->
 {% extends 'base/base.html' %}
+{% load static %}
 
 {% block page_title %}Staff Management{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{% static 'css/eduai-core-lists-polish.css' %}?v=1.0">
 
 <style>
     .text-gold { color: var(--eduai-gold, #946B1C) !important; }
@@ -148,10 +150,9 @@
                 <h5 class="fw-bold mb-1"><i class="bi bi-people-fill text-gold me-2"></i>Staff</h5>
                 <p class="text-muted mb-0">Manage teachers, administrators, and support staff.</p>
             </div>
-            <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#staffModal"
-                    data-action="create" data-url="{% url 'staff:staff_create' %}">
+            <a href="{% url 'staff:staff_create' %}" class="btn btn-gold">
                 <i class="bi bi-plus-lg me-1"></i>Add Staff
-            </button>
+            </a>
         </div>
     </div>
 </div>
@@ -565,7 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!url || !staffId) return;
             const actionModalInstance = bootstrap.Modal.getInstance(document.getElementById('staffActionModal'));
             if (actionModalInstance) actionModalInstance.hide();
-            openStaffModal('edit', url, staffId);
+            window.location.href = url;
         });
     }
 
@@ -625,11 +626,108 @@ document.addEventListener('DOMContentLoaded', function() {
         new bootstrap.Modal(modal).show();
     }
 
+    function initializeStaffWizard(form) {
+        if (!form || !form.classList.contains('staff-wizard')) return;
+        const steps = Array.from(form.querySelectorAll('[data-wizard-step]'));
+        const pills = Array.from(form.querySelectorAll('[data-wizard-pill]'));
+        let current = 1;
+        const maxStep = steps.length || 4;
+        const field = name => form.elements[name];
+        const val = name => (field(name)?.value || '').trim();
+
+        function showStep(number) {
+            current = Math.max(1, Math.min(maxStep, number));
+            steps.forEach(el => el.classList.toggle('active', Number(el.dataset.wizardStep) === current));
+            pills.forEach(el => {
+                const n = Number(el.dataset.wizardPill);
+                el.classList.toggle('active', n === current);
+                el.classList.toggle('completed', n < current);
+            });
+            if (current === 4) buildReview();
+            const body = form.closest('.modal-body');
+            if (body) body.scrollTop = 0;
+        }
+        function validateCurrentStep() {
+            let ok = true;
+            const active = steps.find(el => Number(el.dataset.wizardStep) === current);
+            if (!active) return true;
+            active.querySelectorAll('[required]').forEach(input => {
+                if (input.type === 'file') return;
+                const empty = !String(input.value || '').trim();
+                const invalidEmail = input.type === 'email' && input.value && !input.checkValidity();
+                input.classList.toggle('is-invalid', empty || invalidEmail);
+                if (empty || invalidEmail) ok = false;
+            });
+            if (current === 3 && field('password')) {
+                const password = val('password');
+                const confirm = val('confirm_password');
+                const matchError = form.querySelector('#staffPasswordMatchError');
+                const mismatch = password !== confirm;
+                field('confirm_password').classList.toggle('is-invalid', mismatch);
+                if (matchError) matchError.style.display = mismatch ? 'block' : 'none';
+                if (mismatch) ok = false;
+            }
+            if (!ok) {
+                const first = active.querySelector('.is-invalid');
+                if (first) first.focus();
+            }
+            return ok;
+        }
+        function textOf(name) {
+            const el = field(name);
+            if (!el) return '—';
+            if (el.tagName === 'SELECT') return el.selectedOptions[0]?.textContent.trim() || '—';
+            return val(name) || '—';
+        }
+        function buildReview() {
+            const put = (id, text) => { const el = form.querySelector('#' + id); if (el) el.textContent = text || '—'; };
+            put('reviewStaffName', `${val('first_name')} ${val('last_name')}`.trim() || '—');
+            put('reviewStaffContact', [val('email'), val('phone_number')].filter(Boolean).join(' · ') || 'No contact details');
+            put('reviewStaffPosition', textOf('staff_position'));
+            put('reviewStaffDepartment', 'Department: ' + textOf('department'));
+            put('reviewStaffGrade', 'Grade: ' + textOf('staff_grade'));
+            if (field('password')) put('reviewStaffAccount', 'Username will be generated automatically. A password has been provided.');
+        }
+        form.querySelectorAll('[data-wizard-next]').forEach(btn => btn.addEventListener('click', () => {
+            if (validateCurrentStep()) showStep(current + 1);
+        }));
+        form.querySelectorAll('[data-wizard-prev]').forEach(btn => btn.addEventListener('click', () => showStep(current - 1)));
+        pills.forEach(pill => pill.addEventListener('click', () => {
+            const target = Number(pill.dataset.wizardPill);
+            if (target < current) showStep(target);
+        }));
+        form.querySelectorAll('[data-toggle-password]').forEach(btn => btn.addEventListener('click', () => {
+            const input = form.querySelector('#' + btn.dataset.togglePassword);
+            if (!input) return;
+            input.type = input.type === 'password' ? 'text' : 'password';
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = input.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+        }));
+        const gradeSelect = form.querySelector('#staffGradeSelect');
+        if (gradeSelect) {
+            const updateGrade = () => {
+                const option = gradeSelect.selectedOptions[0];
+                const container = form.querySelector('#gradeBenefitsPreview');
+                const set = (id, value) => { const el = form.querySelector('#' + id); if (el) el.textContent = value; };
+                if (!option || !option.value) { if (container) container.style.display = 'none'; return; }
+                set('previewSalary', '₵' + (parseFloat(option.dataset.salary || '0') || 0).toFixed(2));
+                set('previewLeave', option.dataset.leave || '0');
+                set('previewSick', option.dataset.sick || '0');
+                set('gradeCodeDisplay', option.dataset.code || '—');
+                if (container) container.style.display = 'block';
+            };
+            gradeSelect.addEventListener('change', updateGrade);
+            updateGrade();
+        }
+        showStep(1);
+    }
+
     function bindFormSubmit(action, staffId) {
         const form = modalContent.querySelector('form');
         if (!form) return;
         const newForm = form.cloneNode(true);
         form.parentNode.replaceChild(newForm, form);
+        initializeStaffWizard(newForm);
 
         newForm.addEventListener('submit', function(e) {
             e.preventDefault();

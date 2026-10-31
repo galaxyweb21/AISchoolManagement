@@ -809,6 +809,11 @@
             </a>
         </li>
         <li>
+            <a href="{% url 'attendance:staff_attendance_self_service' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_attendance_self_service' %}active{% endif %}">
+                <i class="bi bi-calendar-check"></i><span class="eduai-label">My Attendance</span>
+            </a>
+        </li>
+        <li>
             <a href="{% url 'attendance:staff_attendance_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_attendance_dashboard' %}active{% endif %}">
                 <i class="bi bi-person-check-fill"></i>
                 <span class="eduai-label">Staff Attendance</span>
@@ -984,6 +989,7 @@
         <ul>
             <li><a href="{% url 'school:school_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'school_dashboard' %}active{% endif %}"><i class="bi bi-building"></i><span class="eduai-label">School Settings</span></a></li>
             <li><a href="{% url 'core:activity_log' %}" id="eduaiActivityLogMenu" data-guide-target="activity-log" class="nav-link {% if request.resolver_match.url_name == 'activity_log' %}active{% endif %}"><i class="bi bi-clock-history"></i><span class="eduai-label">Activity Log</span><span class="eduai-badge eduai-badge-hr">Audit</span></a></li>
+            <li><a href="{% url 'online_exams:exam_list' %}" class="nav-link {% if request.resolver_match.namespace == 'online_exams' %}active{% endif %}"><i class="bi bi-laptop"></i><span class="eduai-label">Online Examinations</span></a></li>
         </ul>
         {% endif %}
 
@@ -1010,11 +1016,19 @@
             {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}
             <li><a href="{% url 'academics:promotion_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'promotion_dashboard' or request.resolver_match.url_name == 'promotion_batch_list' or request.resolver_match.url_name == 'promotion_batch_detail' or request.resolver_match.url_name == 'promotion_rule_list' %}active{% endif %}"><i class="bi bi-arrow-up-circle"></i><span class="eduai-label">Promotions</span></a></li>
             {% endif %}
-            <li><a href="{% url 'attendance:attendance_tracker' %}" id="eduaiAttendanceMenu" data-guide-target="attendance" data-eduai-tour="attendance-menu" class="nav-link {% if request.resolver_match.url_name == 'attendance_tracker' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">Attendance</span></a></li>
             {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,HOD' %}
             <li><a href="{% url 'assessments:grading_portal' %}" id="eduaiGradeEntryMenu" data-guide-target="grade-entry" data-eduai-tour="grade-entry-menu" class="nav-link {% if request.resolver_match.url_name == 'grading_portal' %}active{% endif %}"><i class="bi bi-pencil-square"></i><span class="eduai-label">Grade Entry</span></a></li>
             <li><a href="{% url 'assessments:terminal_results_register' %}" id="eduaiTerminalResultsMenu" data-guide-target="terminal-results" data-eduai-tour="terminal-results-menu" class="nav-link {% if request.resolver_match.url_name == 'terminal_results_register' or request.resolver_match.url_name == 'terminal_student_report' %}active{% endif %}"><i class="bi bi-table"></i><span class="eduai-label">Terminal Results</span></a></li>
             {% endif %}
+        </ul>
+        {% endif %}
+
+        {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow"><i class="bi bi-fingerprint me-1"></i> Attendance &amp; Biometrics</div>
+        <ul>
+            <li><a href="{% url 'attendance:attendance_tracker' %}" id="eduaiAttendanceMenu" data-guide-target="attendance" data-eduai-tour="attendance-menu" class="nav-link {% if request.resolver_match.url_name == 'attendance_tracker' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">Manual Attendance</span></a></li>
+            <li><a href="{% url 'attendance:face_attendance_kiosk' %}" class="nav-link {% if request.resolver_match.url_name == 'face_attendance_kiosk' %}active{% endif %}"><i class="bi bi-camera-video"></i><span class="eduai-label">Face Recognition Attendance</span></a></li>
         </ul>
         {% endif %}
 
@@ -1035,6 +1049,19 @@
             <li><a href="{% url 'academics:timetable_workspace' %}" class="nav-link {% if request.resolver_match.url_name == 'timetable_workspace' %}active{% endif %}"><i class="bi bi-magic"></i><span class="eduai-label">AI Timetabler</span></a></li>
         </ul>
         {% endif %}
+
+
+        <!-- ============================================= -->
+        <!-- TEACHER LESSON NOTES                           -->
+        <!-- ============================================= -->
+        {% if user.role in 'SUPER_ADMIN,SCHOOL_ADMIN,HOD,TEACHER' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow"><i class="bi bi-journal-check me-1"></i> Teaching & Learning</div>
+        <ul>
+            <li><a href="{% url 'lesson_plans:lesson_plan_list' %}" class="nav-link {% if request.resolver_match.namespace == 'lesson_plans' %}active{% endif %}"><i class="bi bi-journal-text"></i><span class="eduai-label">Weekly Lesson Notes</span></a></li>
+        </ul>
+        {% endif %}
+
 
         <!-- ============================================= -->
         <!-- FINANCE - Admin & BURSAR                      -->
@@ -1094,8 +1121,34 @@
             <li><a href="{% url 'students:student_list' %}" data-eduai-tour="students-menu" class="nav-link {% if request.resolver_match.url_name == 'student_list' %}active{% endif %}"><i class="bi bi-people"></i><span class="eduai-label">Students</span></a></li>
             <li><a href="{% url 'assessments:grading_portal' %}" id="eduaiGradeEntryMenu" data-guide-target="grade-entry" data-eduai-tour="grade-entry-menu" class="nav-link {% if request.resolver_match.url_name == 'grading_portal' %}active{% endif %}"><i class="bi bi-pencil-square"></i><span class="eduai-label">Grade Entry</span></a></li>
             <li><a href="{% url 'assessments:terminal_results_register' %}" id="eduaiTerminalResultsMenu" data-guide-target="terminal-results" data-eduai-tour="terminal-results-menu" class="nav-link {% if request.resolver_match.url_name == 'terminal_results_register' or request.resolver_match.url_name == 'terminal_student_report' %}active{% endif %}"><i class="bi bi-table"></i><span class="eduai-label">Terminal Results</span></a></li>
-            <li><a href="{% url 'attendance:attendance_tracker' %}" id="eduaiAttendanceMenu" data-guide-target="attendance" data-eduai-tour="attendance-menu" class="nav-link {% if request.resolver_match.url_name == 'attendance_tracker' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">Attendance</span></a></li>
-            <li><a href="{% url 'academics:timetable_workspace' %}" class="nav-link {% if request.resolver_match.url_name == 'timetable_workspace' %}active{% endif %}"><i class="bi bi-magic"></i><span class="eduai-label">Timetabler</span></a></li>
+            <li><a href="{% url 'attendance:attendance_tracker' %}" id="eduaiAttendanceMenu" data-guide-target="attendance" data-eduai-tour="attendance-menu" class="nav-link {% if request.resolver_match.url_name == 'attendance_tracker' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">Manual Attendance</span></a></li>
+            <li><a href="{% url 'academics:timetable_workspace' %}" class="nav-link {% if request.resolver_match.url_name == 'timetable_workspace' %}active{% endif %}"><i class="bi bi-calendar-week"></i><span class="eduai-label">My Timetable</span></a></li>
+            <li><a href="{% url 'attendance:staff_attendance_self_service' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_attendance_self_service' %}active{% endif %}"><i class="bi bi-person-check"></i><span class="eduai-label">My Attendance</span></a></li>
+            <li><a href="{% url 'online_exams:exam_list' %}" class="nav-link {% if request.resolver_match.namespace == 'online_exams' %}active{% endif %}"><i class="bi bi-laptop"></i><span class="eduai-label">Online Examinations</span></a></li>
+        </ul>
+        {% endif %}
+
+        {% if user.role == 'SECRETARY' or user.role == 'REGISTRAR' or user.role == 'HOD' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow"><i class="bi bi-person-check me-1"></i> My Work</div>
+        <ul><li><a href="{% url 'attendance:staff_attendance_self_service' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_attendance_self_service' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">My Attendance</span></a></li></ul>
+        {% endif %}
+
+        {% if user.role == 'ATTENDANCE_OFFICER' %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow"><i class="bi bi-person-check me-1"></i> Attendance Desk</div>
+        <ul>
+            <li><a href="{% url 'attendance:staff_attendance_self_service' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_attendance_self_service' %}active{% endif %}"><i class="bi bi-person-check"></i><span class="eduai-label">My Attendance</span></a></li>
+            <li><a href="{% url 'attendance:staff_attendance_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_attendance_dashboard' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">Staff Attendance</span></a></li>
+            <li><a href="{% url 'attendance:staff_attendance_reports' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_attendance_reports' %}active{% endif %}"><i class="bi bi-file-earmark-bar-graph"></i><span class="eduai-label">Attendance Reports</span></a></li>
+        </ul>
+        {% endif %}
+
+        {% if user.staff_profile.is_active %}
+        <div class="sidebar-divider"></div>
+        <div class="eduai-eyebrow"><i class="bi bi-person-workspace me-1"></i> My Work</div>
+        <ul>
+            <li><a href="{% url 'staff:leave_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'leave_dashboard' %}active{% endif %}"><i class="bi bi-calendar-heart"></i><span class="eduai-label">My Leave</span></a></li>
         </ul>
         {% endif %}
 
@@ -1124,6 +1177,7 @@
             <li><a href="{% url 'students:my_grades' %}" class="nav-link {% if request.resolver_match.url_name == 'my_grades' %}active{% endif %}"><i class="bi bi-journal-check"></i><span class="eduai-label">My Grades</span></a></li>
             <li><a href="{% url 'students:my_attendance' %}" class="nav-link {% if request.resolver_match.url_name == 'my_attendance' %}active{% endif %}"><i class="bi bi-calendar-check"></i><span class="eduai-label">My Attendance</span></a></li>
             <li><a href="{% url 'students:my_fees' %}" class="nav-link {% if request.resolver_match.url_name == 'my_fees' %}active{% endif %}"><i class="bi bi-wallet2"></i><span class="eduai-label">My Fees</span></a></li>
+            <li><a href="{% url 'online_exams:exam_list' %}" class="nav-link {% if request.resolver_match.namespace == 'online_exams' %}active{% endif %}"><i class="bi bi-laptop"></i><span class="eduai-label">Online Examinations</span></a></li>
         </ul>
         {% endif %}
     </nav>

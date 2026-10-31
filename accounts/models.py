@@ -17,6 +17,7 @@ class User(AbstractUser):
         ('REGISTRAR', 'Registrar'),
         ('HOD', 'Head of Department'),
         ('SECRETARY', 'Secretary'),
+        ('ATTENDANCE_OFFICER', 'Attendance Officer'),
         ('TEACHER', 'Teacher'),
         ('STUDENT', 'Student'),
         ('PARENT', 'Parent'),

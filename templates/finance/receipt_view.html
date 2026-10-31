@@ -212,4 +212,34 @@
         color: #0c5460 !important;
     }
 </style>
+
+<style>
+/* EduAI Phase 9 — receipt screen presentation only */
+.receipt-container { width: min(100%, 860px); margin-inline: auto; border: 1px solid var(--bs-border-color, #e5e7eb); box-shadow: 0 14px 38px rgba(16,24,40,.08); }
+.receipt-header { border-bottom-color: var(--eduai-gold, #946B1C); }
+.receipt-header h2 { letter-spacing: -.025em; }
+.receipt-details { border-radius: .85rem; }
+.receipt-details table { border-collapse: separate; border-spacing: 0; }
+.receipt-details td { padding: .7rem .25rem; border-bottom: 1px solid var(--bs-border-color, #e5e7eb); }
+.receipt-details tr:last-child td { border-bottom: 0; }
+.receipt-details .label { color: var(--bs-secondary-color, #667085); }
+.amount-large { border: 1px solid rgba(148,107,28,.18); border-radius: .9rem; background: var(--eduai-gold-soft, rgba(148,107,28,.10)); overflow-wrap: anywhere; }
+.receipt-container .btn { border-radius: .65rem; font-weight: 600; }
+.receipt-container .btn:focus-visible { outline: 3px solid rgba(44,122,109,.24); outline-offset: 2px; box-shadow: none; }
+.receipt-container .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; }
+[data-bs-theme="dark"] .receipt-container { background: var(--bs-body-bg, #212529); color: var(--bs-body-color, #f8f9fa); border-color: var(--bs-border-color, #495057); }
+[data-bs-theme="dark"] .receipt-details .label { color: var(--bs-secondary-color, #adb5bd); }
+[data-bs-theme="dark"] .amount-large { background: rgba(148,107,28,.18); }
+@media (max-width: 575.98px) {
+  .receipt-container { padding: 1.1rem !important; border-radius: .8rem; }
+  .receipt-header { padding-bottom: 1rem; margin-bottom: 1rem; }
+  .amount-large { font-size: 1.45rem; padding: 1rem !important; }
+  .receipt-container .actions .btn { flex: 1 1 100%; }
+}
+@media print {
+  .receipt-container { width: 100%; max-width: none; border: 0; box-shadow: none; padding: 0 !important; }
+  .receipt-container .actions, .receipt-container .no-print { display: none !important; }
+}
+</style>
+
 {% endblock %}

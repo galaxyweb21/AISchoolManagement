@@ -1,0 +1,77 @@
+{% extends "base/base.html" %}
+{% load static %}
+{% block title %}{{ exam.title }} · Online Examination{% endblock %}
+{% block content %}
+<style>
+#eduai-student-exam{--ex-accent:var(--eduai-signal,#2C7A6D);--ex-gold:var(--eduai-gold,#946B1C);color:var(--bs-body-color)}
+#eduai-student-exam .exam-shell{max-width:1180px;margin:0 auto}
+#eduai-student-exam .exam-panel{background:var(--bs-tertiary-bg);border:1px solid var(--bs-border-color);border-radius:1rem}
+#eduai-student-exam .exam-top{background:linear-gradient(120deg,rgba(44,122,109,.16),rgba(148,107,28,.10));border:1px solid var(--bs-border-color);border-radius:1.15rem}
+#eduai-student-exam .timer{font-variant-numeric:tabular-nums;font-weight:800;letter-spacing:.04em;padding:.55rem .85rem;border-radius:.75rem;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);white-space:nowrap}
+#eduai-student-exam .timer.is-low{color:var(--bs-danger);border-color:var(--bs-danger)}
+#eduai-student-exam .question-card{border:1px solid var(--bs-border-color);border-radius:1rem;background:var(--bs-body-bg);scroll-margin-top:1rem}
+#eduai-student-exam .question-card.is-current{border-color:var(--ex-accent);box-shadow:0 0 0 .15rem rgba(44,122,109,.13)}
+#eduai-student-exam .question-number{width:2.35rem;height:2.35rem;display:inline-grid;place-items:center;border-radius:.7rem;background:rgba(44,122,109,.13);color:var(--ex-accent);font-weight:800;flex:0 0 auto}
+#eduai-student-exam .answer-option{display:flex;gap:.75rem;align-items:flex-start;padding:.8rem 1rem;border:1px solid var(--bs-border-color);border-radius:.8rem;cursor:pointer;transition:border-color .15s,background .15s}
+#eduai-student-exam .answer-option:hover{border-color:var(--ex-accent);background:rgba(44,122,109,.06)}
+#eduai-student-exam .answer-option:has(input:checked){border-color:var(--ex-accent);background:rgba(44,122,109,.10)}
+#eduai-student-exam .answer-option input{margin-top:.25rem;accent-color:var(--ex-accent)}
+#eduai-student-exam .nav-question{min-width:2.5rem;min-height:2.5rem;border-radius:.65rem;border:1px solid var(--bs-border-color);background:var(--bs-body-bg);color:var(--bs-body-color)}
+#eduai-student-exam .nav-question.is-answered{border-color:var(--ex-accent);background:rgba(44,122,109,.12)}
+#eduai-student-exam .nav-question.is-current{outline:2px solid var(--ex-accent);outline-offset:1px}
+#eduai-student-exam .save-status{font-size:.85rem;color:var(--bs-secondary-color)}
+#eduai-student-exam textarea.form-control{min-height:135px;resize:vertical}
+#eduai-student-exam .sticky-submit{position:sticky;bottom:.75rem;z-index:5;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:1rem;padding:.8rem;box-shadow:0 .5rem 1.5rem rgba(0,0,0,.12)}
+@media(max-width:767.98px){#eduai-student-exam .exam-top{padding:1rem!important}#eduai-student-exam .sticky-submit{bottom:.35rem}#eduai-student-exam .question-card{padding:1rem!important}}
+</style>
+<div id="eduai-student-exam" class="container-fluid py-3 py-lg-4" data-exam-id="{{ exam.pk }}" data-autosave-url="{% url 'online_exams:answer_autosave' exam_id=exam.pk %}" data-remaining="{{ remaining_seconds }}">
+ <div class="exam-shell">
+  <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+   <a class="btn btn-sm btn-outline-secondary" href="{% url 'online_exams:exam_detail' exam_id=exam.pk %}"><i class="bi bi-arrow-left me-1"></i>Exam overview</a>
+   <span id="exam-save-status" class="save-status" role="status" aria-live="polite"><i class="bi bi-cloud-check me-1"></i>Answers save automatically</span>
+  </div>
+  <header class="exam-top p-3 p-lg-4 mb-4">
+   <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+    <div><div class="text-uppercase small fw-bold text-secondary mb-1">Online examination</div><h1 class="h3 fw-bold mb-2">{{ exam.title }}</h1><div class="d-flex flex-wrap gap-2 small text-secondary"><span><i class="bi bi-book me-1"></i>{{ exam.subject }}</span><span>·</span><span><i class="bi bi-clock me-1"></i>{{ exam.duration_minutes }} minutes</span><span>·</span><span><i class="bi bi-list-check me-1"></i>{{ questions|length }} questions</span></div></div>
+    <div class="d-flex align-items-center gap-3"><div><div class="small text-secondary mb-1">Time remaining</div><div id="exam-countdown" class="timer" aria-live="polite">--:--</div></div><div class="text-end"><div class="small text-secondary mb-1">Answered</div><div class="h4 fw-bold mb-0"><span id="answered-count">0</span><span class="text-secondary fs-6"> / {{ questions|length }}</span></div></div></div>
+   </div>
+   <div class="progress mt-3" role="progressbar" aria-label="Answered questions" aria-valuemin="0" aria-valuemax="{{ questions|length }}" aria-valuenow="0" style="height:6px"><div id="exam-progress" class="progress-bar" style="width:0%;background:var(--eduai-signal,#2C7A6D)"></div></div>
+  </header>
+  <div class="row g-4">
+   <aside class="col-lg-3 order-2 order-lg-1"><div class="exam-panel p-3 position-sticky" style="top:1rem"><h2 class="h6 fw-bold mb-1">Question navigator</h2><p class="small text-secondary mb-3">Select a number to jump to a question.</p><div class="d-grid" style="grid-template-columns:repeat(5,minmax(0,1fr));gap:.5rem" id="question-navigator">{% for question in questions %}<button type="button" class="nav-question" data-jump="{{ forloop.counter0 }}" aria-label="Go to question {{ forloop.counter }}">{{ forloop.counter }}</button>{% endfor %}</div><hr><div class="small text-secondary d-flex align-items-center gap-2 mb-2"><span class="rounded-circle" style="width:10px;height:10px;background:var(--eduai-signal,#2C7A6D)"></span>Answered</div><div class="small text-secondary d-flex align-items-center gap-2"><span class="rounded-circle border" style="width:10px;height:10px"></span>Not answered</div><div class="alert alert-warning py-2 px-3 small mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Do not close this page before your answers finish saving.</div></div></aside>
+   <main class="col-lg-9 order-1 order-lg-2">
+    <form id="student-exam-form" method="post" novalidate>{% csrf_token %}<input type="hidden" name="action" value="submit">
+     {% for row in question_rows %}{% with question=row.question %}<section class="question-card p-3 p-lg-4 mb-3" id="question-card-{{ forloop.counter0 }}" data-question-index="{{ forloop.counter0 }}" data-question-id="{{ question.pk }}">
+      <div class="d-flex align-items-start gap-3 mb-3"><span class="question-number">{{ forloop.counter }}</span><div class="flex-grow-1"><div class="d-flex flex-wrap gap-2 align-items-center mb-2"><span class="badge rounded-pill text-bg-secondary">{{ question.get_question_type_display|default:question.question_type }}</span><span class="small text-secondary">{{ question.marks }} mark{{ question.marks|pluralize }}</span></div><h2 class="h5 fw-semibold mb-0">{{ question.question_text|linebreaksbr }}</h2></div></div>
+      {% if question.question_type == 'MCQ' %}<div class="d-grid gap-2 ms-md-5">{% for option in question.options %}<label class="answer-option"><input type="radio" name="answer_{{ question.pk }}" value="{{ option }}" {% if row.answer == option|stringformat:'s' %}checked{% endif %}><span>{{ option }}</span></label>{% endfor %}</div>
+      {% elif question.question_type == 'TRUE_FALSE' %}<div class="d-grid gap-2 ms-md-5"><label class="answer-option"><input type="radio" name="answer_{{ question.pk }}" value="True" {% if row.answer == 'True' %}checked{% endif %}><span>True</span></label><label class="answer-option"><input type="radio" name="answer_{{ question.pk }}" value="False" {% if row.answer == 'False' %}checked{% endif %}><span>False</span></label></div>
+      {% else %}<div class="ms-md-5 mt-3"><label class="form-label small fw-semibold" for="answer-{{ question.pk }}">Your answer</label><textarea class="form-control answer-text" id="answer-{{ question.pk }}" name="answer_{{ question.pk }}" maxlength="20000" placeholder="Type your answer here…">{{ row.answer }}</textarea><div class="form-text">Your response is saved automatically.</div></div>{% endif %}
+      <div class="d-flex justify-content-between align-items-center gap-2 mt-4"><span class="small text-secondary" data-local-status>Not yet changed</span><div class="d-flex gap-2">{% if not forloop.first %}<button type="button" class="btn btn-sm btn-outline-secondary" data-jump="{{ forloop.counter0|add:'-1' }}"><i class="bi bi-arrow-left me-1"></i>Previous</button>{% endif %}{% if not forloop.last %}<button type="button" class="btn btn-sm btn-outline-secondary" data-jump="{{ forloop.counter0|add:'1' }}">Next<i class="bi bi-arrow-right ms-1"></i></button>{% endif %}</div></div>
+     </section>{% endwith %}{% endfor %}
+     <div class="sticky-submit d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3"><div><div class="fw-semibold">Ready to submit?</div><div class="small text-secondary">You can review unanswered questions before final submission.</div></div><button type="submit" id="submit-exam-btn" class="btn btn-success px-4"><i class="bi bi-send-check me-2"></i>Submit examination</button></div>
+    </form>
+   </main>
+  </div>
+ </div>
+</div>
+<script>
+(function(){
+ const root=document.getElementById('eduai-student-exam'); if(!root)return;
+ const form=document.getElementById('student-exam-form'), cards=[...root.querySelectorAll('.question-card')], nav=[...root.querySelectorAll('.nav-question')], status=document.getElementById('exam-save-status'), count=document.getElementById('answered-count'), progress=document.getElementById('exam-progress'), countdown=document.getElementById('exam-countdown'), submitBtn=document.getElementById('submit-exam-btn');
+ const saveUrl=root.dataset.autosaveUrl; let remaining=Math.max(0,parseInt(root.dataset.remaining||'0',10)), pending=0, failed=0, submitting=false, expired=false; const queues=new Map();
+ function csrf(){const el=form.querySelector('[name=csrfmiddlewaretoken]');return el?el.value:'';}
+ function answerControl(card){return [...card.querySelectorAll('input[type=radio]:checked,textarea.answer-text,input.answer-text')][0]||null;}
+ function answerValue(card){const checked=card.querySelector('input[type=radio]:checked');if(checked)return checked.value;const text=card.querySelector('textarea.answer-text');return text?text.value:'';}
+ function updateProgress(){let answered=0;cards.forEach((card,i)=>{const val=answerValue(card).trim();if(val)answered++;nav[i]?.classList.toggle('is-answered',!!val);});count.textContent=answered;progress.style.width=(cards.length?answered/cards.length*100:0)+'%';progress.parentElement.setAttribute('aria-valuenow',answered);}
+ function say(text,kind){status.className='save-status'+(kind==='bad'?' text-danger':kind==='ok'?' text-success':'');status.innerHTML=(kind==='bad'?'<i class="bi bi-exclamation-circle me-1"></i>':kind==='ok'?'<i class="bi bi-cloud-check me-1"></i>':'<i class="bi bi-cloud-arrow-up me-1"></i>')+text;}
+ async function save(card){if(submitting||expired)return;const qid=card.dataset.questionId;pending++;say('Saving answer…');card.querySelector('[data-local-status]').textContent='Saving…';try{const res=await fetch(saveUrl,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf(),'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin',body:JSON.stringify({question_id:qid,answer:answerValue(card)})});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok){if(data.expired){expired=true;say('Time has ended. Your saved answers were submitted.','bad');setTimeout(()=>location.reload(),1200);return;}throw new Error(data.message||'Could not save this answer.');}failed=0;card.querySelector('[data-local-status]').textContent='Saved';say('All changes saved','ok');}catch(e){failed++;card.querySelector('[data-local-status]').textContent='Save failed — retrying';say('Could not save an answer. Check your connection.','bad');}finally{pending=Math.max(0,pending-1);}}
+ function queueSave(card){if(submitting||expired)return;updateProgress();const id=card.dataset.questionId;clearTimeout(queues.get(id));queues.set(id,setTimeout(()=>save(card),350));card.querySelector('[data-local-status]').textContent='Unsaved changes';}
+ root.addEventListener('change',e=>{const card=e.target.closest('.question-card');if(card)queueSave(card);});root.addEventListener('input',e=>{const card=e.target.closest('.question-card');if(card&&e.target.matches('textarea.answer-text'))queueSave(card);});
+ root.querySelectorAll('[data-jump]').forEach(btn=>btn.addEventListener('click',()=>{const index=parseInt(btn.dataset.jump,10);if(Number.isFinite(index)&&cards[index]){cards.forEach(c=>c.classList.remove('is-current'));cards[index].classList.add('is-current');nav.forEach(n=>n.classList.toggle('is-current',parseInt(n.dataset.jump,10)===index));cards[index].scrollIntoView({behavior:'smooth',block:'start'});}}));
+ function tick(){const m=Math.floor(remaining/60),s=remaining%60;countdown.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');countdown.classList.toggle('is-low',remaining<=300);if(remaining<=0){expired=true;countdown.textContent='00:00';say('Time is up. Submitting your answers…','bad');form.requestSubmit();return;}remaining--;}
+ tick();const clock=setInterval(()=>{if(submitting){clearInterval(clock);return;}tick();},1000);
+ form.addEventListener('submit',async e=>{if(submitting)return;e.preventDefault();if(expired){submitting=true;form.submit();return;}const unanswered=cards.filter(c=>!answerValue(c).trim()).length;const message=unanswered?`You have ${unanswered} unanswered question(s). Submit anyway?`:'Submit your examination now? You cannot change answers after submission.';if(!window.confirm(message))return;submitting=true;submitBtn.disabled=true;submitBtn.innerHTML='<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Saving and submitting…';say('Finishing pending saves…');cards.forEach(c=>clearTimeout(queues.get(c.dataset.questionId)));try{await Promise.all(cards.map(c=>save(c)));}catch(_){}form.submit();});
+ updateProgress();
+})();
+</script>
+{% endblock %}

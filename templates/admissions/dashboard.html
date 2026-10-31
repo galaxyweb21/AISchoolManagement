@@ -100,4 +100,29 @@
         </div>
     </div>
 </div>
+<style>
+/* EduAI Phase 6 — focused admissions and attendance visual polish */
+.adm-page-head,.adm-hero{border-radius:1.15rem!important;box-shadow:0 10px 28px rgba(31,42,40,.045)}
+.adm-card,.card:has(.adm-table),.card:has(.adm-kpi){border-radius:1rem;overflow:hidden}
+.adm-card .card-header,.card:has(.adm-table)>.card-header{background:var(--surface-bg, var(--bs-body-bg));border-bottom:1px solid var(--surface-border, var(--bs-border-color));}
+.adm-table{margin-bottom:0}.adm-table thead th{padding:.9rem .85rem;background:rgba(148,107,28,.045);border-bottom:1px solid var(--surface-border,var(--bs-border-color))}.adm-table tbody td{padding:.8rem .85rem;vertical-align:middle}.adm-table tbody tr{transition:background-color .15s ease}.adm-table tbody tr:hover{background:rgba(44,122,109,.045)}
+.adm-filter-tile{border-radius:.9rem!important;text-decoration:none!important}
+.adm-kpi{border:1px solid var(--surface-border,var(--bs-border-color));border-radius:1rem!important;box-shadow:0 5px 16px rgba(31,42,40,.035)}
+.adm-kpi:focus-visible,.adm-filter-tile:focus-visible{outline:3px solid rgba(44,122,109,.35);outline-offset:3px}
+.status-pill{display:inline-flex;align-items:center;justify-content:center;line-height:1.25}
+.btn-gold,.btn-outline-gold{border-radius:.65rem;font-weight:600;transition:transform .15s ease,box-shadow .15s ease}.btn-gold:hover,.btn-outline-gold:hover{box-shadow:0 4px 12px rgba(148,107,28,.16)}
+/* Attendance tracker: improve information hierarchy without touching its controls or scripts */
+body:has(.attendance-tracker),.attendance-tracker{--attendance-ui-radius:1rem}
+#attendanceCameraModal .modal-content,#attendanceModal .modal-content,.modal-content{border-radius:1rem}
+#attendanceCameraModal .modal-header,#attendanceModal .modal-header{border-bottom-color:var(--surface-border,var(--bs-border-color))}
+#attendanceCameraModal .modal-footer,#attendanceModal .modal-footer{border-top-color:var(--surface-border,var(--bs-border-color))}
+.table-responsive{border-radius:.8rem}
+#attendanceCameraModal .btn,#attendanceModal .btn{border-radius:.65rem;font-weight:600}
+.form-control:focus,.form-select:focus{border-color:rgba(44,122,109,.65);box-shadow:0 0 0 .22rem rgba(44,122,109,.14)}
+html[data-bs-theme="dark"] .adm-table thead th{background:rgba(148,107,28,.1)}
+html[data-bs-theme="dark"] .adm-table tbody tr:hover{background:rgba(44,122,109,.1)}
+@media(max-width:767.98px){.adm-page-head,.adm-hero{padding:1rem!important}.adm-table thead th,.adm-table tbody td{padding:.7rem .65rem}.adm-filter-tile{min-height:unset}.btn-gold,.btn-outline-gold{max-width:100%}}
+@media(prefers-reduced-motion:reduce){.adm-filter-tile,.adm-kpi,.adm-table tbody tr,.btn-gold,.btn-outline-gold{transition:none!important}}
+</style>
+
 {% endblock %}

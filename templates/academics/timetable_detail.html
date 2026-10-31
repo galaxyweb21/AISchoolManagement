@@ -279,7 +279,7 @@
                     <!-- Class Filter -->
                     <form method="get" class="d-flex gap-2">
                         <select name="class_id" class="form-select form-select-sm" onchange="this.form.submit()" style="width: auto; min-width: 150px;">
-                            <option value="">All Classes</option>
+                            <option value="">{% if is_teacher_view %}My teaching timetable{% else %}All Classes{% endif %}</option>
                             {% for c in school_classes %}
                                 <option value="{{ c.id }}" {% if selected_class_id == c.id|stringformat:"s" %}selected{% endif %}>
                                     {{ c.name }}
@@ -315,13 +315,14 @@
                         <i class="bi bi-printer me-1"></i>Print / Save PDF
                     </button>
 
+                    {% if can_export_timetable %}
                     <a href="{% url 'academics:timetable_export_pdf' timetable.id %}{% if selected_class_id %}?class_id={{ selected_class_id }}{% endif %}" class="btn btn-sm no-print" style="background: var(--eduai-signal, #2C7A6D); color: #fff; border-color: var(--eduai-signal, #2C7A6D);">
                         <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
                     </a>
-
                     <a href="{% url 'academics:timetable_export_word' timetable.id %}{% if selected_class_id %}?class_id={{ selected_class_id }}{% endif %}" class="btn btn-sm no-print" style="background: transparent; color: var(--eduai-signal, #2C7A6D); border-color: var(--eduai-signal, #2C7A6D);">
                         <i class="bi bi-file-earmark-word me-1"></i>Download Word
                     </a>
+                    {% endif %}
 
                     <a href="{% url 'academics:timetable_workspace' %}" class="btn btn-sm" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;">
                         <i class="bi bi-arrow-left me-1"></i>Back

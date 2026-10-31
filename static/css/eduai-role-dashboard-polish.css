@@ -1,0 +1,148 @@
+/* EduAI role dashboard polish — presentation-only overrides */
+:root {
+  --eduai-dashboard-radius: 1.05rem;
+  --eduai-dashboard-shadow: 0 8px 26px rgba(22, 60, 53, .055);
+  --eduai-dashboard-border: rgba(22, 60, 53, .09);
+}
+
+/* Consistent page rhythm without changing dashboard data or actions. */
+.container-fluid.py-4 {
+  padding-top: clamp(1rem, 2vw, 1.65rem) !important;
+  padding-bottom: 2rem !important;
+}
+.container-fluid.py-4 > .page-description {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--eduai-dashboard-border);
+  border-left: 4px solid var(--eduai-signal, #2C7A6D);
+  border-radius: var(--eduai-dashboard-radius);
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  background: linear-gradient(115deg, rgba(44,122,109,.075), rgba(148,107,28,.045));
+}
+.container-fluid.py-4 > .page-description .title {
+  color: var(--bs-emphasis-color, #20332f);
+  font-weight: 750;
+  letter-spacing: -.025em;
+  line-height: 1.35;
+}
+.container-fluid.py-4 > .page-description .text {
+  color: var(--bs-secondary-color, #64716d);
+  line-height: 1.6;
+  margin: .35rem 0 0;
+  max-width: 78ch;
+}
+.container-fluid.py-4 > .page-description .icon {
+  color: var(--eduai-signal, #2C7A6D);
+  font-size: 1.35rem;
+  margin: .15rem .85rem 0 0;
+}
+.container-fluid.py-4 .card.card-custom,
+.container-fluid.py-4 .card.child-card,
+.container-fluid.py-4 > .card:not(.page-description) {
+  border: 1px solid var(--eduai-dashboard-border) !important;
+  border-radius: var(--eduai-dashboard-radius) !important;
+  box-shadow: var(--eduai-dashboard-shadow) !important;
+  overflow: hidden;
+  transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease;
+}
+.container-fluid.py-4 .card.card-custom:hover,
+.container-fluid.py-4 .card.child-card:hover {
+  border-color: rgba(44,122,109,.22) !important;
+  box-shadow: 0 12px 32px rgba(22,60,53,.09) !important;
+}
+.container-fluid.py-4 .card.card-custom > .p-4,
+.container-fluid.py-4 .card.card-custom .card-body,
+.container-fluid.py-4 .card.child-card .card-body {
+  min-width: 0;
+}
+.container-fluid.py-4 h1,
+.container-fluid.py-4 h2,
+.container-fluid.py-4 h3,
+.container-fluid.py-4 h4,
+.container-fluid.py-4 h5 {
+  letter-spacing: -.025em;
+}
+.container-fluid.py-4 h5.fw-bold,
+.container-fluid.py-4 h4.fw-bold { font-weight: 750 !important; }
+.container-fluid.py-4 .text-muted { color: var(--bs-secondary-color) !important; }
+.container-fluid.py-4 .badge-role,
+.container-fluid.py-4 .badge-teal,
+.container-fluid.py-4 .badge-gold {
+  border-radius: 999px;
+  font-weight: 650;
+  letter-spacing: .01em;
+  padding: .42rem .75rem;
+}
+.container-fluid.py-4 .btn {
+  border-radius: .7rem;
+  font-weight: 600;
+  transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.container-fluid.py-4 .btn:hover { transform: translateY(-1px); }
+.container-fluid.py-4 .btn:focus-visible,
+.container-fluid.py-4 a:focus-visible,
+.container-fluid.py-4 input:focus-visible,
+.container-fluid.py-4 select:focus-visible,
+.container-fluid.py-4 button:focus-visible {
+  outline: 3px solid rgba(44,122,109,.35);
+  outline-offset: 2px;
+}
+.container-fluid.py-4 .table-responsive {
+  border: 1px solid var(--eduai-dashboard-border);
+  border-radius: .85rem;
+}
+.container-fluid.py-4 .table { margin-bottom: 0; }
+.container-fluid.py-4 .table thead th {
+  color: var(--bs-secondary-color);
+  background: var(--bs-tertiary-bg);
+  font-size: .72rem;
+  font-weight: 750;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-bottom-width: 1px;
+}
+.container-fluid.py-4 .table > :not(caption) > * > * { padding: .8rem .9rem; }
+.container-fluid.py-4 .border.rounded-4.p-3.bg-light,
+.container-fluid.py-4 .bg-light.rounded-4,
+.container-fluid.py-4 .bg-light {
+  border-color: var(--eduai-dashboard-border) !important;
+}
+.container-fluid.py-4 .row.g-4 { --bs-gutter-x: 1.15rem; --bs-gutter-y: 1.15rem; }
+.container-fluid.py-4 .card .display-6,
+.container-fluid.py-4 .card h2.fw-bold { font-variant-numeric: tabular-nums; }
+
+html[data-bs-theme="dark"] .container-fluid.py-4 > .page-description {
+  background: linear-gradient(115deg, rgba(44,122,109,.17), rgba(148,107,28,.09));
+  border-color: rgba(255,255,255,.1);
+  border-left-color: var(--eduai-signal, #2C7A6D);
+}
+html[data-bs-theme="dark"] .container-fluid.py-4 > .page-description .title { color: var(--bs-emphasis-color); }
+html[data-bs-theme="dark"] .container-fluid.py-4 .card.card-custom,
+html[data-bs-theme="dark"] .container-fluid.py-4 .card.child-card,
+html[data-bs-theme="dark"] .container-fluid.py-4 > .card:not(.page-description) {
+  border-color: rgba(255,255,255,.09) !important;
+  box-shadow: 0 8px 26px rgba(0,0,0,.14) !important;
+}
+html[data-bs-theme="dark"] .container-fluid.py-4 .table-responsive { border-color: rgba(255,255,255,.1); }
+html[data-bs-theme="dark"] .container-fluid.py-4 .table thead th { background: rgba(255,255,255,.035); }
+html[data-bs-theme="dark"] .container-fluid.py-4 .border.rounded-4.p-3.bg-light,
+html[data-bs-theme="dark"] .container-fluid.py-4 .bg-light {
+  background-color: var(--bs-tertiary-bg) !important;
+  border-color: rgba(255,255,255,.1) !important;
+}
+
+@media (max-width: 767.98px) {
+  .container-fluid.py-4 { padding-left: .75rem; padding-right: .75rem; }
+  .container-fluid.py-4 > .page-description { padding: .95rem; }
+  .container-fluid.py-4 .card.card-custom > .p-4 { padding: 1rem !important; }
+  .container-fluid.py-4 .row.g-4 { --bs-gutter-x: .75rem; --bs-gutter-y: .75rem; }
+  .container-fluid.py-4 .table > :not(caption) > * > * { padding: .65rem .7rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .container-fluid.py-4 .card,
+  .container-fluid.py-4 .btn { transition: none !important; }
+  .container-fluid.py-4 .btn:hover { transform: none; }
+}

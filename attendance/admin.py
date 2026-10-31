@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Attendance, StaffAttendance, StaffFaceProfile
+from .models import Attendance, StaffAttendance, StaffFaceProfile, StaffAttendanceSettings
 
 
 @admin.register(Attendance)
@@ -23,3 +23,9 @@ class StaffFaceProfileAdmin(admin.ModelAdmin):
     list_display = ('staff', 'school', 'is_active', 'registered_at', 'registered_by')
     list_filter = ('school', 'is_active')
     search_fields = ('staff__user__first_name', 'staff__user__last_name', 'staff__staff_id')
+
+
+@admin.register(StaffAttendanceSettings)
+class StaffAttendanceSettingsAdmin(admin.ModelAdmin):
+    list_display = ('school', 'check_in_start', 'check_in_end', 'school_end', 'enforce_time_windows', 'updated_at')
+    list_filter = ('enforce_time_windows',)

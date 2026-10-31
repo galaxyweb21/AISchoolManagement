@@ -582,7 +582,7 @@
              ACCOUNT CREDENTIALS
              ======================================================== -->
 
-        {% if can_edit %}
+        {% if can_view_credentials %}
 
         <div id="account-credentials" class="
             card
@@ -794,6 +794,9 @@
                                     </button>
 
                                 </div>
+                                <button type="button" class="btn btn-sm btn-outline-warning mt-2 reset-credential-btn" data-target-account="student">
+                                    <i class="bi bi-arrow-repeat me-1"></i>Reset student password
+                                </button>
 
                             </div>
 
@@ -1042,6 +1045,8 @@
                                         <i class="bi bi-clipboard"></i>
 
                                     </button>
+
+                                <button type="button" class="btn btn-sm btn-outline-warning mt-2 reset-credential-btn" data-target-account="parent"><i class="bi bi-arrow-repeat me-1"></i>Reset parent password</button>
 
                                 </div>
 
@@ -2302,6 +2307,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                     resetAllPasswords();
+                    const temporaryNotice = credentialsContent && credentialsContent.querySelector('.temporary-password-notice');
+                    if (temporaryNotice) temporaryNotice.remove();
 
                 }
 
@@ -2434,7 +2441,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
             if (studentPassword) {
-                studentPassword.textContent = 'Not retrievable';
+                studentPassword.textContent = 'Not available until reset';
                 studentPassword.dataset.password = '';
                 const revealButton = document.querySelector('[data-target="studentPasswordDisplay"]');
                 if (revealButton) revealButton.classList.add('d-none');
@@ -2444,6 +2451,7 @@ document.addEventListener('DOMContentLoaded', function () {
             /* PARENT */
 
             if (data.parent) {
+                document.querySelectorAll('[data-target-account="parent"]').forEach(function (button) { button.classList.remove('d-none'); });
 
                 const parentFullName =
                     document.getElementById(
@@ -2527,12 +2535,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                 if (parentPassword) {
-                    parentPassword.textContent = 'Not retrievable';
+                    parentPassword.textContent = 'Not available until reset';
                     parentPassword.dataset.password = '';
                     const revealButton = document.querySelector('[data-target="parentPasswordDisplay"]');
                     if (revealButton) revealButton.classList.add('d-none');
                 }
 
+            } else {
+                document.querySelectorAll('[data-target-account="parent"]').forEach(function (button) { button.classList.add('d-none'); });
             }
 
 
@@ -2572,6 +2582,45 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
+    if (credentialsContent) {
+        credentialsContent.addEventListener('click', function (event) {
+            const button = event.target.closest('.reset-credential-btn');
+            if (!button) return;
+            const target = button.dataset.targetAccount;
+            const label = target === 'parent' ? 'parent/guardian' : 'student';
+            if (!window.confirm('Reset the ' + label + ' password now? The current password will stop working immediately.')) return;
+            button.disabled = true;
+            const original = button.innerHTML;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Resetting…';
+            const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            const csrfToken = csrfInput ? csrfInput.value : (document.cookie.match(/(?:^|; )csrftoken=([^;]+)/) || [])[1] || '';
+            const body = new URLSearchParams({target: target, csrfmiddlewaretoken: csrfToken});
+            fetch(`/students/api/student-credentials/${studentId}/reset/`, {
+                method: 'POST', credentials: 'same-origin',
+                headers: {'X-CSRFToken': decodeURIComponent(csrfToken), 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded'},
+                body: body.toString()
+            }).then(response => response.json().then(data => ({ok: response.ok, data: data})))
+              .then(result => {
+                if (!result.ok || !result.data.success) throw new Error(result.data.error || 'Unable to reset password.');
+                const displayId = target === 'parent' ? 'parentPasswordDisplay' : 'studentPasswordDisplay';
+                const copyId = target === 'parent' ? 'copyParentPassword' : 'copyStudentPassword';
+                const display = document.getElementById(displayId);
+                const copyButton = document.getElementById(copyId);
+                if (display) { display.dataset.password = result.data.temporary_password; display.textContent = result.data.temporary_password; }
+                if (copyButton) { copyButton.dataset.copy = result.data.temporary_password; copyButton.classList.remove('d-none'); }
+                const revealButton = document.querySelector('[data-target="' + displayId + '"]');
+                if (revealButton) revealButton.classList.remove('d-none');
+                let notice = credentialsContent.querySelector('.temporary-password-notice');
+                if (!notice) { notice = document.createElement('div'); notice.className = 'alert alert-warning temporary-password-notice mt-3'; credentialsContent.prepend(notice); }
+                notice.textContent = result.data.message + ' Username: ' + result.data.username + '. Store and share it securely.';
+                button.innerHTML = '<i class="bi bi-check2 me-1"></i>Password reset';
+              })
+              .catch(error => { window.alert(error.message || 'Unable to reset password.'); button.innerHTML = original; })
+              .finally(() => { button.disabled = false; });
+        });
+    }
+
+
     /* ============================================================
        PASSWORD RESET
        ============================================================ */
@@ -2594,7 +2643,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
             if (element) {
-                element.textContent = 'Not retrievable';
+                element.textContent = 'Not available until reset';
                 element.dataset.password = '';
             }
 

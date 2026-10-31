@@ -1,5 +1,6 @@
 from core.pagination import paginate_queryset
 # students/views.py
+import csv
 import secrets
 import string
 import json
@@ -10,7 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib import messages
 from django.utils import timezone
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.db import transaction
 
 from accounts.models import User
@@ -916,6 +917,7 @@ def student_detail(request, student_id):
         'latest_risk': latest_risk,
         'can_manage': request.user.role in MANAGE_ROLES,
         'can_edit': request.user.role in EDIT_ROLES,
+        'can_view_credentials': request.user.role in MANAGE_ROLES,
     }
     return render(request, 'students/student_detail.html', context)
 
@@ -1289,8 +1291,8 @@ def my_fees(request):
 
 @login_required
 def api_student_credentials(request, student_id):
-    """Return account identifiers and password status, never a stored password."""
-    if request.user.role not in EDIT_ROLES:
+    """Return account identifiers only to school administrators; never retrieve stored passwords."""
+    if request.user.role not in MANAGE_ROLES:
         return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
 
     school = getattr(request.user, 'school', None)
@@ -1326,6 +1328,44 @@ def api_student_credentials(request, student_id):
             'admission_number': student.admission_number,
         },
         'parent': parent_data,
+    })
+
+
+@login_required
+@require_POST
+def api_reset_student_or_parent_password(request, student_id):
+    """Admin-only reset: generate a new temporary password and return it once."""
+    if request.user.role not in MANAGE_ROLES:
+        return JsonResponse({'success': False, 'error': 'Only school administrators can reset student or parent credentials.'}, status=403)
+
+    school = getattr(request.user, 'school', None)
+    if school is None:
+        return JsonResponse({'success': False, 'error': 'Your administrator account must be linked to a school.'}, status=400)
+
+    student = get_object_or_404(Student.objects.select_related('user', 'parent'), id=student_id, school=school)
+    target = (request.POST.get('target') or '').strip().lower()
+    if target == 'student':
+        account = student.user
+    elif target == 'parent':
+        account = student.parent
+        if not account:
+            return JsonResponse({'success': False, 'error': 'This student does not have a linked parent/guardian account.'}, status=400)
+        if account.school_id != school.id or account.role != 'PARENT':
+            return JsonResponse({'success': False, 'error': 'The linked parent account is not valid for this school.'}, status=400)
+    else:
+        return JsonResponse({'success': False, 'error': 'Choose either the student or parent account.'}, status=400)
+
+    temporary_password = _generate_temp_password()
+    account.set_password(temporary_password)
+    # Do not persist plaintext passwords. The temporary password is returned once only.
+    account.default_password = None
+    account.save(update_fields=['password', 'default_password'])
+    return JsonResponse({
+        'success': True,
+        'target': target,
+        'username': account.username,
+        'temporary_password': temporary_password,
+        'message': 'Password reset successfully. Copy this temporary password now; it will not be retrievable again.',
     })
 
 
@@ -1641,3 +1681,95 @@ def api_edit_parent_email(request, parent_id):
             'success': False,
             'error': f'Unable to update parent email: {str(e)}'
         }, status=500)
+
+
+@login_required
+def bulk_class_credentials(request):
+    """Admin-only class-based student credential reset with one-time CSV delivery.
+
+    Student passwords are reset for every active student in the selected class.
+    Parent passwords are changed only when the administrator explicitly checks
+    the optional parent reset box. Plaintext passwords are never stored.
+    """
+    if request.user.role not in MANAGE_ROLES:
+        messages.error(request, 'Only school administrators can generate class credentials.')
+        return redirect('students:student_list')
+
+    school = getattr(request.user, 'school', None)
+    if school is None:
+        messages.error(request, 'Your administrator account is not linked to a school.')
+        return redirect('students:student_list')
+
+    classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
+    if request.method != 'POST':
+        return render(request, 'students/bulk_class_credentials.html', {'school_classes': classes})
+
+    class_id = (request.POST.get('school_class') or '').strip()
+    include_parents = request.POST.get('include_parents') == 'on'
+    school_class = get_object_or_404(classes, pk=class_id)
+    students = list(
+        Student.objects.select_related('user', 'parent')
+        .filter(school=school, school_class=school_class, is_active=True)
+        .order_by('user__last_name', 'user__first_name', 'admission_number')
+    )
+    if not students:
+        messages.warning(request, 'There are no active students in the selected class.')
+        return redirect('students:bulk_class_credentials')
+
+    # Generate the credentials in a transaction, then deliver them only in this
+    # response. A linked parent shared by siblings receives one password reset.
+    from django.db import transaction
+    parent_credentials = {}
+    rows = []
+    with transaction.atomic():
+        for student in students:
+            student_password = _generate_temp_password()
+            student.user.set_password(student_password)
+            user_update_fields = ['password']
+            if hasattr(student.user, 'default_password'):
+                student.user.default_password = None
+                user_update_fields.append('default_password')
+            student.user.save(update_fields=user_update_fields)
+            # Clear any legacy plaintext field on the Student record.
+            if hasattr(student, 'default_password') and student.default_password:
+                student.default_password = None
+                student.save(update_fields=['default_password'])
+
+            parent_username = ''
+            parent_password = ''
+            if include_parents and student.parent_id:
+                parent = student.parent
+                if parent and parent.role == 'PARENT' and getattr(parent, 'school_id', None) == school.id:
+                    if parent.pk not in parent_credentials:
+                        generated = _generate_temp_password()
+                        parent.set_password(generated)
+                        update_fields = ['password']
+                        if hasattr(parent, 'default_password'):
+                            parent.default_password = None
+                            update_fields.append('default_password')
+                        parent.save(update_fields=update_fields)
+                        parent_credentials[parent.pk] = (parent.username, generated)
+                    parent_username, parent_password = parent_credentials[parent.pk]
+
+            rows.append({
+                'school': getattr(school, 'name', str(school)),
+                'class_name': str(school_class),
+                'admission_number': student.admission_number,
+                'student_name': student.user.get_full_name().strip() or student.user.username,
+                'student_username': student.user.username,
+                'student_temporary_password': student_password,
+                'parent_username': parent_username,
+                'parent_temporary_password': parent_password,
+            })
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="class-credentials.csv"'
+    response.write('\ufeff')
+    writer = csv.DictWriter(response, fieldnames=[
+        'school', 'class_name', 'admission_number', 'student_name',
+        'student_username', 'student_temporary_password',
+        'parent_username', 'parent_temporary_password',
+    ])
+    writer.writeheader()
+    writer.writerows(rows)
+    return response

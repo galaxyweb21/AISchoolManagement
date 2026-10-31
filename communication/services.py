@@ -22,14 +22,22 @@ class NotificationService:
 
     @staticmethod
     def get_recipient_email(user):
-        """Get email from user or profile."""
-        if user.email:
-            return user.email
-        # Check if user has staff profile with email
-        if hasattr(user, 'staff_profile') and user.staff_profile:
-            return user.staff_profile.user.email
-        if hasattr(user, 'student_profile') and user.student_profile:
-            return user.student_profile.user.email
+        """Return a usable email address without assuming every profile has one."""
+        if user is None:
+            return None
+        email = str(getattr(user, 'email', '') or '').strip()
+        if email:
+            return email
+        for relation_name in ('staff_profile', 'student_profile'):
+            try:
+                profile = getattr(user, relation_name, None)
+                profile_user = getattr(profile, 'user', None) if profile else None
+                email = str(getattr(profile_user, 'email', '') or '').strip()
+                if email:
+                    return email
+            except Exception:
+                # A missing reverse one-to-one relation is normal; try the next source.
+                continue
         return None
 
     @staticmethod
@@ -46,37 +54,62 @@ class NotificationService:
         return None
 
     @staticmethod
-    def send_email(recipient_email, subject, message, html_message=None, attachments=None):
-        """
-        Send email with optional HTML alternative and optional attachments.
+    def send_email(recipient_email, subject, message, html_message=None, attachments=None, raise_on_error=False):
+        """Send an email, optionally with HTML and file attachments.
 
-        attachments: optional list of (filename, content_bytes, mimetype) tuples,
-        e.g. [("Receipt-RCT-001.pdf", pdf_bytes, "application/pdf")].
+        ``raise_on_error`` is opt-in so existing notification callers retain
+        their previous best-effort behavior, while payment receipts can record
+        the exact SMTP failure for diagnosis.
         """
-        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or 'no-reply@localhost'
+        provider = str(getattr(settings, 'EMAIL_PROVIDER', '') or '').strip().lower()
+        from_email = (
+            getattr(settings, 'DEFAULT_FROM_EMAIL', None)
+            or getattr(settings, 'EMAIL_HOST_USER', None)
+            or ''
+        ).strip()
+        if not from_email or '@localhost' in from_email.lower():
+            error = RuntimeError(
+                f'Email sender is not configured for provider {provider!r}. '
+                'Set DEFAULT_FROM_EMAIL to the verified Gmail address.'
+            )
+            if raise_on_error:
+                raise error
+            logger.error('%s', error)
+            return False
+        if not recipient_email or '@' not in str(recipient_email):
+            error = ValueError('Recipient email address is missing or invalid.')
+            if raise_on_error:
+                raise error
+            logger.error('%s', error)
+            return False
         try:
             if html_message or attachments:
                 email = EmailMultiAlternatives(
                     subject=subject,
                     body=message,
                     from_email=from_email,
-                    to=[recipient_email]
+                    to=[recipient_email],
                 )
                 if html_message:
-                    email.attach_alternative(html_message, "text/html")
+                    email.attach_alternative(html_message, 'text/html')
                 for filename, content, mimetype in (attachments or []):
                     email.attach(filename, content, mimetype)
-                return email.send()
+                sent = email.send(fail_silently=False)
             else:
-                return send_mail(
+                sent = send_mail(
                     subject=subject,
                     message=message,
                     from_email=from_email,
                     recipient_list=[recipient_email],
                     fail_silently=False,
                 )
-        except Exception as e:
-            logger.error(f"Email send failed: {str(e)}")
+            if not sent:
+                raise RuntimeError('Django email backend returned 0; no message was accepted for sending.')
+            return sent
+        except Exception:
+            logger.exception('Email send failed via provider=%s to recipient=%s', provider, recipient_email)
+            if raise_on_error:
+                raise
             return False
 
     @staticmethod

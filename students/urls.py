@@ -29,8 +29,12 @@ urlpatterns = [
     path('api/parent/<uuid:parent_id>/edit/', views.api_edit_parent, name='api_edit_parent'),
     path('api/parent/<uuid:parent_id>/edit-email/', views.api_edit_parent_email, name='api_edit_parent_email'),  # NEW
 
+    # Admin-only bulk credentials
+    path('bulk-class-credentials/', views.bulk_class_credentials, name='bulk_class_credentials'),
+
     # Student credentials
     path('api/student-credentials/<uuid:student_id>/', views.api_student_credentials, name='api_student_credentials'),
+    path('api/student-credentials/<uuid:student_id>/reset/', views.api_reset_student_or_parent_password, name='api_reset_student_or_parent_password'),
 
     # Student self-service
     path('my/grades/', views.my_grades, name='my_grades'),

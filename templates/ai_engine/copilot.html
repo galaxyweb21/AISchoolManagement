@@ -1541,8 +1541,16 @@
 
     function safeMarkdown(text) {
 
+        // Normalize newline sequences that may arrive double-escaped from
+        // older stored Copilot messages. Remove standalone slash-only lines
+        // without altering legitimate paths or inline backslashes.
+        const normalizedText = String(text ?? "")
+            .replace(/\\\r?\n/g, "\n")
+            .replace(/^\s*\\\s*$/gm, "")
+            .replace(/\r\n?/g, "\n");
+
         let html =
-            escapeHtml(text);
+            escapeHtml(normalizedText);
 
         const codeBlocks = [];
 
@@ -1601,7 +1609,7 @@
         );
 
         html = html.replace(
-            /(?:^|\n)((?:- .+(?:\n|$))+)/g,
+            /(?:^|\n)((?:[ \t]*- .+(?:\n|$))+)/g,
             function (_, block) {
 
                 const items =
@@ -1612,7 +1620,7 @@
                             line =>
                                 line
                                     .replace(
-                                        /^-\s+/,
+                                        /^\s*-\s+/,
                                         ""
                                     )
                                     .trim()

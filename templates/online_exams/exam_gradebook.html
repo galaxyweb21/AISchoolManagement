@@ -1,0 +1,76 @@
+{% extends 'base/base.html' %}
+{% block page_title %}Gradebook & Student Attempts | {{ exam.title }}{% endblock %}
+{% block content %}
+<style>
+.eg-page{--eg-gold:var(--eduai-gold,#946B1C);--eg-teal:var(--eduai-signal,#2C7A6D);color:var(--bs-body-color)}
+.eg-hero{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:1rem;padding:clamp(1.25rem,2.5vw,2rem);margin-bottom:1.2rem;border:1px solid rgba(148,107,28,.22);border-radius:1.2rem;background:linear-gradient(120deg,rgba(148,107,28,.1),rgba(44,122,109,.07),var(--bs-body-bg))}
+.eg-kicker{font-size:.7rem;letter-spacing:.13em;text-transform:uppercase;font-weight:800;color:var(--eg-gold)}.eg-title{font-weight:820;letter-spacing:-.035em;overflow-wrap:anywhere}.eg-muted{color:var(--bs-secondary-color)}
+.eg-panel{border:1px solid var(--bs-border-color);border-radius:1rem;background:var(--bs-body-bg);overflow:hidden;box-shadow:0 6px 22px rgba(20,30,24,.04)}.eg-panel-head{padding:1rem 1.2rem;border-bottom:1px solid var(--bs-border-color);display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.75rem;background:var(--bs-tertiary-bg)}
+.eg-stat{height:100%;padding:1rem 1.1rem;border:1px solid var(--bs-border-color);border-radius:.9rem;background:var(--bs-body-bg)}.eg-stat-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;font-weight:750;color:var(--bs-secondary-color)}.eg-stat-value{font-size:1.65rem;font-weight:820;letter-spacing:-.04em;margin-top:.2rem}
+.eg-table{--bs-table-bg:transparent;margin:0}.eg-table th{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--bs-secondary-color);background:var(--bs-tertiary-bg);white-space:nowrap}.eg-table th,.eg-table td{padding:.9rem 1rem;vertical-align:middle;border-color:var(--bs-border-color)}.eg-filter .form-select{min-height:42px;border-radius:.65rem}.eg-filter .btn,.eg-action{border-radius:.65rem;font-weight:650}.eg-badge{display:inline-flex;border-radius:99px;padding:.32rem .62rem;font-size:.72rem;font-weight:750}.eg-pending{background:rgba(220,157,37,.15);color:#986b10}.eg-graded{background:rgba(44,122,109,.14);color:var(--eg-teal)}.eg-progress{background:var(--bs-tertiary-bg);color:var(--bs-secondary-color)}
+@media(max-width:767px){.eg-hero{flex-direction:column}.eg-hero .btn{width:100%}.eg-table thead{display:none}.eg-table,.eg-table tbody,.eg-table tr,.eg-table td{display:block;width:100%}.eg-table tbody tr{padding:.6rem .8rem;border-bottom:1px solid var(--bs-border-color)}.eg-table td{padding:.38rem .2rem;border:0}.eg-table td:last-child{padding-top:.65rem}.eg-table td:before{content:attr(data-label);display:block;font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;color:var(--bs-secondary-color);font-weight:750;margin-bottom:.15rem}}
+</style>
+<div class="eg-page container-fluid px-0">
+  <header class="eg-hero">
+    <div><div class="eg-kicker mb-2"><i class="bi bi-clipboard2-data me-1"></i>Teacher workspace</div><h1 class="eg-title h2 mb-2">Gradebook &amp; Student Attempts</h1><div class="fw-semibold">{{ exam.title }}</div><p class="eg-muted mb-0 mt-1">{{ exam.school_class.name }} · {{ exam.subject.name }} · {{ exam.get_status_display }}</p></div>
+    <div class="d-flex flex-wrap gap-2"><a class="btn btn-outline-secondary" href="{% url 'online_exams:exam_list' %}"><i class="bi bi-arrow-left me-1"></i>All examinations</a><a class="btn btn-outline-secondary" href="{% url 'online_exams:exam_detail' exam.pk %}"><i class="bi bi-journal-text me-1"></i>Open exam</a><a class="btn btn-outline-success" href="{% url 'online_exams:exam_gradebook_csv' exam.pk %}?q={{ search_query|urlencode }}&amp;grading={{ grading_filter|urlencode }}&amp;attempt_status={{ status_filter|urlencode }}&amp;sort={{ sort_by|urlencode }}"><i class="bi bi-download me-1"></i>Download CSV</a></div>
+  </header>
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3"><div class="eg-stat"><div class="eg-stat-label">Total attempts</div><div class="eg-stat-value">{{ total_attempts }}</div></div></div>
+    <div class="col-6 col-xl-3"><div class="eg-stat"><div class="eg-stat-label">Submitted</div><div class="eg-stat-value">{{ submitted_count }}</div></div></div>
+    <div class="col-6 col-xl-3"><div class="eg-stat"><div class="eg-stat-label">Awaiting review</div><div class="eg-stat-value">{{ pending_count }}</div></div></div>
+    <div class="col-6 col-xl-3"><div class="eg-stat"><div class="eg-stat-label">Fully graded</div><div class="eg-stat-value">{{ graded_count }}</div></div></div>
+  </div>
+  <section class="eg-panel">
+    <div class="eg-panel-head"><div><h2 class="h5 fw-bold mb-1">Student attempt register</h2><p class="eg-muted small mb-0">Review submissions, finish written-response marking, and track grading progress.</p></div>{% if exam.results_released %}<span class="badge text-bg-success"><i class="bi bi-lock-fill me-1"></i>Results released · marks locked</span>{% elif exam.status == 'CLOSED' %}<span class="badge text-bg-warning">Exam closed · review results before release</span>{% else %}<span class="badge text-bg-secondary">Results not yet releasable</span>{% endif %}</div>
+    <div class="p-3 border-bottom" style="border-color:var(--bs-border-color)!important"><form method="get" class="eg-filter d-flex flex-wrap align-items-end gap-2"><div class="flex-grow-1" style="min-width:220px"><label for="q" class="form-label small fw-semibold">Find a student</label><input class="form-control" style="min-height:42px;border-radius:.65rem" type="search" name="q" id="q" value="{{ search_query }}" maxlength="100" placeholder="Name, username or student ID"></div><div><label for="grading" class="form-label small fw-semibold">Grading status</label><select class="form-select" name="grading" id="grading"><option value="ALL" {% if grading_filter == 'ALL' %}selected{% endif %}>All grading statuses</option><option value="PENDING" {% if grading_filter == 'PENDING' %}selected{% endif %}>Pending</option><option value="REVIEW_REQUIRED" {% if grading_filter == 'REVIEW_REQUIRED' %}selected{% endif %}>Review required</option><option value="GRADED" {% if grading_filter == 'GRADED' %}selected{% endif %}>Graded</option></select></div><div><label for="attempt_status" class="form-label small fw-semibold">Attempt status</label><select class="form-select" name="attempt_status" id="attempt_status"><option value="ALL" {% if status_filter == 'ALL' %}selected{% endif %}>All attempt statuses</option><option value="IN_PROGRESS" {% if status_filter == 'IN_PROGRESS' %}selected{% endif %}>In progress</option><option value="SUBMITTED" {% if status_filter == 'SUBMITTED' %}selected{% endif %}>Submitted</option><option value="EXPIRED" {% if status_filter == 'EXPIRED' %}selected{% endif %}>Expired</option></select></div><div><label for="sort" class="form-label small fw-semibold">Sort by</label><select class="form-select" name="sort" id="sort"><option value="recent" {% if sort_by == 'recent' %}selected{% endif %}>Most recent</option><option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest first</option><option value="student" {% if sort_by == 'student' %}selected{% endif %}>Student name</option><option value="score_high" {% if sort_by == 'score_high' %}selected{% endif %}>Highest score</option><option value="score_low" {% if sort_by == 'score_low' %}selected{% endif %}>Lowest score</option></select></div><div><label for="page_size" class="form-label small fw-semibold">Rows per page</label><select class="form-select" name="page_size" id="page_size"><option value="20" {% if page_size == 20 %}selected{% endif %}>20 rows</option><option value="50" {% if page_size == 50 %}selected{% endif %}>50 rows</option><option value="100" {% if page_size == 100 %}selected{% endif %}>100 rows</option></select></div><button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel me-1"></i>Apply</button><a class="btn btn-light border" href="{% url 'online_exams:exam_gradebook' exam.pk %}">Reset</a></form></div>
+    <form method="post" action="{% url 'online_exams:exam_bulk_finalize_reviews' exam.pk %}" id="bulkFinalizeForm">
+      {% csrf_token %}
+      <input type="hidden" name="q" value="{{ search_query }}"><input type="hidden" name="grading" value="{{ grading_filter }}"><input type="hidden" name="attempt_status" value="{{ status_filter }}"><input type="hidden" name="sort" value="{{ sort_by }}"><input type="hidden" name="page_size" value="{{ page_size }}"><input type="hidden" name="page" value="{{ page_obj.number }}">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-bottom" style="border-color:var(--bs-border-color)!important"><div class="small eg-muted">Bulk finalize only completes eligible submitted attempts with all written-response marks entered. In-progress attempts are never included.<div class="mt-1 fw-semibold" role="status" aria-live="polite" aria-atomic="true"><span id="selectedAttemptCount">0</span> attempt(s) selected on this page</div></div><button type="submit" id="bulkFinalizeButton" class="btn btn-sm btn-success eg-action" {% if exam.results_released %}disabled{% else %}disabled{% endif %}><i class="bi bi-check2-circle me-1"></i>Finalize selected</button></div>
+    <div class="table-responsive"><table class="table eg-table align-middle"><thead><tr><th><input type="checkbox" class="form-check-input" id="selectEligible" aria-label="Select eligible attempts on this page" title="Select eligible attempts on this page" disabled></th><th>Student</th><th>Attempt status</th><th>Submitted / started</th><th>Grading</th><th>Score</th><th class="text-end">Action</th></tr></thead><tbody>
+      {% for attempt in attempts %}<tr><td data-label="Select">{% if attempt.status != 'IN_PROGRESS' and attempt.grading_status != 'GRADED' and not exam.results_released %}<input type="checkbox" class="form-check-input eligible-attempt" name="attempt_ids" value="{{ attempt.pk }}" aria-label="Select {{ attempt.student.user.username }}">{% else %}<span class="eg-muted">—</span>{% endif %}</td><td data-label="Student"><div class="fw-bold">{{ attempt.student.user.get_full_name|default:attempt.student.user.username }}</div><div class="small eg-muted">{{ attempt.student.user.username }}</div></td><td data-label="Attempt status">{% if attempt.status == 'IN_PROGRESS' %}<span class="eg-badge eg-progress">In progress</span>{% elif attempt.status == 'EXPIRED' %}<span class="eg-badge eg-pending">Expired</span>{% else %}<span class="eg-badge eg-graded">Submitted</span>{% endif %}</td><td data-label="Submitted / started">{% if attempt.submitted_at %}{{ attempt.submitted_at|date:'d M Y, H:i' }}{% else %}Started {{ attempt.started_at|date:'d M Y, H:i' }}{% endif %}</td><td data-label="Grading">{% if attempt.grading_status == 'GRADED' %}<span class="eg-badge eg-graded">Graded</span>{% elif attempt.grading_status == 'REVIEW_REQUIRED' %}<span class="eg-badge eg-pending">Review required</span>{% else %}<span class="eg-badge eg-progress">Pending</span>{% endif %}</td><td data-label="Score">{% if attempt.status != 'IN_PROGRESS' %}<span class="fw-bold">{{ attempt.score_awarded }} / {{ attempt.total_marks }}</span><div class="small eg-muted">{{ attempt.percentage }}%</div>{% else %}—{% endif %}</td><td data-label="Action" class="text-end">{% if attempt.status != 'IN_PROGRESS' %}<a class="btn btn-sm btn-outline-secondary eg-action" href="{% url 'online_exams:attempt_review' exam.pk attempt.pk %}?from_gradebook=1&amp;q={{ search_query|urlencode }}&amp;grading={{ grading_filter|urlencode }}&amp;attempt_status={{ status_filter|urlencode }}&amp;sort={{ sort_by|urlencode }}&amp;page_size={{ page_size }}&amp;page={{ page_obj.number }}">{% if exam.results_released %}View attempt{% else %}Review / grade{% endif %}<i class="bi bi-arrow-right ms-1"></i></a>{% else %}<span class="small eg-muted">Awaiting submission</span>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="7" class="text-center py-5"><i class="bi bi-inbox fs-2 d-block mb-2 eg-muted"></i><div class="fw-bold">No attempts match these filters</div><div class="eg-muted small mt-1">Try another grading or attempt status.</div></td></tr>{% endfor %}
+    </tbody></table></div>
+    </form>
+  </section>
+  {% if page_obj.paginator.num_pages > 1 %}<nav class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-3" aria-label="Gradebook pagination"><span class="small eg-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} attempt(s)</span><ul class="pagination pagination-sm mb-0">{% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?grading={{ grading_filter }}&amp;attempt_status={{ status_filter }}&amp;q={{ search_query|urlencode }}&amp;sort={{ sort_by }}&amp;page_size={{ page_size }}&amp;page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}{% for n in page_obj.paginator.page_range %}{% if n == page_obj.number %}<li class="page-item active"><span class="page-link">{{ n }}</span></li>{% elif n >= page_obj.number|add:'-2' and n <= page_obj.number|add:'2' %}<li class="page-item"><a class="page-link" href="?grading={{ grading_filter }}&amp;attempt_status={{ status_filter }}&amp;q={{ search_query|urlencode }}&amp;sort={{ sort_by }}&amp;page_size={{ page_size }}&amp;page={{ n }}">{{ n }}</a></li>{% endif %}{% endfor %}{% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?grading={{ grading_filter }}&amp;attempt_status={{ status_filter }}&amp;q={{ search_query|urlencode }}&amp;sort={{ sort_by }}&amp;page_size={{ page_size }}&amp;page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}</ul></nav>{% endif %}
+</div>
+<script>
+(function () {
+  'use strict';
+  const master = document.getElementById('selectEligible');
+  const items = Array.from(document.querySelectorAll('.eligible-attempt'));
+  const count = document.getElementById('selectedAttemptCount');
+  const button = document.getElementById('bulkFinalizeButton');
+  const form = document.getElementById('bulkFinalizeForm');
+  if (!master || !count || !button || !form) return;
+
+  function syncSelection() {
+    const selected = items.filter(function (item) { return item.checked; }).length;
+    master.disabled = items.length === 0;
+    count.textContent = String(selected);
+    master.checked = items.length > 0 && selected === items.length;
+    master.indeterminate = selected > 0 && selected < items.length;
+    button.disabled = selected === 0;
+  }
+
+  master.addEventListener('change', function () {
+    items.forEach(function (item) { item.checked = master.checked; });
+    syncSelection();
+  });
+  items.forEach(function (item) { item.addEventListener('change', syncSelection); });
+  form.addEventListener('submit', function (event) {
+    const selected = items.filter(function (item) { return item.checked; }).length;
+    if (!selected || button.disabled) {
+      event.preventDefault();
+      return;
+    }
+    if (!window.confirm('Finalize ' + selected + ' selected attempt(s)? Attempts with missing or invalid written-response marks will be skipped.')) {
+      event.preventDefault();
+    }
+  });
+  syncSelection();
+})();
+</script>
+{% endblock %}

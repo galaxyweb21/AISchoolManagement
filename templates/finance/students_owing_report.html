@@ -4,6 +4,18 @@
 <style>
 .owing-report-wrap{max-width:1500px;margin:auto}.owing-print-actions{display:flex;gap:.5rem;flex-wrap:wrap}.owing-table th{white-space:nowrap}.owing-table td{vertical-align:middle}.owing-balance{font-weight:800}.owing-summary{background:var(--surface-card,#fff);border-radius:1rem;padding:1rem;box-shadow:0 4px 18px rgba(0,0,0,.06)}
 @media print{#sidebar,.sidebar,.navbar,.eduai-global-footer,.no-print{display:none!important}.owing-report-wrap{max-width:none}.card,.owing-summary{box-shadow:none!important;border:0!important}.owing-table{font-size:11px}}
+
+/* Phase 10: outstanding-balance report polish */
+.owing-report-wrap .card{border-radius:1rem;overflow:hidden;}
+.owing-report-wrap .card-body{min-width:0;}
+.owing-report-wrap .owing-table{margin-bottom:0;}
+.owing-report-wrap .owing-table thead th{font-size:.76rem;letter-spacing:.035em;text-transform:uppercase;color:var(--bs-secondary-color);background:var(--bs-tertiary-bg);}
+.owing-report-wrap .owing-table tbody tr:hover{background:var(--bs-tertiary-bg);}
+.owing-report-wrap .owing-balance{font-variant-numeric:tabular-nums;color:var(--bs-emphasis-color);}
+.owing-report-wrap .btn:focus-visible{outline:3px solid color-mix(in srgb,var(--eduai-signal,#2C7A6D) 45%,transparent);outline-offset:2px;}
+@media(max-width:767.98px){.owing-report-wrap .card-body{padding:1rem!important;}.owing-report-wrap h4{font-size:1.2rem;}.owing-report-wrap .owing-print-actions .btn{flex:1 1 auto;}}
+@media(prefers-reduced-motion:reduce){.owing-report-wrap *{scroll-behavior:auto!important;transition:none!important;}}
+
 </style>
 <div class="owing-report-wrap py-3">
   <div class="card border-0 shadow-sm rounded-4 mb-4">

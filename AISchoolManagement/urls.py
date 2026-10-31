@@ -40,6 +40,7 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path('ai-engine/', include('ai_engine.urls')),
     path('assessments/', include('assessments.urls')),
+    path('online-exams/', include('online_exams.urls')),
     path('finance/', include('finance.urls')),
     path('attendance/', include('attendance.urls')),
     path('communication/', include('communication.urls')),
@@ -48,6 +49,7 @@ urlpatterns = [
     path('students/', include('students.urls')),
     path('admissions/', include('admissions.urls')),
     path('staff/', include('staff.urls')),
+    path('lesson-plans/', include('lesson_plans.urls')),
     path('library/', include('library.urls')),
     path('core/', include('core.urls')),
 

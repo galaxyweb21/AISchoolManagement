@@ -1,0 +1,35 @@
+/* EduAI dashboard experience — Phase 3; scoped to the admin command center. */
+.eduai-admin-dashboard{--dash-ink:var(--text-primary,#1f2a28);--dash-muted:var(--text-muted,#6b7570);--dash-line:var(--surface-border,#e7e1d3);--dash-surface:var(--surface-bg,#fff);color:var(--dash-ink);padding-bottom:.75rem}
+.eduai-admin-dashboard>.eduai-dashboard-hero{position:relative;isolation:isolate;border:1px solid var(--dash-line)!important;border-radius:1.25rem!important;background:radial-gradient(ellipse at 95% 8%,rgba(44,122,109,.13),transparent 34%),linear-gradient(135deg,var(--dash-surface) 0%,var(--app-bg,#f7f4ec) 100%)!important;box-shadow:0 14px 34px rgba(21,43,38,.07)!important}
+.eduai-admin-dashboard .eduai-dashboard-hero .card-body{padding:clamp(1.25rem,2.5vw,2.1rem)!important}
+.eduai-admin-dashboard .eduai-dashboard-hero h2{font-size:clamp(1.45rem,2vw,2rem);letter-spacing:-.04em;line-height:1.15}
+.eduai-admin-dashboard .eduai-dashboard-hero p{max-width:62ch;line-height:1.7}
+.eduai-admin-dashboard #dashboardCopilotLauncher{overflow:hidden;border-radius:.85rem;box-shadow:0 8px 22px rgba(21,43,38,.07)}
+.eduai-admin-dashboard #dashboardCopilotLauncher .input-group-text,.eduai-admin-dashboard #dashboardCopilotLauncher .form-control,.eduai-admin-dashboard #dashboardCopilotLauncher .btn{min-height:52px}
+.eduai-admin-dashboard #dashboardCopilotLauncher .form-control{box-shadow:none}
+.eduai-admin-dashboard #dashboardCopilotLauncher .btn{padding-inline:1.25rem;font-weight:700}
+.eduai-admin-dashboard .eduai-dashboard-hero .row.g-3>[class*="col-"]>.border{height:100%;border-radius:.9rem!important;background:var(--dash-surface);box-shadow:0 4px 14px rgba(21,43,38,.035);transition:transform .18s ease,box-shadow .18s ease}
+.eduai-admin-dashboard .eduai-dashboard-hero .row.g-3>[class*="col-"]>.border:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(21,43,38,.08)}
+.eduai-admin-dashboard .eduai-dashboard-hero .row.g-3 h3{font-size:clamp(1.2rem,1.6vw,1.65rem);letter-spacing:-.035em}
+.eduai-admin-dashboard .kpi-card-clean{height:100%;border:1px solid var(--dash-line)!important;border-radius:1.1rem!important;background:var(--dash-surface)!important;box-shadow:0 5px 18px rgba(21,43,38,.045)!important}
+.eduai-admin-dashboard .kpi-card-clean>.p-4{padding:clamp(1rem,1.8vw,1.5rem)!important}
+.eduai-admin-dashboard .kpi-label{color:var(--dash-muted);letter-spacing:.075em}
+.eduai-admin-dashboard .kpi-meta{color:var(--dash-muted);line-height:1.45}
+.eduai-admin-dashboard .kpi-icon{box-shadow:inset 0 0 0 1px rgba(148,107,28,.07)}
+.eduai-admin-dashboard .row.g-4>[class*="col-"]>.card,.eduai-admin-dashboard .row.g-4 .row.g-4>[class*="col-"]>.card{border:1px solid var(--dash-line)!important;border-radius:1.05rem!important;background:var(--dash-surface)!important;box-shadow:0 5px 18px rgba(21,43,38,.045)!important;overflow:hidden}
+.eduai-admin-dashboard .card-header{padding:1.05rem 1.25rem}
+.eduai-admin-dashboard .card-header h5,.eduai-admin-dashboard .card-header h6{letter-spacing:-.015em}
+.eduai-admin-dashboard .card-body{min-width:0}
+.eduai-admin-dashboard .card-body>.row.g-3>[class*="col-"]>.border{border-color:var(--dash-line)!important;border-radius:.9rem!important;background:color-mix(in srgb,var(--dash-surface) 92%,var(--app-bg,#f7f4ec));transition:transform .18s ease,border-color .18s ease}
+.eduai-admin-dashboard .card-body>.row.g-3>[class*="col-"]>.border:hover{transform:translateY(-2px);border-color:rgba(44,122,109,.42)!important}
+.eduai-admin-dashboard .ai-card{border-color:var(--dash-line)!important;border-radius:.9rem!important;background:var(--dash-surface)!important;min-height:118px}
+.eduai-admin-dashboard .ai-card small{display:block;line-height:1.4}
+.eduai-admin-dashboard .ai-card:focus-visible,.eduai-admin-dashboard a:focus-visible,.eduai-admin-dashboard button:focus-visible{outline:3px solid rgba(44,122,109,.5);outline-offset:3px}
+.eduai-admin-dashboard .list-group-item{border-color:var(--dash-line)!important}
+.eduai-admin-dashboard .badge{font-weight:650;letter-spacing:.01em}
+.eduai-admin-dashboard canvas{max-width:100%}
+html[data-bs-theme="dark"] .eduai-admin-dashboard .eduai-dashboard-hero,.dark-mode .eduai-admin-dashboard .eduai-dashboard-hero{background:radial-gradient(ellipse at 95% 8%,rgba(44,122,109,.17),transparent 34%),linear-gradient(135deg,var(--surface-bg,#142320) 0%,var(--app-bg,#0e1715) 100%)!important;box-shadow:0 14px 34px rgba(0,0,0,.16)!important}
+html[data-bs-theme="dark"] .eduai-admin-dashboard .eduai-dashboard-hero .row.g-3>[class*="col-"]>.border,.dark-mode .eduai-admin-dashboard .eduai-dashboard-hero .row.g-3>[class*="col-"]>.border{background:var(--surface-bg,#142320)}
+html[data-bs-theme="dark"] .eduai-admin-dashboard .card-body>.row.g-3>[class*="col-"]>.border,.dark-mode .eduai-admin-dashboard .card-body>.row.g-3>[class*="col-"]>.border{background:color-mix(in srgb,var(--surface-bg,#142320) 92%,var(--app-bg,#0e1715))}
+@media(max-width:767.98px){.eduai-admin-dashboard .eduai-dashboard-hero .card-body{padding:1.1rem!important}.eduai-admin-dashboard .eduai-dashboard-hero .d-flex.align-items-center.mb-3{align-items:flex-start!important}.eduai-admin-dashboard #dashboardCopilotLauncher{flex-wrap:wrap}.eduai-admin-dashboard #dashboardCopilotLauncher .input-group-text{border-radius:.75rem 0 0 .75rem}.eduai-admin-dashboard #dashboardCopilotLauncher .form-control{min-width:0;flex:1 1 65%}.eduai-admin-dashboard #dashboardCopilotLauncher .btn{flex:1 0 100%;border-radius:0 0 .75rem .75rem}.eduai-admin-dashboard .kpi-value{font-size:clamp(1.05rem,5vw,1.5rem)}.eduai-admin-dashboard .card-header{padding:.9rem 1rem}}
+@media(prefers-reduced-motion:reduce){.eduai-admin-dashboard *,.eduai-admin-dashboard *:before,.eduai-admin-dashboard *:after{transition-duration:.01ms!important;animation-duration:.01ms!important;scroll-behavior:auto!important}}

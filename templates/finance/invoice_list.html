@@ -2,7 +2,21 @@
 {% block page_title %}Invoices{% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4 pt-3">
+<style>
+
+/* Phase 10: invoice register presentation polish */
+.invoice-register-phase10 .card{border-radius:1rem;border-color:var(--bs-border-color);}
+.invoice-register-phase10 .table-responsive{border-radius:.8rem;}
+.invoice-register-phase10 table thead th{font-size:.76rem;letter-spacing:.035em;text-transform:uppercase;color:var(--bs-secondary-color);background:var(--bs-tertiary-bg);white-space:nowrap;}
+.invoice-register-phase10 table tbody td{vertical-align:middle;}
+.invoice-register-phase10 table tbody tr:hover{background:var(--bs-tertiary-bg);}
+.invoice-register-phase10 .btn:focus-visible,.invoice-register-phase10 a:focus-visible{outline:3px solid color-mix(in srgb,var(--eduai-signal,#2C7A6D) 45%,transparent);outline-offset:2px;}
+@media(max-width:767.98px){.invoice-register-phase10 .card-body{padding:1rem!important;}.invoice-register-phase10 .table-responsive{font-size:.9rem;}}
+@media(prefers-reduced-motion:reduce){.invoice-register-phase10 *{transition:none!important;}}
+
+</style>
+
+<div class="container-fluid px-4 pt-3 invoice-register-phase10">
     <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between rounded-4 p-2 border bg-body shadow-sm">
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'finance:billing_dashboard' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-wallet2 me-1"></i>Finance Dashboard</a>

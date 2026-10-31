@@ -667,6 +667,12 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     });
 
+    // Open the request form when staff choose Request Leave from the sidebar.
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('request') === '1' && modal && window.bootstrap) {
+        bootstrap.Modal.getOrCreateInstance(modal).show();
+    }
+
     // Auto-dismiss messages
     document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
         setTimeout(function() {

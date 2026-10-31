@@ -1,4 +1,5 @@
 import uuid
+from datetime import time
 from django.conf import settings
 from django.db import models
 from school.models import School
@@ -130,3 +131,32 @@ class StaffFaceProfile(models.Model):
 
     def __str__(self):
         return f"Face profile - {self.staff}"
+
+
+class StaffAttendanceSettings(models.Model):
+    """Per-school staff attendance window; enforcement is opt-in until configured."""
+    school = models.OneToOneField(
+        School, on_delete=models.CASCADE, related_name='staff_attendance_settings'
+    )
+    check_in_start = models.TimeField(default=time(6, 0))
+    check_in_end = models.TimeField(default=time(9, 0))
+    school_end = models.TimeField(default=time(14, 0))
+    enforce_time_windows = models.BooleanField(
+        default=False,
+        help_text='When enabled, attendance officers can only mark check-ins during the configured window. School admins can override.'
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Staff attendance settings'
+        verbose_name_plural = 'Staff attendance settings'
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.check_in_end <= self.check_in_start:
+            raise ValidationError({'check_in_end': 'Check-in closing time must be after the opening time.'})
+        if self.school_end <= self.check_in_start:
+            raise ValidationError({'school_end': 'School closing time must be after check-in opening time.'})
+
+    def __str__(self):
+        return f'Staff attendance settings — {self.school}'

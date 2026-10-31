@@ -1,0 +1,177 @@
+{% extends 'base/base.html' %}
+{% block page_title %}Add Staff Member{% endblock %}
+{% block content %}
+<style>
+.staff-create-shell{max-width:1120px;margin:0 auto}.staff-create-hero{background:linear-gradient(135deg,rgba(148,107,28,.11),rgba(44,122,109,.08));border:1px solid var(--surface-border,rgba(108,117,125,.2))}.staff-create-card{background:var(--surface-bg,#fff);border:1px solid var(--surface-border,rgba(108,117,125,.2));box-shadow:0 10px 28px rgba(31,42,40,.055);border-radius:20px}.staff-create-card .modal-body{padding:0!important}.staff-create-card .staff-wizard{padding:0}.staff-create-card .alert{background:var(--bs-tertiary-bg)}.staff-page-alert{max-width:1120px;margin:0 auto}
+</style>
+<div class="container-fluid py-3 px-3 px-lg-4">
+  <div class="staff-create-shell">
+    <div class="staff-create-hero rounded-4 p-4 p-lg-5 mb-4">
+      <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+        <div><div class="text-uppercase small fw-bold text-muted mb-2">Staff management · New account</div><h1 class="h3 fw-bold mb-2">Add New Staff Member</h1><p class="text-muted mb-0">Complete the guided steps to create the staff profile and login account.</p></div>
+        <a href="{% url 'staff:staff_list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to staff</a>
+      </div>
+    </div>
+    <div class="staff-create-card p-3 p-md-4 p-lg-5">
+      {% include 'staff/staff_form_modal.html' %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  const form = document.querySelector('form.staff-wizard');
+  if (!form) return;
+  const steps = Array.from(form.querySelectorAll('[data-wizard-step]'));
+  const pills = Array.from(form.querySelectorAll('[data-wizard-pill]'));
+  let current = 1;
+  const max = steps.length || 4;
+  const field = name => form.elements.namedItem(name);
+  const value = name => { const el = field(name); return el ? String(el.value || '').trim() : ''; };
+  const textValue = name => {
+    const el = field(name);
+    if (!el) return '—';
+    if (el.tagName === 'SELECT') return el.selectedOptions[0]?.textContent.trim() || '—';
+    return value(name) || '—';
+  };
+  function buildReview() {
+    const put = (id, text) => { const el = form.querySelector('#' + id); if (el) el.textContent = text || '—'; };
+    put('reviewStaffName', [value('first_name'), value('last_name')].filter(Boolean).join(' '));
+    put('reviewStaffContact', [value('email'), value('phone_number')].filter(Boolean).join(' · ') || 'No contact details');
+    put('reviewStaffPosition', textValue('staff_position'));
+    put('reviewStaffDepartment', 'Department: ' + textValue('department'));
+    put('reviewStaffGrade', 'Grade: ' + textValue('staff_grade'));
+    if (field('password')) put('reviewStaffAccount', 'Username will be generated automatically. A password has been provided.');
+  }
+  function showStep(n) {
+    current = Math.max(1, Math.min(max, n));
+    steps.forEach(el => el.classList.toggle('active', Number(el.dataset.wizardStep) === current));
+    pills.forEach(el => { const k = Number(el.dataset.wizardPill); el.classList.toggle('active', k === current); el.classList.toggle('completed', k < current); });
+    if (current === 4) buildReview();
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+  function validateStep(n) {
+    let valid = true;
+    const step = steps.find(el => Number(el.dataset.wizardStep) === n);
+    if (!step) return true;
+    step.querySelectorAll('[required]').forEach(el => {
+      const empty = !String(el.value || '').trim();
+      const invalid = el.type === 'email' && !empty && !el.checkValidity();
+      el.classList.toggle('is-invalid', empty || invalid);
+      if (empty || invalid) valid = false;
+    });
+    if (n === 3 && field('password')) {
+      const pass = value('password'), confirm = value('confirm_password');
+      const confirmEl = field('confirm_password');
+      const mismatch = pass !== confirm;
+      if (confirmEl) confirmEl.classList.toggle('is-invalid', mismatch);
+      const err = form.querySelector('#staffPasswordMatchError');
+      if (err) err.style.display = mismatch ? 'block' : 'none';
+      if (mismatch) valid = false;
+      if (pass.length < 8) { const passEl = field('password'); if (passEl) passEl.classList.add('is-invalid'); valid = false; }
+    }
+    if (!valid) {
+      const first = step.querySelector('.is-invalid');
+      if (first) first.focus();
+      else { const alert = form.querySelector('#staffWizardClientError'); if (alert) { alert.textContent = 'Please complete the required fields before continuing.'; alert.classList.remove('d-none'); } }
+    } else {
+      const alert = form.querySelector('#staffWizardClientError'); if (alert) alert.classList.add('d-none');
+    }
+    return valid;
+  }
+  form.querySelectorAll('[data-wizard-next]').forEach(btn => btn.addEventListener('click', function () {
+    if (validateStep(current)) showStep(current + 1);
+  }));
+  form.querySelectorAll('[data-wizard-prev]').forEach(btn => btn.addEventListener('click', () => showStep(current - 1)));
+  pills.forEach(pill => pill.addEventListener('click', () => { const n = Number(pill.dataset.wizardPill); if (n < current) showStep(n); }));
+  form.querySelectorAll('[data-toggle-password]').forEach(btn => btn.addEventListener('click', () => {
+    const input = form.querySelector('#' + btn.dataset.togglePassword); if (!input) return;
+    input.type = input.type === 'password' ? 'text' : 'password';
+    const icon = btn.querySelector('i'); if (icon) icon.className = input.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+  }));
+  // Optional face enrollment during staff creation. The hidden data URL is
+  // submitted with the form so the server can validate uniqueness before saving.
+  const faceToggle = form.querySelector('#registerFaceDuringCreation');
+  const facePanel = form.querySelector('#staffFaceCapturePanel');
+  const faceVideo = form.querySelector('#staffFaceVideo');
+  const faceCanvas = form.querySelector('#staffFaceCanvas');
+  const faceImage = form.querySelector('#staffFaceCaptureImage');
+  const facePreview = form.querySelector('#staffFacePreview');
+  const faceStart = form.querySelector('#staffFaceStartCamera');
+  const faceCapture = form.querySelector('#staffFaceCaptureButton');
+  const faceRetake = form.querySelector('#staffFaceRetakeButton');
+  const faceStatus = form.querySelector('#staffFaceCaptureStatus');
+  let faceStream = null;
+  function stopFaceCamera() {
+    if (faceStream) { faceStream.getTracks().forEach(track => track.stop()); faceStream = null; }
+    if (faceVideo) faceVideo.srcObject = null;
+    if (faceCapture) faceCapture.disabled = true;
+  }
+  function setFaceStatus(message, isError) {
+    if (!faceStatus) return;
+    faceStatus.textContent = message || '';
+    faceStatus.className = 'small mt-2 ' + (isError ? 'text-danger' : 'text-success');
+  }
+  if (faceToggle && facePanel) {
+    faceToggle.addEventListener('change', () => {
+      facePanel.hidden = !faceToggle.checked;
+      if (!faceToggle.checked) { stopFaceCamera(); faceImage.value = ''; if (facePreview) facePreview.hidden = true; if (faceRetake) faceRetake.hidden = true; setFaceStatus('', false); }
+    });
+  }
+  if (faceStart) faceStart.addEventListener('click', async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { setFaceStatus('Camera access is not available in this browser. Use HTTPS or localhost.', true); return; }
+    try {
+      stopFaceCamera();
+      faceStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'user', width: {ideal: 640}, height: {ideal: 480}}, audio: false});
+      faceVideo.srcObject = faceStream;
+      await faceVideo.play();
+      faceCapture.disabled = false;
+      facePreview.hidden = true;
+      faceRetake.hidden = true;
+      setFaceStatus('Camera ready. Ask the staff member to face the camera alone in good lighting.', false);
+    } catch (err) { setFaceStatus('Unable to start the camera. Check browser permissions and ensure no other app is using it.', true); }
+  });
+  if (faceCapture) faceCapture.addEventListener('click', () => {
+    if (!faceVideo || !faceVideo.videoWidth) { setFaceStatus('Wait until the camera preview appears, then capture again.', true); return; }
+    faceCanvas.width = faceVideo.videoWidth; faceCanvas.height = faceVideo.videoHeight;
+    const ctx = faceCanvas.getContext('2d'); ctx.drawImage(faceVideo, 0, 0, faceCanvas.width, faceCanvas.height);
+    faceImage.value = faceCanvas.toDataURL('image/jpeg', 0.9);
+    facePreview.src = faceImage.value; facePreview.hidden = false;
+    faceRetake.hidden = false;
+    stopFaceCamera();
+    setFaceStatus('Face captured. It will be checked for duplicate registrations before the staff account is saved.', false);
+  });
+  if (faceRetake) faceRetake.addEventListener('click', async () => {
+    faceImage.value = ''; facePreview.hidden = true; faceRetake.hidden = true;
+    if (faceStart) faceStart.click();
+  });
+  form.addEventListener('submit', function (event) {
+    if (faceToggle && faceToggle.checked && !faceImage.value) {
+      event.preventDefault(); showStep(1); setFaceStatus('Capture the face or turn off face registration before creating this account.', true);
+      if (facePanel) facePanel.hidden = false;
+    } else if (faceToggle && faceToggle.checked && !form.querySelector('#faceRegistrationConsent')?.checked) {
+      event.preventDefault(); showStep(1); setFaceStatus('Confirm that the staff member has been informed and agreed before registering biometric data.', true);
+      if (facePanel) facePanel.hidden = false;
+    }
+    stopFaceCamera();
+  });
+  window.addEventListener('beforeunload', stopFaceCamera);
+
+  const grade = form.querySelector('#staffGradeSelect');
+  if (grade) grade.addEventListener('change', function () {
+    const opt = this.selectedOptions[0], box = form.querySelector('#gradeBenefitsPreview');
+    const set = (id, v) => { const el = form.querySelector('#' + id); if (el) el.textContent = v; };
+    if (!opt || !opt.value) { if (box) box.style.display = 'none'; return; }
+    set('previewSalary', '₵' + (parseFloat(opt.dataset.salary || '0') || 0).toFixed(2)); set('previewLeave', opt.dataset.leave || '0'); set('previewSick', opt.dataset.sick || '0'); set('gradeCodeDisplay', opt.dataset.code || '—'); if (box) box.style.display = 'block';
+  });
+  form.addEventListener('submit', function (e) {
+    for (let n = 1; n <= 3; n++) { if (!validateStep(n)) { e.preventDefault(); showStep(n); return; } }
+    const submit = form.querySelector('button[type="submit"]');
+    if (submit) { submit.disabled = true; submit.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating staff account…'; }
+  });
+  showStep(1);
+});
+</script>
+{% endblock %}

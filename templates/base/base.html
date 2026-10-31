@@ -6,6 +6,7 @@
     {% include "base/header.html" %}
     <!-- EduAI Product Guide styles -->
     <link rel="stylesheet" href="{% static 'css/tour.css' %}?v=7.1">
+    <link rel="stylesheet" href="{% static 'css/eduai-enterprise.css' %}?v=1.0">
 
     <!-- === CUSTOM ENTERPRISE STYLES (Light/Dark Patch) === -->
      <style>
@@ -312,6 +313,8 @@
             .eduai-scrim.show { display: block; }
         }
     </style>
+    <!-- EduAI premium application shell refinements -->
+    <link rel="stylesheet" href="{% static 'css/eduai-shell.css' %}?v=2.0">
 </head>
 
 <body data-eduai-role="{{ request.user.role|default:'USER' }}">

@@ -7,8 +7,13 @@ from .views import (
     api_live_capture,
     student_attendance_history,
 )
+from .staff_reports import staff_attendance_reports, staff_attendance_export_csv
 from .staff_views import (
     staff_attendance_dashboard,
+    staff_attendance_self_service,
+    face_attendance_kiosk,
+    api_staff_self_checkout,
+    staff_attendance_settings,
     api_staff_toggle_attendance,
     api_staff_checkout,
     api_register_staff_face,
@@ -27,8 +32,14 @@ urlpatterns = [
 
     # Staff attendance
     path('staff/', staff_attendance_dashboard, name='staff_attendance_dashboard'),
+    path('face-kiosk/', face_attendance_kiosk, name='face_attendance_kiosk'),
+    path('staff/my-attendance/', staff_attendance_self_service, name='staff_attendance_self_service'),
+    path('staff/settings/', staff_attendance_settings, name='staff_attendance_settings'),
+    path('staff/reports/', staff_attendance_reports, name='staff_attendance_reports'),
+    path('staff/reports/export.csv', staff_attendance_export_csv, name='staff_attendance_export_csv'),
     path('api/staff/toggle/', api_staff_toggle_attendance, name='api_staff_toggle_attendance'),
     path('api/staff/checkout/', api_staff_checkout, name='api_staff_checkout'),
+    path('api/staff/self-checkout/', api_staff_self_checkout, name='api_staff_self_checkout'),
     path('api/staff/register-face/', api_register_staff_face, name='api_register_staff_face'),
     path('api/staff/live-capture/', api_staff_live_capture, name='api_staff_live_capture'),
 ]

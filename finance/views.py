@@ -304,17 +304,48 @@ def api_record_payment(request):
                 remaining -= allocated
             if not payments: raise ValueError('No payment could be allocated to the selected invoices.')
 
-        # Only after commit: notifications cannot roll back accounting data.
-        try:
-            from .services.receipts import create_payment_in_app_notification, send_receipt_notifications_async
-            for payment in payments:
-                # In-app notification is created synchronously so it is available
-                # immediately in the bell/Notification Center. Email/SMS remain async.
+        # The accounting transaction has committed at this point. Attempt each
+        # notification independently so one bad parent profile/notification log
+        # cannot prevent receipts for the other allocated payments. Delivery is
+        # attempted before the response; daemon threads can be killed when a
+        # hosted web worker is recycled and were silently dropping receipts.
+        receipt_delivery = []
+        from .services.receipts import create_payment_in_app_notification, send_receipt_notifications
+        for payment in payments:
+            try:
                 create_payment_in_app_notification(payment)
-                send_receipt_notifications_async(payment)
-        except Exception as exc:
-            logger.exception('Payment saved but receipt notification queue failed: %s', exc)
+            except Exception as exc:
+                logger.exception(
+                    'Payment %s was saved but its in-app receipt notification failed: %s',
+                    payment.id, exc,
+                )
+            try:
+                delivery = send_receipt_notifications(payment, send_email=True, send_sms=True)
+                receipt_delivery.append({
+                    'payment_id': str(payment.id),
+                    'receipt_number': payment.receipt_number,
+                    'email_sent': bool(delivery.get('email_sent')),
+                    'sms_sent': bool(delivery.get('sms_sent')),
+                    'reason': delivery.get('email_error') or delivery.get('reason'),
+                })
+                if not delivery.get('email_sent'):
+                    logger.warning(
+                        'Payment %s saved but parent receipt email was not sent: %s',
+                        payment.id, delivery.get('reason') or delivery.get('email_error') or 'unknown delivery error',
+                    )
+            except Exception as exc:
+                logger.exception('Payment %s saved but receipt delivery raised: %s', payment.id, exc)
+                receipt_delivery.append({
+                    'payment_id': str(payment.id),
+                    'receipt_number': payment.receipt_number,
+                    'email_sent': False,
+                    'sms_sent': False,
+                    'reason': 'Receipt delivery raised an unexpected error. Check application logs.',
+                })
 
+        all_receipt_emails_sent = bool(receipt_delivery) and all(
+            item['email_sent'] for item in receipt_delivery
+        )
         first = updated_invoices[0]
         receipt_url = reverse('finance:payment_receipt', args=[payments[0].id])
         receipt_pdf_url = reverse('finance:payment_receipt_pdf', args=[payments[0].id])
@@ -326,6 +357,16 @@ def api_record_payment(request):
         # <form target="_blank">. AJAX/JSON callers continue to receive the
         # existing JSON response below.
         if is_native_submit:
+            if all_receipt_emails_sent:
+                messages.success(request, 'Payment recorded and receipt email sent to the parent/guardian.')
+            else:
+                reasons = [item.get('reason') for item in receipt_delivery if not item.get('email_sent') and item.get('reason')]
+                detail = ' '.join(dict.fromkeys(reasons))
+                messages.warning(
+                    request,
+                    'Payment was recorded successfully, but the parent receipt email could not be confirmed.'
+                    + ((' ' + detail) if detail else ' Check the parent email address and email-provider configuration.'),
+                )
             return redirect(receipt_url)
 
         return JsonResponse({'success': True,
@@ -336,7 +377,9 @@ def api_record_payment(request):
             'new_balance': first['new_balance'], 'remaining_balance': str(max(total_outstanding-total_paid, ZERO)),
             'updated_invoices': updated_invoices,
             'receipt_url': receipt_url,
-            'receipt_pdf_url': receipt_pdf_url})
+            'receipt_pdf_url': receipt_pdf_url,
+            'receipt_delivery': receipt_delivery,
+            'receipt_email_sent': all_receipt_emails_sent})
     except json.JSONDecodeError:
         return respond_error('Invalid JSON request.')
     except Exception as exc:

@@ -181,6 +181,34 @@ class FaceRecognitionService:
                 f"Error processing image: {str(exc)}"
             )
 
+    @staticmethod
+    def encode_faces(image_data):
+        """Return all face encodings found in one camera frame.
+
+        Unlike encode_face(), this is intended for an attendance kiosk where
+        several people may stand in front of the camera together.
+        """
+        if not FACE_RECOGNITION_AVAILABLE:
+            return [], "Face recognition is not enabled on this server."
+        try:
+            image_np = FaceRecognitionService.decode_base64_image(image_data)
+            if image_np is None:
+                return [], "The camera image could not be decoded."
+            locations = face_recognition.face_locations(image_np, model="hog")
+            if not locations:
+                try:
+                    locations = face_recognition.face_locations(image_np, model="cnn")
+                except Exception:
+                    locations = []
+            if not locations:
+                return [], "No faces detected in this frame."
+            encodings = face_recognition.face_encodings(image_np, locations)
+            return [item.tolist() for item in encodings], "{} face(s) detected.".format(len(encodings))
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Multi-face encoding failed")
+            return [], "The camera frame could not be processed."
+
     # ==========================================================
     # FACE COMPARISON
     # ==========================================================
@@ -268,6 +296,48 @@ class FaceRecognitionService:
             )
 
         return None
+
+    @staticmethod
+    def compare_faces_all(known_face_encodings, face_encoding_to_check, tolerance=0.50):
+        """Return every matching identity sorted by distance, not just the best match.
+
+        This is used by staff enrollment and attendance to detect duplicate face
+        registrations instead of silently assigning an ambiguous face to one person.
+        """
+        if not FACE_RECOGNITION_AVAILABLE or not known_face_encodings or not face_encoding_to_check:
+            return []
+        known_encodings = []
+        identity_ids = []
+        for identity_id, encoding in known_face_encodings.items():
+            if not encoding:
+                continue
+            try:
+                arr = np.asarray(encoding, dtype=np.float64)
+                if arr.shape != (128,):
+                    continue
+                known_encodings.append(arr)
+                identity_ids.append(str(identity_id))
+            except (TypeError, ValueError):
+                continue
+        if not known_encodings:
+            return []
+        try:
+            target = np.asarray(face_encoding_to_check, dtype=np.float64)
+            if target.shape != (128,):
+                return []
+            distances = face_recognition.face_distance(known_encodings, target)
+            matches = [(identity_ids[i], float(distance)) for i, distance in enumerate(distances) if float(distance) <= tolerance]
+            matches.sort(key=lambda item: item[1])
+            # A staff identity can be present in legacy and current storage. Keep
+            # one closest match per identity so duplicate storage is not a false alarm.
+            unique = {}
+            for identity_id, distance in matches:
+                if identity_id not in unique or distance < unique[identity_id]:
+                    unique[identity_id] = distance
+            return sorted(unique.items(), key=lambda item: item[1])
+        except Exception as exc:
+            print(f"[FaceRecognitionService] Multi-match comparison error: {exc}")
+            return []
 
     # ==========================================================
     # REGISTER STUDENT FACE
@@ -508,7 +578,8 @@ class FaceRecognitionService:
         image_data,
         school_id,
         date=None,
-        user=None
+        user=None,
+        commit=True,
     ):
         """
         Recognize students from a camera frame and mark attendance.
@@ -747,33 +818,33 @@ class FaceRecognitionService:
                 # Mark attendance
                 # ------------------------------------------------
 
-                attendance, created = (
-                    Attendance.objects.update_or_create(
-                        school_id=school_id,
-                        student=student,
-                        date=date,
+                # Face scanning is an automatic check-in, not an override
+                # mechanism. Never replace a teacher/admin's existing status
+                # (especially ABSENT or EXCUSED) when the same person appears
+                # in a later camera frame. The unique (student, date) key is
+                # also protected against simultaneous camera requests.
+                if commit:
+                    attendance, created = Attendance.objects.get_or_create(
+                        school_id=school_id, student=student, date=date,
                         defaults={
-                            "status": "PRESENT",
-                            "marked_by": user,
-                            "remarks": (
-                                "Auto-detected by facial "
-                                "recognition"
-                            ),
+                            "status": "PRESENT", "marked_by": user,
+                            "remarks": "Automatically recorded by face recognition.",
                         },
                     )
-                )
-
-                # Keep the notification state synchronized when facial
-                # recognition changes an earlier ABSENT record to PRESENT.
-                try:
-                    from attendance.services.notifications import notify_attendance
-                    notify_attendance(attendance)
-                except Exception:
-                    import logging
-                    logging.getLogger(__name__).exception(
-                        "Attendance notification cleanup failed for %s",
-                        attendance.id,
-                    )
+                    if created:
+                        try:
+                            from attendance.services.notifications import notify_attendance
+                            notify_attendance(attendance)
+                        except Exception:
+                            import logging
+                            logging.getLogger(__name__).exception(
+                                "Face attendance notification failed for %s", attendance.id,
+                            )
+                else:
+                    attendance = Attendance.objects.filter(
+                        school_id=school_id, student=student, date=date
+                    ).first()
+                    created = False
 
                 full_name = (
                     student.user.get_full_name()
@@ -797,7 +868,9 @@ class FaceRecognitionService:
                         if student.school_class
                         else "No Class"
                     ),
-                    "status": attendance.status,
+                    "status": attendance.status if attendance else "DETECTED",
+                    "created": created,
+                    "already_marked": bool(attendance and not created),
                 }
 
             return {

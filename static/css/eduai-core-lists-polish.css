@@ -1,0 +1,66 @@
+/* EduAI Phase 5 — core student/staff list pages. Presentation-only. */
+:root { --eduai-list-radius: 16px; --eduai-list-shadow: 0 8px 28px rgba(31,42,40,.055); }
+/* These rules are loaded only on the Student and Staff list screens. */
+body .container-fluid#messagesContainer,
+body .container-fluid.px-4 { max-width: 100%; }
+body .card.card-custom {
+  border: 1px solid var(--bs-border-color, #e7e1d3) !important;
+  border-radius: var(--eduai-list-radius) !important;
+  box-shadow: var(--eduai-list-shadow) !important;
+  overflow: hidden;
+}
+body .card.card-custom > .card-header {
+  background: var(--bs-body-bg, #fff);
+  border-bottom: 1px solid var(--bs-border-color, #e7e1d3);
+  padding: 1rem 1.25rem;
+}
+body .card.card-custom > .card-body { padding: clamp(1rem, 2vw, 1.5rem); }
+body .card.card-custom .card-title,
+body .card.card-custom h5 { letter-spacing: -.015em; }
+body .card.card-custom .form-control,
+body .card.card-custom .form-select,
+body .card.card-custom .input-group-text {
+  min-height: 42px; border-color: var(--bs-border-color, #dcd6c9); border-radius: 10px;
+}
+body .card.card-custom .form-control:focus,
+body .card.card-custom .form-select:focus {
+  border-color: var(--eduai-gold, #946b1c);
+  box-shadow: 0 0 0 .2rem rgba(148,107,28,.14);
+}
+body .card.card-custom .btn { border-radius: 10px; font-weight: 600; }
+body .card.card-custom .table-responsive { border-radius: 0 0 var(--eduai-list-radius) var(--eduai-list-radius); }
+body .card.card-custom table { margin-bottom: 0; }
+body .card.card-custom .table thead th {
+  background: var(--bs-tertiary-bg, #f7f4ec); color: var(--bs-secondary-color, #6b7570);
+  border-bottom: 1px solid var(--bs-border-color, #e7e1d3);
+  font-size: .70rem; font-weight: 750; letter-spacing: .055em; text-transform: uppercase;
+  white-space: nowrap; padding: .9rem 1rem;
+}
+body .card.card-custom .table tbody td { padding: .85rem 1rem; border-color: var(--bs-border-color, #e7e1d3); }
+body .card.card-custom .table tbody tr { transition: background-color .15s ease; }
+body .card.card-custom .table-hover tbody tr:hover > * { background-color: rgba(148,107,28,.045); }
+body .card.card-custom .badge { border-radius: 999px; font-weight: 650; letter-spacing: .01em; padding: .4em .65em; }
+body .card.card-custom .pagination { gap: .25rem; flex-wrap: wrap; }
+body .card.card-custom .pagination .page-link { border-radius: 9px; border-color: var(--bs-border-color); }
+body .card.card-custom .pagination .page-item.active .page-link { background: var(--eduai-gold,#946b1c); border-color: var(--eduai-gold,#946b1c); }
+body .page-description { border-radius: 14px; box-shadow: 0 4px 18px rgba(31,42,40,.035); }
+body .kpi-strip { border-radius: 14px; box-shadow: 0 4px 18px rgba(31,42,40,.035); }
+body .card.card-custom .dropdown-menu { border: 1px solid var(--bs-border-color); border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,.12); padding: .4rem; }
+body .card.card-custom .dropdown-item { border-radius: 8px; padding: .55rem .75rem; }
+body .card.card-custom .dropdown-item:focus,
+body .card.card-custom .dropdown-item:hover { background: var(--eduai-gold-soft,rgba(148,107,28,.16)); }
+body .card.card-custom a:focus-visible,
+body .card.card-custom button:focus-visible { outline: 3px solid rgba(44,122,109,.45); outline-offset: 2px; }
+html[data-bs-theme="dark"] body .card.card-custom { box-shadow: 0 10px 28px rgba(0,0,0,.12) !important; }
+html[data-bs-theme="dark"] body .card.card-custom .table thead th { background: rgba(255,255,255,.035); }
+html[data-bs-theme="dark"] body .card.card-custom .table-hover tbody tr:hover > * { background-color: rgba(212,174,91,.07); }
+@media (max-width: 767.98px) {
+  body .container-fluid.px-4 { padding-left: .75rem !important; padding-right: .75rem !important; }
+  body .card.card-custom > .card-header { padding: .85rem 1rem; }
+  body .card.card-custom > .card-body { padding: .9rem; }
+  body .card.card-custom .table thead th { padding: .7rem .75rem; }
+  body .card.card-custom .table tbody td { padding: .7rem .75rem; }
+  body .kpi-strip-cell { border-right: 0; border-bottom: 1px solid var(--bs-border-color); }
+  body .kpi-strip-cell:last-child { border-bottom: 0; }
+}
+@media (prefers-reduced-motion: reduce) { body .card.card-custom .table tbody tr { transition: none; } }

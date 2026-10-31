@@ -1,0 +1,198 @@
+/* EduAI premium application shell — Phase 2.
+   Scoped to the shared shell and common components; no business logic changes. */
+:root {
+  --eduai-radius-sm: .55rem;
+  --eduai-radius-md: .85rem;
+  --eduai-radius-lg: 1.1rem;
+  --eduai-shadow-shell: 0 8px 28px rgba(23, 48, 42, .055);
+  --eduai-shadow-lift: 0 14px 34px rgba(23, 48, 42, .10);
+  --eduai-focus-ring: 0 0 0 .22rem var(--eduai-signal-soft, rgba(44,122,109,.16));
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: -.006em;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Top navigation */
+.top-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  min-height: 72px !important;
+  padding-left: clamp(.85rem, 2vw, 1.65rem) !important;
+  padding-right: clamp(.85rem, 2vw, 1.65rem) !important;
+  box-shadow: 0 1px 0 var(--surface-border), 0 5px 18px rgba(20, 42, 36, .025);
+  backdrop-filter: saturate(1.2) blur(12px);
+}
+.top-navbar h5 {
+  font-size: 1.02rem;
+  font-weight: 750 !important;
+  letter-spacing: -.025em;
+}
+.eduai-icon-btn {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 12px !important;
+  transition: transform .16s ease, border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+.eduai-icon-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(var(--eduai-signal-rgb, 44,122,109), .42) !important;
+  box-shadow: 0 4px 12px rgba(20, 42, 36, .06);
+}
+.eduai-icon-btn:focus-visible,
+.top-navbar .btn:focus-visible,
+#sidebar a:focus-visible,
+#sidebar button:focus-visible {
+  outline: 3px solid var(--eduai-signal, #2C7A6D);
+  outline-offset: 2px;
+}
+.eduai-user-avatar {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px var(--surface-bg), 0 0 0 3px var(--surface-border);
+}
+.eduai-role-pill { letter-spacing: .035em; }
+.top-navbar .dropdown-menu {
+  margin-top: .55rem !important;
+  padding: .45rem !important;
+  border-radius: 14px !important;
+  box-shadow: 0 16px 42px rgba(15, 35, 30, .13) !important;
+}
+.top-navbar .dropdown-item {
+  padding: .62rem .75rem;
+  border-radius: 8px;
+  font-size: .86rem;
+  transition: background-color .15s ease, color .15s ease;
+}
+.top-navbar .dropdown-item:active { background: var(--eduai-signal, #2C7A6D); color: #fff; }
+
+/* Navigation rail */
+#sidebar {
+  box-shadow: 5px 0 24px rgba(23, 48, 42, .025);
+  border-right-color: var(--sidebar-border) !important;
+}
+.eduai-brand {
+  min-height: 76px;
+  padding-top: 18px !important;
+  padding-bottom: 16px !important;
+}
+.eduai-brand .mark {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 12px !important;
+  background: linear-gradient(145deg, #B68A37 0%, var(--eduai-gold, #946B1C) 55%, #725016 100%) !important;
+  box-shadow: 0 5px 14px rgba(148,107,28,.22) !important;
+}
+.eduai-brand .wordmark { letter-spacing: -.045em !important; }
+.eduai-search input { min-height: 39px; border-radius: 11px !important; }
+.eduai-nav-scroll .nav-link {
+  min-height: 38px;
+  border-radius: 10px !important;
+  margin: 2px 0 !important;
+  font-size: .835rem !important;
+  letter-spacing: -.01em;
+}
+.eduai-nav-scroll .nav-link i.bi { font-size: 1.02rem !important; }
+.eduai-nav-scroll .nav-link.active {
+  background: linear-gradient(90deg, rgba(var(--eduai-gold-rgb,148,107,28),.13), rgba(var(--eduai-gold-rgb,148,107,28),.055)) !important;
+  box-shadow: inset 3px 0 0 var(--eduai-gold, #946B1C);
+  font-weight: 700 !important;
+}
+.eduai-eyebrow { padding-top: 17px !important; letter-spacing: .105em !important; }
+.eduai-profile { padding-top: 14px !important; padding-bottom: 16px !important; }
+
+/* Main workspace */
+#content-wrapper { min-height: 100vh; min-width: 0; }
+#mainContent {
+  width: 100%;
+  max-width: 1760px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: clamp(1rem, 2.1vw, 2rem) !important;
+}
+#mainContent > :first-child { margin-top: 0; }
+#mainContent h1, #mainContent h2, #mainContent h3,
+#mainContent h4, #mainContent h5, #mainContent h6 {
+  letter-spacing: -.028em;
+  text-wrap: balance;
+}
+#mainContent h1 { font-weight: 800; }
+#mainContent h2, #mainContent h3 { font-weight: 750; }
+#mainContent p { line-height: 1.58; }
+
+/* Shared surfaces and interactions */
+#mainContent .card,
+#mainContent .card-custom,
+#mainContent .modal-content,
+#mainContent .list-group,
+#mainContent .accordion-item {
+  border-radius: var(--eduai-radius-md);
+  overflow: hidden;
+}
+#mainContent .card,
+#mainContent .card-custom { box-shadow: var(--eduai-shadow-shell); }
+#mainContent .card-header,
+#mainContent .card-footer { padding: .9rem 1.15rem; }
+#mainContent .card-body { min-width: 0; }
+#mainContent .modal-content {
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 24px 70px rgba(13, 31, 26, .18);
+}
+#mainContent .modal-header,
+#mainContent .modal-footer { border-color: var(--surface-border); }
+#mainContent .modal-title { font-weight: 750; letter-spacing: -.02em; }
+#mainContent .form-control,
+#mainContent .form-select,
+#mainContent .input-group-text {
+  min-height: 42px;
+  border-radius: 10px;
+}
+#mainContent textarea.form-control { min-height: 100px; }
+#mainContent .form-control:focus,
+#mainContent .form-select:focus {
+  border-color: var(--eduai-signal, #2C7A6D) !important;
+  box-shadow: var(--eduai-focus-ring) !important;
+}
+#mainContent .btn { border-radius: 10px; font-weight: 650; }
+#mainContent .btn-sm { border-radius: 8px; }
+#mainContent .table-responsive { border-radius: 10px; }
+#mainContent .table { margin-bottom: 0; }
+#mainContent .table thead th { font-size: .73rem; font-weight: 750; letter-spacing: .035em; }
+#mainContent .table td, #mainContent .table th { vertical-align: middle; }
+#mainContent .pagination .page-link { border-radius: 8px; margin: 0 2px; }
+#mainContent .alert { border-radius: 12px !important; }
+
+/* Reduce motion for users who request it. */
+@media (prefers-reduced-motion: no-preference) {
+  #mainContent .card:not(.no-hover-lift) { transition: box-shadow .18s ease, border-color .18s ease; }
+  #mainContent .card:not(.no-hover-lift):hover { box-shadow: var(--eduai-shadow-lift); }
+  #mainContent .btn:not(:disabled) { transition: transform .15s ease, box-shadow .15s ease; }
+  #mainContent .btn:not(:disabled):hover { transform: translateY(-1px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+@media (max-width: 991.98px) {
+  .top-navbar { min-height: 64px !important; }
+  #mainContent { padding: 1rem !important; }
+}
+@media (max-width: 575.98px) {
+  .top-navbar { gap: .5rem; padding-left: .7rem !important; padding-right: .7rem !important; }
+  .top-navbar > div { gap: .45rem !important; }
+  .eduai-icon-btn { width: 36px !important; height: 36px !important; }
+  #mainContent { padding: .85rem !important; }
+  #mainContent .card-body { padding: .9rem !important; }
+  #mainContent .card-header, #mainContent .card-footer { padding: .8rem .9rem; }
+  #mainContent h1 { font-size: 1.45rem; }
+  #mainContent h2 { font-size: 1.25rem; }
+  #mainContent .table { font-size: .84rem; }
+}

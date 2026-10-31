@@ -277,8 +277,9 @@
                 <div class="col-lg-5">
                     <div class="d-flex justify-content-lg-end gap-2 flex-wrap">
                         {% if is_admin or is_class_teacher %}
+                            {% if is_admin %}<a href="{% url 'attendance:face_attendance_kiosk' %}" class="btn btn-outline-gold"><i class="bi bi-camera-video me-1"></i> Unified Face Kiosk</a>{% endif %}
                             <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#attendanceCameraModal">
-                                <i class="bi bi-camera-video me-1"></i> Face Scan
+                                <i class="bi bi-camera-video me-1"></i> Student Face Scan
                             </button>
                         {% endif %}
 
@@ -529,6 +530,7 @@
                     </div>
                 </div>
 
+                <div class="form-check mt-3"><input class="form-check-input" type="checkbox" id="studentFaceConsent"><label class="form-check-label small" for="studentFaceConsent">I confirm the parent/guardian has received the school's face-attendance privacy notice and the school is authorized to register this student's face.</label></div>
                 <div id="regFacePreview" class="mt-3 text-center" style="display:none;">
                     <img id="regCapturedImagePreview" src="" alt="Captured face" class="img-fluid rounded-3 border" style="max-height:140px;">
                 </div>
@@ -575,12 +577,14 @@
                 <div class="row g-3">
                     <!-- CAMERA -->
                     <div class="col-lg-7">
+                        <div class="alert alert-info small text-start mb-2">Use face attendance only for students whose parent/guardian and school have received the relevant privacy information. Camera matching is not a liveness/anti-spoofing check; keep the attendance camera supervised.</div>
+                        <div class="form-check text-start mb-2"><input class="form-check-input" type="checkbox" id="studentScanPrivacyAck"><label class="form-check-label small" for="studentScanPrivacyAck">I confirm this student attendance session is authorized and relevant families have been informed.</label></div>
                         <div class="text-center">
                             <div class="btn-group btn-group-sm mb-3" role="group">
-                                <button id="manualModeBtn" type="button" class="btn btn-outline-gold active" onclick="setCaptureMode('manual')">
+                                <button id="manualModeBtn" type="button" class="btn btn-outline-gold" onclick="setCaptureMode('manual')">
                                     <i class="bi bi-hand-index me-1"></i> Manual
                                 </button>
-                                <button id="autoModeBtn" type="button" class="btn btn-outline-success" onclick="setCaptureMode('auto')">
+                                <button id="autoModeBtn" type="button" class="btn btn-outline-success active" onclick="setCaptureMode('auto')">
                                     <i class="bi bi-play-circle me-1"></i> Auto Capture
                                 </button>
                             </div>
@@ -656,9 +660,12 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary w-50" onclick="clearRecognizedList()">
                                     <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
                                 </button>
-                                <button type="button" class="btn btn-sm btn-gold w-50" onclick="applyRecognizedAttendance()">
-                                    <i class="bi bi-check2-all me-1"></i> Apply All
+                                <button id="studentApplyAllBtn" type="button" class="btn btn-sm btn-gold w-50" onclick="applyRecognizedAttendance()" style="display:none;">
+                                    <i class="bi bi-check2-all me-1"></i> Apply All (manual)
                                 </button>
+                                <span id="studentAutoSaveBadge" class="badge bg-success-subtle text-success border rounded-pill w-50 py-2 justify-content-center" style="display:flex;">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Auto-save enabled
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -682,6 +689,9 @@
 // AUTO-FILTER FUNCTIONALITY
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
+    // Continuous multi-face recognition is the default; manual capture remains
+    // available as an explicit fallback from the same camera dialog.
+    if (document.getElementById("autoModeBtn")) setCaptureMode("auto");
     const searchInput = document.getElementById('attendanceSearchInput');
     const clearSearchBtn = document.getElementById('clearAttendanceSearch');
     const searchResultCount = document.getElementById('searchResultCount');
@@ -1034,6 +1044,10 @@ async function registerStudentFace() {
         showRegistrationStatus("warning", "Please capture the student's face first.");
         return;
     }
+    if (!document.getElementById("studentFaceConsent")?.checked) {
+        showRegistrationStatus("warning", "Confirm the parent/guardian privacy notice and authorization before registering this face.");
+        return;
+    }
     const button = document.getElementById("regRegisterBtn");
     button.disabled = true;
     button.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Registering...`;
@@ -1045,7 +1059,7 @@ async function registerStudentFace() {
                 "X-CSRFToken": getCSRFToken(),
                 "X-Requested-With": "XMLHttpRequest"
             },
-            body: JSON.stringify({ student_id: regStudentId, image: regCapturedImageData })
+            body: JSON.stringify({ student_id: regStudentId, image: regCapturedImageData, face_registration_consent: true })
         });
         const data = await readJsonResponse(response);
         if (response.ok && data.success) {
@@ -1097,7 +1111,7 @@ function showRegistrationStatus(type, message) {
 // ============================================================
 let scanStream = null;
 let isCameraStarted = false;
-let captureMode = "manual";
+let captureMode = "auto";
 let autoTimer = null;
 let countdownTimer = null;
 let isAutoCapturing = false;
@@ -1166,7 +1180,11 @@ function setCaptureMode(mode) {
     const capture = document.getElementById("captureBtn");
     const settings = document.getElementById("autoSettings");
     const pause = document.getElementById("pauseAutoBtn");
+    const applyAll = document.getElementById("studentApplyAllBtn");
+    const autoSave = document.getElementById("studentAutoSaveBadge");
     if (mode === "manual") {
+        if (applyAll) applyAll.style.display = "inline-block";
+        if (autoSave) autoSave.style.display = "none";
         manual.className = "btn btn-outline-gold active";
         auto.className = "btn btn-outline-success";
         capture.style.display = isCameraStarted ? "inline-block" : "none";
@@ -1175,6 +1193,8 @@ function setCaptureMode(mode) {
         document.getElementById("autoCaptureIndicator").style.display = "none";
         stopAutoCapture();
     } else {
+        if (applyAll) applyAll.style.display = "none";
+        if (autoSave) autoSave.style.display = "flex";
         auto.className = "btn btn-outline-success active";
         manual.className = "btn btn-outline-gold";
         capture.style.display = "none";
@@ -1185,6 +1205,10 @@ function setCaptureMode(mode) {
 }
 
 async function startScanCamera() {
+    if (!document.getElementById("studentScanPrivacyAck")?.checked) {
+        setScanStatus("warning", "Confirm that the school has informed relevant families and this face attendance session is authorized.");
+        return;
+    }
     const video = document.getElementById("scanVideo");
     const placeholder = document.getElementById("cameraPlaceholder");
     const loading = document.getElementById("cameraLoading");
@@ -1352,7 +1376,7 @@ async function processFrame(video, showProgress) {
                 "X-CSRFToken": getCSRFToken(),
                 "X-Requested-With": "XMLHttpRequest"
             },
-            body: JSON.stringify({ image: imageData, date: ATTENDANCE_DATE })
+            body: JSON.stringify({ image: imageData, date: ATTENDANCE_DATE, commit: captureMode === "auto" })
         });
         const data = await readJsonResponse(response);
         if (!response.ok || !data.success) {
@@ -1367,25 +1391,43 @@ async function processFrame(video, showProgress) {
                 if (!id || id === "undefined") return;
                 if (!recognizedStudents.has(id)) {
                     const directoryEntry = lookupStudentDirectory(id, student.name);
+                    const currentStatus = student.status || (captureMode === "auto" ? "PRESENT" : "DETECTED");
                     recognizedStudents.set(id, {
-                        id: id,
-                        name: directoryEntry.name || student.name || "Unknown Student",
+                        id: id, name: directoryEntry.name || student.name || "Unknown Student",
                         className: directoryEntry.className || student.className || "Class not on record",
                         admission: directoryEntry.admission || student.admission || "No admission no.",
-                        status: "PRESENT"
+                        status: currentStatus
                     });
-                    newStudents.push(id);
+                    if (student.created || captureMode === "manual") newStudents.push(id);
                 }
             });
             updateRecognizedList();
+            if (captureMode === "auto") {
+                const saved = Number(data.created_students || 0);
+                const badge = document.getElementById("studentAutoSaveBadge");
+                if (badge) badge.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> ${saved ? `${saved} saved automatically` : "Auto-save enabled"}`;
+            }
             if (newStudents.length) {
                 const names = newStudents.map(id => recognizedStudents.get(id)?.name).filter(Boolean);
                 setScanStatus("success", `Recognized: ${names.join(", ")}.`);
                 if (captureMode === "auto") {
-                    for (const id of newStudents) {
-                        try { await updateAttendance(id, "PRESENT", false); }
-                        catch (error) { console.error("Auto attendance error:", error); }
-                    }
+                    // The recognition endpoint has already created the record.
+                    // Do not POST a second manual update: it could overwrite a
+                    // pre-existing ABSENT/EXCUSED decision.
+                    newStudents.forEach(id => {
+                        const row = document.querySelector(`#attendanceTableBody tr[data-student-id="${CSS.escape(id)}"]`);
+                        if (!row) return;
+                        const present = row.querySelector(`#btn-present-${CSS.escape(id)}`);
+                        const late = row.querySelector(`#btn-late-${CSS.escape(id)}`);
+                        const absent = row.querySelector(`#btn-absent-${CSS.escape(id)}`);
+                        const actualStatus = recognizedStudents.get(id)?.status;
+                        if (present && actualStatus === "PRESENT") present.className = "btn btn-sm btn-success";
+                        if (late && actualStatus === "LATE") late.className = "btn btn-sm btn-warning";
+                        if (absent && actualStatus === "ABSENT") absent.className = "btn btn-sm btn-danger";
+                        if (["PRESENT", "LATE", "ABSENT", "EXCUSED"].includes(actualStatus)) {
+                            [present, late, absent].filter(Boolean).forEach(button => { button.disabled = true; });
+                        }
+                    });
                 }
             } else if (showProgress) {
                 setScanStatus("info", `Faces recognized. ${recognizedStudents.size} student(s) currently listed.`);
@@ -1403,9 +1445,11 @@ function normalizeStudentFields(raw, fallbackId) {
     if (!raw || typeof raw !== 'object') return null;
     const id = raw.id ?? raw.student_id ?? raw.pk ?? fallbackId ?? null;
     const name = raw.name || raw.full_name || raw.student_name || raw.display_name || null;
+    const status = raw.status || null;
+    const created = !!raw.created;
     const admission = raw.admission || raw.admission_number || raw.admission_no || null;
     const className = raw.class_name || raw.school_class || raw.className || raw.class || raw.grade || null;
-    return { id: id !== null ? String(id) : null, name, admission, className };
+    return { id: id !== null ? String(id) : null, name, admission, className, status, created };
 }
 
 function normalizeRecognizedStudents(results) {
@@ -1460,7 +1504,7 @@ function updateRecognizedList() {
                         </div>
                     </div>
                 </div>
-                <span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i> PRESENT</span>
+                <span class="badge ${student.status === 'ABSENT' ? 'bg-danger' : student.status === 'LATE' ? 'bg-warning text-dark' : student.status === 'EXCUSED' ? 'bg-secondary' : student.status === 'DETECTED' ? 'bg-info text-dark' : 'bg-success'}"><i class="bi bi-check-circle-fill me-1"></i> ${escapeHtml(student.status || 'PRESENT')}</span>
             </div>
         `;
     });
@@ -1479,6 +1523,10 @@ async function applyRecognizedAttendance() {
         return;
     }
     const students = Array.from(recognizedStudents.values());
+    if (captureMode === "auto") {
+        showNotification("info", "Recognized students are saved automatically. No Apply All action is needed.");
+        return;
+    }
     showNotification("info", `Applying attendance for ${students.length} student(s)...`);
     let applied = 0;
     let failed = 0;
@@ -1547,8 +1595,33 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    setCaptureMode("manual");
+    setCaptureMode("auto");
 });
 </script>
+
+<style>
+/* EduAI Phase 6 — focused admissions and attendance visual polish */
+.adm-page-head,.adm-hero{border-radius:1.15rem!important;box-shadow:0 10px 28px rgba(31,42,40,.045)}
+.adm-card,.card:has(.adm-table),.card:has(.adm-kpi){border-radius:1rem;overflow:hidden}
+.adm-card .card-header,.card:has(.adm-table)>.card-header{background:var(--surface-bg, var(--bs-body-bg));border-bottom:1px solid var(--surface-border, var(--bs-border-color));}
+.adm-table{margin-bottom:0}.adm-table thead th{padding:.9rem .85rem;background:rgba(148,107,28,.045);border-bottom:1px solid var(--surface-border,var(--bs-border-color))}.adm-table tbody td{padding:.8rem .85rem;vertical-align:middle}.adm-table tbody tr{transition:background-color .15s ease}.adm-table tbody tr:hover{background:rgba(44,122,109,.045)}
+.adm-filter-tile{border-radius:.9rem!important;text-decoration:none!important}
+.adm-kpi{border:1px solid var(--surface-border,var(--bs-border-color));border-radius:1rem!important;box-shadow:0 5px 16px rgba(31,42,40,.035)}
+.adm-kpi:focus-visible,.adm-filter-tile:focus-visible{outline:3px solid rgba(44,122,109,.35);outline-offset:3px}
+.status-pill{display:inline-flex;align-items:center;justify-content:center;line-height:1.25}
+.btn-gold,.btn-outline-gold{border-radius:.65rem;font-weight:600;transition:transform .15s ease,box-shadow .15s ease}.btn-gold:hover,.btn-outline-gold:hover{box-shadow:0 4px 12px rgba(148,107,28,.16)}
+/* Attendance tracker: improve information hierarchy without touching its controls or scripts */
+body:has(.attendance-tracker),.attendance-tracker{--attendance-ui-radius:1rem}
+#attendanceCameraModal .modal-content,#attendanceModal .modal-content,.modal-content{border-radius:1rem}
+#attendanceCameraModal .modal-header,#attendanceModal .modal-header{border-bottom-color:var(--surface-border,var(--bs-border-color))}
+#attendanceCameraModal .modal-footer,#attendanceModal .modal-footer{border-top-color:var(--surface-border,var(--bs-border-color))}
+.table-responsive{border-radius:.8rem}
+#attendanceCameraModal .btn,#attendanceModal .btn{border-radius:.65rem;font-weight:600}
+.form-control:focus,.form-select:focus{border-color:rgba(44,122,109,.65);box-shadow:0 0 0 .22rem rgba(44,122,109,.14)}
+html[data-bs-theme="dark"] .adm-table thead th{background:rgba(148,107,28,.1)}
+html[data-bs-theme="dark"] .adm-table tbody tr:hover{background:rgba(44,122,109,.1)}
+@media(max-width:767.98px){.adm-page-head,.adm-hero{padding:1rem!important}.adm-table thead th,.adm-table tbody td{padding:.7rem .65rem}.adm-filter-tile{min-height:unset}.btn-gold,.btn-outline-gold{max-width:100%}}
+@media(prefers-reduced-motion:reduce){.adm-filter-tile,.adm-kpi,.adm-table tbody tr,.btn-gold,.btn-outline-gold{transition:none!important}}
+</style>
 
 {% endblock %}

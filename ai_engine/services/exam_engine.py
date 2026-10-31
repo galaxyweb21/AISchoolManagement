@@ -11,6 +11,53 @@ from ai_engine.services.services import AIService
 
 VALID_TYPES = {'MCQ', 'TRUE_FALSE', 'SHORT_ANSWER', 'ESSAY'}
 
+
+def _ai_provider_error_message():
+    """Return a useful, non-sensitive explanation for a failed Groq request."""
+    # Use the same key resolver as AIService. Checking settings.GROQ_API_KEY
+    # alone can incorrectly report a missing key when it was injected into the
+    # process environment after Django settings were loaded.
+    try:
+        api_key = AIService._api_key()
+    except Exception:
+        api_key = (getattr(settings, 'GROQ_API_KEY', '') or '').strip()
+
+    if not api_key:
+        return (
+            'AI question generation is not configured because GROQ_API_KEY is missing. '
+            'Set it in your local .env or hosting environment, then restart the Django server.'
+        )
+
+    error = (getattr(AIService, 'LAST_ERROR', '') or '').lower()
+    if any(token in error for token in (
+        'connectionerror', 'connection error', 'failed to establish a new connection',
+        'name or service not known', 'temporary failure in name resolution',
+        'getaddrinfo failed', 'network is unreachable', 'connection refused',
+        'timed out', 'timeout', 'max retries exceeded', 'network is unreachable',
+    )):
+        return (
+            'The AI provider could not be reached. Check your internet connection and try again. '
+            'Your draft examination and existing questions have not been changed.'
+        )
+    if any(token in error for token in ('401', 'invalid api key', 'authentication', 'unauthorized')):
+        return (
+            'The AI provider rejected the configured API key. Check GROQ_API_KEY in your '
+            'environment and restart the Django server.'
+        )
+    if any(token in error for token in ('429', 'rate limit', 'quota')):
+        return (
+            'The AI provider rate limit or usage quota has been reached. Wait a little and try again.'
+        )
+    if any(token in error for token in ('403', 'forbidden', 'permission')):
+        return (
+            'The configured AI account does not have permission to complete this request. '
+            'Check the Groq account and model configuration.'
+        )
+    return (
+        'The AI provider did not return usable questions. Check your connection and Groq '
+        'configuration, then try again. No questions were partially saved.'
+    )
+
 # ============================================================================
 # GHANA EDUCATION SERVICE (GES) / NaCCA CURRICULUM CONTEXT
 # ============================================================================
@@ -123,8 +170,8 @@ class ExamGeneratorService:
     @classmethod
     def generate(cls, subject, topic, grade_level, difficulty, num_questions, question_types, ges_stage=None):
         """Generate exam questions with GES curriculum alignment."""
-        if not getattr(settings, 'GROQ_API_KEY', ''):
-            raise ExamGenerationError("AI question generation is offline (API key missing).")
+        if not AIService._api_key():
+            raise ExamGenerationError(_ai_provider_error_message())
 
         prompt = cls._build_prompt(subject, topic, grade_level, difficulty, num_questions, question_types, ges_stage)
 
@@ -145,11 +192,11 @@ class ExamGeneratorService:
                 max_tokens=200 + (num_questions * 180),
                 temperature=0.6,
             )
-        except Exception as e:
-            raise ExamGenerationError(f"Request to the AI provider failed: {e}")
+        except Exception:
+            raise ExamGenerationError(_ai_provider_error_message())
 
         if raw is None:
-            raise ExamGenerationError("AI question generation is offline (API key missing).")
+            raise ExamGenerationError(_ai_provider_error_message())
 
         try:
             questions = _extract_json_array(raw)
@@ -204,11 +251,11 @@ class ExamGeneratorService:
                 max_tokens=300,
                 temperature=0.7,
             )
-        except Exception as e:
-            raise ExamGenerationError(f"Request to the AI provider failed: {e}")
+        except Exception:
+            raise ExamGenerationError(_ai_provider_error_message())
 
         if raw is None:
-            raise ExamGenerationError("AI question generation is offline (API key missing).")
+            raise ExamGenerationError(_ai_provider_error_message())
 
         text = raw.strip()
         text = re.sub(r'^```(?:json)?\s*', '', text)

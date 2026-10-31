@@ -891,6 +891,7 @@ def api_capture_attendance(request):
                 school_id=school.id,
                 date=target_date,
                 user=request.user,
+                commit=(data.get("commit") is True or str(data.get("commit", "")).strip().lower() in {"1", "true", "yes", "on"}),
             )
         )
 
@@ -925,6 +926,7 @@ def api_capture_attendance(request):
             {
                 "success": True,
                 "recognized_students": len(students),
+                "created_students": sum(1 for item in students.values() if item.get("created")),
                 "students": students,
                 "date": target_date.isoformat(),
             }
@@ -983,6 +985,13 @@ def api_register_face(request):
     image_data = data.get(
         "image"
     )
+
+    consent = str(data.get("face_registration_consent", "")).strip().lower() in {"1", "true", "yes", "on"}
+    if not consent:
+        return JsonResponse({
+            "success": False,
+            "message": "Confirm that the parent/guardian has received the privacy notice and the school is authorized before registering this student's face.",
+        }, status=400)
 
     if not student_id or not image_data:
         return JsonResponse(
