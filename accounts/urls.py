@@ -19,6 +19,7 @@ from .views import (
     user_access_detail,
 )
 from . import views
+from . import passkeys as views_passkeys
 
 app_name = 'accounts'
 
@@ -26,6 +27,14 @@ urlpatterns = [
     # Authentication
     path('login/', UserLoginView.as_view(), name='login'),
     path('logout/', UserLogoutView.as_view(), name='logout'),
+
+    # WebAuthn passkeys (biometric verification stays on the user's device)
+    path('security/passkeys/', views_passkeys.passkey_settings, name='passkey_settings'),
+    path('security/passkeys/register/options/', views_passkeys.passkey_registration_options, name='passkey_registration_options'),
+    path('security/passkeys/register/complete/', views_passkeys.passkey_registration_complete, name='passkey_registration_complete'),
+    path('security/passkeys/<uuid:credential_id>/delete/', views_passkeys.passkey_delete, name='passkey_delete'),
+    path('login/passkey/options/', views_passkeys.passkey_authentication_options, name='passkey_authentication_options'),
+    path('login/passkey/verify/', views_passkeys.passkey_authentication_verify, name='passkey_authentication_verify'),
 
     # Password management
     path(

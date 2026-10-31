@@ -1,0 +1,123 @@
+{% extends 'base/base.html' %}
+{% block page_title %}Academic Intervention Management{% endblock %}
+{% block content %}
+<style>
+.intervention-page .hero{background:linear-gradient(120deg,rgba(148,107,28,.12),rgba(44,122,109,.08));border:1px solid var(--bs-border-color);border-radius:18px;padding:1.25rem}
+.intervention-page .metric{border:1px solid var(--bs-border-color);border-radius:14px;background:var(--bs-body-bg);padding:1rem;height:100%}
+.intervention-page .metric strong{font-size:1.55rem;display:block}
+.intervention-page .table-wrap{border:1px solid var(--bs-border-color);border-radius:16px;overflow:hidden;background:var(--bs-body-bg)}
+.intervention-page .table{margin:0}.intervention-page .table th{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--bs-secondary-color);background:var(--bs-tertiary-bg);white-space:nowrap}
+.intervention-page .table td{vertical-align:middle}.intervention-page .muted{color:var(--bs-secondary-color)}
+.intervention-page .pill{border-radius:30px;padding:.3rem .65rem;font-size:.72rem;font-weight:700}
+.intervention-page .pill-active{background:rgba(44,122,109,.13);color:var(--eduai-signal,#2C7A6D)}.intervention-page .pill-hold{background:rgba(148,107,28,.14);color:var(--eduai-gold,#946B1C)}
+.intervention-page .pill-completed{background:rgba(25,135,84,.13);color:#198754}.intervention-page .pill-cancelled{background:var(--bs-tertiary-bg);color:var(--bs-secondary-color)}
+.intervention-page .btn-gold{background:var(--eduai-gold,#946B1C);border-color:var(--eduai-gold,#946B1C);color:#fff}.intervention-page .btn-gold:hover{filter:brightness(.92);color:#fff}
+/* Keep long create forms usable on short screens and prevent the footer
+   from being pushed below the viewport by global modal styles. */
+#createPlanModal .modal-dialog {
+  height: calc(100vh - 1rem);
+  height: calc(100dvh - 1rem);
+  max-height: calc(100vh - 1rem);
+  max-height: calc(100dvh - 1rem);
+  margin-top: .5rem;
+  margin-bottom: .5rem;
+}
+#createPlanModal .modal-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: calc(100vh - 1rem);
+  max-height: calc(100dvh - 1rem);
+  overflow: hidden;
+}
+#createPlanModal .modal-content > form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+#createPlanModal .modal-header,
+#createPlanModal .modal-footer {
+  flex: 0 0 auto;
+}
+#createPlanModal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(100vh - 11rem);
+  max-height: calc(100dvh - 11rem);
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 575.98px) {
+  #createPlanModal .modal-dialog { height: calc(100dvh - .5rem); margin: .25rem; max-height: calc(100dvh - .5rem); }
+  #createPlanModal .modal-content { max-height: calc(100dvh - .5rem); }
+  #createPlanModal .modal-body { max-height: calc(100dvh - 10rem); }
+}
+</style>
+<div class="container-fluid py-3 intervention-page">
+  {% if messages %}{% for message in messages %}<div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show border-0 shadow-sm" role="alert">{{ message }}<button class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% endfor %}{% endif %}
+  <div class="hero d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div><div class="small fw-semibold text-uppercase muted mb-1">Academic support workflow</div><h1 class="h3 fw-bold mb-1">Intervention plans & progress</h1><p class="muted mb-0">Create targeted support plans, record each session and track measurable outcomes.</p></div>
+    {% if can_create %}<button class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#createPlanModal"><i class="bi bi-plus-lg me-1"></i> New intervention plan</button>{% endif %}
+  </div>
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-4"><div class="metric"><span class="small muted">Active plans in this view</span><strong>{{ active_count }}</strong><span class="small muted">Currently receiving support</span></div></div>
+    <div class="col-12 col-md-4"><div class="metric"><span class="small muted">Completed plans</span><strong>{{ completed_count }}</strong><span class="small muted">Plans marked complete</span></div></div>
+    <div class="col-12 col-md-4"><div class="metric"><span class="small muted">Reviews overdue</span><strong>{{ overdue_count }}</strong><span class="small muted">Active plans past review date</span></div></div>
+  </div>
+  <form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-12 col-md-5"><label class="form-label small fw-semibold">Search</label><input class="form-control" name="q" value="{{ search }}" placeholder="Student, admission number or plan title"></div>
+    <div class="col-8 col-md-3"><label class="form-label small fw-semibold">Status</label><select class="form-select" name="status"><option value="">All statuses</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="col-4 col-md-2"><button class="btn btn-outline-secondary w-100">Apply</button></div>
+    <div class="col-12 col-md-2"><a class="btn btn-link w-100 text-decoration-none" href="{% url 'ai_engine:intervention_plans' %}">Clear filters</a></div>
+  </form>
+  <div class="table-wrap">
+    <div class="table-responsive"><table class="table table-hover align-middle">
+      <thead><tr><th>Student</th><th>Intervention plan</th><th>Priority</th><th>Assigned to</th><th>Review date</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for plan in plans %}<tr>
+        <td><div class="fw-semibold">{{ plan.student.user.get_full_name|default:plan.student.user.username }}</div><small class="muted">{{ plan.student.admission_number }}{% if plan.student.school_class %} · {{ plan.student.school_class }}{% endif %}</small></td>
+        <td><div class="fw-semibold">{{ plan.title }}</div><small class="muted">{% if plan.subject %}{{ plan.subject }} · {% endif %}{{ plan.progress_entries.count }} progress update(s)</small></td>
+        <td><span class="badge text-bg-{% if plan.priority == 'CRITICAL' %}danger{% elif plan.priority == 'HIGH' %}warning{% elif plan.priority == 'MEDIUM' %}primary{% else %}secondary{% endif %}">{{ plan.get_priority_display }}</span></td>
+        <td>{{ plan.assigned_to.get_full_name|default:plan.assigned_to.username|default:'Unassigned' }}</td>
+        <td>{% if plan.review_date %}{{ plan.review_date|date:'d M Y' }}{% else %}<span class="muted">Not set</span>{% endif %}</td>
+        <td><span class="pill pill-{% if plan.status == 'ACTIVE' %}active{% elif plan.status == 'ON_HOLD' %}hold{% elif plan.status == 'COMPLETED' %}completed{% else %}cancelled{% endif %}">{{ plan.get_status_display }}</span></td>
+        <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'ai_engine:intervention_plan_detail' plan.id %}">Open <i class="bi bi-arrow-right ms-1"></i></a></td>
+      </tr>{% empty %}<tr><td colspan="7" class="text-center py-5"><i class="bi bi-clipboard2-check fs-2 muted d-block mb-2"></i><div class="fw-semibold">No intervention plans found</div><div class="small muted">Create a plan when a student needs structured academic support.</div></td></tr>{% endfor %}
+      </tbody></table></div>
+    {% if page_obj.paginator.num_pages > 1 %}<div class="d-flex justify-content-between align-items-center p-3 border-top"><small class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</small><div class="btn-group btn-group-sm">{% if page_obj.has_previous %}<a class="btn btn-outline-secondary" href="?q={{ search|urlencode }}&status={{ selected_status }}&page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}{% if page_obj.has_next %}<a class="btn btn-outline-secondary" href="?q={{ search|urlencode }}&status={{ selected_status }}&page={{ page_obj.next_page_number }}">Next</a>{% endif %}</div></div>{% endif %}
+  </div>
+</div>
+{% if can_create %}<div class="modal fade" id="createPlanModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+  <form method="post" action="{% url 'ai_engine:create_intervention_plan' %}">{% csrf_token %}
+    <div class="modal-header"><div><h5 class="modal-title fw-bold">Create academic intervention</h5><div class="small muted">Set a clear baseline, measurable goal and support strategy.</div></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body"><div class="row g-3">
+      <div class="col-12 col-md-6"><label class="form-label">Student <span class="text-danger">*</span></label><select name="student" class="form-select" required><option value="">Select authorized student</option>{% for student in students %}<option value="{{ student.id }}">{{ student.user.get_full_name|default:student.user.username }} · {{ student.admission_number }}</option>{% endfor %}</select></div>
+      <div class="col-12 col-md-6"><label class="form-label">Plan title <span class="text-danger">*</span></label><input name="title" class="form-control" maxlength="180" required placeholder="e.g. Mathematics foundation support"></div>
+      <div class="col-12 col-md-6"><label class="form-label">Priority</label><select name="priority" class="form-select">{% for value,label in priority_choices %}<option value="{{ value }}" {% if value == 'MEDIUM' %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div class="col-12 col-md-6"><label class="form-label">Review date</label><input type="date" name="review_date" class="form-control"></div>
+      <div class="col-12"><hr class="my-1"><div class="fw-semibold">Academic result comparison <span class="text-muted fw-normal small">(optional)</span></div><div class="small muted">Choose a subject and an earlier completed term. The plan's academic term is used as the follow-up term.</div></div>
+      <div class="col-12 col-md-6"><label class="form-label">Subject to monitor</label><input name="subject" class="form-control" maxlength="150" placeholder="e.g. Mathematics"></div>
+      <div class="col-12 col-md-6"><label class="form-label">Baseline term</label><select name="baseline_term" class="form-select"><option value="">{% if has_baseline_terms %}Select earlier term{% else %}No earlier term available{% endif %}</option>{% for term in terms %}<option value="{{ term.id }}">{{ term.name }} · {{ term.academic_year.name }}</option>{% endfor %}</select>{% if not has_baseline_terms %}<div class="form-text">No earlier term was found before the current follow-up term{% if followup_term %} ({{ followup_term.name }} · {{ followup_term.academic_year.name }}){% endif %}. Check that previous academic terms are recorded with correct start and end dates. You can still create a general support plan without selecting a subject or baseline term.</div>{% else %}<div class="form-text">Choose a term that ended before the follow-up term to compare results.</div>{% endif %}</div>
+      <div class="col-12"><label class="form-label">Learning concern <span class="text-danger">*</span></label><textarea name="concern" class="form-control" rows="2" required placeholder="Describe the specific learning gap using evidence."></textarea></div>
+      <div class="col-12"><label class="form-label">Baseline / current performance</label><input name="baseline" class="form-control" maxlength="240" placeholder="e.g. 38% in the last completed mathematics assessment"></div>
+      <div class="col-12"><label class="form-label">Measurable goal <span class="text-danger">*</span></label><textarea name="goal" class="form-control" rows="2" required placeholder="What improvement should be observable, and by when?"></textarea></div>
+      <div class="col-12"><label class="form-label">Support strategies <span class="text-danger">*</span></label><textarea name="strategies" class="form-control" rows="3" required placeholder="Small-group tutoring, targeted practice, weekly formative checks..."></textarea></div>
+    </div></div>
+    <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-gold" type="submit">Create plan</button></div>
+  </form>
+</div></div></div>{% endif %}
+{% if open_create_modal %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var modalElement = document.getElementById('createPlanModal');
+  if (modalElement && window.bootstrap && window.bootstrap.Modal) {
+    window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

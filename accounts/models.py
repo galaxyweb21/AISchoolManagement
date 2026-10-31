@@ -163,3 +163,35 @@ class UserSession(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.session_key[:8]}"
+
+class PasskeyCredential(models.Model):
+    """Public WebAuthn credential metadata; no biometric data is stored."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="passkey_credentials",
+    )
+    # Keep the original ID for WebAuthn payloads; index its SHA-256 digest so
+    # the unique key remains safely below MySQL's utf8mb4 index-size limit.
+    credential_id = models.TextField()
+    credential_id_hash = models.CharField(max_length=64, unique=True)
+    public_key = models.BinaryField()
+    sign_count = models.PositiveBigIntegerField(default=0)
+    device_name = models.CharField(max_length=120, default="This device")
+    transports = models.JSONField(default=list, blank=True)
+    device_type = models.CharField(max_length=32, blank=True)
+    backed_up = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "is_active"], name="acct_passkey_user_active_idx"),
+        ]
+
+    def __str__(self):
+        return "{} - {}".format(self.user.username, self.device_name)

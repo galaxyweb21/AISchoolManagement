@@ -2,6 +2,15 @@
 from django.urls import path
 from . import views
 from ai_engine.views.command_center import StudentInterventionView, intervention_center
+from ai_engine.views.academic_dashboard import academic_performance_dashboard
+from ai_engine.views.academic_reports import (
+    academic_performance_reports, export_academic_performance_csv,
+    export_academic_performance_print,
+)
+from ai_engine.views.interventions import (
+    intervention_plans, create_intervention_plan, intervention_plan_detail,
+    add_intervention_progress, update_intervention_status,
+)
 from ai_engine.views.ghana_education import (
     ghana_education_home,
     ghana_education_topic_detail,
@@ -92,8 +101,19 @@ urlpatterns = [
     path('command-center/', views.ai_command_center, name='ai_command_center'),
     path('automation/<uuid:task_id>/approve/', views.approve_task, name='approve_ai_task'),
 
+    # Academic Performance Intelligence
+    path('academic-performance/', academic_performance_dashboard, name='academic_performance_dashboard'),
+    path('academic-performance/reports/', academic_performance_reports, name='academic_performance_reports'),
+    path('academic-performance/reports/export/csv/', export_academic_performance_csv, name='export_academic_performance_csv'),
+    path('academic-performance/reports/export/print/', export_academic_performance_print, name='export_academic_performance_print'),
+
     # Intervention Center
     path('intervention-center/', intervention_center, name='intervention_center'),
+    path('interventions/', intervention_plans, name='intervention_plans'),
+    path('interventions/create/', create_intervention_plan, name='create_intervention_plan'),
+    path('interventions/<uuid:plan_id>/', intervention_plan_detail, name='intervention_plan_detail'),
+    path('interventions/<uuid:plan_id>/progress/', add_intervention_progress, name='add_intervention_progress'),
+    path('interventions/<uuid:plan_id>/status/', update_intervention_status, name='update_intervention_status'),
 
     # Absence Management
     path('absences/', views.absence_list, name='absence_list'),

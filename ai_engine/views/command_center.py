@@ -254,6 +254,9 @@ def intervention_center(request):
         "high_risk_students": high_risk_students,
         "ai_permissions": permissions,
         "ai_student_scope": permissions.student_scope,
+        # Keep the legacy early-warning page, but expose the real plan workflow.
+        "can_create_intervention_plan": getattr(request.user, "is_superuser", False)
+        or getattr(request.user, "role", "") in {"SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER", "HOD"},
     }
 
     return render(

@@ -1,5 +1,6 @@
 # ai_engine/models.py
 from django.db import models
+from django.utils import timezone
 from django.conf import settings
 from school.models import School
 from school.services import managers
@@ -787,3 +788,72 @@ class GhanaEducationKnowledgeDocument(models.Model):
 
     def __str__(self):
         return f"[{self.source_name}] {self.title}"
+
+class AcademicInterventionPlan(models.Model):
+    """A school-owned, measurable support plan for an individual student."""
+    STATUS_CHOICES = (
+        ('ACTIVE', 'Active'),
+        ('ON_HOLD', 'On hold'),
+        ('COMPLETED', 'Completed'),
+        ('CANCELLED', 'Cancelled'),
+    )
+    PRIORITY_CHOICES = (
+        ('LOW', 'Low'),
+        ('MEDIUM', 'Medium'),
+        ('HIGH', 'High'),
+        ('CRITICAL', 'Critical'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='academic_intervention_plans')
+    student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='academic_intervention_plans')
+    academic_term = models.ForeignKey('school.AcademicTerm', on_delete=models.SET_NULL, null=True, blank=True, related_name='intervention_plans')
+    # The intervention term is the follow-up period; baseline_term records the
+    # earlier completed term used for an objective before/after comparison.
+    baseline_term = models.ForeignKey('school.AcademicTerm', on_delete=models.SET_NULL, null=True, blank=True, related_name='baseline_intervention_plans')
+    subject = models.CharField(max_length=150, blank=True, default='')
+    title = models.CharField(max_length=180)
+    concern = models.TextField()
+    baseline = models.CharField(max_length=240, blank=True, default='')
+    goal = models.TextField()
+    strategies = models.TextField()
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='MEDIUM')
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='ACTIVE')
+    start_date = models.DateField(default=timezone.now)
+    review_date = models.DateField(null=True, blank=True)
+    outcome = models.TextField(blank=True, default='')
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_academic_interventions')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_academic_interventions')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = managers.TenantManager()
+
+    class Meta:
+        ordering = ['-updated_at', '-created_at']
+        indexes = [
+            models.Index(fields=['school', 'status'], name='acad_interv_school_status'),
+            models.Index(fields=['student', 'status'], name='acad_interv_student_status'),
+            models.Index(fields=['review_date', 'status'], name='acad_interv_review_status'),
+        ]
+
+    def __str__(self):
+        return '{} - {}'.format(self.student, self.title)
+
+
+class InterventionProgressEntry(models.Model):
+    """Dated evidence of support delivered and student progress observed."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    plan = models.ForeignKey(AcademicInterventionPlan, on_delete=models.CASCADE, related_name='progress_entries')
+    session_date = models.DateField(default=timezone.now)
+    activity = models.CharField(max_length=180)
+    observation = models.TextField()
+    next_step = models.TextField(blank=True, default='')
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='intervention_progress_entries')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-session_date', '-created_at']
+
+    def __str__(self):
+        return '{} - {}'.format(self.plan.title, self.session_date)

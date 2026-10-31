@@ -1282,6 +1282,21 @@ class FullSchoolDatabaseIntelligence:
             return {"answer": "I could not safely verify attendance. No unverified answer was provided.", **self.meta("database_error")}
 
     @staticmethod
+    def is_grade_decline_comparison_question(question):
+        """Whether the user explicitly asks for a previous-term grade comparison.
+
+        “Falling behind” is also a current-risk request and must not require a
+        previous term with completed results.
+        """
+        question = (question or "").lower()
+        return any(phrase in question for phrase in (
+            "declining", "declined", "grades dropped", "scores dropped",
+            "grades declined", "grades have declined", "grade decline",
+            "students whose grades declined", "students with declining grades",
+            "performance is declining",
+        ))
+
+    @staticmethod
     def academic_risk_band(average, failed_subjects, decline):
         """Return an explainable early-warning band, not a probability."""
         average = float(average or 0)
@@ -1456,11 +1471,7 @@ class FullSchoolDatabaseIntelligence:
                     "recommendation": recommendation, "subject_scores": item["subjects"],
                 })
 
-            wants_declining = any(x in q for x in (
-                "declining", "declined", "falling behind", "grades dropped", "scores dropped",
-                "grades declined", "grades have declined", "grade decline",
-                "students whose grades declined", "students with declining grades",
-            ))
+            wants_declining = self.is_grade_decline_comparison_question(q)
             wants_support = any(x in q for x in (
                 "what support", "support should", "how can we help", "how to help",
                 "help students at risk", "support for students", "intervention recommendations",

@@ -130,6 +130,19 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endif %}
     </div>
 
+    <div class="card border-0 shadow-sm rounded-4 mb-4" style="max-width: 700px; margin: auto;">
+        <div class="card-body p-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 bg-gold-soft text-gold p-3"><i class="bi bi-fingerprint fs-3"></i></div>
+                <div>
+                    <h6 class="fw-bold mb-1">Passkeys & device security</h6>
+                    <p class="text-muted small mb-0">Register fingerprint, Face ID, Windows Hello or a security key on this device.</p>
+                </div>
+            </div>
+            <a href="{% url 'accounts:passkey_settings' %}" class="btn btn-outline-secondary">Manage passkeys <i class="bi bi-arrow-right ms-1"></i></a>
+        </div>
+    </div>
+
     <!-- Page Description -->
     <div class="page-description">
         <div class="d-flex align-items-start">

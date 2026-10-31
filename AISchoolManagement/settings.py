@@ -318,6 +318,19 @@ LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'dashboard:dashboard'  # <-- FIXED: Use dashboard:dashboard
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
+# WebAuthn / passkey settings. The browser-facing hostname is used here,
+# not the Docker service name (for example, "db" or "web").
+# Render supplies RENDER_EXTERNAL_HOSTNAME automatically.
+_WEBAUTHN_RENDER_HOST = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip().lower()
+WEBAUTHN_RP_ID = os.getenv(
+    "WEBAUTHN_RP_ID", _WEBAUTHN_RENDER_HOST or "localhost"
+).strip().lower()
+WEBAUTHN_ORIGIN = os.getenv(
+    "WEBAUTHN_ORIGIN",
+    ("https://" + _WEBAUTHN_RENDER_HOST) if _WEBAUTHN_RENDER_HOST else "http://localhost:8000",
+).strip()
+WEBAUTHN_RP_NAME = os.getenv("WEBAUTHN_RP_NAME", "EduAI").strip() or "EduAI"
+
 # ==========================================
 # PRODUCTION SECURITY SETTINGS
 # ==========================================

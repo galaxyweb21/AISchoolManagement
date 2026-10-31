@@ -111,6 +111,11 @@ class CopilotQueryRoutingRegressionTests(SimpleTestCase):
             risk.assert_called_once()
             performance.assert_not_called()
 
+    def test_falling_behind_is_current_risk_not_previous_term_comparison(self):
+        self.assertFalse(self.engine.is_grade_decline_comparison_question("Which students are falling behind?"))
+        self.assertTrue(self.engine.is_grade_decline_comparison_question("Show students whose grades declined"))
+        self.assertTrue(self.engine.is_grade_decline_comparison_question("Which students' grades have declined?"))
+
     def test_academic_risk_bands_are_deterministic_and_explainable(self):
         classify = self.engine.academic_risk_band
         self.assertEqual(classify(35, 0, None), "CRITICAL")

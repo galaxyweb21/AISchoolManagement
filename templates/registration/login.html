@@ -33,12 +33,14 @@
             color: var(--text-primary);
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             transition: background-color .25s ease, color .25s ease;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: 88px 16px 24px;
         }
 
         /* --- Enterprise Brand Watermark --- */
@@ -156,6 +158,16 @@
             transform: translateY(0);
         }
 
+        .btn-passkey {
+            width: 100%; border: 1px solid var(--surface-border); border-radius: 12px;
+            background: transparent; color: var(--text-primary); padding: 13px 14px;
+            font-weight: 600; transition: border-color .2s, background .2s;
+        }
+        .btn-passkey:hover { border-color: var(--eduai-gold); background: var(--eduai-gold-soft); }
+        .passkey-divider { display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-size: .78rem; margin: 18px 0; }
+        .passkey-divider:before, .passkey-divider:after { content: ''; height: 1px; background: var(--surface-border); flex: 1; }
+        #passkeyLoginStatus { font-size: .82rem; margin-top: 10px; }
+
         .forgot-link {
             text-align: right;
             margin-top: -12px;
@@ -235,6 +247,12 @@
 
         </form>
 
+        <div class="passkey-divider">OR USE A PASSKEY</div>
+        <button type="button" class="btn-passkey d-flex align-items-center justify-content-center gap-2" id="passkeyLoginButton">
+            <i class="bi bi-fingerprint fs-5"></i> Sign in with Passkey
+        </button>
+        <div id="passkeyLoginStatus" role="status" aria-live="polite"></div>
+        <p class="text-center small mt-2 mb-0" style="color: var(--text-muted);">Use your fingerprint, Face ID, Windows Hello, device PIN or security key.</p>
 
 <div class="container-fluid px-4" id="messagesContainer">
     {% if messages %}
@@ -269,6 +287,80 @@
             const savedTheme = localStorage.getItem('eduai-theme') || 'light';
             document.documentElement.setAttribute('data-bs-theme', savedTheme);
         });
+    </script>
+
+    <script>
+    (function () {
+        'use strict';
+        const button = document.getElementById('passkeyLoginButton');
+        const statusBox = document.getElementById('passkeyLoginStatus');
+        if (!button || !statusBox) return;
+        const csrfInput = document.querySelector('form input[name=csrfmiddlewaretoken]');
+        const csrfToken = csrfInput ? csrfInput.value : '';
+        function setStatus(message, isError) {
+            statusBox.textContent = message;
+            statusBox.style.color = isError ? '#dc3545' : 'var(--eduai-signal)';
+        }
+        function decodeBase64Url(value) {
+            const padded = value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4);
+            const binary = window.atob(padded);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            return bytes;
+        }
+        function encodeBase64Url(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            bytes.forEach(function (value) { binary += String.fromCharCode(value); });
+            return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+        }
+        async function postJSON(url, payload) {
+            const response = await fetch(url, {
+                method: 'POST', credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest'},
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.error || 'Passkey sign-in could not be completed.');
+            return result;
+        }
+        button.addEventListener('click', async function () {
+            if (!window.PublicKeyCredential || !navigator.credentials || !navigator.credentials.get) {
+                setStatus('This browser does not support passkeys. Please use your username and password.', true);
+                return;
+            }
+            button.disabled = true;
+            setStatus('Waiting for your device to verify you…', false);
+            try {
+                const username = document.getElementById('id_username').value.trim();
+                const start = await postJSON('{% url "accounts:passkey_authentication_options" %}', {username: username});
+                const publicKey = start.publicKey;
+                publicKey.challenge = decodeBase64Url(publicKey.challenge);
+                (publicKey.allowCredentials || []).forEach(function (item) { item.id = decodeBase64Url(item.id); });
+                const assertion = await navigator.credentials.get({publicKey: publicKey});
+                if (!assertion) throw new Error('Passkey sign-in was cancelled.');
+                const response = assertion.response;
+                const serialized = {
+                    id: assertion.id, rawId: encodeBase64Url(assertion.rawId), type: assertion.type,
+                    response: {
+                        authenticatorData: encodeBase64Url(response.authenticatorData),
+                        clientDataJSON: encodeBase64Url(response.clientDataJSON),
+                        signature: encodeBase64Url(response.signature),
+                        userHandle: response.userHandle ? encodeBase64Url(response.userHandle) : null
+                    },
+                    clientExtensionResults: assertion.getClientExtensionResults(),
+                    authenticatorAttachment: assertion.authenticatorAttachment || null
+                };
+                const result = await postJSON('{% url "accounts:passkey_authentication_verify" %}', {credential: serialized});
+                setStatus('Signed in successfully. Redirecting…', false);
+                window.location.assign(result.redirect_url);
+            } catch (error) {
+                setStatus(error.message || 'Passkey sign-in failed. Please use your password.', true);
+            } finally {
+                button.disabled = false;
+            }
+        });
+    }());
     </script>
 </body>
 </html>

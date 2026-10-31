@@ -38,3 +38,4 @@ numpy==1.24.3
 twilio==9.11.0
 weasyprint==61.2
 chardet==5.2.0
+webauthn==2.2.0
