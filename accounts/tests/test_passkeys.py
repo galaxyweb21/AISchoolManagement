@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.utils import timezone
 from unittest.mock import patch
 
-from accounts.passkeys import _challenge_is_valid, _webauthn_relying_party
+from accounts.passkeys import _challenge_is_valid, _registration_attachment, _webauthn_relying_party
 
 
 # These are test-only hostnames. Production ALLOWED_HOSTS remains unchanged.
@@ -166,3 +166,22 @@ class PasskeyChallengeSecurityTests(TestCase):
         now = timezone.now()
         with patch("accounts.passkeys.timezone.now", return_value=now):
             self.assertFalse(_challenge_is_valid({"issued_at": now.timestamp() + 5}))
+
+
+class PasskeyAuthenticatorChoiceTests(TestCase):
+    class Attachment:
+        PLATFORM = "platform-enum"
+        CROSS_PLATFORM = "cross-platform-enum"
+
+    def setUp(self):
+        self.api = {"AuthenticatorAttachment": self.Attachment}
+
+    def test_platform_choice_preserves_windows_hello(self):
+        self.assertEqual(_registration_attachment("platform", self.api), "platform-enum")
+
+    def test_cross_platform_choice_requests_phone_or_security_key(self):
+        self.assertEqual(_registration_attachment("cross-platform", self.api), "cross-platform-enum")
+
+    def test_invalid_attachment_choice_is_rejected(self):
+        with self.assertRaisesMessage(ValueError, "Choose either this device"):
+            _registration_attachment("unknown", self.api)

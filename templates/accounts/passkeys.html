@@ -63,9 +63,15 @@
                             <label for="passkeyCurrentPassword" class="form-label fw-semibold">Current password</label>
                             <input type="password" class="form-control" id="passkeyCurrentPassword" autocomplete="current-password" required>
                         </div>
-                        <button type="submit" class="btn btn-gold w-100" id="addPasskeyButton">
-                            <i class="bi bi-fingerprint me-2"></i>Register this device
-                        </button>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-gold" id="addPlatformPasskeyButton" data-attachment="platform">
+                                <i class="bi bi-laptop me-2"></i>Register on this device (Windows Hello)
+                            </button>
+                            <button type="button" class="btn btn-outline-success" id="addCrossPlatformPasskeyButton" data-attachment="cross-platform">
+                                <i class="bi bi-phone me-2"></i>Register with phone or tablet
+                            </button>
+                        </div>
+                        <div class="form-text mt-2">The phone option asks Edge to use an external authenticator. If supported, Edge displays a QR code to continue on your phone.</div>
                     </form>
                     <div id="passkeyRegisterStatus" class="small mt-3" role="status" aria-live="polite"></div>
                     <div class="alert alert-light border small mt-3 mb-3">
@@ -130,7 +136,7 @@
     if (!form) return;
 
     const statusBox = document.getElementById('passkeyRegisterStatus');
-    const button = document.getElementById('addPasskeyButton');
+    const buttons = Array.from(form.querySelectorAll('[data-attachment]'));
     const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
 
     function setStatus(message, isError) {
@@ -162,8 +168,7 @@
         return result;
     }
 
-    form.addEventListener('submit', async function (event) {
-        event.preventDefault();
+    async function registerPasskey(attachment, button) {
         if (!window.PublicKeyCredential || !navigator.credentials || !navigator.credentials.create) {
             setStatus('This browser does not support passkeys. Try a recent version of Chrome, Edge, Safari or Firefox.', true);
             return;
@@ -175,12 +180,14 @@
             return;
         }
 
-        button.disabled = true;
+        buttons.forEach(function (item) { item.disabled = true; });
+        const originalLabel = button.innerHTML;
         button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Waiting for device…';
         try {
             const start = await postJSON('{% url "accounts:passkey_registration_options" %}', {
                 current_password: password,
-                device_name: deviceName
+                device_name: deviceName,
+                authenticator_attachment: attachment
             });
             const publicKey = start.publicKey;
             publicKey.challenge = decodeBase64Url(publicKey.challenge);
@@ -208,9 +215,17 @@
         } catch (error) {
             setStatus(error.message || 'Passkey registration failed.', true);
         } finally {
-            button.disabled = false;
-            button.innerHTML = '<i class="bi bi-fingerprint me-2"></i>Register this device';
+            buttons.forEach(function (item) { item.disabled = false; });
+            button.innerHTML = originalLabel;
         }
+    }
+
+    buttons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (form.reportValidity()) {
+                registerPasskey(button.dataset.attachment, button);
+            }
+        });
     });
 }());
 </script>
