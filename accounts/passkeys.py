@@ -21,7 +21,7 @@ from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import PasskeyCredential, User
+from .models import PasskeyAuditEvent, PasskeyCredential, User
 
 logger = logging.getLogger(__name__)
 
@@ -225,6 +225,27 @@ def _challenge_is_valid(data):
         return False
 
 
+
+
+def _audit_passkey_event(request, user, event, credential=None, device_name=""):
+    """Write a minimal security event; never persist credential payloads or biometrics."""
+    # REMOTE_ADDR is supplied by the server/proxy layer; do not trust a client-
+    # supplied X-Forwarded-For value for security audit attribution.
+    ip_address = request.META.get("REMOTE_ADDR")
+    try:
+        PasskeyAuditEvent.objects.create(
+            user=user,
+            credential=credential,
+            event=event,
+            device_name=(device_name or getattr(credential, "device_name", ""))[:120],
+            ip_address=ip_address or None,
+            user_agent=request.META.get("HTTP_USER_AGENT", "")[:255],
+        )
+    except Exception:
+        # Audit failure must not break a successful authentication flow, but is logged.
+        logger.exception("Could not write passkey audit event for user %s", getattr(user, "pk", None))
+
+
 def _api_error(message, status=400):
     return JsonResponse({"success": False, "error": message}, status=status)
 
@@ -232,7 +253,16 @@ def _api_error(message, status=400):
 @login_required
 def passkey_settings(request):
     credentials = PasskeyCredential.objects.filter(user=request.user, is_active=True)
-    return render(request, "accounts/passkeys.html", {"passkeys": credentials})
+    audit_events = PasskeyAuditEvent.objects.filter(user=request.user).select_related("credential")[:10]
+    return render(
+        request,
+        "accounts/passkeys.html",
+        {
+            "passkeys": credentials,
+            "audit_events": audit_events,
+            "has_usable_password": request.user.has_usable_password(),
+        },
+    )
 
 
 @login_required
@@ -339,7 +369,7 @@ def passkey_registration_complete(request):
                 saved.last_used_at = None
                 saved.save()
             else:
-                PasskeyCredential.objects.create(
+                saved = PasskeyCredential.objects.create(
                     user=request.user,
                     credential_id=encoded_credential_id,
                     credential_id_hash=credential_id_hash,
@@ -350,6 +380,10 @@ def passkey_registration_complete(request):
                     device_type=device_type[:32],
                     backed_up=bool(verification.credential_backed_up),
                 )
+            _audit_passkey_event(
+                request, request.user, "registered", credential=saved,
+                device_name=saved.device_name,
+            )
         return JsonResponse({"success": True, "message": "Passkey added successfully."})
     except RuntimeError as exc:
         return _api_error(str(exc), 503)
@@ -424,39 +458,57 @@ def passkey_authentication_verify(request):
             return _api_error("The browser origin changed during sign-in. Please try again.", 400)
         credential_id_bytes = api["base64url_to_bytes"](credential["id"])
         credential_id_hash = hashlib.sha256(bytes(credential_id_bytes)).hexdigest()
-        saved = PasskeyCredential.objects.select_related("user").filter(
-            credential_id_hash=credential_id_hash,
-            is_active=True,
-            user__is_active=True,
-        ).first()
-        if not saved:
-            return _api_error("Passkey sign-in could not be verified. Use your username and password.", 401)
+        # Lock the credential row while verifying and updating its signature
+        # counter. This prevents two concurrent assertions from overwriting a
+        # newer counter value on databases that support SELECT FOR UPDATE.
+        with transaction.atomic():
+            saved = PasskeyCredential.objects.select_for_update().filter(
+                credential_id_hash=credential_id_hash,
+                is_active=True,
+                user__is_active=True,
+            ).first()
+            if not saved:
+                # Keep the same response for unknown, revoked, and inactive
+                # credentials. Do not disclose whether an account has a passkey.
+                return _api_error(
+                    "Passkey sign-in could not be verified. Use your username and password.",
+                    401,
+                )
 
-        user_handle = credential.get("response", {}).get("userHandle")
-        if not pending.get("username_supplied") and not user_handle:
-            return _api_error("The selected passkey did not provide an account handle. Please try again.", 401)
-        if user_handle:
-            expected_handle = _b64url_encode(saved.user.pk.bytes)
-            if user_handle != expected_handle:
-                return _api_error("Passkey sign-in could not be verified.", 401)
+            user_handle = credential.get("response", {}).get("userHandle")
+            if not pending.get("username_supplied") and not user_handle:
+                return _api_error(
+                    "Passkey sign-in could not be verified. Use your username and password.",
+                    401,
+                )
+            if user_handle:
+                expected_handle = _b64url_encode(saved.user.pk.bytes)
+                if user_handle != expected_handle:
+                    return _api_error("Passkey sign-in could not be verified.", 401)
 
-        verification = api["verify_authentication_response"](
-            credential=credential,
-            expected_challenge=api["base64url_to_bytes"](pending["challenge"]),
-            expected_rp_id=rp_id,
-            expected_origin=origin,
-            credential_public_key=bytes(saved.public_key),
-            credential_current_sign_count=saved.sign_count,
-            require_user_verification=True,
-        )
+            verification = api["verify_authentication_response"](
+                credential=credential,
+                expected_challenge=api["base64url_to_bytes"](pending["challenge"]),
+                expected_rp_id=rp_id,
+                expected_origin=origin,
+                credential_public_key=bytes(saved.public_key),
+                credential_current_sign_count=saved.sign_count,
+                require_user_verification=True,
+            )
 
-        saved.sign_count = verification.new_sign_count
-        saved.device_type = getattr(verification.credential_device_type, "value", str(verification.credential_device_type))[:32]
-        saved.backed_up = bool(verification.credential_backed_up)
-        saved.last_used_at = timezone.now()
-        saved.save(update_fields=["sign_count", "device_type", "backed_up", "last_used_at"])
+            saved.sign_count = verification.new_sign_count
+            saved.device_type = getattr(
+                verification.credential_device_type,
+                "value",
+                str(verification.credential_device_type),
+            )[:32]
+            saved.backed_up = bool(verification.credential_backed_up)
+            saved.last_used_at = timezone.now()
+            saved.save(update_fields=["sign_count", "device_type", "backed_up", "last_used_at"])
+            authenticated_user = saved.user
+            _audit_passkey_event(request, authenticated_user, "authenticated", credential=saved)
 
-        login(request, saved.user, backend="django.contrib.auth.backends.ModelBackend")
+        login(request, authenticated_user, backend="django.contrib.auth.backends.ModelBackend")
         return JsonResponse({"success": True, "redirect_url": resolve_url(settings.LOGIN_REDIRECT_URL)})
     except RuntimeError as exc:
         return _api_error(str(exc), 503)
@@ -476,7 +528,22 @@ def passkey_delete(request, credential_id):
         messages.error(request, "Your current password is incorrect. The passkey was not removed.")
         return redirect("accounts:passkey_settings")
 
-    credential.is_active = False
-    credential.save(update_fields=["is_active"])
-    messages.success(request, "Passkey removed from this account.")
+    # A usable password remains the recovery route when the final passkey is removed.
+    active_count = PasskeyCredential.objects.filter(user=request.user, is_active=True).count()
+    if active_count <= 1 and not request.user.has_usable_password():
+        messages.error(
+            request,
+            "This is your last passkey and your account has no usable password. "
+            "Add another recovery method before removing it.",
+        )
+        return redirect("accounts:passkey_settings")
+
+    with transaction.atomic():
+        credential = PasskeyCredential.objects.select_for_update().get(
+            pk=credential.pk, user=request.user, is_active=True
+        )
+        credential.is_active = False
+        credential.save(update_fields=["is_active"])
+        _audit_passkey_event(request, request.user, "revoked", credential=credential)
+    messages.success(request, "Passkey revoked. The device can no longer sign in to this account.")
     return redirect("accounts:passkey_settings")

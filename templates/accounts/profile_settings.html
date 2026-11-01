@@ -6,68 +6,87 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Theme radio buttons - immediate update
+    // ============================================================
+    // THEME RADIO - IMMEDIATE UPDATE
+    // ============================================================
     const themeRadios = document.querySelectorAll('input[name="theme"]');
     themeRadios.forEach(function(radio) {
         radio.addEventListener('change', function() {
             if (this.checked) {
-                // Apply theme immediately
                 const theme = this.value;
                 document.documentElement.setAttribute('data-bs-theme', theme);
                 localStorage.setItem('eduai-theme', theme);
 
-                // Update theme icon
+                // Update theme icon in navbar
                 const icon = document.querySelector('[data-theme-icon]');
                 if (icon) {
                     icon.className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
                 }
 
-                // Show feedback
+                // Update active preview tile
+                document.querySelectorAll('.theme-tile').forEach(function(tile) {
+                    tile.classList.remove('active');
+                });
+                const activeTile = document.querySelector('.theme-tile[data-theme="' + theme + '"]');
+                if (activeTile) activeTile.classList.add('active');
+
+                // Update header status badge
+                const themeBadge = document.getElementById('themeStatusBadge');
+                if (themeBadge) {
+                    themeBadge.innerHTML = theme === 'dark'
+                        ? '<i class="bi bi-moon-fill me-1"></i> Dark Mode'
+                        : '<i class="bi bi-sun-fill me-1"></i> Light Mode';
+                    themeBadge.className = 'badge px-3 py-2 ' + (theme === 'dark' ? 'bg-dark text-white border' : 'bg-light text-dark border');
+                }
+
                 showToast('Theme updated to ' + theme.charAt(0).toUpperCase() + theme.slice(1));
             }
         });
     });
 
-    // Toast notification
+    // ============================================================
+    // TOAST
+    // ============================================================
     function showToast(message) {
         const toast = document.createElement('div');
         toast.className = 'position-fixed bottom-0 end-0 p-3';
         toast.style.zIndex = '9999';
         toast.innerHTML = `
-            <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="toast-header bg-teal text-white">
-                    <i class="bi bi-check-circle-fill me-2"></i>
-                    <strong class="me-auto">Success</strong>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="toast-body">
-                    ${message}
+            <div class="toast show align-items-center border-0 shadow-sm rounded-4" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body" style="background: var(--eduai-signal-soft); color: var(--eduai-signal);">
+                        <i class="bi bi-check-circle-fill me-2"></i>${message}
+                    </div>
+                    <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             </div>
         `;
         document.body.appendChild(toast);
-        setTimeout(function() {
-            toast.remove();
-        }, 3000);
+        setTimeout(function() { toast.remove(); }, 3000);
     }
+
+    // ============================================================
+    // AUTO-DISMISS ALERTS
+    // ============================================================
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
 });
 </script>
 {% endblock %}
 
 {% block content %}
 <style>
-    .text-gold {
-        color: var(--eduai-gold, #946B1C) !important;
-    }
-    .bg-gold-soft {
-        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
-    }
-    .bg-teal-soft {
-        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
-    }
-    .text-teal {
-        color: var(--eduai-signal, #2C7A6D) !important;
-    }
+    /* ============================================================ */
+    /* THEME TOKENS                                                 */
+    /* ============================================================ */
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+    .bg-teal-soft { background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important; }
+    .text-teal { color: var(--eduai-signal, #2C7A6D) !important; }
     .btn-gold {
         background-color: var(--eduai-gold, #946B1C) !important;
         border-color: var(--eduai-gold, #946B1C) !important;
@@ -78,7 +97,19 @@ document.addEventListener('DOMContentLoaded', function() {
         border-color: #7a5917 !important;
         color: #fff !important;
     }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
 
+    /* ============================================================ */
+    /* PAGE DESCRIPTION                                             */
+    /* ============================================================ */
     .page-description {
         background: var(--bs-tertiary-bg);
         border-radius: 12px;
@@ -106,11 +137,290 @@ document.addEventListener('DOMContentLoaded', function() {
         color: var(--eduai-gold, #946B1C);
         font-weight: 500;
     }
+
+    /* ============================================================ */
+    /* SETTINGS LAYOUT                                              */
+    /* ============================================================ */
+    .settings-shell {
+        max-width: 780px;
+        margin: 0 auto;
+    }
+
+    /* ============================================================ */
+    /* PASSKEY CARD                                                 */
+    /* ============================================================ */
+    .passkey-card {
+        border-radius: 16px;
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        padding: 1.25rem 1.5rem;
+        transition: box-shadow 0.2s ease;
+    }
+    .passkey-card:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+    }
+    .passkey-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        flex-shrink: 0;
+    }
+
+    /* ============================================================ */
+    /* SETTINGS CARD                                                */
+    /* ============================================================ */
+    .settings-card {
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 18px;
+        overflow: hidden;
+    }
+    .settings-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--bs-border-color);
+        background: linear-gradient(90deg, rgba(148, 107, 28, 0.05), rgba(44, 122, 109, 0.02));
+    }
+    .settings-title {
+        font-weight: 700;
+        font-size: 1.05rem;
+        margin: 0 0 0.15rem 0;
+    }
+    .settings-sub {
+        font-size: 0.8rem;
+        color: var(--bs-secondary-color);
+        margin: 0;
+    }
+
+    /* ============================================================ */
+    /* SECTION HEADERS                                              */
+    /* ============================================================ */
+    .settings-section {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    .settings-section:last-of-type {
+        border-bottom: none;
+    }
+    .settings-section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin-bottom: 1rem;
+    }
+    .settings-section-title .icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-size: 0.95rem;
+        flex-shrink: 0;
+    }
+    .settings-section-title h6 {
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin: 0;
+    }
+
+    /* ============================================================ */
+    /* THEME TILES                                                  */
+    /* ============================================================ */
+    .theme-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        max-width: 420px;
+    }
+    .theme-tile {
+        position: relative;
+        border: 2px solid var(--bs-border-color);
+        border-radius: 14px;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: var(--bs-body-bg);
+        text-align: center;
+        overflow: hidden;
+    }
+    .theme-tile:hover {
+        border-color: var(--eduai-gold, #946B1C);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(148, 107, 28, 0.12);
+    }
+    .theme-tile.active {
+        border-color: var(--eduai-gold, #946B1C);
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.08));
+        box-shadow: 0 0 0 3px rgba(148, 107, 28, 0.12);
+    }
+    .theme-tile .preview {
+        width: 100%;
+        height: 56px;
+        border-radius: 8px;
+        margin-bottom: 0.6rem;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .theme-tile .preview.light-preview {
+        background: linear-gradient(135deg, #f7f4ec 0%, #ffffff 100%);
+    }
+    .theme-tile .preview.dark-preview {
+        background: linear-gradient(135deg, #1a2a24 0%, #2c4038 100%);
+    }
+    .theme-tile .preview::before {
+        content: '';
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        width: 60%;
+        height: 6px;
+        border-radius: 3px;
+        background: rgba(148, 107, 28, 0.5);
+    }
+    .theme-tile .preview::after {
+        content: '';
+        position: absolute;
+        bottom: 8px;
+        left: 8px;
+        width: 40%;
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(0, 0, 0, 0.1);
+    }
+    .theme-tile .preview.dark-preview::after {
+        background: rgba(255, 255, 255, 0.15);
+    }
+    .theme-tile .theme-name {
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+    .theme-tile .theme-check {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--eduai-gold, #946B1C);
+        color: #fff;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+    }
+    .theme-tile.active .theme-check {
+        display: flex;
+    }
+    .theme-tile input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* ============================================================ */
+    /* NOTIFICATION ROWS                                            */
+    /* ============================================================ */
+    .notif-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.85rem;
+        padding: 0.9rem 1rem;
+        border-radius: 12px;
+        border: 1px solid var(--bs-border-color);
+        background: var(--bs-body-bg);
+        margin-bottom: 0.6rem;
+        transition: all 0.15s ease;
+    }
+    .notif-row:last-child {
+        margin-bottom: 0;
+    }
+    .notif-row:hover {
+        border-color: var(--eduai-gold, #946B1C);
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.04));
+    }
+    .notif-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+    .notif-icon.email { background: rgba(13, 110, 253, 0.12); color: #0d6efd; }
+    .notif-icon.sms { background: var(--eduai-signal-soft); color: var(--eduai-signal, #2C7A6D); }
+    .notif-icon.ai { background: var(--eduai-gold-soft); color: var(--eduai-gold, #946B1C); }
+    .notif-content {
+        flex-grow: 1;
+        min-width: 0;
+    }
+    .notif-content .title {
+        font-weight: 700;
+        font-size: 0.9rem;
+        margin-bottom: 0.1rem;
+    }
+    .notif-content .desc {
+        font-size: 0.78rem;
+        color: var(--bs-secondary-color);
+    }
+    .notif-switch {
+        flex-shrink: 0;
+        align-self: center;
+    }
+    .notif-switch .form-check-input {
+        width: 2.4em;
+        height: 1.3em;
+        cursor: pointer;
+    }
+    .notif-switch .form-check-input:checked {
+        background-color: var(--eduai-gold, #946B1C);
+        border-color: var(--eduai-gold, #946B1C);
+    }
+    .notif-switch .form-check-input:focus {
+        box-shadow: 0 0 0 3px rgba(148, 107, 28, 0.15);
+        border-color: var(--eduai-gold, #946B1C);
+    }
+
+    /* ============================================================ */
+    /* ACTIONS FOOTER                                               */
+    /* ============================================================ */
+    .settings-actions {
+        padding: 1.25rem 1.5rem;
+        background: var(--bs-body-bg);
+        border-top: 1px solid var(--bs-border-color);
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    /* ============================================================ */
+    /* RESPONSIVE                                                   */
+    /* ============================================================ */
+    @media (max-width: 576px) {
+        .theme-grid { grid-template-columns: 1fr; }
+        .settings-actions { flex-direction: column; }
+        .settings-actions .btn { width: 100%; }
+    }
 </style>
 
 <div class="container-fluid py-4">
     <!-- Messages -->
-    <div id="messagesContainer">
+    <div id="messagesContainer" class="settings-shell">
         {% if messages %}
             {% for message in messages %}
             <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
@@ -130,23 +440,10 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endif %}
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 mb-4" style="max-width: 700px; margin: auto;">
-        <div class="card-body p-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="rounded-3 bg-gold-soft text-gold p-3"><i class="bi bi-fingerprint fs-3"></i></div>
-                <div>
-                    <h6 class="fw-bold mb-1">Passkeys & device security</h6>
-                    <p class="text-muted small mb-0">Register fingerprint, Face ID, Windows Hello or a security key on this device.</p>
-                </div>
-            </div>
-            <a href="{% url 'accounts:passkey_settings' %}" class="btn btn-outline-secondary">Manage passkeys <i class="bi bi-arrow-right ms-1"></i></a>
-        </div>
-    </div>
-
     <!-- Page Description -->
-    <div class="page-description">
+    <div class="page-description settings-shell">
         <div class="d-flex align-items-start">
-            <i class="bi bi-info-circle icon"></i>
+            <i class="bi bi-info-circle-fill icon"></i>
             <div>
                 <div class="title">
                     Settings
@@ -163,127 +460,162 @@ document.addEventListener('DOMContentLoaded', function() {
                 </p>
             </div>
         </div>
-    </div>
+    </div><br>
 
-    <div class="card border-0 shadow-sm rounded-4" style="max-width: 700px; margin: auto;">
-        <div class="card-header bg-transparent border-0 p-4 pb-0">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="fw-bold mb-0"><i class="bi bi-gear text-gold me-2"></i>Settings</h5>
-                    <p class="text-muted small">Manage your preferences</p>
+    <div class="settings-shell">
+        <!-- Passkeys Card -->
+        <div class="passkey-card mb-4">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="passkey-icon">
+                        <i class="bi bi-fingerprint"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-1">Passkeys &amp; device security</h6>
+                        <p class="text-muted small mb-0">
+                            Register fingerprint, Face ID, Windows Hello or a security key on this device.
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <span class="badge bg-{% if theme == 'dark' %}dark{% else %}light{% endif %} text-{% if theme == 'dark' %}white{% else %}dark{% endif %} border px-3 py-2">
+                <a href="{% url 'accounts:passkey_settings' %}" class="btn btn-outline-gold btn-sm">
+                    <i class="bi bi-shield-lock me-1"></i>Manage passkeys
+                </a>
+            </div>
+        </div>
+
+        <!-- Settings Card -->
+        <div class="settings-card">
+            <!-- Header -->
+            <div class="settings-header">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <h5 class="settings-title">
+                            <i class="bi bi-gear text-gold me-2"></i>Preferences
+                        </h5>
+                        <p class="settings-sub">Customise your experience</p>
+                    </div>
+                    <span id="themeStatusBadge" class="badge px-3 py-2 {% if theme == 'dark' %}bg-dark text-white border{% else %}bg-light text-dark border{% endif %}">
                         <i class="bi bi-{% if theme == 'dark' %}moon{% else %}sun{% endif %}-fill me-1"></i>
                         {{ theme|title }} Mode
                     </span>
                 </div>
             </div>
-        </div>
-        <div class="card-body p-4">
+
             <form method="post" id="settingsForm">
                 {% csrf_token %}
 
-                <!-- Theme -->
-                <div class="mb-4">
-                    <h6 class="fw-bold mb-3">Theme Preference</h6>
-                    <div class="d-flex gap-4 flex-wrap">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="theme" id="themeLight" value="light"
-                                   {% if theme == 'light' %}checked{% endif %}>
-                            <label class="form-check-label" for="themeLight">
-                                <div class="border rounded-3 p-3 text-center" style="width: 100px; {% if theme == 'light' %}border-color: var(--eduai-gold) !important; background: #f8f9fa;{% endif %}">
-                                    <i class="bi bi-sun-fill text-warning fs-2 d-block mb-2"></i>
-                                    <span class="small fw-semibold">Light</span>
-                                    {% if theme == 'light' %}
-                                    <i class="bi bi-check-circle-fill text-teal d-block mt-1"></i>
-                                    {% endif %}
-                                </div>
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="theme" id="themeDark" value="dark"
-                                   {% if theme == 'dark' %}checked{% endif %}>
-                            <label class="form-check-label" for="themeDark">
-                                <div class="border rounded-3 p-3 text-center" style="width: 100px; {% if theme == 'dark' %}border-color: var(--eduai-gold) !important; background: #2d2d2d;{% endif %}">
-                                    <i class="bi bi-moon-fill text-primary fs-2 d-block mb-2"></i>
-                                    <span class="small fw-semibold {% if theme == 'dark' %}text-white{% endif %}">Dark</span>
-                                    {% if theme == 'dark' %}
-                                    <i class="bi bi-check-circle-fill text-teal d-block mt-1"></i>
-                                    {% endif %}
-                                </div>
-                            </label>
+                <!-- Theme Section -->
+                <div class="settings-section">
+                    <div class="settings-section-title">
+                        <div class="icon"><i class="bi bi-palette-fill"></i></div>
+                        <div>
+                            <h6>Theme Preference</h6>
+                            <small class="text-muted">Applies instantly across the app</small>
                         </div>
                     </div>
+
+                    <div class="theme-grid">
+                        <label class="theme-tile {% if theme == 'light' %}active{% endif %}" data-theme="light">
+                            <input type="radio" name="theme" value="light" {% if theme == 'light' %}checked{% endif %}>
+                            <div class="preview light-preview"></div>
+                            <div class="theme-name">
+                                <i class="bi bi-sun-fill text-warning"></i>Light
+                            </div>
+                            <span class="theme-check"><i class="bi bi-check-lg"></i></span>
+                        </label>
+
+                        <label class="theme-tile {% if theme == 'dark' %}active{% endif %}" data-theme="dark">
+                            <input type="radio" name="theme" value="dark" {% if theme == 'dark' %}checked{% endif %}>
+                            <div class="preview dark-preview"></div>
+                            <div class="theme-name">
+                                <i class="bi bi-moon-fill text-primary"></i>Dark
+                            </div>
+                            <span class="theme-check"><i class="bi bi-check-lg"></i></span>
+                        </label>
+                    </div>
+
                     <small class="text-muted d-block mt-2">
                         <i class="bi bi-info-circle me-1"></i>
                         Changes take effect immediately.
                     </small>
                 </div>
 
-                <hr>
+                <!-- Notifications Section -->
+                <div class="settings-section">
+                    <div class="settings-section-title">
+                        <div class="icon"><i class="bi bi-bell-fill"></i></div>
+                        <div>
+                            <h6>Notification Preferences</h6>
+                            <small class="text-muted">Choose how you want to be notified</small>
+                        </div>
+                    </div>
 
-                <!-- Notifications -->
-                <div class="mb-4">
-                    <h6 class="fw-bold mb-3">Notification Preferences</h6>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" name="email_notifications" id="emailNotifications"
-                               {% if email_notifications %}checked{% endif %}>
-                        <label class="form-check-label fw-semibold" for="emailNotifications">
-                            <i class="bi bi-envelope me-2"></i>Email Notifications
-                        </label>
-                        <div class="text-muted small ms-4">Receive updates via email</div>
+                    <!-- Email -->
+                    <div class="notif-row">
+                        <div class="notif-icon email">
+                            <i class="bi bi-envelope-fill"></i>
+                        </div>
+                        <div class="notif-content">
+                            <div class="title">Email Notifications</div>
+                            <div class="desc">Receive updates via email</div>
+                        </div>
+                        <div class="notif-switch">
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       name="email_notifications" id="emailNotifications"
+                                       {% if email_notifications %}checked{% endif %}>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" name="sms_notifications" id="smsNotifications"
-                               {% if sms_notifications %}checked{% endif %}>
-                        <label class="form-check-label fw-semibold" for="smsNotifications">
-                            <i class="bi bi-phone me-2"></i>SMS Notifications
-                        </label>
-                        <div class="text-muted small ms-4">Receive updates via SMS</div>
+
+                    <!-- SMS -->
+                    <div class="notif-row">
+                        <div class="notif-icon sms">
+                            <i class="bi bi-phone-fill"></i>
+                        </div>
+                        <div class="notif-content">
+                            <div class="title">SMS Notifications</div>
+                            <div class="desc">Receive updates via SMS</div>
+                        </div>
+                        <div class="notif-switch">
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       name="sms_notifications" id="smsNotifications"
+                                       {% if sms_notifications %}checked{% endif %}>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" name="ai_insights" id="aiInsights"
-                               {% if ai_insights %}checked{% endif %}>
-                        <label class="form-check-label fw-semibold" for="aiInsights">
-                            <i class="bi bi-robot me-2"></i>AI Insights & Recommendations
-                        </label>
-                        <div class="text-muted small ms-4">Receive AI-powered insights and recommendations</div>
+
+                    <!-- AI -->
+                    <div class="notif-row">
+                        <div class="notif-icon ai">
+                            <i class="bi bi-robot"></i>
+                        </div>
+                        <div class="notif-content">
+                            <div class="title">AI Insights &amp; Recommendations</div>
+                            <div class="desc">Receive AI-powered insights and recommendations</div>
+                        </div>
+                        <div class="notif-switch">
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       name="ai_insights" id="aiInsights"
+                                       {% if ai_insights %}checked{% endif %}>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <hr>
-
-                <!-- Save Button -->
-                <div class="d-flex gap-2 mt-4">
-                    <button type="submit" class="btn btn-gold">
-                        <i class="bi bi-check-circle me-1"></i> Save Settings
+                <!-- Actions -->
+                <div class="settings-actions">
+                    <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Profile
+                    </a>
+                    <button type="submit" class="btn btn-gold btn-sm">
+                        <i class="bi bi-check-circle me-1"></i>Save Settings
                     </button>
-                    <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary">Back to Profile</a>
                 </div>
             </form>
         </div>
     </div>
 </div>
-
-<!-- Theme Preview Styles -->
-<style>
-    /* Preview for theme selection */
-    .form-check-input:checked + .form-check-label .border {
-        border-color: var(--eduai-gold) !important;
-        box-shadow: 0 0 0 2px var(--eduai-gold-soft);
-    }
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-dismiss messages
-    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
-        setTimeout(function() {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        }, 5000);
-    });
-});
-</script>
 {% endblock %}

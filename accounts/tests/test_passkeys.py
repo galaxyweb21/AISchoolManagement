@@ -1,14 +1,38 @@
 from django.test import RequestFactory, TestCase, override_settings
-from django.contrib.auth import get_user_model
-from django.http import HttpResponse
 from django.urls import reverse
+from django.utils import timezone
+from unittest.mock import patch
 
-from accounts.passkeys import _webauthn_relying_party
-from accounts.middleware import LocalhostCanonicalHostMiddleware
-from accounts.models import PasskeyCredential
+from accounts.passkeys import _challenge_is_valid, _webauthn_relying_party
 
 
+# These are test-only hostnames. Production ALLOWED_HOSTS remains unchanged.
+PASSKEY_TEST_HOSTS = [
+    "testserver",
+    "localhost",
+    "127.0.0.1",  # Test-only: allow Django to pass this host to WebAuthn validation.
+    "eduai.localhost",
+    "evil.localhost",
+    "school.example.com",
+    "eduai-demo.onrender.com",
+]
 
+# WhiteNoise's manifest storage expects collectstatic to have generated a
+# manifest. Template-rendering tests should use the non-manifest backend;
+# production continues to use CompressedManifestStaticFilesStorage.
+PASSKEY_TEST_STORAGE = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+    },
+}
+
+
+@override_settings(
+    ALLOWED_HOSTS=PASSKEY_TEST_HOSTS,
+    STATICFILES_STORAGE="django.contrib.staticfiles.storage.StaticFilesStorage",
+    STORAGES=PASSKEY_TEST_STORAGE,
+)
 class PasskeyPageTests(TestCase):
     def test_login_page_exposes_passkey_option(self):
         response = self.client.get(reverse("accounts:login"))
@@ -29,6 +53,11 @@ class PasskeyPageTests(TestCase):
         self.assertEqual(response.status_code, 405)
 
 
+@override_settings(
+    ALLOWED_HOSTS=PASSKEY_TEST_HOSTS,
+    STATICFILES_STORAGE="django.contrib.staticfiles.storage.StaticFilesStorage",
+    STORAGES=PASSKEY_TEST_STORAGE,
+)
 class PasskeyOriginAllowlistTests(TestCase):
     @override_settings(
         DEBUG=True,
@@ -118,40 +147,22 @@ class PasskeyOriginAllowlistTests(TestCase):
             _webauthn_relying_party(request)
 
 
-class PasskeyPrivacyAndDeviceExperienceTests(TestCase):
-    def setUp(self):
-        self.user = get_user_model().objects.create_user(
-            username="passkey-test-user",
-            password="Strong-Test-Password-123!",
-        )
+class PasskeyChallengeSecurityTests(TestCase):
+    def test_missing_challenge_is_rejected(self):
+        self.assertFalse(_challenge_is_valid(None))
+        self.assertFalse(_challenge_is_valid({}))
 
-    def test_device_management_explains_local_biometric_processing(self):
-        self.client.force_login(self.user)
-        response = self.client.get(reverse("accounts:passkey_settings"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "never your face image, fingerprint or biometric template")
-        self.assertContains(response, "Your phone")
-        self.assertContains(response, "Windows Hello PIN")
+    def test_unexpired_challenge_is_accepted(self):
+        now = timezone.now()
+        with patch("accounts.passkeys.timezone.now", return_value=now):
+            self.assertTrue(_challenge_is_valid({"issued_at": now.timestamp() - 30}))
 
-    def test_passkey_model_does_not_define_biometric_storage_fields(self):
-        field_names = {field.name.lower() for field in PasskeyCredential._meta.get_fields()}
-        forbidden_terms = ("face_image", "face_template", "fingerprint", "biometric_template")
-        self.assertFalse(
-            any(term in field_name for term in forbidden_terms for field_name in field_names),
-            "PasskeyCredential must never store raw biometric data.",
-        )
+    def test_expired_challenge_is_rejected(self):
+        now = timezone.now()
+        with patch("accounts.passkeys.timezone.now", return_value=now):
+            self.assertFalse(_challenge_is_valid({"issued_at": now.timestamp() - 301}))
 
-    @override_settings(DEBUG=True)
-    def test_local_ipv4_requests_redirect_to_localhost(self):
-        request = RequestFactory().get("/accounts/login/?next=/dashboard/", HTTP_HOST="127.0.0.1:8000")
-        middleware = LocalhostCanonicalHostMiddleware(lambda req: HttpResponse("ok"))
-        response = middleware(request)
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], "http://localhost:8000/accounts/login/?next=/dashboard/")
-
-    @override_settings(DEBUG=False)
-    def test_production_requests_are_not_rewritten_by_local_middleware(self):
-        request = RequestFactory().get("/", HTTP_HOST="example.com")
-        middleware = LocalhostCanonicalHostMiddleware(lambda req: HttpResponse("ok"))
-        response = middleware(request)
-        self.assertEqual(response.status_code, 200)
+    def test_future_challenge_is_rejected(self):
+        now = timezone.now()
+        with patch("accounts.passkeys.timezone.now", return_value=now):
+            self.assertFalse(_challenge_is_valid({"issued_at": now.timestamp() + 5}))

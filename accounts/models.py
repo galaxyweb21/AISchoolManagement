@@ -195,3 +195,40 @@ class PasskeyCredential(models.Model):
 
     def __str__(self):
         return "{} - {}".format(self.user.username, self.device_name)
+
+
+class PasskeyAuditEvent(models.Model):
+    """Security audit trail for passkey lifecycle events; never stores biometric data."""
+
+    EVENT_CHOICES = (
+        ("registered", "Passkey registered"),
+        ("authenticated", "Passkey authentication succeeded"),
+        ("revoked", "Passkey revoked"),
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="passkey_audit_events",
+    )
+    credential = models.ForeignKey(
+        PasskeyCredential,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="audit_events",
+    )
+    event = models.CharField(max_length=32, choices=EVENT_CHOICES)
+    device_name = models.CharField(max_length=120, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="acct_passkey_audit_user_dt_idx"),
+        ]
+
+    def __str__(self):
+        return "{} - {}".format(self.user_id, self.get_event_display())
