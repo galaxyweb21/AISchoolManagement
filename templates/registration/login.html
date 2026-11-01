@@ -252,7 +252,7 @@
             <i class="bi bi-fingerprint fs-5"></i> Sign in with Passkey
         </button>
         <div id="passkeyLoginStatus" role="status" aria-live="polite"></div>
-        <p class="text-center small mt-2 mb-0" style="color: var(--text-muted);">Use your fingerprint, Face ID, Windows Hello, device PIN or security key.</p>
+        <p class="text-center small mt-2 mb-0" style="color: var(--text-muted);">Use Windows Hello PIN or fingerprint, a phone passkey, Face ID or a security key. A compatible face camera is not required.</p>
 
 <div class="container-fluid px-4" id="messagesContainer">
     {% if messages %}
@@ -330,7 +330,7 @@
                 return;
             }
             button.disabled = true;
-            setStatus('Waiting for your device to verify you…', false);
+            setStatus('Choose a passkey on this device or use your phone when prompted…', false);
             try {
                 const username = document.getElementById('id_username').value.trim();
                 const start = await postJSON('{% url "accounts:passkey_authentication_options" %}', {username: username});

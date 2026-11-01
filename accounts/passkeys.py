@@ -79,23 +79,11 @@ def _json_body(request):
     return data
 
 
-def _webauthn_relying_party(request):
-    """Return a validated RP ID/origin pair for the browser's current host."""
-    import ipaddress
-    import re
-
-    configured_origin = (getattr(settings, "WEBAUTHN_ORIGIN", "") or os.getenv("WEBAUTHN_ORIGIN", "")).strip()
-    configured_rp_id = (getattr(settings, "WEBAUTHN_RP_ID", "") or os.getenv("WEBAUTHN_RP_ID", "")).strip().lower().rstrip(".")
-
-    if not configured_origin:
-        raise ValueError(
-            "Passkey domain is not configured. Set WEBAUTHN_RP_ID and WEBAUTHN_ORIGIN "
-            "for the hostname used in your browser."
-        )
-
-    parsed = urlsplit(configured_origin)
+def _normalize_webauthn_origin(value):
+    """Validate and normalize a configured browser origin."""
+    parsed = urlsplit(str(value or '').strip())
     if (
-        parsed.scheme not in ("https", "http")
+        parsed.scheme.lower() not in ("https", "http")
         or not parsed.hostname
         or parsed.username
         or parsed.password
@@ -104,34 +92,30 @@ def _webauthn_relying_party(request):
         or parsed.fragment
     ):
         raise ValueError(
-            "WEBAUTHN_ORIGIN must be a full origin only, e.g. https://school.onrender.com "
-            "or http://localhost:8000 (no path or trailing slash)."
+            "Each WebAuthn origin must be a full origin only, for example "
+            "http://localhost:8000 or https://school.onrender.com."
         )
+    try:
+        port = parsed.port
+    except ValueError:
+        raise ValueError("A configured WebAuthn origin contains an invalid port.")
+    host = parsed.hostname.lower().rstrip(".")
+    netloc = host
+    if port is not None:
+        netloc = "{}:{}".format(host, port)
+    return "{}://{}".format(parsed.scheme.lower(), netloc), host, parsed.scheme.lower()
 
-    origin_host = parsed.hostname.lower().rstrip(".")
-    origin = "{}://{}".format(parsed.scheme.lower(), parsed.netloc.lower())
-    request_host = request.get_host().split(":", 1)[0].strip("[]").lower().rstrip(".")
 
-    # A browser rejects a credential request if its RP ID does not match the
-    # actual site hostname. Catch host aliases (localhost vs 127.0.0.1) here.
-    if request_host != origin_host:
+def _validate_webauthn_rp_id(rp_id, origin_host):
+    """Ensure an RP ID is a DNS hostname valid for the supplied origin."""
+    import ipaddress
+    import re
+
+    rp_id = str(rp_id or "").strip().lower().rstrip(".")
+    if not rp_id or any(char in rp_id for char in (":", "/", "@", " ", "_")):
         raise ValueError(
-            "You opened EduAI at '{}', but passkeys are configured for '{}'. "
-            "Open the site using the configured hostname.".format(request_host, origin_host)
-        )
-
-    rp_id = configured_rp_id or origin_host
-    if (
-        not rp_id
-        or ":" in rp_id
-        or "/" in rp_id
-        or "@" in rp_id
-        or " " in rp_id
-        or "_" in rp_id
-    ):
-        raise ValueError(
-            "WEBAUTHN_RP_ID must be a hostname only, e.g. localhost or school.onrender.com; "
-            "do not include https://, a port, or a path."
+            "WEBAUTHN_RP_ID must be a hostname only, e.g. localhost or "
+            "school.onrender.com; do not include https://, a port, or a path."
         )
     try:
         ipaddress.ip_address(rp_id)
@@ -139,22 +123,95 @@ def _webauthn_relying_party(request):
         pass
     else:
         raise ValueError(
-            "WebAuthn RP ID cannot be an IP address. Use localhost for local testing, "
-            "or a DNS hostname with HTTPS."
+            "WebAuthn RP IDs cannot be IP addresses. Use localhost for local testing. "
+            "127.0.0.1 cannot be used for passkey registration."
         )
-    if rp_id != "localhost" and not re.match(r"^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$", rp_id):
-        raise ValueError("WEBAUTHN_RP_ID is not a valid DNS hostname.")
+    if rp_id != "localhost" and not re.match(
+        r"^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*"
+        r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+        rp_id,
+    ):
+        raise ValueError("The configured WebAuthn RP ID is not a valid DNS hostname.")
     if not (origin_host == rp_id or origin_host.endswith("." + rp_id)):
         raise ValueError(
-            "WEBAUTHN_RP_ID '{}' must match the site hostname '{}' or be its parent domain.".format(rp_id, origin_host)
+            "WEBAUTHN_RP_ID '{}' must match the site hostname '{}' or be its parent domain."
+            .format(rp_id, origin_host)
         )
-    if parsed.scheme != "https" and not (settings.DEBUG and origin_host == "localhost"):
-        raise ValueError("Passkeys require HTTPS except when testing on http://localhost.")
-    if not settings.DEBUG and parsed.scheme != "https":
+    return rp_id
+
+
+def _webauthn_relying_party(request):
+    """Return a validated RP ID/origin pair for an explicitly allowed browser origin.
+
+    WEBAUTHN_ORIGIN_RP_IDS is a JSON object mapping exact browser origins to RP IDs,
+    e.g. {"http://localhost:8000":"localhost"}. When it is empty, the legacy
+    single-origin WEBAUTHN_ORIGIN / WEBAUTHN_RP_ID configuration is used.
+    """
+    raw_origin_map = getattr(settings, "WEBAUTHN_ORIGIN_RP_IDS", "") or os.getenv(
+        "WEBAUTHN_ORIGIN_RP_IDS", ""
+    )
+    origin_map = {}
+    if isinstance(raw_origin_map, dict):
+        origin_map = raw_origin_map
+    elif str(raw_origin_map).strip():
+        try:
+            parsed_map = json.loads(raw_origin_map)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("WEBAUTHN_ORIGIN_RP_IDS must be a valid JSON object.") from exc
+        if not isinstance(parsed_map, dict):
+            raise ValueError("WEBAUTHN_ORIGIN_RP_IDS must be a JSON object mapping origins to RP IDs.")
+        origin_map = parsed_map
+
+    request_host = request.get_host()
+    current_origin, current_host, current_scheme = _normalize_webauthn_origin(
+        "{}://{}".format(request.scheme, request_host)
+    )
+
+    if origin_map:
+        normalized_map = {}
+        for configured, mapped_rp_id in origin_map.items():
+            normalized, mapped_host, _mapped_scheme = _normalize_webauthn_origin(configured)
+            normalized_map[normalized] = _validate_webauthn_rp_id(mapped_rp_id, mapped_host)
+        rp_id = normalized_map.get(current_origin)
+        if not rp_id:
+            allowed = ", ".join(sorted(normalized_map.keys()))
+            raise ValueError(
+                "This browser origin is not enabled for passkeys. Open EduAI using one of: {}."
+                .format(allowed or "a configured HTTPS hostname")
+            )
+    else:
+        configured_origin = (
+            getattr(settings, "WEBAUTHN_ORIGIN", "") or os.getenv("WEBAUTHN_ORIGIN", "")
+        ).strip()
+        configured_rp_id = (
+            getattr(settings, "WEBAUTHN_RP_ID", "") or os.getenv("WEBAUTHN_RP_ID", "")
+        ).strip()
+        if not configured_origin:
+            raise ValueError(
+                "Passkey domain is not configured. Set WEBAUTHN_RP_ID and WEBAUTHN_ORIGIN "
+                "or WEBAUTHN_ORIGIN_RP_IDS."
+            )
+        current_configured_origin, configured_host, _configured_scheme = _normalize_webauthn_origin(
+            configured_origin
+        )
+        if current_origin != current_configured_origin:
+            raise ValueError(
+                "You opened EduAI at '{}', but passkeys are configured for '{}'. "
+                "Open the site using the configured hostname."
+                .format(current_origin, current_configured_origin)
+            )
+        rp_id = _validate_webauthn_rp_id(configured_rp_id or configured_host, configured_host)
+
+    # Plain HTTP is permitted only for localhost-family development names and
+    # only while DEBUG is enabled. Public/non-local origins must use HTTPS.
+    is_localhost_origin = current_host == "localhost" or current_host.endswith(".localhost")
+    if current_scheme != "https" and not (settings.DEBUG and is_localhost_origin):
+        raise ValueError("Passkeys require HTTPS except for localhost development.")
+    if not settings.DEBUG and current_scheme != "https":
         raise ValueError("Passkeys require HTTPS when DEBUG=False.")
 
     rp_name = (getattr(settings, "WEBAUTHN_RP_NAME", "") or "EduAI").strip() or "EduAI"
-    return rp_id, origin, rp_name
+    return rp_id, current_origin, rp_name
 
 
 def _challenge_is_valid(data):
@@ -213,6 +270,8 @@ def passkey_registration_options(request):
             "issued_at": timezone.now().timestamp(),
             "user_id": str(request.user.pk),
             "device_name": device_name,
+            "rp_id": rp_id,
+            "origin": _origin,
         }
         request.session.modified = True
         return JsonResponse({"success": True, "publicKey": json.loads(api["options_to_json"](options))})
@@ -243,6 +302,8 @@ def passkey_registration_complete(request):
 
         api = _get_webauthn()
         rp_id, origin, _rp_name = _webauthn_relying_party(request)
+        if pending.get("rp_id") != rp_id or pending.get("origin") != origin:
+            return _api_error("The browser origin changed during registration. Please start again.", 400)
         verification = api["verify_registration_response"](
             credential=credential,
             expected_challenge=api["base64url_to_bytes"](pending["challenge"]),
@@ -330,6 +391,8 @@ def passkey_authentication_options(request):
             "challenge": _b64url_encode(options.challenge),
             "issued_at": timezone.now().timestamp(),
             "username_supplied": bool(username),
+            "rp_id": rp_id,
+            "origin": _origin,
         }
         request.session.modified = True
         return JsonResponse({"success": True, "publicKey": json.loads(api["options_to_json"](options))})
@@ -357,6 +420,8 @@ def passkey_authentication_verify(request):
 
         api = _get_webauthn()
         rp_id, origin, _rp_name = _webauthn_relying_party(request)
+        if pending.get("rp_id") != rp_id or pending.get("origin") != origin:
+            return _api_error("The browser origin changed during sign-in. Please try again.", 400)
         credential_id_bytes = api["base64url_to_bytes"](credential["id"])
         credential_id_hash = hashlib.sha256(bytes(credential_id_bytes)).hexdigest()
         saved = PasskeyCredential.objects.select_related("user").filter(

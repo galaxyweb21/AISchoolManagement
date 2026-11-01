@@ -1,98 +1,94 @@
-EDUAI PASSKEY LOGIN - ENVIRONMENT CONFIGURATION FIX
-===================================================
+EDUAI PASSKEY MULTI-ORIGIN LOCAL CONFIGURATION PATCH
+====================================================
 
-This is a patch for the latest EduAI_Render_Demo_Clean baseline. It includes
-Phase 1 passkey registration/login plus corrected, environment-aware RP ID and
-origin configuration. Existing username/password login remains available.
+This patch is built against the uploaded EduAI_Render_Demo_Clean baseline.
+It allows two explicitly approved local browser origins, each with its own
+matching WebAuthn RP ID, while keeping production origins separately configured.
+Username/password login remains unchanged.
 
-WHY THE BROWSER SAID "INVALID DOMAIN"
--------------------------------------
-The WebAuthn RP ID must be a hostname only. It must not contain https://, a
-port, or a path. It must also match the hostname in the browser address bar.
-For local testing, use localhost consistently; do not open the app at
-127.0.0.1 when the RP ID is localhost.
+SUPPORTED LOCAL ADDRESSES
+-------------------------
+Use either of these addresses for passkey registration and sign-in:
+
+  http://localhost:8000
+  http://eduai.localhost:8000
+
+Each uses its own matching WebAuthn RP ID: "localhost" for the first address and
+"eduai.localhost" for the second. This avoids relying on browser-specific
+subdomain handling for the special localhost domain. The alternative hostname
+is included in Django ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS for DEBUG/local use.
+
+IMPORTANT: http://127.0.0.1:8000 is intentionally NOT supported for passkeys.
+WebAuthn RP IDs must be domain names; browsers reject IP addresses as RP IDs.
+You may still use 127.0.0.1 for ordinary pages/password login, but use one of
+the two supported localhost names for passkey operations.
 
 CONFIGURATION
 -------------
-1) LOCAL DEVELOPMENT (runserver)
-   In the project's .env set:
-       WEBAUTHN_RP_ID=localhost
-       WEBAUTHN_ORIGIN=http://localhost:8000
-       WEBAUTHN_RP_NAME=EduAI
-   Open the app at exactly http://localhost:8000. Do not use
-   http://127.0.0.1:8000 for passkey registration under this configuration.
+The settings automatically provide this development allowlist when DEBUG is
+True and the app is not running on Render:
 
-2) DOCKER COMPOSE (included docker-compose.yml)
-   The compose file passes these defaults to the web container:
-       WEBAUTHN_RP_ID=localhost
-       WEBAUTHN_ORIGIN=http://localhost:8000
-       WEBAUTHN_RP_NAME=EduAI
-   Copy .env.docker.example to .env if needed, then browse from the host
-   computer to exactly http://localhost:8000. The internal service names
-   such as "web" and "db" are not browser RP IDs.
-   If Docker is hosted on another machine and users access it through a public
-   hostname, configure that hostname and HTTPS instead; plain HTTP on a LAN IP
-   is not a valid passkey deployment.
+  WEBAUTHN_ORIGIN_RP_IDS={"http://localhost:8000":"localhost","http://eduai.localhost:8000":"eduai.localhost"}
 
-3) RENDER PRODUCTION
-   Render automatically provides RENDER_EXTERNAL_HOSTNAME. The settings now
-   derive the defaults from that value:
-       WEBAUTHN_RP_ID=<RENDER_EXTERNAL_HOSTNAME>
-       WEBAUTHN_ORIGIN=https://<RENDER_EXTERNAL_HOSTNAME>
-       WEBAUTHN_RP_NAME=EduAI
-   You can set the first two explicitly in Render Environment if preferred.
-   Use the exact hostname shown in the Render service URL, without scheme,
-   port, or path for RP_ID. ORIGIN includes https:// and no path/trailing slash.
-   If you use a custom domain, set RP_ID to that custom hostname and ORIGIN to
-   https:// followed by that exact hostname. Keep using the same canonical
-   hostname for both registration and login.
+The variable is a JSON object mapping exact browser origins to RP IDs. If you
+use a different local port, update the origin keys to include that port.
+Do not add arbitrary origins or user-controlled hostnames to this mapping.
 
-IMPORTANT DOMAIN RULES
-----------------------
-- RP_ID examples: localhost, eduai-school-demo.onrender.com, school.example.com
-- ORIGIN examples: http://localhost:8000, https://eduai-school-demo.onrender.com
-- Invalid RP_ID examples: https://school.example.com, school.example.com:8000,
-  school.example.com/login, 127.0.0.1
-- WebAuthn credentials are scoped to the RP ID. Credentials registered on
-  localhost do not automatically work on the Render domain. Register a new
-  passkey on each environment/device domain.
-- If you switch from the Render onrender.com URL to a custom domain later,
-  users will need to register a passkey again on the new domain.
-- Public/non-local deployments require HTTPS.
+LOCAL / DOCKER
+--------------
+For local runserver, open either supported URL above.
+For Docker Compose, the web container receives the same local mapping by
+Django's DEBUG default. If you set WEBAUTHN_ORIGIN_RP_IDS in .env, use the JSON
+mapping above. Ensure ALLOWED_HOSTS includes eduai.localhost when explicitly
+overridden; the DEBUG settings append it automatically.
 
-INSTALL / UPDATE
+Docker commands after applying the patch:
+  docker compose build --no-cache web celery_worker
+  docker compose up -d
+
+RENDER PRODUCTION
+-----------------
+Render must use its canonical HTTPS service hostname. The existing
+RENDER_EXTERNAL_HOSTNAME fallback remains in place:
+  WEBAUTHN_RP_ID=<RENDER_EXTERNAL_HOSTNAME>
+  WEBAUTHN_ORIGIN=https://<RENDER_EXTERNAL_HOSTNAME>
+
+Leave WEBAUTHN_ORIGIN_RP_IDS unset on Render to use the existing single-origin
+configuration. For a custom domain, set WEBAUTHN_RP_ID to the exact hostname
+and WEBAUTHN_ORIGIN to https:// followed by that hostname. Do not include a
+scheme, port, or path in RP_ID. Public deployments require HTTPS.
+
+SECURITY DETAILS
 ----------------
-1. Back up the project and database.
-2. Extract this patch into the project root, preserving folder paths.
-3. Install the updated dependency set in the active environment:
-       pip install -r requirements.txt
-   WebAuthn is pinned to 2.2.0 for Python 3.8 compatibility. cryptography is
-   pinned to 42.0.8 to satisfy the WebAuthn dependency line; the baseline's
-   older 38.0.4 pin must not override it.
-4. Apply the migration:
-       python manage.py migrate accounts
-5. Run checks:
-       python manage.py check
-       python manage.py makemigrations --check --dry-run
-       python manage.py test accounts.tests.test_passkeys
-6. Restart local/Docker services or redeploy Render.
+- Origins are allowlisted exactly (scheme, hostname, and port).
+- RP IDs are validated as DNS hostnames and must match the origin host or be
+  its parent domain.
+- HTTP is accepted only for localhost-family origins while DEBUG=True.
+- The RP ID and origin are stored with each issued challenge and checked again
+  during completion, preventing a ceremony from switching browser origins.
+- 127.0.0.1 is not configured as an RP ID.
+- The two local hostnames have separate RP IDs, so register a passkey separately
+  when switching between localhost and eduai.localhost.
+- Local and production RP IDs are different; users register separately in
+  each environment.
 
-Docker note: rebuild after updating requirements:
-       docker compose build web celery_worker
-       docker compose up -d
+APPLY AND VERIFY
+----------------
+1. Back up the project.
+2. Extract the patch into the project root, preserving folder structure.
+3. Run:
+     python manage.py check
+     python manage.py test accounts.tests.test_passkeys
+4. For Docker, rebuild the web and worker images using the commands above.
+5. Open http://localhost:8000 or http://eduai.localhost:8000 and register a
+   passkey under Account Settings > Passkeys & Device Security.
 
-SECURITY
---------
-The uploaded baseline archive included a populated .env file. This patch does
-not contain it. Rotate any credentials/secrets that were present in that
-archive (Django SECRET_KEY, database password, email credentials, API keys).
-Never commit or share a populated .env file. Keep secrets in local environment
-files or the deployment provider's secret environment settings.
+This patch does not include or modify the populated .env file. Keep secrets
+out of source archives and rotate credentials previously exposed in shared
+archives.
 
 VALIDATION NOTE
 ---------------
-The patch was assembled against the uploaded baseline and Python syntax was
-checked. A full Django test run and real browser/WebAuthn ceremony require the
-project's configured virtual environment, database, HTTPS hostname, and a
-physical authenticator; those cannot be truthfully certified from this archive
-alone. Run the commands above before deploying.
+Python syntax and ZIP integrity are checked when the patch is packaged. A full
+Django test run and a real browser/authenticator ceremony must be performed in
+the project's configured environment.

@@ -35,7 +35,7 @@
             <div class="passkey-icon flex-shrink-0"><i class="bi bi-fingerprint"></i></div>
             <div class="flex-grow-1">
                 <h5 class="fw-bold mb-2">Sign in with your device</h5>
-                <p class="passkey-muted mb-0">A passkey lets your device verify you with a fingerprint, Face ID, Windows Hello, device PIN or a security key. EduAI stores a public key, not your fingerprint or face data.</p>
+                <p class="passkey-muted mb-0">Your device verifies you using Windows Hello, a device PIN, fingerprint, Face ID, your phone or a security key. EduAI stores the passkey's public key and security metadata only — never your face image, fingerprint or biometric template.</p>
             </div>
             <div class="text-lg-end">
                 <div class="fw-bold fs-3">{{ passkeys|length }}</div>
@@ -68,8 +68,16 @@
                         </button>
                     </form>
                     <div id="passkeyRegisterStatus" class="small mt-3" role="status" aria-live="polite"></div>
-                    <div class="alert alert-light border small mt-3 mb-0">
-                        <i class="bi bi-info-circle me-1"></i> Use a supported browser and a secure HTTPS connection. On localhost, modern browsers permit WebAuthn for development.
+                    <div class="alert alert-light border small mt-3 mb-3">
+                        <div class="fw-semibold mb-1"><i class="bi bi-info-circle me-1"></i> What should you choose?</div>
+                        <ul class="mb-0 ps-3">
+                            <li><strong>This Windows laptop:</strong> choose Windows Hello when your browser prompts you. Use your Windows Hello PIN or fingerprint; Face is optional and requires a compatible IR camera.</li>
+                            <li><strong>Your phone:</strong> choose the phone / another-device option and scan the QR code. Follow the prompts on your phone.</li>
+                            <li><strong>Security key:</strong> connect or tap your compatible USB, NFC or Bluetooth security key when prompted.</li>
+                        </ul>
+                    </div>
+                    <div class="alert alert-light border small mb-0">
+                        <i class="bi bi-shield-check me-1"></i> Passkeys require a supported browser and HTTPS. Modern browsers allow localhost for development. You can register more than one device and keep your password as a fallback.
                     </div>
                 </div>
             </div>
@@ -104,7 +112,7 @@
                     <div class="text-center py-5">
                         <div class="passkey-icon mx-auto mb-3"><i class="bi bi-shield-lock"></i></div>
                         <h6 class="fw-bold">No passkeys registered</h6>
-                        <p class="text-muted small mb-0">Add a passkey to use your device's built-in authentication for faster sign-in.</p>
+                        <p class="text-muted small mb-0">Add a passkey for this laptop and, if you wish, another one for your phone. Keep your password available as a recovery option.</p>
                     </div>
                     {% endfor %}
                 </div>
