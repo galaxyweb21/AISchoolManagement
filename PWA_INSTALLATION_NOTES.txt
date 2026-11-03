@@ -1,0 +1,32 @@
+EduAI PWA INSTALLATION UPGRADE
+==============================
+
+This is the complete project based on the supplied latest EduAI ZIP, with an installable
+Progressive Web App (PWA) feature added.
+
+Included:
+- Web app manifest and EduAI icons (192px and 512px)
+- Install EduAI button in the top navigation
+- Native beforeinstallprompt support (supported browsers)
+- iOS Safari Add to Home Screen guidance
+- Root-scoped /service-worker.js Django endpoint
+- Service worker that caches same-origin static assets only
+- No caching of HTML pages, API calls, or authenticated school records
+- Existing passkey implementation is retained from the supplied baseline
+
+LOCAL CHECKS:
+- Python syntax check passed for AISchoolManagement/urls.py
+- Manifest, base-template, navbar, install-script, and service-worker integration markers verified
+- Django check/test suite not executed in this packaging environment because Django is not installed here.
+  Run in your project environment:
+    python manage.py check
+    python manage.py test accounts.tests.test_passkeys
+
+TESTING:
+1. Start local Django and open it in Edge/Chrome.
+2. Visit the app using localhost (PWA install requires a secure context; localhost is accepted).
+3. Use the Install EduAI icon in the top bar when the browser exposes installation.
+4. For iPhone/iPad, open the site in Safari, tap Share, then Add to Home Screen.
+5. On Render, installation requires HTTPS.
+
+No database migration is required.

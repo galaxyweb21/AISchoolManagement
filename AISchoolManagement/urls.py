@@ -21,14 +21,28 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 
 def health_check(request):
     return JsonResponse({"status": "ok"})
 
 
+def eduai_service_worker(request):
+    """Serve the PWA worker at the site root so it can control app pages."""
+    worker_path = settings.BASE_DIR / "static" / "pwa" / "sw.js"
+    try:
+        content = worker_path.read_text(encoding="utf-8")
+    except OSError:
+        return HttpResponse("Service worker unavailable", status=404, content_type="text/plain")
+    response = HttpResponse(content, content_type="application/javascript; charset=utf-8")
+    response["Service-Worker-Allowed"] = "/"
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
 urlpatterns = [
     path("healthz/", health_check, name="healthz"),
+    path("service-worker.js", eduai_service_worker, name="eduai_service_worker"),
     path('admin/', admin.site.urls),
 
     # Authentication Routes

@@ -4,6 +4,11 @@
 <head>
     <!-- === HEADER (Meta, Bootstrap, Fonts) === -->
     {% include "base/header.html" %}
+    <link rel="manifest" href="{% static 'pwa/manifest.webmanifest' %}">
+    <meta name="theme-color" content="#946B1C">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="{% static 'pwa/icons/icon-192.png' %}">
     <!-- EduAI Product Guide styles -->
     <link rel="stylesheet" href="{% static 'css/tour.css' %}?v=7.1">
     <link rel="stylesheet" href="{% static 'css/eduai-enterprise.css' %}?v=1.0">
@@ -501,6 +506,7 @@ document.addEventListener('DOMContentLoaded', function(){
     </script>
 
     {% block extra_js %}{% endblock %}
+    <script src="{% static 'pwa/install.js' %}?v=1.0" defer></script>
 
     <!-- Client-side table pagination is opt-in only. Server-side pagination is the default. -->
     <script>
