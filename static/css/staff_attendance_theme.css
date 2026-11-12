@@ -1,0 +1,198 @@
+/*
+ EduAI Staff Attendance theme polish
+ Import this AFTER the existing staff attendance styles.
+ Uses Bootstrap color-mode attributes and common EduAI dark-mode classes.
+ It intentionally avoids changing attendance behavior or JavaScript.
+*/
+:root {
+  --staff-att-bg: var(--bs-body-bg, #f5f7f8);
+  --staff-att-surface: var(--bs-tertiary-bg, #ffffff);
+  --staff-att-table: var(--bs-body-bg, #ffffff);
+  --staff-att-text: var(--bs-body-color, #24332f);
+  --staff-att-muted: var(--bs-secondary-color, #718079);
+  --staff-att-border: var(--bs-border-color, #dfe7e3);
+  --staff-att-head: #f0f4f2;
+  --staff-att-gold: #946b1c;
+  --staff-att-green: #2c7a6d;
+}
+html[data-bs-theme="dark"],
+body[data-bs-theme="dark"],
+[data-theme="dark"],
+.dark-mode,
+body.dark {
+  --staff-att-bg: #17211f;
+  --staff-att-surface: #202a2d;
+  --staff-att-table: #20282b;
+  --staff-att-text: #edf4f1;
+  --staff-att-muted: #a4b8b0;
+  --staff-att-border: #30423e;
+  --staff-att-head: #182321;
+}
+.staff-attendance-page,
+.staff-attendance-container,
+.staff-attendance-content {
+  color: var(--staff-att-text);
+}
+.staff-attendance-page .card,
+.staff-attendance-container .card,
+.staff-attendance-content .card,
+.staff-attendance-page .table-responsive,
+.staff-attendance-container .table-responsive {
+  color: var(--staff-att-text);
+  border-color: var(--staff-att-border);
+}
+.staff-attendance-page table,
+.staff-attendance-container table,
+.staff-attendance-content table {
+  color: var(--staff-att-text);
+  border-color: var(--staff-att-border);
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.staff-attendance-page thead th,
+.staff-attendance-container thead th,
+.staff-attendance-content thead th {
+  background: var(--staff-att-head);
+  color: var(--staff-att-text);
+  border-color: var(--staff-att-border);
+  font-size: .75rem;
+  font-weight: 750;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.staff-attendance-page tbody td,
+.staff-attendance-container tbody td,
+.staff-attendance-content tbody td {
+  background: var(--staff-att-table);
+  color: var(--staff-att-text);
+  border-color: var(--staff-att-border);
+  vertical-align: middle;
+}
+.staff-attendance-page tbody tr:hover td,
+.staff-attendance-container tbody tr:hover td,
+.staff-attendance-content tbody tr:hover td {
+  background: color-mix(in srgb, var(--staff-att-green) 7%, var(--staff-att-table));
+}
+.staff-attendance-page .text-muted,
+.staff-attendance-container .text-muted,
+.staff-attendance-content .text-muted {
+  color: var(--staff-att-muted) !important;
+}
+/* Compact, readable status pills. Supports common text and Bootstrap badge classes. */
+.staff-attendance-page .attendance-status,
+.staff-attendance-container .attendance-status,
+.staff-attendance-content .attendance-status,
+.staff-attendance-page .status-badge,
+.staff-attendance-container .status-badge,
+.staff-attendance-content .status-badge,
+.staff-attendance-page .badge.status-present,
+.staff-attendance-page .badge.status-late,
+.staff-attendance-page .badge.status-absent,
+.staff-attendance-page .badge.status-unmarked {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  min-width: 96px;
+  padding: .42rem .8rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 750;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.staff-attendance-page .status-present,
+.staff-attendance-container .status-present,
+.staff-attendance-content .status-present,
+.staff-attendance-page .attendance-status.present {
+  color: #176b45 !important;
+  background: #e4f6ec !important;
+  border-color: #b9e6cc !important;
+}
+.staff-attendance-page .status-late,
+.staff-attendance-container .status-late,
+.staff-attendance-content .status-late,
+.staff-attendance-page .attendance-status.late {
+  color: #855600 !important;
+  background: #fff4d8 !important;
+  border-color: #f2d88e !important;
+}
+.staff-attendance-page .status-absent,
+.staff-attendance-container .status-absent,
+.staff-attendance-content .status-absent,
+.staff-attendance-page .attendance-status.absent {
+  color: #a92b26 !important;
+  background: #fff0ef !important;
+  border-color: #f2c4c0 !important;
+}
+.staff-attendance-page .status-unmarked,
+.staff-attendance-container .status-unmarked,
+.staff-attendance-content .status-unmarked,
+.staff-attendance-page .attendance-status.unmarked {
+  color: #52635c !important;
+  background: #f0f4f2 !important;
+  border-color: #dce5e0 !important;
+}
+html[data-bs-theme="dark"] .staff-attendance-page .status-present,
+body[data-bs-theme="dark"] .staff-attendance-page .status-present,
+[data-theme="dark"] .staff-attendance-page .status-present,
+.dark-mode .staff-attendance-page .status-present,
+html[data-bs-theme="dark"] .staff-attendance-page .status-late,
+body[data-bs-theme="dark"] .staff-attendance-page .status-late,
+[data-theme="dark"] .staff-attendance-page .status-late,
+.dark-mode .staff-attendance-page .status-late,
+html[data-bs-theme="dark"] .staff-attendance-page .status-absent,
+body[data-bs-theme="dark"] .staff-attendance-page .status-absent,
+[data-theme="dark"] .staff-attendance-page .status-absent,
+.dark-mode .staff-attendance-page .status-absent,
+html[data-bs-theme="dark"] .staff-attendance-page .status-unmarked,
+body[data-bs-theme="dark"] .staff-attendance-page .status-unmarked,
+[data-theme="dark"] .staff-attendance-page .status-unmarked,
+.dark-mode .staff-attendance-page .status-unmarked {
+  filter: saturate(.9) brightness(.96);
+}
+/* Make summary cards consistent without imposing a new layout. */
+.staff-attendance-page .summary-card,
+.staff-attendance-page .attendance-summary-card,
+.staff-attendance-container .summary-card,
+.staff-attendance-container .attendance-summary-card {
+  color: var(--staff-att-text);
+  background: var(--staff-att-surface);
+  border: 1px solid var(--staff-att-border);
+  border-radius: 16px;
+  box-shadow: 0 5px 18px rgb(20 40 32 / 5%);
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.staff-attendance-page .summary-card:hover,
+.staff-attendance-page .attendance-summary-card:hover,
+.staff-attendance-container .summary-card:hover,
+.staff-attendance-container .attendance-summary-card:hover {
+  border-color: color-mix(in srgb, var(--staff-att-green) 40%, var(--staff-att-border));
+  box-shadow: 0 8px 24px rgb(20 40 32 / 9%);
+}
+.staff-attendance-page button:focus-visible,
+.staff-attendance-page a:focus-visible,
+.staff-attendance-container button:focus-visible,
+.staff-attendance-container a:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--staff-att-green) 55%, transparent);
+  outline-offset: 2px;
+}
+@media (max-width: 768px) {
+  .staff-attendance-page .table-responsive,
+  .staff-attendance-container .table-responsive {
+    border-radius: 12px;
+  }
+  .staff-attendance-page thead th,
+  .staff-attendance-container thead th,
+  .staff-attendance-content thead th {
+    font-size: .68rem;
+    padding: .7rem .55rem;
+  }
+  .staff-attendance-page tbody td,
+  .staff-attendance-container tbody td,
+  .staff-attendance-content tbody td {
+    padding: .7rem .55rem;
+  }
+}

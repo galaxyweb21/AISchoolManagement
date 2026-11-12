@@ -1,0 +1,50 @@
+{% extends 'base/base.html' %}
+{% block page_title %}Staff Attendance Reports{% endblock %}
+{% block content %}
+<div class="container-fluid px-0 staff-report-page">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1"><i class="bi bi-file-earmark-bar-graph text-gold fs-4"></i><h4 class="fw-bold mb-0">Staff Attendance Reports</h4></div>
+      <p class="text-muted mb-0">Review daily attendance, punctuality and sign-in/sign-out history. Export filtered results for school records.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-outline-secondary" href="{% url 'attendance:staff_attendance_dashboard' %}"><i class="bi bi-arrow-left me-1"></i> Attendance desk</a>
+      <a class="btn btn-gold" href="{{ export_url }}"><i class="bi bi-download me-1"></i> Export CSV</a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-xl"><div class="report-stat"><span>Matching records</span><strong>{{ summary.total }}</strong></div></div>
+    <div class="col-6 col-xl"><div class="report-stat"><span>Present</span><strong>{{ summary.present }}</strong></div></div>
+    <div class="col-6 col-xl"><div class="report-stat"><span>Late</span><strong>{{ summary.late }}</strong></div></div>
+    <div class="col-6 col-xl"><div class="report-stat"><span>Absent</span><strong>{{ summary.absent }}</strong></div></div>
+    <div class="col-6 col-xl"><div class="report-stat"><span>Excused</span><strong>{{ summary.excused }}</strong></div></div>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-sm-6 col-lg-2"><label class="form-label small fw-semibold">From date</label><input class="form-control" type="date" name="date_from" value="{{ date_from|date:'Y-m-d' }}" required></div>
+      <div class="col-sm-6 col-lg-2"><label class="form-label small fw-semibold">To date</label><input class="form-control" type="date" name="date_to" value="{{ date_to|date:'Y-m-d' }}" required></div>
+      <div class="col-sm-6 col-lg-2"><label class="form-label small fw-semibold">Status</label><select class="form-select" name="status"><option value="">All statuses</option><option value="PRESENT" {% if selected_status == 'PRESENT' %}selected{% endif %}>Present</option><option value="LATE" {% if selected_status == 'LATE' %}selected{% endif %}>Late</option><option value="ABSENT" {% if selected_status == 'ABSENT' %}selected{% endif %}>Absent</option><option value="EXCUSED" {% if selected_status == 'EXCUSED' %}selected{% endif %}>Excused</option></select></div>
+      <div class="col-sm-6 col-lg-2"><label class="form-label small fw-semibold">Department</label><select class="form-select" name="department"><option value="">All departments</option>{% for department in department_options %}<option value="{{ department.id }}" {% if selected_department == department.id|stringformat:'s' %}selected{% endif %}>{{ department.name }}</option>{% endfor %}</select></div>
+      <div class="col-sm-6 col-lg-2"><label class="form-label small fw-semibold">Staff member</label><select class="form-select" name="staff"><option value="">All staff</option>{% for staff in staff_options %}<option value="{{ staff.id }}" {% if selected_staff == staff.id|stringformat:'s' %}selected{% endif %}>{{ staff.user.get_full_name|default:staff.staff_id }} · {{ staff.staff_id }}</option>{% endfor %}</select></div>
+      <div class="col-sm-6 col-lg-2"><label class="form-label small fw-semibold">Search</label><input class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Name or staff ID"></div>
+      <div class="col-12 d-flex gap-2"><button class="btn btn-gold" type="submit"><i class="bi bi-funnel me-1"></i> Apply filters</button><a class="btn btn-outline-secondary" href="{% url 'attendance:staff_attendance_reports' %}">Reset</a></div>
+    </form>
+  </div></div>
+
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden"><div class="card-header bg-transparent py-3 d-flex justify-content-between flex-wrap gap-2"><strong>Attendance records</strong><span class="text-muted small">Page {{ records_page.number }} of {{ records_page.paginator.num_pages }} · {{ records_page.paginator.count }} records</span></div>
+    <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th class="ps-4">Staff member</th><th>Department</th><th>Date</th><th>Status</th><th>Method</th><th>Check-in</th><th>Check-out</th><th class="pe-4">Remarks</th></tr></thead><tbody>
+      {% for record in records_page %}<tr><td class="ps-4"><div class="fw-semibold">{{ record.staff.user.get_full_name|default:record.staff.staff_id }}</div><small class="text-muted">{{ record.staff.staff_id }}</small></td><td>{{ record.staff.department.name|default:'—' }}</td><td>{{ record.date|date:'d M Y' }}</td><td><span class="status-pill status-{{ record.status|lower }}">{{ record.get_status_display }}</span></td><td>{{ record.get_method_display }}</td><td>{% if record.check_in %}{{ record.check_in|date:'H:i' }}{% else %}—{% endif %}</td><td>{% if record.check_out %}{{ record.check_out|date:'H:i' }}{% else %}—{% endif %}</td><td class="pe-4">{{ record.remarks|default:'—' }}</td></tr>
+      {% empty %}<tr><td colspan="8" class="text-center py-5"><i class="bi bi-calendar2-x fs-3 text-muted d-block mb-2"></i><strong>No attendance records found</strong><div class="text-muted small mt-1">Try widening the date range or clearing one of the filters.</div></td></tr>{% endfor %}
+    </tbody></table></div>
+    {% if records_page.paginator.count %}<div class="card-footer bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-3 attendance-pagination"><span class="small text-muted">Showing {{ records_page.start_index }}–{{ records_page.end_index }} of {{ records_page.paginator.count }} records</span><nav aria-label="Staff attendance report pages"><ul class="pagination pagination-sm mb-0">{% if records_page.has_previous %}<li class="page-item"><a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ records_page.previous_page_number }}">Previous</a></li>{% else %}<li class="page-item disabled"><span class="page-link">Previous</span></li>{% endif %}{% for page_number in records_page.paginator.page_range %}{% if page_number == records_page.number %}<li class="page-item active" aria-current="page"><span class="page-link">{{ page_number }}</span></li>{% elif page_number >= records_page.number|add:'-2' and page_number <= records_page.number|add:'2' %}<li class="page-item"><a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_number }}">{{ page_number }}</a></li>{% endif %}{% endfor %}{% if records_page.has_next %}<li class="page-item"><a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ records_page.next_page_number }}">Next</a></li>{% else %}<li class="page-item disabled"><span class="page-link">Next</span></li>{% endif %}</ul></nav></div>{% endif %}
+  </div>
+</div>
+<style>
+.staff-report-page{--sr-border:var(--bs-border-color,#e1e8e4);--sr-surface:var(--bs-body-bg,#fff);--sr-text:var(--bs-body-color,#25312d);color:var(--sr-text)}
+.staff-report-page .attendance-pagination{display:flex!important;visibility:visible!important;position:relative;z-index:1}.staff-report-page .attendance-pagination nav{display:block!important}.staff-report-page .attendance-pagination .pagination{display:flex!important;flex-wrap:wrap;gap:2px}.staff-report-page .attendance-pagination .page-link{color:var(--eduai-signal,#2c7a6d);border-color:var(--sr-border)}.staff-report-page .attendance-pagination .page-item.active .page-link{background:var(--eduai-signal,#2c7a6d);border-color:var(--eduai-signal,#2c7a6d);color:#fff}.staff-report-page .text-gold{color:var(--eduai-gold,#946b1c)!important}.staff-report-page .btn-gold{background:var(--eduai-gold,#946b1c);border-color:var(--eduai-gold,#946b1c);color:#fff}.staff-report-page .btn-gold:hover{filter:brightness(.93);color:#fff}
+.staff-report-page .card,.staff-report-page .report-stat{background:var(--sr-surface);color:var(--sr-text);border:1px solid var(--sr-border)!important}.staff-report-page .report-stat{height:100%;border-radius:15px;padding:14px 16px;box-shadow:0 3px 12px #20352a0a}.staff-report-page .report-stat span{display:block;color:var(--bs-secondary-color,#68756f);font-size:.78rem}.staff-report-page .report-stat strong{display:block;font-size:1.45rem;margin-top:3px}.staff-report-page .table{--bs-table-bg:var(--sr-surface);--bs-table-color:var(--sr-text);--bs-table-border-color:var(--sr-border)}.staff-report-page .table thead th{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--bs-secondary-color);white-space:nowrap}.staff-report-page .table td,.staff-report-page .table th{padding-top:.9rem;padding-bottom:.9rem}.staff-report-page .text-muted{color:var(--bs-secondary-color)!important}.staff-report-page .status-pill{display:inline-flex;border-radius:99px;padding:.3rem .65rem;font-size:.75rem;font-weight:700}.staff-report-page .status-present{background:#e4f6ec;color:#176b45}.staff-report-page .status-late{background:#fff4d8;color:#855600}.staff-report-page .status-absent{background:#fff0ef;color:#a92b26}.staff-report-page .status-excused{background:#edf2ff;color:#315ca8}
+html[data-bs-theme="dark"] .staff-report-page .status-present{background:#173d2e;color:#a7ebc5}html[data-bs-theme="dark"] .staff-report-page .status-late{background:#493817;color:#ffe0a0}html[data-bs-theme="dark"] .staff-report-page .status-absent{background:#4a2525;color:#ffc0bc}html[data-bs-theme="dark"] .staff-report-page .status-excused{background:#26385c;color:#c7d6ff}
+</style>
+{% endblock %}

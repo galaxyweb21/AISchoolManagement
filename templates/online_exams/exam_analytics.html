@@ -1,0 +1,88 @@
+{% extends 'base/base.html' %}
+{% block content %}
+<div class="eduai-page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <a class="small text-decoration-none" href="{% url 'online_exams:exam_detail' exam.pk %}"><i class="bi bi-arrow-left me-1"></i> Back to examination</a>
+    <div class="eduai-eyebrow-label mt-3">EXAMINATION INSIGHTS</div>
+    <h1 class="h3 mb-1">Performance analytics</h1>
+    <p class="text-muted mb-2">{{ exam.title }} · {{ exam.school_class.name }} · {{ exam.subject.name }}</p>
+    <div class="d-flex flex-wrap gap-2">
+      <span class="badge text-bg-secondary">Closed</span>
+      {% if exam.results_released %}<span class="badge text-bg-success">Results released</span>{% else %}<span class="badge text-bg-warning">Internal review only</span>{% endif %}
+    </div>
+  </div>
+  <a class="btn btn-primary" href="{% url 'online_exams:exam_analytics' exam.pk %}?export=csv"><i class="bi bi-file-earmark-spreadsheet me-1"></i> Export results CSV</a>
+</div>
+
+{% if not graded_count %}
+<div class="alert alert-info border-0 rounded-4"><i class="bi bi-info-circle me-2"></i>No fully graded attempts are available yet. You can review submitted attempts from the examination page. Analytics will populate as attempts are graded.</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3"><div class="eduai-stat-card h-100"><span class="eduai-stat-label">Class roster</span><strong>{{ roster_count }}</strong><div class="small text-muted mt-1">Active students in this class</div></div></div>
+  <div class="col-6 col-xl-3"><div class="eduai-stat-card h-100"><span class="eduai-stat-label">Submitted attempts</span><strong>{{ completed_count }}</strong><div class="small text-muted mt-1">{{ participation_rate }}% of active roster</div></div></div>
+  <div class="col-6 col-xl-3"><div class="eduai-stat-card h-100"><span class="eduai-stat-label">Average score</span><strong>{{ average_percentage }}<small>%</small></strong><div class="small text-muted mt-1">Among fully graded attempts</div></div></div>
+  <div class="col-6 col-xl-3"><div class="eduai-stat-card h-100"><span class="eduai-stat-label">Awaiting review</span><strong>{{ pending_review_count }}</strong><div class="small text-muted mt-1">Submitted attempts not fully graded</div></div></div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-12 col-xl-6">
+    <section class="card eduai-panel h-100 border-0">
+      <div class="card-header bg-transparent border-0 pt-4 px-4"><h2 class="h5 mb-1">Score distribution</h2><p class="small text-muted mb-0">Bands are descriptive ranges, not the school's official grade boundaries.</p></div>
+      <div class="card-body px-4 pb-4">
+        {% for band in distribution %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between gap-3 small mb-1"><span>{{ band.label }}</span><strong>{{ band.count }} <span class="text-muted fw-normal">({{ band.percent }}%)</span></strong></div>
+          <div class="progress" role="progressbar" aria-label="{{ band.label }} score band" aria-valuenow="{{ band.percent }}" aria-valuemin="0" aria-valuemax="100" style="height: 9px;"><div class="progress-bar" style="width: {{ band.percent }}%; background: var(--eduai-signal, #2C7A6D);"></div></div>
+        </div>
+        {% endfor %}
+        <div class="border-top pt-3 mt-3 d-flex flex-wrap gap-4">
+          <div><div class="small text-muted">Median score</div><div class="h5 mb-0">{{ median_percentage }}%</div></div>
+          <div><div class="small text-muted">At or above 50%*</div><div class="h5 mb-0">{{ at_or_above_50_count }} / {{ graded_count }}</div></div>
+          <div><div class="small text-muted">Reference rate*</div><div class="h5 mb-0">{{ reference_pass_rate }}%</div></div>
+        </div>
+        <p class="small text-muted mt-3 mb-0">*The 50% figure is a reference indicator only. Confirm your school's approved pass mark before using it for formal reporting.</p>
+      </div>
+    </section>
+  </div>
+  <div class="col-12 col-xl-6">
+    <section class="card eduai-panel h-100 border-0">
+      <div class="card-header bg-transparent border-0 pt-4 px-4"><h2 class="h5 mb-1">Participation and review status</h2><p class="small text-muted mb-0">Use these counts to identify follow-up work.</p></div>
+      <div class="card-body px-4 pb-4">
+        <div class="d-flex justify-content-between align-items-center py-3 border-bottom"><span>Submitted / expired attempts</span><strong>{{ completed_count }}</strong></div>
+        <div class="d-flex justify-content-between align-items-center py-3 border-bottom"><span>Fully graded</span><strong class="text-success">{{ graded_count }}</strong></div>
+        <div class="d-flex justify-content-between align-items-center py-3 border-bottom"><span>Awaiting teacher review</span><strong class="text-warning-emphasis">{{ pending_review_count }}</strong></div>
+        <div class="d-flex justify-content-between align-items-center py-3 border-bottom"><span>Still in progress</span><strong>{{ in_progress_count }}</strong></div>
+        <div class="d-flex justify-content-between align-items-center py-3"><span>No attempt recorded</span><strong>{{ not_attempted_count }}</strong></div>
+        <div class="alert alert-light border small mb-0">Student-level results on this page are visible only to staff authorized to manage this examination. Students do not have access to this analytics page.</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<section class="card eduai-panel border-0 mb-4">
+  <div class="card-header bg-transparent border-0 pt-4 px-4"><h2 class="h5 mb-1">Question-level analysis</h2><p class="small text-muted mb-0">Average marks earned across fully graded attempts, including partial credit for written answers.</p></div>
+  <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Question</th><th>Type</th><th>Marks</th><th>Responses</th><th>Unanswered</th><th>Correct</th><th style="min-width: 170px;">Average marks earned</th></tr></thead><tbody>
+    {% for item in question_stats %}
+    <tr>
+      <td><span class="badge text-bg-light border me-2">Q{{ item.question.order }}</span>{{ item.question.question_text|truncatechars:110 }}</td>
+      <td>{{ item.question.get_question_type_display }}</td>
+      <td>{{ item.question.marks }}</td>
+      <td>{{ item.responded }} / {{ graded_count }}</td>
+      <td>{{ item.unanswered }}</td>
+      <td>{% if item.has_correctness %}{{ item.correct }} / {{ item.graded_responses }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+      <td><div class="d-flex justify-content-between small mb-1"><span>{{ item.average_percent }}%</span></div><div class="progress" style="height: 7px;"><div class="progress-bar" role="progressbar" aria-valuenow="{{ item.average_percent }}" aria-valuemin="0" aria-valuemax="100" style="width: {{ item.average_percent }}%; background: var(--eduai-gold, #946B1C);"></div></div></td>
+    </tr>
+    {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No questions are available for analysis.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+
+<section class="card eduai-panel border-0">
+  <div class="card-header bg-transparent border-0 pt-4 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h2 class="h5 mb-1">Student performance</h2><p class="small text-muted mb-0">Scores are displayed only after an attempt has been fully graded.</p></div><span class="small text-muted">{{ student_rows|length }} submitted attempt(s)</span></div>
+  <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Student</th><th>Admission no.</th><th>Submitted</th><th>Grading status</th><th>Score</th><th>Percentage</th><th>Band</th></tr></thead><tbody>
+    {% for row in student_rows %}
+    <tr><td class="fw-semibold">{{ row.student_name }}</td><td>{{ row.admission_number|default:'—' }}</td><td>{% if row.attempt.submitted_at %}{{ row.attempt.submitted_at|date:'d M Y, H:i' }}{% else %}—{% endif %}</td><td><span class="badge {% if row.attempt.grading_status == 'GRADED' %}text-bg-success{% else %}text-bg-warning{% endif %}">{{ row.attempt.get_grading_status_display }}</span></td><td>{% if row.has_score %}{{ row.attempt.score_awarded }} / {{ row.attempt.total_marks }}{% else %}Pending{% endif %}</td><td>{% if row.has_score %}{{ row.percentage }}%{% else %}—{% endif %}</td><td>{{ row.band }}</td></tr>
+    {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No submitted attempts to display yet.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}

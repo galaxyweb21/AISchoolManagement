@@ -1,0 +1,27 @@
+{% extends 'base/base.html' %}
+{% block page_title %}Staff Attendance Hours{% endblock %}
+{% block content %}
+<style>
+.att-settings{max-width:900px;margin:0 auto}.att-settings .settings-card{background:var(--surface-bg,#fff);border:1px solid var(--surface-border,rgba(108,117,125,.2));border-radius:18px}.att-settings .btn-primary{background:var(--eduai-gold,#946B1C);border-color:var(--eduai-gold,#946B1C)}.att-settings .btn-outline-secondary{border-color:var(--eduai-signal,#2C7A6D);color:var(--eduai-signal,#2C7A6D)}
+</style>
+<div class="container-fluid py-4 px-3 px-lg-4"><div class="att-settings">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div><div class="small text-uppercase fw-bold text-muted mb-2">Staff operations</div><h1 class="h3 fw-bold mb-1">Staff Attendance Hours</h1><p class="text-muted mb-0">Configure when attendance officers may check staff in and when sign-out is allowed.</p></div>
+    <a class="btn btn-outline-secondary" href="{% url 'attendance:staff_attendance_dashboard' %}"><i class="bi bi-arrow-left me-1"></i>Back to attendance</a>
+  </div>
+  {% if messages %}{% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}{% endif %}
+  <div class="settings-card p-4 p-lg-5">
+    <div class="alert alert-info rounded-3"><strong>Recommended:</strong> Keep time enforcement off until you confirm the school’s actual hours. When enabled, attendance officers are restricted; school administrators retain override access.</div>
+    <form method="post">{% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="row g-3">
+        <div class="col-md-4"><label class="form-label fw-semibold" for="{{ form.check_in_start.id_for_label }}">Check-in opens</label>{{ form.check_in_start }}{{ form.check_in_start.errors }}</div>
+        <div class="col-md-4"><label class="form-label fw-semibold" for="{{ form.check_in_end.id_for_label }}">Check-in closes</label>{{ form.check_in_end }}{{ form.check_in_end.errors }}</div>
+        <div class="col-md-4"><label class="form-label fw-semibold" for="{{ form.school_end.id_for_label }}">School closing / sign-out time</label>{{ form.school_end }}{{ form.school_end.errors }}</div>
+      </div>
+      <div class="form-check mt-4"><label class="form-check-label fw-semibold" for="{{ form.enforce_time_windows.id_for_label }}">{{ form.enforce_time_windows }} Enforce these time windows for Attendance Officers</label><div class="form-text">Present/Late and face check-ins are allowed only during the check-in window. Absent/Excused marking is allowed after the check-in window closes. Sign-out is available from school closing time.</div></div>
+      <div class="d-flex gap-2 justify-content-end mt-4"><a href="{% url 'attendance:staff_attendance_dashboard' %}" class="btn btn-outline-secondary">Cancel</a><button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Save attendance hours</button></div>
+    </form>
+  </div>
+</div></div>
+{% endblock %}

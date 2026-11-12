@@ -1,0 +1,44 @@
+<form method="post" action="{% url action_url school_class.id %}">
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Class Teacher <span class="text-danger">*</span></label>
+        <select name="teacher" class="form-select" required>
+            <option value="">Select Teacher</option>
+            {% for t in teachers %}
+                <option value="{{ t.id }}" {% if school_class.homeroom_teacher_id == t.id %}selected{% endif %}>
+                    {{ t.user.get_full_name }}{% if t.staff_number %} ({{ t.staff_number }}){% endif %}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3 form-check">
+        <input type="checkbox" name="uses_single_class_teacher" class="form-check-input" id="usesSingleClassTeacher"
+               {% if school_class.uses_single_class_teacher %}checked{% endif %}>
+        <label class="form-check-label" for="usesSingleClassTeacher">
+            This teacher handles every subject for this class
+        </label>
+        <div class="form-text">
+            Common for Nursery/KG and lower Primary classes in Ghana. When checked, this teacher is
+            automatically assigned to every subject already on {{ school_class.name }} -- no need to add
+            each subject assignment separately. Leave unchecked if this class uses separate subject
+            teachers instead (typical from JHS upward).
+        </div>
+    </div>
+
+    {% if school_class.homeroom_teacher %}
+    <div class="alert alert-light border small mb-3">
+        Currently assigned: <strong>{{ school_class.homeroom_teacher.user.get_full_name }}</strong>.
+        Selecting a different teacher above will replace them
+        {% if school_class.uses_single_class_teacher %}and reassign their auto-assigned subjects to the new teacher{% endif %}.
+    </div>
+    {% endif %}
+
+    <div class="d-flex gap-2 justify-content-end border-top pt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="background-color: var(--eduai-gold, #946B1C); border-color: var(--eduai-gold, #946B1C);">
+            <i class="bi bi-person-check me-1"></i>Assign Class Teacher
+        </button>
+    </div>
+</form>

@@ -1,0 +1,809 @@
+{% extends 'base/base.html' %}
+{% load staff_extras %}
+
+{% block page_title %}Grade Leave Policies{% endblock %}
+
+{% block content %}
+<style>
+    .policy-card {
+        transition: all 0.2s ease;
+        border-radius: 12px;
+    }
+    .policy-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.06) !important;
+    }
+    .policy-matrix th {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 700;
+        color: var(--bs-secondary-color);
+        padding: 0.5rem 0.75rem;
+        border-bottom: 2px solid var(--bs-border-color);
+    }
+    .policy-matrix td {
+        vertical-align: middle;
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    .policy-matrix .grade-cell {
+        font-weight: 600;
+        font-size: 0.85rem;
+        background: var(--bs-tertiary-bg);
+        position: sticky;
+        left: 0;
+        z-index: 2;
+    }
+    .policy-matrix .leave-type-cell {
+        font-weight: 600;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+    .policy-matrix .entitlement-input {
+        width: 70px;
+        padding: 0.25rem 0.4rem;
+        font-size: 0.85rem;
+        text-align: center;
+        border-radius: 6px;
+        border: 1px solid var(--bs-border-color);
+        background: var(--bs-body-bg);
+        color: var(--bs-body-color);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .policy-matrix .entitlement-input:focus {
+        outline: none;
+        border-color: var(--eduai-gold, #946B1C);
+        box-shadow: 0 0 0 3px var(--eduai-gold-soft, rgba(148, 107, 28, 0.15));
+    }
+    .policy-matrix .entitlement-input:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .policy-matrix .form-check {
+        margin: 0;
+        padding-left: 1.75rem;
+    }
+    .policy-matrix .form-check-input {
+        cursor: pointer;
+        width: 1.1rem;
+        height: 1.1rem;
+        margin-left: -1.75rem;
+        margin-top: 0.05rem;
+    }
+    .policy-matrix .form-check-input:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .policy-matrix .badge-status {
+        font-size: 0.6rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .policy-matrix .action-btn {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        border: 1px solid var(--bs-border-color);
+        background: var(--bs-body-bg);
+        color: var(--bs-secondary-color);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .policy-matrix .action-btn:hover {
+        border-color: var(--eduai-gold, #946B1C);
+        color: var(--eduai-gold, #946B1C);
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.08));
+    }
+    .policy-matrix .action-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+    .policy-matrix .action-btn .spinner {
+        display: none;
+        width: 14px;
+        height: 14px;
+        border-width: 2px;
+    }
+    .policy-matrix .action-btn.loading .spinner {
+        display: inline-block;
+    }
+    .policy-matrix .action-btn.loading i {
+        display: none;
+    }
+    .table-scroll-wrapper {
+        overflow-x: auto;
+        padding-bottom: 1px;
+    }
+    .table-scroll-wrapper::-webkit-scrollbar {
+        height: 6px;
+    }
+    .table-scroll-wrapper::-webkit-scrollbar-track {
+        background: var(--bs-tertiary-bg);
+        border-radius: 10px;
+    }
+    .table-scroll-wrapper::-webkit-scrollbar-thumb {
+        background: var(--bs-border-color);
+        border-radius: 10px;
+    }
+
+    /* Toast notification */
+    .policy-toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        max-width: 420px;
+        padding: 0.75rem 1.25rem;
+        border-radius: 12px;
+        background: var(--bs-body-bg);
+        border: 1px solid var(--bs-border-color);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+        font-size: 0.85rem;
+        font-weight: 500;
+        transform: translateY(20px);
+        opacity: 0;
+        transition: transform 0.3s ease, opacity 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .policy-toast.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    .policy-toast.success {
+        border-left: 4px solid var(--eduai-signal, #2C7A6D);
+    }
+    .policy-toast.error {
+        border-left: 4px solid #dc2626;
+    }
+    .policy-toast .close-toast {
+        margin-left: auto;
+        background: none;
+        border: none;
+        color: var(--bs-secondary-color);
+        cursor: pointer;
+        padding: 0 0 0 0.5rem;
+        font-size: 1.1rem;
+    }
+    .policy-toast .close-toast:hover {
+        color: var(--bs-body-color);
+    }
+
+    /* Dark mode overrides */
+    [data-bs-theme="dark"] .policy-matrix .grade-cell {
+        background: var(--bs-tertiary-bg);
+    }
+    [data-bs-theme="dark"] .policy-matrix .entitlement-input {
+        background: var(--bs-tertiary-bg);
+        border-color: var(--bs-border-color);
+        color: var(--bs-body-color);
+    }
+    [data-bs-theme="dark"] .policy-matrix .entitlement-input:focus {
+        border-color: var(--eduai-gold, #946B1C);
+        box-shadow: 0 0 0 3px var(--eduai-gold-soft, rgba(148, 107, 28, 0.2));
+    }
+    [data-bs-theme="dark"] .policy-toast {
+        background: var(--bs-tertiary-bg);
+        border-color: var(--bs-border-color);
+    }
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .progress-bar-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-layers text-gold me-2"></i>Grade Leave Policies
+                    </h5>
+                    <p class="text-muted mb-0">
+                        Configure leave entitlements for each staff grade and leave type.
+                    </p>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary" onclick="resetDefaults()">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Defaults
+                    </button>
+                    <button type="button" class="btn btn-gold" id="saveAllBtn" onclick="saveAllPolicies()">
+                        <i class="bi bi-check2-all me-1"></i>Save All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Alert -->
+    <div class="alert alert-info border-0 rounded-4 shadow-sm mb-4">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-info-circle-fill mt-1"></i>
+            <div>
+                <strong>Grade-Level Leave Policies</strong><br>
+                These policies define how many leave days each staff grade is entitled to for each leave type.
+                Policies set here override the default leave type entitlements.
+                <span class="text-muted d-block mt-1">
+                    <i class="bi bi-lightbulb me-1"></i>
+                    To enable a policy, check the <strong>Active</strong> box. Unchecked policies will not be applied.
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Policy Matrix -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-0">
+            <div class="table-scroll-wrapper">
+                <table class="table table-hover align-middle policy-matrix mb-0">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 160px; position: sticky; left: 0; z-index: 3; background: var(--bs-body-bg);">
+                                <i class="bi bi-person-badge me-1 text-gold"></i>Staff Grade
+                            </th>
+                            {% for leave_type in leave_types %}
+                                <th class="text-center" style="min-width: 180px;">
+                                    {{ leave_type.name }}
+                                    <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size: 0.55rem; font-weight: 600;">{{ leave_type.code }}</span>
+                                </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody id="policyMatrixBody">
+                        {% for grade in grades %}
+                            <tr data-grade-id="{{ grade.id }}">
+                                <!-- Grade Name -->
+                                <td class="grade-cell" style="position: sticky; left: 0; z-index: 2;">
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-semibold">{{ grade.name }}</span>
+                                        <small class="text-muted" style="font-size: 0.7rem;">{{ grade.code }}</small>
+                                    </div>
+                                </td>
+
+                                <!-- Leave Type Columns -->
+                                {% for leave_type in leave_types %}
+                                    {% with policy=policy_matrix|get_item:grade.id|get_item:leave_type.id %}
+                                        <td class="text-center" data-grade-id="{{ grade.id }}" data-leave-type-id="{{ leave_type.id }}">
+                                            <div class="d-flex flex-column align-items-center gap-2">
+                                                <!-- Entitlement Input -->
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <input
+                                                        type="number"
+                                                        class="entitlement-input policy-entitlement"
+                                                        data-grade-id="{{ grade.id }}"
+                                                        data-leave-type-id="{{ leave_type.id }}"
+                                                        value="{% if policy %}{{ policy.entitlement_days|floatformat:1 }}{% else %}{{ leave_type.default_days }}{% endif %}"
+                                                        min="0"
+                                                        max="365"
+                                                        step="0.5"
+                                                        placeholder="0"
+                                                        aria-label="Entitlement days for {{ grade.name }} - {{ leave_type.name }}"
+                                                    >
+                                                    <span style="font-size: 0.7rem; color: var(--bs-secondary-color);">days</span>
+                                                </div>
+
+                                                <!-- Controls -->
+                                                <div class="d-flex align-items-center gap-2 flex-wrap justify-content-center">
+                                                    <!-- Active Toggle -->
+                                                    <div class="form-check form-switch" style="margin: 0; padding-left: 0;">
+                                                        <input
+                                                            type="checkbox"
+                                                            class="form-check-input policy-active"
+                                                            data-grade-id="{{ grade.id }}"
+                                                            data-leave-type-id="{{ leave_type.id }}"
+                                                            {% if policy and policy.is_active %}checked{% endif %}
+                                                            style="width: 2rem; height: 1rem; margin-top: 0;"
+                                                        >
+                                                    </div>
+
+                                                    <!-- Paid Toggle -->
+                                                    <div class="form-check form-switch" style="margin: 0; padding-left: 0;">
+                                                        <input
+                                                            type="checkbox"
+                                                            class="form-check-input policy-paid"
+                                                            data-grade-id="{{ grade.id }}"
+                                                            data-leave-type-id="{{ leave_type.id }}"
+                                                            {% if policy and policy.is_paid %}checked{% else %}checked{% endif %}
+                                                            style="width: 2rem; height: 1rem; margin-top: 0;"
+                                                        >
+                                                    </div>
+
+                                                    <!-- Carryover Toggle -->
+                                                    <div class="form-check form-switch" style="margin: 0; padding-left: 0;">
+                                                        <input
+                                                            type="checkbox"
+                                                            class="form-check-input policy-carryover"
+                                                            data-grade-id="{{ grade.id }}"
+                                                            data-leave-type-id="{{ leave_type.id }}"
+                                                            {% if policy and policy.allow_carryover %}checked{% endif %}
+                                                            style="width: 2rem; height: 1rem; margin-top: 0;"
+                                                        >
+                                                    </div>
+
+                                                    <!-- Save Button -->
+                                                    <button
+                                                        type="button"
+                                                        class="action-btn save-policy-btn"
+                                                        data-grade-id="{{ grade.id }}"
+                                                        data-leave-type-id="{{ leave_type.id }}"
+                                                        title="Save this policy"
+                                                    >
+                                                        <i class="bi bi-check2"></i>
+                                                        <span class="spinner-border spinner-border-sm spinner" role="status"></span>
+                                                    </button>
+                                                </div>
+
+                                                <!-- Status Badge -->
+                                                <div style="margin-top: 2px;">
+                                                    {% if policy and policy.is_active %}
+                                                        <span class="badge badge-status bg-teal-soft text-teal">Active</span>
+                                                    {% elif policy %}
+                                                        <span class="badge badge-status bg-secondary-subtle text-secondary">Inactive</span>
+                                                    {% else %}
+                                                        <span class="badge badge-status bg-light text-muted">Default</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    {% endwith %}
+                                {% endfor %}
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="{{ leave_types|length|add:1 }}" class="text-center text-muted py-5">
+                                    <i class="bi bi-layers fs-2 d-block mb-2 text-secondary"></i>
+                                    No staff grades or leave types configured. Please create them first.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="mt-4">
+        <div class="d-flex flex-wrap gap-4 align-items-center p-3 bg-light rounded-4">
+            <span class="fw-semibold small text-muted text-uppercase" style="letter-spacing: 0.04em;">Legend:</span>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-teal-soft text-teal">Active</span>
+                <span class="small text-muted">Policy is applied</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
+                <span class="small text-muted">Policy exists but is disabled</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-light text-muted">Default</span>
+                <span class="small text-muted">Using leave type default</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-check2 text-teal"></i>
+                <span class="small text-muted">Paid leave</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-arrow-repeat text-gold"></i>
+                <span class="small text-muted">Allow carryover</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="policyToast" class="policy-toast">
+    <i id="toastIcon" class="bi bi-check-circle-fill text-teal"></i>
+    <span id="toastMessage">Policy saved successfully.</span>
+    <button type="button" class="close-toast" onclick="dismissToast()">&times;</button>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    'use strict';
+
+    let toastTimeout = null;
+
+    function getCSRFToken() {
+        const token = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        return token ? token.value : '';
+    }
+
+    function showToast(message, type) {
+        const toast = document.getElementById('policyToast');
+        const icon = document.getElementById('toastIcon');
+        const msg = document.getElementById('toastMessage');
+
+        if (!toast) return;
+
+        // Clear existing timeout
+        if (toastTimeout) {
+            clearTimeout(toastTimeout);
+        }
+
+        // Reset classes
+        toast.className = 'policy-toast';
+
+        if (type === 'success') {
+            toast.classList.add('success');
+            icon.className = 'bi bi-check-circle-fill text-teal';
+        } else if (type === 'error') {
+            toast.classList.add('error');
+            icon.className = 'bi bi-exclamation-circle-fill text-danger';
+        } else {
+            icon.className = 'bi bi-info-circle-fill text-info';
+        }
+
+        msg.textContent = message;
+
+        // Show toast
+        requestAnimationFrame(function() {
+            toast.classList.add('show');
+        });
+
+        // Auto-hide after 4 seconds
+        toastTimeout = setTimeout(function() {
+            toast.classList.remove('show');
+        }, 4000);
+    }
+
+    window.dismissToast = function() {
+        const toast = document.getElementById('policyToast');
+        if (toast) {
+            toast.classList.remove('show');
+            if (toastTimeout) {
+                clearTimeout(toastTimeout);
+                toastTimeout = null;
+            }
+        }
+    };
+
+    function setButtonLoading(btn, loading) {
+        if (!btn) return;
+        if (loading) {
+            btn.classList.add('loading');
+            btn.disabled = true;
+        } else {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+        }
+    }
+
+    function getPolicyData(gradeId, leaveTypeId) {
+        const row = document.querySelector('tr[data-grade-id="' + gradeId + '"]');
+        if (!row) return null;
+
+        const cell = row.querySelector('td[data-grade-id="' + gradeId + '"][data-leave-type-id="' + leaveTypeId + '"]');
+        if (!cell) return null;
+
+        const entitlement = cell.querySelector('.policy-entitlement');
+        const active = cell.querySelector('.policy-active');
+        const paid = cell.querySelector('.policy-paid');
+        const carryover = cell.querySelector('.policy-carryover');
+        const statusBadge = cell.querySelector('.badge-status');
+
+        return {
+            entitlement: entitlement ? entitlement.value : null,
+            active: active ? active.checked : false,
+            paid: paid ? paid.checked : true,
+            carryover: carryover ? carryover.checked : false,
+            statusBadge: statusBadge
+        };
+    }
+
+    function updateStatusBadge(badge, isActive, isCustom) {
+        if (!badge) return;
+
+        if (isCustom && isActive) {
+            badge.className = 'badge badge-status bg-teal-soft text-teal';
+            badge.textContent = 'Active';
+        } else if (isCustom && !isActive) {
+            badge.className = 'badge badge-status bg-secondary-subtle text-secondary';
+            badge.textContent = 'Inactive';
+        } else {
+            badge.className = 'badge badge-status bg-light text-muted';
+            badge.textContent = 'Default';
+        }
+    }
+
+    window.savePolicy = function(gradeId, leaveTypeId, btn) {
+        const data = getPolicyData(gradeId, leaveTypeId);
+        if (!data) {
+            showToast('Could not find policy data.', 'error');
+            return;
+        }
+
+        const entitlement = parseFloat(data.entitlement);
+        if (isNaN(entitlement) || entitlement < 0) {
+            showToast('Please enter a valid entitlement (0 or more).', 'error');
+            return;
+        }
+
+        setButtonLoading(btn, true);
+
+        const payload = {
+            grade_id: gradeId,
+            leave_type_id: leaveTypeId,
+            entitlement_days: entitlement,
+            is_paid: data.paid,
+            allow_carryover: data.carryover,
+            is_active: data.active
+        };
+
+        fetch('{% url "staff:leave_type_grade_policy_save" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(function(response) {
+            return response.text().then(function(text) {
+                var result;
+                try {
+                    result = text ? JSON.parse(text) : {};
+                } catch (e) {
+                    throw new Error('Invalid server response.');
+                }
+                if (!response.ok) {
+                    throw new Error(result.error || 'Request failed.');
+                }
+                return result;
+            });
+        })
+        .then(function(result) {
+            if (result.success) {
+                showToast(result.message || 'Policy saved successfully.', 'success');
+
+                // Update status badge
+                updateStatusBadge(data.statusBadge, data.active, true);
+            } else {
+                showToast(result.error || 'Failed to save policy.', 'error');
+            }
+        })
+        .catch(function(error) {
+            console.error('Save policy error:', error);
+            showToast(error.message || 'An unexpected error occurred.', 'error');
+        })
+        .finally(function() {
+            setButtonLoading(btn, false);
+        });
+    };
+
+    window.saveAllPolicies = function() {
+        const buttons = document.querySelectorAll('.save-policy-btn');
+        if (!buttons.length) {
+            showToast('No policies to save.', 'info');
+            return;
+        }
+
+        let saved = 0;
+        let failed = 0;
+        let total = buttons.length;
+
+        showToast('Saving all policies...', 'info');
+
+        buttons.forEach(function(btn, index) {
+            setTimeout(function() {
+                // Save each policy with a small delay to avoid overwhelming the server
+                const gradeId = btn.getAttribute('data-grade-id');
+                const leaveTypeId = btn.getAttribute('data-leave-type-id');
+
+                // Override the savePolicy to track results
+                const data = getPolicyData(gradeId, leaveTypeId);
+                if (!data) {
+                    failed++;
+                    checkComplete();
+                    return;
+                }
+
+                const entitlement = parseFloat(data.entitlement);
+                if (isNaN(entitlement) || entitlement < 0) {
+                    failed++;
+                    checkComplete();
+                    return;
+                }
+
+                setButtonLoading(btn, true);
+
+                const payload = {
+                    grade_id: gradeId,
+                    leave_type_id: leaveTypeId,
+                    entitlement_days: entitlement,
+                    is_paid: data.paid,
+                    allow_carryover: data.carryover,
+                    is_active: data.active
+                };
+
+                fetch('{% url "staff:leave_type_grade_policy_save" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(function(response) {
+                    return response.text().then(function(text) {
+                        var result;
+                        try {
+                            result = text ? JSON.parse(text) : {};
+                        } catch (e) {
+                            throw new Error('Invalid server response.');
+                        }
+                        if (!response.ok) {
+                            throw new Error(result.error || 'Request failed.');
+                        }
+                        return result;
+                    });
+                })
+                .then(function(result) {
+                    if (result.success) {
+                        saved++;
+                        updateStatusBadge(data.statusBadge, data.active, true);
+                    } else {
+                        failed++;
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Save policy error:', error);
+                    failed++;
+                })
+                .finally(function() {
+                    setButtonLoading(btn, false);
+                    checkComplete();
+                });
+
+                function checkComplete() {
+                    if (saved + failed === total) {
+                        if (failed === 0) {
+                            showToast('All ' + saved + ' policies saved successfully!', 'success');
+                        } else {
+                            showToast(saved + ' saved, ' + failed + ' failed.', 'error');
+                        }
+                    }
+                }
+            }, index * 150); // Stagger requests
+        });
+    };
+
+    window.resetDefaults = function() {
+        if (!confirm('Reset all policies to default values? Unsaved changes will be lost.')) {
+            return;
+        }
+
+        const inputs = document.querySelectorAll('.policy-entitlement');
+        inputs.forEach(function(input) {
+            // Reset to leave type default
+            const row = input.closest('tr');
+            const leaveTypeId = input.getAttribute('data-leave-type-id');
+            // We don't have leave type defaults in JS, so just set to a reasonable value
+            // The server will handle the default when saved
+            input.value = '';
+        });
+
+        showToast('Defaults reset. Click "Save All" to apply changes.', 'info');
+    };
+
+    // Auto-save on checkbox change
+    document.addEventListener('change', function(e) {
+        const target = e.target;
+        if (
+            target.classList.contains('policy-active') ||
+            target.classList.contains('policy-paid') ||
+            target.classList.contains('policy-carryover')
+        ) {
+            const gradeId = target.getAttribute('data-grade-id');
+            const leaveTypeId = target.getAttribute('data-leave-type-id');
+            if (gradeId && leaveTypeId) {
+                const btn = document.querySelector(
+                    '.save-policy-btn[data-grade-id="' + gradeId + '"][data-leave-type-id="' + leaveTypeId + '"]'
+                );
+                if (btn) {
+                    savePolicy(gradeId, leaveTypeId, btn);
+                }
+            }
+        }
+    });
+
+    // Auto-save on blur for entitlement input
+    document.addEventListener('blur', function(e) {
+        const target = e.target;
+        if (target.classList.contains('policy-entitlement')) {
+            const gradeId = target.getAttribute('data-grade-id');
+            const leaveTypeId = target.getAttribute('data-leave-type-id');
+            if (gradeId && leaveTypeId) {
+                const btn = document.querySelector(
+                    '.save-policy-btn[data-grade-id="' + gradeId + '"][data-leave-type-id="' + leaveTypeId + '"]'
+                );
+                if (btn) {
+                    savePolicy(gradeId, leaveTypeId, btn);
+                }
+            }
+        }
+    });
+
+    // Enter key on entitlement input triggers save
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const target = e.target;
+            if (target.classList.contains('policy-entitlement')) {
+                e.preventDefault();
+                const gradeId = target.getAttribute('data-grade-id');
+                const leaveTypeId = target.getAttribute('data-leave-type-id');
+                if (gradeId && leaveTypeId) {
+                    const btn = document.querySelector(
+                        '.save-policy-btn[data-grade-id="' + gradeId + '"][data-leave-type-id="' + leaveTypeId + '"]'
+                    );
+                    if (btn) {
+                        savePolicy(gradeId, leaveTypeId, btn);
+                    }
+                }
+            }
+        }
+    });
+
+    // Click handler for save buttons
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('.save-policy-btn');
+        if (target) {
+            e.preventDefault();
+            const gradeId = target.getAttribute('data-grade-id');
+            const leaveTypeId = target.getAttribute('data-leave-type-id');
+            if (gradeId && leaveTypeId) {
+                savePolicy(gradeId, leaveTypeId, target);
+            }
+        }
+    });
+
+})();
+</script>
+{% endblock %}

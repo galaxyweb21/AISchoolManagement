@@ -1,0 +1,636 @@
+{% extends 'base/base.html' %}
+{% block page_title %}Fee Categories{% endblock %}
+
+{% block content %}
+<style id="eduai-finance-phase8-polish">
+/* EduAI Phase 8: presentation-only finance polish */
+.finance-phase8-scope { --finance-card-radius: 1rem; }
+.container-fluid.px-4.pt-3 > .d-flex.flex-wrap.gap-2.align-items-center.justify-content-between.rounded-4 {
+  border-radius: 1rem !important; padding: .85rem !important; gap: .65rem !important;
+  box-shadow: 0 5px 18px rgba(20, 35, 45, .045);
+}
+.container-fluid.px-4.pt-3 .card, .container-fluid.py-4 .card, .container-fluid .card {
+  border-color: var(--bs-border-color, #dee2e6); border-radius: 1rem;
+}
+.container-fluid .card-header { background: var(--bs-tertiary-bg, #f8f9fa); border-bottom-color: var(--bs-border-color, #dee2e6); }
+.container-fluid .table-responsive { border-radius: .8rem; }
+.container-fluid .table { --bs-table-bg: transparent; vertical-align: middle; margin-bottom: 0; }
+.container-fluid .table thead th { font-size: .76rem; font-weight: 700; letter-spacing: .035em; text-transform: uppercase; white-space: nowrap; color: var(--bs-secondary-color); }
+.container-fluid .table tbody td { padding-top: .8rem; padding-bottom: .8rem; }
+.container-fluid .form-control, .container-fluid .form-select, .modal .form-control, .modal .form-select { border-radius: .65rem; min-height: 2.45rem; }
+.container-fluid .form-control:focus, .container-fluid .form-select:focus, .modal .form-control:focus, .modal .form-select:focus { border-color: var(--eduai-signal, #2C7A6D); box-shadow: 0 0 0 .2rem rgba(44, 122, 109, .14); }
+.container-fluid .btn, .modal .btn { border-radius: .65rem; }
+.container-fluid .btn-gold { box-shadow: 0 2px 6px rgba(148, 107, 28, .12); }
+.container-fluid .badge { font-weight: 600; letter-spacing: .01em; }
+.container-fluid .pagination { gap: .25rem; flex-wrap: wrap; }
+.container-fluid .page-link { border-radius: .5rem; }
+.container-fluid a:focus-visible, .container-fluid button:focus-visible, .modal a:focus-visible, .modal button:focus-visible { outline: 3px solid rgba(44, 122, 109, .55); outline-offset: 2px; }
+[data-bs-theme="dark"] .container-fluid.px-4.pt-3 > .d-flex.flex-wrap.gap-2.align-items-center.justify-content-between.rounded-4 { box-shadow: none; background: var(--bs-tertiary-bg); }
+[data-bs-theme="dark"] .container-fluid .card-header { background: rgba(255,255,255,.025); }
+@media (max-width: 767.98px) {
+  .container-fluid.px-4.pt-3 { padding-left: .75rem !important; padding-right: .75rem !important; }
+  .container-fluid .table { font-size: .9rem; }
+  .container-fluid .table tbody td { padding-top: .65rem; padding-bottom: .65rem; }
+  .container-fluid .btn { max-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .container-fluid *, .modal * { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+</style>
+
+<div class="container-fluid px-4 pt-3">
+    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between rounded-4 p-2 border bg-body shadow-sm">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'finance:fee_structure_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Fee Structures</a>
+            <a href="{% url 'finance:fee_category_list' %}" class="btn btn-sm btn-gold"><i class="bi bi-tags me-1"></i>Categories</a>
+            <a href="{% url 'finance:fee_addon_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-plus-square me-1"></i>Add-ons</a>
+            <a href="{% url 'finance:waiver_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-percent me-1"></i>Waivers</a>
+        </div>
+        <a href="{% url 'finance:fee_preparation' %}" class="btn btn-sm btn-outline-gold"><i class="bi bi-clipboard-check me-1"></i>Fee Management</a>
+    </div>
+</div>
+
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+
+    /* Modern table */
+    .modern-table thead th {
+        font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+        font-weight: 700; color: var(--bs-secondary-color);
+        background: var(--bs-tertiary-bg);
+        border-bottom: 1px solid var(--bs-border-color);
+        padding: 0.75rem 1rem; white-space: nowrap;
+    }
+    .modern-table tbody td {
+        padding: 0.85rem 1rem; vertical-align: middle; border-color: var(--bs-border-color);
+    }
+    .modern-table tbody tr { transition: background 0.15s ease; }
+    .modern-table tbody tr:hover { background: rgba(148, 107, 28, 0.04); }
+
+    .category-name {
+        font-weight: 700;
+        color: var(--bs-body-color);
+    }
+    .category-desc {
+        font-size: 0.75rem;
+        color: var(--bs-secondary-color);
+    }
+    .category-type-badge {
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.3rem 0.7rem;
+        border-radius: 20px;
+        background: var(--eduai-gold-soft);
+        color: var(--eduai-gold, #946B1C);
+        display: inline-block;
+    }
+    .yes-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0.25rem 0.65rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+    .yes-pill.on {
+        background: var(--eduai-signal-soft);
+        color: var(--eduai-signal, #2C7A6D);
+    }
+    .yes-pill.off {
+        background: rgba(108, 117, 125, 0.12);
+        color: #6c757d;
+    }
+    .yes-pill.optional {
+        background: rgba(13, 110, 253, 0.12);
+        color: #0d6efd;
+    }
+
+    .filter-active {
+        animation: pulse-badge 1.5s ease-in-out 1;
+    }
+    @keyframes pulse-badge {
+        0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); }
+    }
+</style>
+
+<!-- How Fee Categories Work -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How Fee Categories Work</div>
+            <p class="text">
+                Fee categories define the types of fees charged to students (e.g., Tuition, Sports, Library).
+                Each category can be <strong>Recurring</strong> (charged every term) or <strong>Optional</strong>
+                (added manually to specific students). Use the search box below to filter categories by name or type.
+                Click <strong>"Add Category"</strong> to create new fee categories for your school.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<!-- Header Card -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge badge-gold rounded-pill px-3 py-2">
+                    <i class="bi bi-tags me-1"></i> FEE SETUP
+                </span>
+            </div>
+            <h5 class="fw-bold mb-1">
+                <i class="bi bi-tags text-gold me-2"></i>Fee Categories
+            </h5>
+            <p class="text-muted mb-0 small">
+                Define the types of fees charged to students.
+            </p>
+        </div>
+        {% if can_manage %}
+        <button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#feeCategoryModal"
+                data-action="create" data-url="{% url 'finance:fee_category_create' %}">
+            <i class="bi bi-plus-lg me-1"></i>Add Category
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Categories Table -->
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-table text-gold me-2"></i>All Categories
+                <span class="badge bg-light text-muted ms-2" id="categoryCount">{{ categories|length }}</span>
+            </h6>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="text-muted small" id="filterStatus"></span>
+                <input type="text" id="categorySearchInput" class="form-control form-control-sm"
+                       placeholder="Search categories..." style="max-width: 220px;">
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table modern-table align-middle mb-0" id="categoriesTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th class="text-center">Recurring</th>
+                        <th class="text-center">Optional</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="categoryTableBody">
+                    {% for cat in categories %}
+                    <tr class="category-row" data-id="{{ cat.id }}">
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="category-icon" style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--eduai-gold-soft);color:var(--eduai-gold,#946B1C);font-size:1rem;">
+                                    <i class="bi bi-tag-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="category-name">{{ cat.name }}</div>
+                                    {% if cat.description %}
+                                    <div class="category-desc">{{ cat.description|truncatechars:60 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="category-type-badge">{{ cat.get_category_type_display }}</span>
+                        </td>
+                        <td class="text-center">
+                            {% if cat.is_recurring %}
+                            <span class="yes-pill on">
+                                <i class="bi bi-check-circle-fill"></i> Yes
+                            </span>
+                            {% else %}
+                            <span class="yes-pill off">
+                                <i class="bi bi-circle"></i> No
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if cat.is_optional %}
+                            <span class="yes-pill optional">
+                                <i class="bi bi-star-fill"></i> Yes
+                            </span>
+                            {% else %}
+                            <span class="yes-pill off">
+                                <i class="bi bi-circle"></i> No
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <button type="button" class="btn btn-sm btn-outline-gold px-3"
+                                    data-bs-toggle="modal" data-bs-target="#feeCategoryModal"
+                                    data-action="edit" data-url="{% url 'finance:fee_category_edit' cat.id %}">
+                                <i class="bi bi-pencil me-1"></i>Edit
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger px-3"
+                                    data-bs-toggle="modal" data-bs-target="#feeCategoryModal"
+                                    data-action="delete" data-url="{% url 'finance:fee_category_delete' cat.id %}">
+                                <i class="bi bi-trash me-1"></i>Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr class="empty-state-row">
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-tags fs-2 d-block mb-2 text-secondary"></i>
+                            <p class="mb-0">No fee categories defined yet.</p>
+                            <small>Click "Add Category" to create your first category.</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% include "partials/pagination.html" with page_obj=categories %}
+    </div>
+</div>
+
+<!-- Dynamic Master Modal -->
+<div class="modal fade" id="feeCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="feeCategoryModalTitle">Loading...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="feeCategoryModalContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER
+    // ============================================================
+    const categorySearchInput = document.getElementById('categorySearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const categoryCount = document.getElementById('categoryCount');
+    const allRows = document.querySelectorAll('.category-row');
+    const emptyState = document.querySelector('.empty-state-row');
+
+    if (categorySearchInput) {
+        categorySearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const text = row.textContent.toLowerCase();
+                const isVisible = text.includes(query);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (categoryCount) {
+                if (query) {
+                    categoryCount.textContent = visibleCount;
+                    if (filterStatus) {
+                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                    }
+                } else {
+                    categoryCount.textContent = allRows.length;
+                    if (filterStatus) {
+                        filterStatus.textContent = '';
+                    }
+                }
+            }
+
+            if (emptyState) {
+                if (visibleCount === 0 && allRows.length > 0) {
+                    emptyState.style.display = '';
+                } else {
+                    emptyState.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    const modal = document.getElementById('feeCategoryModal');
+    const modalTitle = document.getElementById('feeCategoryModalTitle');
+    const modalContent = document.getElementById('feeCategoryModalContent');
+
+    function getCSRFToken() {
+        const name = 'csrftoken';
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    }
+
+    modal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const action = button.getAttribute('data-action');
+        const url = button.getAttribute('data-url');
+
+        if (action === 'create') {
+            modalTitle.innerHTML = '<i class="bi bi-plus-circle text-gold me-2"></i>Add Fee Category';
+        } else if (action === 'edit') {
+            modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Fee Category';
+        } else if (action === 'delete') {
+            modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete';
+        }
+
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            modalContent.innerHTML = html;
+            bindCategoryFormSubmit();
+            bindCategoryDeleteForm();
+        })
+        .catch(err => {
+            console.error('Error loading form:', err);
+            modalContent.innerHTML = `
+                <div class="alert alert-danger border-0 shadow-sm rounded-4">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Error loading form. Please try again.
+                </div>
+                <div class="mt-3 text-end">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
+        });
+    });
+
+    function bindCategoryFormSubmit() {
+        const form = modalContent.querySelector('form.category-form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
+            submitBtn.disabled = true;
+
+            const existingErrors = this.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Server returned an invalid response.');
+                }
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    window.location.reload();
+                } else {
+                    showError(data.error || 'An error occurred while saving.');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error('Form submission error:', err);
+                showError(err.message || 'An unexpected error occurred. Please try again.');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 shadow-sm rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    function bindCategoryDeleteForm() {
+        const form = modalContent.querySelector('form.delete-form');
+        if (!form) return;
+
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting...';
+            submitBtn.disabled = true;
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Server returned an invalid response.');
+                }
+                if (!response.ok) {
+                    throw new Error(data.error || 'Delete failed');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    modalInstance.hide();
+                    window.location.reload();
+                } else {
+                    modalContent.innerHTML = `
+                        <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.error || 'Error deleting.'}
+                        </div>
+                        <div class="mt-3 text-end">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                console.error('Delete error:', err);
+                modalContent.innerHTML = `
+                    <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-3">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> ${err.message || 'An unexpected error occurred.'}
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                `;
+            });
+        });
+    }
+
+    // ============================================================
+    // AUTO-DISMISS MESSAGES
+    // ============================================================
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+
+    // ============================================================
+    // RESET MODAL ON HIDE
+    // ============================================================
+    modal.addEventListener('hidden.bs.modal', function () {
+        modalContent.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border spinner-gold" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        modalTitle.innerHTML = 'Loading...';
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,245 @@
+{% extends 'base/base.html' %}
+{% block page_title %}Unified Face Attendance{% endblock %}
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1"><i class="bi bi-camera-video-fill text-gold fs-4"></i><h4 class="fw-bold mb-0">Unified Face Attendance</h4></div>
+      <p class="text-muted mb-0">One camera session recognizes students and staff independently. Their attendance records remain separate.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-outline-secondary" href="{% url 'attendance:attendance_tracker' %}"><i class="bi bi-mortarboard me-1"></i> Student Register</a>
+      <a class="btn btn-outline-secondary" href="{% url 'attendance:staff_attendance_dashboard' %}"><i class="bi bi-people me-1"></i> Staff Register</a>
+    </div>
+  </div>
+  {% if not face_recognition_available %}
+  <div class="alert alert-warning">Face recognition dependencies are not available on this server. Manual attendance remains available.</div>
+  {% endif %}
+  <div class="row g-4">
+    <div class="col-xl-5">
+      <div class="card border-0 shadow-sm rounded-4 h-100">
+        <div class="card-body p-3 p-lg-4">
+          <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="fw-bold mb-0">Live camera</h5><span id="liveBadge" class="badge bg-secondary-subtle text-secondary">Camera off</span></div>
+          <div class="rounded-4 overflow-hidden bg-dark position-relative" style="min-height:300px;aspect-ratio:4/3">
+            <video id="unifiedVideo" autoplay muted playsinline class="w-100 h-100" style="object-fit:cover;display:none"></video>
+            <div id="cameraPlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center text-white text-center gap-2 px-3"><i class="bi bi-camera-video fs-1"></i><span id="cameraPlaceholderText">Camera is off. Select Start one camera.</span></div>
+            <span class="position-absolute top-0 end-0 m-3 badge bg-danger" id="scanLive" style="display:none"><i class="bi bi-record-circle me-1"></i>LIVE SCANNING</span>
+          </div>
+          <div class="alert alert-info small mt-3 mb-3">Obtain the required school authorization and inform staff and families. This face matcher does not provide liveness or anti-spoofing protection. Keep the kiosk supervised.</div>
+          <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="privacyAck"><label class="form-check-label small" for="privacyAck">I confirm this attendance session is authorized and the relevant people have been informed.</label></div>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-gold flex-grow-1" id="startBtn" type="button"><i class="bi bi-play-fill me-1"></i> Start one camera</button>
+            <button class="btn btn-outline-secondary" id="pauseBtn" type="button" disabled><i class="bi bi-pause-fill me-1"></i> Pause</button>
+            <button class="btn btn-outline-danger" id="stopBtn" type="button" disabled><i class="bi bi-stop-fill me-1"></i> Stop</button>
+          </div>
+          <div class="small text-muted mt-3" id="scanStatus" aria-live="polite">Start the camera to scan registered student and staff faces.</div>
+          <div class="small text-muted mt-2">Attendance date: <strong>{{ selected_date|date:'j M Y' }}</strong>. Each person is recorded once per day. Existing attendance decisions are not overwritten.</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-7">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-center mb-2 gap-2"><h6 class="fw-bold mb-0"><i class="bi bi-mortarboard-fill text-gold me-1"></i> Students</h6><span class="badge bg-success-subtle text-success" id="studentSavedCount">{{ student_saved_count|default:0 }} recorded</span></div>
+              <div class="d-flex justify-content-between align-items-center mb-2"><small class="text-muted">Latest 8 student records</small><button type="button" class="btn btn-sm btn-outline-secondary" id="viewAllStudentsBtn">View all <span id="studentAllCount">({{ student_saved_count|default:0 }})</span></button></div>
+              <div id="studentResults" class="small" style="min-height:120px;max-height:300px;overflow:auto"><div class="text-muted py-4 text-center">Waiting for student faces…</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-center mb-2 gap-2"><h6 class="fw-bold mb-0"><i class="bi bi-person-badge-fill text-teal me-1"></i> Staff</h6><span class="badge bg-success-subtle text-success" id="staffSavedCount">{{ staff_saved_count|default:0 }} recorded</span></div>
+              <div class="d-flex justify-content-between align-items-center mb-2"><small class="text-muted">Latest 8 staff records</small><button type="button" class="btn btn-sm btn-outline-secondary" id="viewAllStaffBtn">View all <span id="staffAllCount">({{ staff_saved_count|default:0 }})</span></button></div>
+              <div id="staffResults" class="small" style="min-height:120px;max-height:300px;overflow:auto"><div class="text-muted py-4 text-center">Waiting for staff faces…</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="alert alert-light border rounded-4 mt-3 small mb-0"><strong>Separate by design:</strong> student attendance and staff attendance use their existing models, permissions, notifications, check-in rules and reporting pages. A student match can never create a staff record, or vice versa.</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="attendanceRecordsModal" tabindex="-1" aria-labelledby="attendanceRecordsModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <div class="modal-content border-0 rounded-4 shadow">
+      <div class="modal-header">
+        <div><h5 class="modal-title fw-bold" id="attendanceRecordsModalTitle">Attendance records</h5><div class="small text-muted" id="attendanceRecordsModalSubtitle">Full daily register</div></div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="search" class="form-control mb-3" id="attendanceRecordsSearch" placeholder="Search by name, class or ID…" autocomplete="off">
+        <div id="attendanceRecordsList" class="small"></div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <small class="text-muted" id="attendanceRecordsPageInfo">0 records</small>
+        <div class="d-flex gap-2"><button type="button" class="btn btn-outline-secondary btn-sm" id="attendanceRecordsPrev">Previous</button><button type="button" class="btn btn-outline-secondary btn-sm" id="attendanceRecordsNext">Next</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+{{ initial_students|json_script:"initialStudentsData" }}
+{{ initial_staff|json_script:"initialStaffData" }}
+<script>
+(() => {
+  const STUDENT_URL = "{% url 'attendance:api_capture_attendance' %}";
+  const STAFF_URL = "{% url 'attendance:api_staff_live_capture' %}";
+  const DATE = "{{ selected_date|date:'Y-m-d' }}";
+  const $ = id => document.getElementById(id);
+  let stream = null, timer = null, running = false, busy = false, cameraStarting = false;
+  const initialStudents = JSON.parse(document.getElementById('initialStudentsData').textContent || '[]');
+  const initialStaff = JSON.parse(document.getElementById('initialStaffData').textContent || '[]');
+  const students = new Map(initialStudents.map(row => [String(row.id), row]));
+  const staff = new Map(initialStaff.map(row => [String(row.id), row]));
+  const csrf = () => (document.cookie.split(';').map(x => x.trim()).find(x => x.startsWith('csrftoken=')) || '').split('=').slice(1).join('=');
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const PAGE_SIZE = 10;
+  let modalKind = 'students';
+  let modalPage = 1;
+  let modalInstance = null;
+  function recordRows(map) { return [...map.values()].reverse(); }
+  function recordMarkup(item) {
+    return `<div class="d-flex justify-content-between gap-2 align-items-start py-2 border-bottom"><div class="min-w-0"><div class="fw-semibold">${esc(item.name)}</div><div class="text-muted">${esc(item.meta || '')}</div></div><span class="badge flex-shrink-0 ${item.created ? 'bg-success' : 'bg-secondary'}">${item.created ? 'Saved' : esc(item.status || 'Already marked')}</span></div>`;
+  }
+  function render(map, target, count, kind) {
+    const rows = recordRows(map).slice(0, 8);
+    $(count).textContent = `${map.size} recorded`;
+    const allCount = kind === 'students' ? 'studentAllCount' : 'staffAllCount';
+    $(allCount).textContent = `(${map.size})`;
+    $(target).innerHTML = rows.length ? rows.map(recordMarkup).join('') : `<div class="text-muted py-4 text-center">No ${kind} recorded yet.</div>`;
+    const viewButton = kind === 'students' ? 'viewAllStudentsBtn' : 'viewAllStaffBtn';
+    $(viewButton).disabled = map.size === 0;
+  }
+  function renderModalRecords() {
+    const map = modalKind === 'students' ? students : staff;
+    const query = $('attendanceRecordsSearch').value.trim().toLowerCase();
+    const filtered = recordRows(map).filter(item => [item.name, item.meta, item.status].join(' ').toLowerCase().includes(query));
+    const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    modalPage = Math.min(modalPage, pageCount);
+    const start = (modalPage - 1) * PAGE_SIZE;
+    const pageRows = filtered.slice(start, start + PAGE_SIZE);
+    $('attendanceRecordsList').innerHTML = pageRows.length ? pageRows.map(recordMarkup).join('') : '<div class="text-muted text-center py-5">No matching attendance records.</div>';
+    $('attendanceRecordsPageInfo').textContent = filtered.length ? `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, filtered.length)} of ${filtered.length} records` : '0 records';
+    $('attendanceRecordsPrev').disabled = modalPage <= 1;
+    $('attendanceRecordsNext').disabled = modalPage >= pageCount;
+  }
+  function openRecords(kind) {
+    modalKind = kind;
+    modalPage = 1;
+    $('attendanceRecordsSearch').value = '';
+    const isStudents = kind === 'students';
+    $('attendanceRecordsModalTitle').textContent = isStudents ? 'Student attendance records' : 'Staff attendance records';
+    $('attendanceRecordsModalSubtitle').textContent = `Full daily ${isStudents ? 'student' : 'staff'} register · ${DATE}`;
+    renderModalRecords();
+    if (window.bootstrap?.Modal) {
+      modalInstance = modalInstance || new window.bootstrap.Modal($('attendanceRecordsModal'));
+      modalInstance.show();
+    } else {
+      $('scanStatus').textContent = 'The attendance records dialog could not open because the Bootstrap modal script is unavailable.';
+    }
+  }
+  async function post(url, image) {
+    const response = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':decodeURIComponent(csrf()),'X-Requested-With':'XMLHttpRequest'}, body:JSON.stringify({image, date:DATE, commit:true})});
+    let data = {}; try { data = await response.json(); } catch (_) {}
+    if (!response.ok || data.success === false) throw new Error(data.error || `${response.status} ${response.statusText}`);
+    return data;
+  }
+  async function scanFrame() {
+    if (!running || busy || !stream) return;
+    const video = $('unifiedVideo'); if (video.readyState < 2) return;
+    busy = true;
+    try {
+      const canvas = document.createElement('canvas'); canvas.width = Math.min(video.videoWidth || 640, 640); canvas.height = Math.min(video.videoHeight || 480, 480);
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      const image = canvas.toDataURL('image/jpeg', .82);
+      const results = await Promise.allSettled([post(STUDENT_URL, image), post(STAFF_URL, image)]);
+      let notes = [];
+      if (results[0].status === 'fulfilled') {
+        const data = results[0].value;
+        Object.entries(data.students || {}).forEach(([id, row]) => { const key = String(id); students.delete(key); students.set(key, {name:row.name || 'Student', meta:`${row.class || row.grade || 'Class not recorded'} · ${row.admission || ''}`, status:row.status, created:!!row.created}); });
+        render(students, 'studentResults', 'studentSavedCount', 'students');
+        if (Number(data.created_students || 0)) notes.push(`${data.created_students} student(s) saved`);
+      } else notes.push(`Student scan: ${results[0].reason.message}`);
+      if (results[1].status === 'fulfilled') {
+        const data = results[1].value;
+        (data.matched || []).forEach(row => { const key = String(row.staff_id); staff.delete(key); staff.set(key, {name:row.staff_name || 'Staff', meta:row.staff_number || '', status:row.status, created:!!row.created}); });
+        render(staff, 'staffResults', 'staffSavedCount', 'staff');
+        if (Number(data.created_count || 0)) notes.push(`${data.created_count} staff member(s) saved`);
+      } else notes.push(`Staff scan: ${results[1].reason.message}`);
+      $('scanStatus').textContent = notes.length ? notes.join(' · ') : 'Scanning complete. Recognized people are saved automatically; existing records are preserved.';
+    } catch (error) { $('scanStatus').textContent = error.message || 'Camera scan failed.'; }
+    finally { busy = false; if (running) timer = setTimeout(scanFrame, 2200); }
+  }
+  function cameraMessage(message) {
+    $('cameraPlaceholderText').textContent = message;
+    $('cameraPlaceholder').classList.remove('d-none');
+  }
+  function cameraErrorMessage(error) {
+    if (error && error.name === 'NotAllowedError') return 'Camera permission was denied. Allow camera access in your browser, then try again.';
+    if (error && error.name === 'NotFoundError') return 'No camera was found. Connect a camera and try again.';
+    if (error && error.name === 'NotReadableError') return 'The camera is busy in another app or browser tab. Close that app and retry.';
+    if (error && error.name === 'SecurityError') return 'Camera access requires HTTPS or localhost.';
+    return (error && error.message) || 'Unable to start the camera. Check browser permissions and camera connection.';
+  }
+  async function start() {
+    if (cameraStarting || (stream && stream.getVideoTracks().some(track => track.readyState === 'live'))) return;
+    if (!$('privacyAck').checked) { $('scanStatus').textContent = 'Confirm the authorization notice before starting the camera.'; return; }
+    if (!navigator.mediaDevices?.getUserMedia) { const msg = 'Camera access is unavailable. Open this page over HTTPS (or localhost) in a browser that supports camera access.'; $('scanStatus').textContent = msg; cameraMessage(msg); return; }
+    cameraStarting = true; $('startBtn').disabled = true; cameraMessage('Requesting camera permission…'); $('scanStatus').textContent = 'Connecting to the camera…';
+    try {
+      const acquired = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480},facingMode:'user'},audio:false});
+      stream = acquired;
+      const video = $('unifiedVideo'); video.srcObject = stream; video.style.display = 'block';
+      const track = stream.getVideoTracks()[0];
+      if (track) track.addEventListener('ended', () => { if (stream) { running = false; cameraMessage('Camera connection ended. Click Start one camera to reconnect.'); $('liveBadge').className = 'badge bg-secondary-subtle text-secondary'; $('liveBadge').textContent = 'Camera off'; $('scanLive').style.display = 'none'; $('startBtn').disabled = false; $('pauseBtn').disabled = true; $('stopBtn').disabled = true; $('scanStatus').textContent = 'The camera was disconnected or stopped by the browser.'; } });
+      // Wait for an actual decoded frame, not only loadedmetadata. On some
+      // browsers loadedmetadata fires before this handler is attached, which
+      // previously left the permission placeholder visible indefinitely.
+      await video.play();
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (error) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          video.removeEventListener('loadeddata', checkReady);
+          video.removeEventListener('canplay', checkReady);
+          video.removeEventListener('playing', checkReady);
+          error ? reject(error) : resolve();
+        };
+        const checkReady = () => {
+          if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) finish();
+        };
+        const timeout = setTimeout(() => finish(new Error('Camera permission was granted, but no video frames arrived. Check the camera connection or close other apps using it.')), 12000);
+        video.addEventListener('loadeddata', checkReady);
+        video.addEventListener('canplay', checkReady);
+        video.addEventListener('playing', checkReady);
+        checkReady();
+      });
+      $('unifiedVideo').style.display = 'block';
+      $('cameraPlaceholder').classList.add('d-none');
+      running = true;
+      $('liveBadge').className = 'badge bg-success'; $('liveBadge').textContent = 'Camera active'; $('scanLive').style.display = 'inline-block';
+      $('startBtn').disabled = true; $('pauseBtn').disabled = false; $('stopBtn').disabled = false; $('scanStatus').textContent = 'Live scanning is active for students and staff.'; scanFrame();
+    } catch (error) {
+      if (stream) stream.getTracks().forEach(track => track.stop()); stream = null; $('unifiedVideo').srcObject = null; $('unifiedVideo').style.display = 'none';
+      const msg = cameraErrorMessage(error); cameraMessage(msg); $('scanStatus').textContent = msg; $('startBtn').disabled = false;
+    } finally { cameraStarting = false; }
+  }
+  function pause() { if (!stream) return; running = !running; if (timer) clearTimeout(timer); $('pauseBtn').innerHTML = running ? '<i class="bi bi-pause-fill me-1"></i> Pause' : '<i class="bi bi-play-fill me-1"></i> Resume'; $('scanStatus').textContent = running ? 'Scanning resumed.' : 'Scanning paused. Camera remains connected.'; if (running) scanFrame(); }
+  function stop() { running = false; if (timer) clearTimeout(timer); if (stream) stream.getTracks().forEach(track => track.stop()); stream = null; $('unifiedVideo').srcObject = null; $('unifiedVideo').style.display = 'none'; cameraMessage('Camera is off. Select Start one camera.'); $('liveBadge').className = 'badge bg-secondary-subtle text-secondary'; $('liveBadge').textContent = 'Camera off'; $('scanLive').style.display = 'none'; $('startBtn').disabled = false; $('pauseBtn').disabled = true; $('stopBtn').disabled = true; $('pauseBtn').innerHTML = '<i class="bi bi-pause-fill me-1"></i> Pause'; $('scanStatus').textContent = 'Camera stopped. Attendance records already saved remain in their respective registers.'; }
+  render(students, 'studentResults', 'studentSavedCount', 'students');
+  render(staff, 'staffResults', 'staffSavedCount', 'staff');
+  $('startBtn').addEventListener('click', start); $('pauseBtn').addEventListener('click', pause); $('stopBtn').addEventListener('click', stop);
+  $('viewAllStudentsBtn').addEventListener('click', () => openRecords('students'));
+  $('viewAllStaffBtn').addEventListener('click', () => openRecords('staff'));
+  $('attendanceRecordsSearch').addEventListener('input', () => { modalPage = 1; renderModalRecords(); });
+  $('attendanceRecordsPrev').addEventListener('click', () => { modalPage = Math.max(1, modalPage - 1); renderModalRecords(); });
+  $('attendanceRecordsNext').addEventListener('click', () => { modalPage += 1; renderModalRecords(); });
+  window.addEventListener('beforeunload', stop);
+})();
+</script>
+{% endblock %}

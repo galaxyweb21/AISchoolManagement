@@ -1,0 +1,46 @@
+<!-- staff/templates/staff/staff_toggle_active_modal.html -->
+{% load static %}
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold">
+        <i class="bi {% if staff.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %} text-warning me-2"></i>
+        {% if staff.is_active %}Deactivate{% else %}Activate{% endif %} Staff
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body p-4 text-center">
+    <div class="mb-4">
+        <div class="rounded-circle {% if staff.is_active %}bg-warning-subtle{% else %}bg-success-subtle{% endif %} d-inline-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+            <i class="bi {% if staff.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %} {% if staff.is_active %}text-warning{% else %}text-success{% endif %} fs-1"></i>
+        </div>
+    </div>
+    <p class="text-muted mb-1">
+        Are you sure you want to {% if staff.is_active %}deactivate{% else %}activate{% endif %}
+        <strong>"{{ staff.user.get_full_name }}"</strong>?
+    </p>
+    {% if staff.is_active %}
+    <p class="text-warning small">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Deactivated staff will not be able to log in to the system.
+    </p>
+    {% else %}
+    <p class="text-success small">
+        <i class="bi bi-info-circle me-1"></i>
+        Activated staff will be able to log in to the system.
+    </p>
+    {% endif %}
+</div>
+
+<div class="modal-footer border-0 px-4 pb-4 d-flex gap-2 justify-content-center">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+        <i class="bi bi-x-circle me-1"></i>Cancel
+    </button>
+    <form method="post" action="{% url 'staff:toggle_staff_active' staff.id %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn {% if staff.is_active %}btn-warning{% else %}btn-success{% endif %}">
+            <i class="bi {% if staff.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %} me-1"></i>
+            {% if staff.is_active %}Deactivate{% else %}Activate{% endif %}
+        </button>
+    </form>
+</div>

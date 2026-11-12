@@ -1,0 +1,13 @@
+<form method="post" action="{% url action_url borrowing.id %}">
+    {% csrf_token %}
+    <p class="mb-4 text-center">
+        Are you sure you want to mark <strong>"{{ borrowing.book.title }}"</strong> as returned?<br>
+        <span class="text-muted small">The book's availability will be restored immediately.</span>
+    </p>
+    <div class="d-flex gap-2 justify-content-center border-top pt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-circle me-1"></i> Confirm Return
+        </button>
+    </div>
+</form>

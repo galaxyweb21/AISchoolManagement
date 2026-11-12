@@ -1,0 +1,232 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Fee Structure Detail{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+</style>
+
+<!-- How Fee Structure Detail Works -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">How Fee Structure Detail Works</div>
+            <p class="text">
+                This page shows the complete fee structure for a specific class and term.
+                Each <strong>Fee Item</strong> displays the category, type, and amount charged.
+                The <strong>Total</strong> at the bottom shows the sum of all items. If the structure
+                is in <strong>Draft</strong> mode, it can be edited; <strong>Published</strong>
+                structures are locked and used for fee preparation.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 p-4">
+        <div>
+            <h5 class="fw-bold mb-1">{{ structure.school_class.name }}</h5>
+            <small class="text-muted">
+                {{ structure.school_class.grade_level.name }} &middot; {{ structure.academic_term.name }}
+                {% if structure.is_published %}
+                <span class="badge badge-teal ms-2">Published</span>
+                {% else %}
+                <span class="badge bg-warning-subtle text-warning ms-2">Draft</span>
+                {% endif %}
+            </small>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'finance:fee_schedule' structure.id %}" target="_blank" class="btn btn-outline-gold">
+                <i class="bi bi-file-earmark-text me-1"></i> Fee Schedule (for Enquiries)
+            </a>
+            {% if not structure.is_published and can_manage %}
+            <a href="{% url 'finance:fee_structure_edit' structure.id %}" class="btn btn-outline-gold">
+                <i class="bi bi-pencil me-1"></i> Edit
+            </a>
+            {% endif %}
+            <a href="{% url 'finance:fee_structure_list' %}" class="btn btn-outline-secondary">Back</a>
+        </div>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow-sm rounded-4">
+    <div class="p-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-list-ul text-gold me-2"></i>Fee Items
+                <span class="badge bg-light text-muted ms-2" id="itemCount">{{ structure.items.all|length }}</span>
+            </h6>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="text-muted small" id="filterStatus"></span>
+                <input type="text" id="itemSearchInput" class="form-control form-control-sm" placeholder="Search items..." style="max-width: 200px;">
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="itemsTable">
+                <thead>
+                    <tr>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Category</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3">Type</th>
+                        <th class="bg-transparent text-uppercase fw-bold text-muted small border-bottom pb-3 text-end">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0" id="itemsTableBody">
+                    {% for item in structure.items.all %}
+                    <tr class="border-bottom item-row" data-id="{{ item.id }}">
+                        <td class="py-3 ps-0" data-field="category">{{ item.fee_category.name }}</td>
+                        <td class="py-3" data-field="type">{{ item.fee_category.get_category_type_display }}</td>
+                        <td class="py-3 text-end fw-bold" data-field="amount">GH¢ {{ item.amount|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr class="empty-state-row">
+                        <td colspan="3" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                            No items in this fee structure.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="border-top">
+                        <td colspan="2" class="py-3 ps-0 fw-bold text-end">Total</td>
+                        <td class="py-3 text-end fw-bold text-gold">GH¢ {{ structure.total_termly_amount|floatformat:2 }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SEARCH / AUTO FILTER
+    // ============================================================
+    const itemSearchInput = document.getElementById('itemSearchInput');
+    const filterStatus = document.getElementById('filterStatus');
+    const itemCount = document.getElementById('itemCount');
+    const allRows = document.querySelectorAll('.item-row');
+    const emptyState = document.querySelector('.empty-state-row');
+
+    if (itemSearchInput) {
+        itemSearchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            allRows.forEach(function(row) {
+                const text = row.textContent.toLowerCase();
+                const isVisible = text.includes(query);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            if (itemCount) {
+                if (query) {
+                    itemCount.textContent = visibleCount;
+                    if (filterStatus) {
+                        filterStatus.textContent = `(filtered: ${visibleCount} shown)`;
+                    }
+                } else {
+                    itemCount.textContent = allRows.length;
+                    if (filterStatus) {
+                        filterStatus.textContent = '';
+                    }
+                }
+            }
+
+            if (emptyState) {
+                if (visibleCount === 0 && allRows.length > 0) {
+                    emptyState.style.display = '';
+                } else {
+                    emptyState.style.display = 'none';
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

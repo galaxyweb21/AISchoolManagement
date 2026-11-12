@@ -1,0 +1,582 @@
+{% extends 'base/base.html' %}
+{% block page_title %}Timetable Allocation Review{% endblock %}
+{% block content %}
+<style>
+    /* ============================================================ */
+    /* THEME COLORS - MATCHES BASE.HTML                             */
+    /* ============================================================ */
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+    .bg-teal-soft { background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important; }
+    .text-teal { color: var(--eduai-signal, #2C7A6D) !important; }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+
+    /* ============================================================ */
+    /* PAGE DESCRIPTION                                             */
+    /* ============================================================ */
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+        color: var(--bs-body-color);
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+
+    /* ============================================================ */
+    /* KPI CARDS                                                    */
+    /* ============================================================ */
+    .kpi-card {
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+    .kpi-card .kpi-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .kpi-card .kpi-number {
+        font-size: 1.6rem;
+        font-weight: 700;
+        line-height: 1.2;
+        color: var(--bs-body-color);
+    }
+    .kpi-card .kpi-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--bs-secondary-color);
+        font-weight: 600;
+    }
+
+    /* ============================================================ */
+    /* CARDS                                                        */
+    /* ============================================================ */
+    .card {
+        background: var(--bs-tertiary-bg) !important;
+        border-color: var(--bs-border-color) !important;
+        color: var(--bs-body-color) !important;
+        border: 1px solid var(--bs-border-color) !important;
+    }
+    .card-header {
+        background: transparent !important;
+        border-color: var(--bs-border-color) !important;
+    }
+
+    /* ============================================================ */
+    /* CLASS CARDS                                                  */
+    /* ============================================================ */
+    .cap-class-card {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--bs-tertiary-bg);
+    }
+    .cap-class-head {
+        padding: 1rem 1.25rem;
+        background: linear-gradient(90deg, var(--eduai-gold-soft, rgba(148, 107, 28, 0.08)), var(--eduai-signal-soft, rgba(44, 122, 109, 0.04)));
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+    .cap-class-head:hover {
+        background: linear-gradient(90deg, rgba(148, 107, 28, 0.14), rgba(44, 122, 109, 0.08));
+    }
+    .cap-allocation-row {
+        padding: 1rem 1.25rem;
+        border-top: 1px solid var(--bs-border-color);
+        background: var(--bs-tertiary-bg);
+    }
+
+    /* ============================================================ */
+    /* FORM CONTROLS                                                */
+    /* ============================================================ */
+    .cap-field {
+        min-height: 40px !important;
+        height: 40px !important;
+        border-radius: 10px !important;
+        border: 1px solid var(--bs-border-color) !important;
+        background: var(--bs-body-bg) !important;
+        color: var(--bs-body-color) !important;
+        padding: 0.4rem 0.7rem !important;
+        font-size: 0.9rem !important;
+        box-shadow: none !important;
+    }
+    .cap-field:focus {
+        border-color: var(--eduai-gold, #946B1C) !important;
+        box-shadow: 0 0 0 3px rgba(148, 107, 28, 0.12) !important;
+        outline: 0 !important;
+    }
+    .cap-field::placeholder {
+        color: var(--bs-secondary-color) !important;
+    }
+    .form-label {
+        color: var(--bs-secondary-color);
+    }
+
+    /* ============================================================ */
+    /* STATUS BADGES                                                */
+    /* ============================================================ */
+    .cap-status {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 5px !important;
+        font-size: 0.7rem !important;
+        font-weight: 700 !important;
+        padding: 6px 10px !important;
+        border-radius: 999px !important;
+        white-space: nowrap !important;
+    }
+    .cap-status-ok {
+        background: var(--eduai-signal-soft, rgba(44, 122, 109, 0.14)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .cap-status-bad {
+        background: rgba(180, 35, 24, 0.12) !important;
+        color: #b42318 !important;
+    }
+    .cap-status-warn {
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.14)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+
+    /* ============================================================ */
+    /* TEACHER CARDS                                                */
+    /* ============================================================ */
+    .cap-teacher-card {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 14px;
+        padding: 1rem 1.25rem;
+        background: var(--bs-tertiary-bg);
+    }
+    .cap-meter {
+        height: 7px;
+        border-radius: 999px;
+        background: var(--bs-border-color);
+        overflow: hidden;
+    }
+    .cap-meter > span {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--eduai-signal, #2C7A6D);
+    }
+    .cap-meter.over > span {
+        background: #b42318;
+    }
+
+    /* ============================================================ */
+    /* STICKY SAVE BAR                                              */
+    /* ============================================================ */
+    .cap-savebar {
+        position: sticky;
+        bottom: 12px;
+        z-index: 20;
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+        border-radius: 15px;
+        padding: 0.75rem 1rem;
+        margin-top: 0.5rem;
+    }
+
+    /* ============================================================ */
+    /* TEXT UTILITIES                                               */
+    /* ============================================================ */
+    .text-muted {
+        color: var(--bs-secondary-color) !important;
+    }
+    .cap-mini {
+        color: var(--bs-secondary-color);
+        font-size: 0.78rem;
+    }
+
+    /* ============================================================ */
+    /* RESPONSIVE                                                   */
+    /* ============================================================ */
+    @media (max-width: 767px) {
+        .cap-class-head {
+            padding: 0.85rem 1rem;
+        }
+        .cap-allocation-row {
+            padding: 0.85rem 1rem;
+        }
+        .kpi-card .kpi-number {
+            font-size: 1.3rem;
+        }
+    }
+</style>
+
+<!-- ========================================================== -->
+<!-- PAGE DESCRIPTION                                            -->
+<!-- ========================================================== -->
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill icon"></i>
+        <div>
+            <div class="title">Allocation Resolution Manager</div>
+            <p class="text">
+                Review and deliberately adjust weekly periods and teacher allocation before AI timetable generation.
+                The KPI cards show <strong>Classes</strong>, <strong>Weekly Slots</strong>,
+                <strong>Required Periods</strong>, <strong>Class Deficits</strong>, and
+                <strong>Teacher Overloads</strong>.
+                Adjust only the class-subject allocations you have approved — no subjects are deleted automatically.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid py-4">
+    <!-- ========================================================== -->
+    <!-- HEADER                                                     -->
+    <!-- ========================================================== -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge badge-gold rounded-pill px-3 py-2">
+                            <i class="bi bi-calendar-week me-1"></i> ACADEMICS · TIMETABLE
+                        </span>
+                        {% if active_term %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2">
+                            <i class="bi bi-calendar3 me-1"></i> {{ active_term }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-sliders text-gold me-2"></i>
+                        Allocation Resolution Manager
+                    </h5>
+                    <p class="text-muted mb-0 small">
+                        Review and deliberately adjust weekly periods and teacher allocation before AI timetable generation.
+                    </p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{% url 'academics:timetable_workspace' %}" class="btn btn-outline-gold btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i> Back to Timetabler
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- KPI CARDS                                                  -->
+    <!-- ========================================================== -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-gold-soft text-gold">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-gold">{{ class_count }}</div>
+                        <div class="kpi-label">Classes</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-info-subtle text-info">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-info">{{ slots_count }}</div>
+                        <div class="kpi-label">Weekly Slots</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-lg-4 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-teal-soft text-teal">
+                        <i class="bi bi-list-check"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-teal">{{ total_required }}</div>
+                        <div class="kpi-label">Required Periods</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-danger-subtle text-danger">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-danger">{{ over_capacity_classes }}</div>
+                        <div class="kpi-label">Class Deficits</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-warning-subtle text-warning">
+                        <i class="bi bi-person-exclamation"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number text-warning">{{ over_capacity_teachers }}</div>
+                        <div class="kpi-label">Teacher Overloads</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!-- FORM                                                       -->
+    <!-- ========================================================== -->
+    <form method="post" id="capacityForm">
+        {% csrf_token %}
+
+        <!-- ========================================================== -->
+        <!-- CLASS CAPACITY & ALLOCATIONS                                -->
+        <!-- ========================================================== -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-header bg-transparent border-0 p-4 pb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-building text-gold me-2"></i>
+                        Class Capacity & Allocations
+                    </h5>
+                    <div class="cap-mini">Adjust only the class-subject allocations you have approved. No subjects are deleted automatically.</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="expandAll">
+                        <i class="bi bi-arrows-expand me-1"></i>Expand all
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="collapseAll">
+                        <i class="bi bi-arrows-collapse me-1"></i>Collapse all
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-4 pt-2 d-grid gap-3">
+                {% for card in class_cards %}
+                <div class="cap-class-card">
+                    <div class="cap-class-head d-flex justify-content-between align-items-center gap-3"
+                         data-bs-toggle="collapse"
+                         data-bs-target="#class{{ card.obj.id }}"
+                         aria-expanded="{% if card.over_capacity %}true{% else %}false{% endif %}">
+                        <div>
+                            <div class="fw-bold">{{ card.obj.name }}</div>
+                            <div class="cap-mini">
+                                {{ card.items|length }} subjects
+                                {% if card.obj.homeroom_teacher %} · Class Teacher: {{ card.obj.homeroom_teacher.user.get_full_name }}{% endif %}
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="cap-status {% if card.over_capacity %}cap-status-bad{% else %}cap-status-ok{% endif %}">
+                                {{ card.total }} / {{ card.available }}
+                                {% if card.over_capacity %} · +{{ card.difference|stringformat:"d"|cut:"-" }} over{% else %} · capacity{% endif %}
+                            </span>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                    </div>
+                    <div class="collapse {% if card.over_capacity %}show{% endif %}" id="class{{ card.obj.id }}">
+                        {% for item in card.items %}
+                        <div class="cap-allocation-row row g-3 align-items-center">
+                            <div class="col-lg-3">
+                                <div class="fw-semibold">{{ item.obj.subject.name }}</div>
+                                <div class="cap-mini">{% if item.overridden %}Advanced override{% else %}ClassSubject{% endif %}</div>
+                            </div>
+                            <div class="col-md-3 col-lg-3">
+                                <label class="cap-mini d-block mb-1">Teacher</label>
+                                <select name="teacher_{{ item.obj.id }}" class="form-select cap-field">
+                                    <option value="__KEEP__">Keep current</option>
+                                    {% if item.teacher %}
+                                    <option value="__CLASS_TEACHER__">Use Class Teacher — {{ item.teacher.user.get_full_name }}</option>
+                                    {% endif %}
+                                    {% if item.source == 'Unassigned' %}
+                                    <option value="__NONE__" selected>Unassigned</option>
+                                    {% endif %}
+                                    {% for teacher in teacher_cards %}
+                                    <option value="{{ teacher.obj.id }}" {% if item.source == 'Subject Teacher' and item.teacher.id == teacher.obj.id %}selected{% endif %}>
+                                        {{ teacher.obj.user.get_full_name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-2 col-lg-2">
+                                <label class="cap-mini d-block mb-1">Periods / week</label>
+                                <input class="form-control cap-field" type="number" min="1" max="{{ slots_count }}"
+                                       name="periods_{{ item.obj.id }}" value="{{ item.periods }}">
+                            </div>
+                            <div class="col-md-4 col-lg-4">
+                                <div class="cap-mini mb-1">Current source</div>
+                                <span class="cap-status {% if item.source == 'Subject Teacher' %}cap-status-ok{% elif item.source == 'Class Teacher fallback' %}cap-status-ok{% else %}cap-status-warn{% endif %}">
+                                    {{ item.source }}
+                                </span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="p-4 text-muted">No active class subjects.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-muted p-4">No active class subjects are configured.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ========================================================== -->
+        <!-- TEACHER CAPACITY                                           -->
+        <!-- ========================================================== -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-header bg-transparent border-0 p-4 pb-2">
+                <h5 class="fw-bold mb-1">
+                    <i class="bi bi-person-badge text-gold me-2"></i>
+                    Teacher Capacity
+                </h5>
+                <div class="cap-mini">
+                    Physical capacity is the number of active timetable periods. The teacher's workload reference remains a warning only.
+                </div>
+            </div>
+            <div class="card-body p-4 pt-2 row g-3">
+                {% for card in teacher_cards %}
+                <div class="col-xl-4 col-md-6">
+                    <div class="cap-teacher-card h-100">
+                        <div class="d-flex justify-content-between gap-2">
+                            <div>
+                                <div class="fw-bold">{{ card.obj.user.get_full_name }}</div>
+                                <div class="cap-mini">Reference: {{ card.reference }} periods</div>
+                            </div>
+                            <span class="cap-status {% if card.over_capacity %}cap-status-bad{% else %}cap-status-ok{% endif %}">
+                                {{ card.total }} / {{ card.capacity }}
+                            </span>
+                        </div>
+                        <div class="cap-meter mt-3 {% if card.over_capacity %}over{% endif %}">
+                            <span style="width:{% if card.capacity %}{% widthratio card.total card.capacity 100 %}{% else %}0{% endif %}%"></span>
+                        </div>
+                        {% if card.over_capacity %}
+                        <div class="cap-mini text-danger mt-2">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            Over physical capacity by {{ card.difference|stringformat:"d"|cut:"-" }} periods.
+                        </div>
+                        {% elif card.total > card.reference %}
+                        <div class="cap-mini text-warning mt-2">
+                            <i class="bi bi-exclamation-circle-fill me-1"></i>
+                            Above workload reference, but within physical capacity.
+                        </div>
+                        {% else %}
+                        <div class="cap-mini text-teal mt-2">
+                            <i class="bi bi-check-circle-fill me-1"></i>
+                            Within physical capacity.
+                        </div>
+                        {% endif %}
+                        <details class="mt-3">
+                            <summary class="small fw-semibold">View allocation breakdown</summary>
+                            <div class="mt-2">
+                                {% for item in card.items %}
+                                <div class="d-flex justify-content-between border-top py-2 gap-2">
+                                    <span class="cap-mini">
+                                        {{ item.class_name }} — {{ item.subject_name }}<br>
+                                        <span>{{ item.source }}</span>
+                                    </span>
+                                    <strong class="small">{{ item.periods }}</strong>
+                                </div>
+                                {% empty %}
+                                <div class="cap-mini py-2">No current allocations.</div>
+                                {% endfor %}
+                            </div>
+                        </details>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ========================================================== -->
+        <!-- STICKY SAVE BAR                                            -->
+        <!-- ========================================================== -->
+        <div class="pb-4"></div>
+        <div class="cap-savebar d-flex justify-content-between align-items-center gap-3 flex-wrap">
+            <div class="cap-mini">
+                <i class="bi bi-shield-check text-teal me-1"></i>
+                <strong>Controlled changes only.</strong> No random teacher reassignment and no database reset.
+            </div>
+            <button class="btn btn-gold" type="submit">
+                <i class="bi bi-check2-circle me-1"></i> Save Allocation Changes
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const all = document.querySelectorAll('.cap-class-card .collapse');
+    document.getElementById('expandAll')?.addEventListener('click', () =>
+        all.forEach(x => bootstrap.Collapse.getOrCreateInstance(x, { toggle: false }).show())
+    );
+    document.getElementById('collapseAll')?.addEventListener('click', () =>
+        all.forEach(x => bootstrap.Collapse.getOrCreateInstance(x, { toggle: false }).hide())
+    );
+});
+</script>
+{% endblock %}

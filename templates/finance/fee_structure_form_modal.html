@@ -1,0 +1,128 @@
+<!-- finance/templates/finance/fee_structure_form_modal.html -->
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+</style>
+
+<form method="post"
+      action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url structure.id %}{% endif %}"
+      class="structure-form"
+      data-mode="{{ mode }}">
+    {% csrf_token %}
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Academic Term <span class="text-danger">*</span></label>
+            <select class="form-select" name="academic_term" required>
+                <option value="">Select Term</option>
+                {% for term in terms %}
+                <option value="{{ term.id }}" {% if mode == 'edit' and structure.academic_term.id == term.id %}selected{% endif %}>
+                    {{ term.name }} — {{ term.academic_year.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">School Class <span class="text-danger">*</span></label>
+            <select class="form-select" name="school_class" required>
+                <option value="">Select Class</option>
+                {% for cls in school_classes %}
+                <option value="{{ cls.id }}" {% if mode == 'edit' and structure.school_class.id == cls.id %}selected{% endif %}>
+                    {{ cls.name }} ({{ cls.grade_level.name }})
+                </option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Fees are structured per class, not per grade level.</small>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold d-flex justify-content-between align-items-center">
+            <span>Fee Items <span class="text-danger">*</span></span>
+            <button type="button" class="btn btn-sm btn-outline-gold" onclick="addFeeItem()">
+                <i class="bi bi-plus-lg me-1"></i>Add Item
+            </button>
+        </label>
+        <div id="items-container" class="border rounded-3 p-3 bg-light">
+            {% if existing_items %}
+                {% for item in existing_items %}
+                <div class="row g-2 mb-2 item-row">
+                    <div class="col-md-7">
+                        <select class="form-select" name="categories" required>
+                            <option value="">Select Category</option>
+                            {% for cat in fee_categories %}
+                            <option value="{{ cat.id }}" {% if item.fee_category.id == cat.id %}selected{% endif %}>
+                                {{ cat.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="number" step="0.01" class="form-control" name="amounts"
+                               placeholder="Amount (GH¢)" value="{{ item.amount }}" required>
+                    </div>
+                    <div class="col-md-1">
+                        <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="removeFeeItem(this)">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="row g-2 mb-2 item-row" id="default-row">
+                    <div class="col-md-7">
+                        <select class="form-select" name="categories" required>
+                            <option value="">Select Category</option>
+                            {% for cat in fee_categories %}
+                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="number" step="0.01" class="form-control" name="amounts"
+                               placeholder="Amount (GH¢)" required>
+                    </div>
+                    <div class="col-md-1">
+                        <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="removeFeeItem(this)">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        <div id="items-required-error" class="text-danger small mt-1" style="display:none;">
+            <i class="bi bi-exclamation-circle me-1"></i>Please add at least one fee item.
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end border-top pt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-gold">
+            <i class="bi {% if mode == 'create' %}bi-check2-circle{% else %}bi-pencil-square{% endif %} me-1"></i>
+            {% if mode == 'create' %}Create Structure{% else %}Save Changes{% endif %}
+        </button>
+    </div>
+</form>

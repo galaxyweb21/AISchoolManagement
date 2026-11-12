@@ -1,0 +1,189 @@
+/*
+ * EduAI Design System — Phase 1
+ * Shared visual polish for the existing Bootstrap-based interface.
+ * Intentionally presentation-only: no routes, forms, data, or interaction logic.
+ */
+:root {
+  --eduai-canvas: #f5f7f6;
+  --eduai-canvas-warm: #f7f6f1;
+  --eduai-card-radius: 1rem;
+  --eduai-control-radius: .72rem;
+  --eduai-shadow-card: 0 2px 5px rgba(22, 60, 53, .025), 0 10px 30px rgba(22, 60, 53, .045);
+  --eduai-shadow-raised: 0 14px 36px rgba(22, 60, 53, .09);
+  --eduai-focus-ring: 0 0 0 .22rem rgba(44, 122, 109, .17);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background-image: radial-gradient(ellipse at 8% 0%, rgba(44, 122, 109, .035), transparent 36%),
+                    radial-gradient(ellipse at 96% 6%, rgba(148, 107, 28, .035), transparent 30%);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Shared content rhythm */
+#mainContent { padding-top: 1.5rem !important; padding-bottom: 2rem !important; }
+#mainContent > .container, #mainContent > .container-fluid { min-width: 0; }
+#mainContent h1, #mainContent h2, #mainContent h3, #mainContent h4, #mainContent h5, #mainContent h6 {
+  letter-spacing: -.022em;
+}
+#mainContent h1 { font-weight: 800; letter-spacing: -.04em; }
+#mainContent h2, #mainContent h3 { font-weight: 750; }
+#mainContent p { line-height: 1.6; }
+
+/* Consistent surfaces without changing the meaning of colored status cards */
+#mainContent .card:not([class*="bg-"]),
+#mainContent .card-custom:not([class*="bg-"]) {
+  border-radius: var(--eduai-card-radius);
+  box-shadow: var(--eduai-shadow-card);
+  overflow: hidden;
+}
+#mainContent .card-header {
+  background-color: transparent;
+}
+#mainContent .card.shadow, #mainContent .card.shadow-sm {
+  box-shadow: var(--eduai-shadow-card) !important;
+}
+#mainContent .card, #mainContent .modal-content, #mainContent .dropdown-menu {
+  border-color: var(--surface-border) !important;
+}
+#mainContent .card-header, #mainContent .card-footer {
+  border-color: var(--surface-border) !important;
+}
+
+/* A quieter, more deliberate button system. Existing semantic colors are retained. */
+#mainContent .btn, .top-navbar .btn, #sidebar .btn {
+  border-radius: var(--eduai-control-radius);
+  font-weight: 650;
+  letter-spacing: -.005em;
+  transition: box-shadow .16s ease, transform .16s ease, background-color .16s ease, border-color .16s ease;
+}
+#mainContent .btn:not(:disabled):hover, .top-navbar .btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+#mainContent .btn:focus-visible, .top-navbar button:focus-visible, #sidebar button:focus-visible,
+#mainContent a:focus-visible, #sidebar a:focus-visible {
+  outline: 3px solid rgba(44, 122, 109, .6);
+  outline-offset: 2px;
+}
+#mainContent .btn-light, #mainContent .btn-outline-secondary {
+  border-color: var(--surface-border);
+}
+
+/* Inputs: clear focus, consistent sizing, readable placeholders */
+#mainContent .form-control, #mainContent .form-select,
+.modal .form-control, .modal .form-select {
+  border-radius: var(--eduai-control-radius);
+  border-color: var(--surface-border);
+  min-height: 2.65rem;
+  box-shadow: none;
+}
+#mainContent textarea.form-control, .modal textarea.form-control { min-height: 6rem; }
+#mainContent .form-control:focus, #mainContent .form-select:focus,
+.modal .form-control:focus, .modal .form-select:focus {
+  border-color: var(--eduai-signal);
+  box-shadow: var(--eduai-focus-ring);
+}
+#mainContent .form-label, .modal .form-label, #mainContent label {
+  font-weight: 650;
+  color: var(--text-primary);
+}
+#mainContent .form-text, .modal .form-text { color: var(--text-muted); }
+
+/* Tables: professional headers, comfortable rows, horizontal scrolling remains intact */
+#mainContent .table-responsive {
+  border-radius: .8rem;
+  scrollbar-width: thin;
+}
+#mainContent table.table { margin-bottom: 0; }
+#mainContent .table > :not(caption) > * > * { border-bottom-color: var(--surface-border); }
+#mainContent .table thead th {
+  color: var(--text-muted);
+  background-color: color-mix(in srgb, var(--surface-bg) 91%, var(--eduai-signal));
+  font-size: .71rem;
+  font-weight: 800;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+#mainContent .table tbody td { vertical-align: middle; }
+#mainContent .table-hover > tbody > tr:hover > * {
+  --bs-table-bg-state: rgba(44, 122, 109, .045);
+}
+
+/* Modals and dropdowns */
+.modal-content {
+  border-radius: 1.05rem;
+  box-shadow: 0 24px 70px rgba(10, 30, 26, .18);
+  overflow: hidden;
+}
+.modal-header, .modal-footer { border-color: var(--surface-border) !important; }
+.modal-title { font-weight: 750; letter-spacing: -.02em; }
+.dropdown-menu {
+  border-radius: .85rem;
+  box-shadow: var(--eduai-shadow-raised);
+  padding: .4rem;
+}
+.dropdown-item { border-radius: .5rem; padding: .55rem .75rem; }
+
+/* Navigation shell: retain current collapse/mobile behavior */
+.top-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  backdrop-filter: saturate(150%) blur(14px);
+  box-shadow: 0 1px 0 rgba(22, 60, 53, .025);
+}
+#sidebar { box-shadow: 5px 0 24px rgba(22, 60, 53, .025); }
+#sidebar .eduai-nav-scroll .nav-link { transition: background-color .15s ease, color .15s ease; }
+#sidebar .eduai-nav-scroll .nav-link.active { font-weight: 700; }
+.eduai-floating-guide {
+  border-radius: 999px !important;
+  box-shadow: 0 8px 24px rgba(22, 60, 53, .16) !important;
+}
+
+/* Feedback and data states */
+#mainContent .alert { border-radius: .85rem; }
+#mainContent .badge { letter-spacing: .01em; }
+#mainContent .progress { border-radius: 999px; overflow: hidden; }
+#mainContent .progress-bar { border-radius: 999px; }
+#mainContent .pagination .page-link {
+  border-radius: .55rem;
+  margin-inline: .12rem;
+  border-color: var(--surface-border);
+}
+#mainContent .pagination .page-item.active .page-link {
+  background-color: var(--eduai-signal);
+  border-color: var(--eduai-signal);
+}
+
+/* Dark theme adjustments; use the app's established theme variables. */
+html[data-bs-theme="dark"] body {
+  background-image: radial-gradient(ellipse at 8% 0%, rgba(44, 122, 109, .07), transparent 36%);
+}
+html[data-bs-theme="dark"] #mainContent .table thead th {
+  background-color: color-mix(in srgb, var(--surface-bg) 88%, var(--eduai-signal));
+}
+html[data-bs-theme="dark"] #mainContent .btn-light,
+html[data-bs-theme="dark"] #mainContent .btn-outline-secondary {
+  color: var(--text-primary);
+  background-color: var(--surface-bg);
+  border-color: var(--surface-border);
+}
+html[data-bs-theme="dark"] .top-navbar { box-shadow: 0 1px 0 rgba(255,255,255,.025); }
+
+@media (min-width: 1200px) {
+  #mainContent { padding-left: 1.75rem !important; padding-right: 1.75rem !important; }
+}
+@media (max-width: 767.98px) {
+  #mainContent { padding-top: 1rem !important; padding-bottom: 1.25rem !important; }
+  #mainContent .card { border-radius: .9rem; }
+  #mainContent .table thead th { font-size: .66rem; }
+  .top-navbar { padding-left: .85rem !important; padding-right: .85rem !important; }
+  .notification-dropdown { min-width: min(90vw, 380px) !important; max-width: 90vw !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  #mainContent .btn, .top-navbar .btn, #sidebar .eduai-nav-scroll .nav-link { transition: none !important; }
+  #mainContent .btn:not(:disabled):hover, .top-navbar .btn:not(:disabled):hover { transform: none; }
+}

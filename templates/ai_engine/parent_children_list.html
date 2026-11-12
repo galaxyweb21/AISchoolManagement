@@ -1,0 +1,231 @@
+<!-- ai_engine/parent_children_list.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}AI Family Assistant{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon {
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+    .page-description .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.15rem;
+    }
+    .page-description .text {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        margin-bottom: 0;
+    }
+    .page-description .badge-role {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-weight: 500;
+    }
+
+    .child-card {
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+        border: 1px solid var(--surface-border);
+        border-radius: 16px;
+        background: var(--surface-bg);
+        padding: 1.5rem;
+        height: 100%;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+    .child-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 0.75rem 2rem rgba(0,0,0,0.06);
+        border-color: var(--eduai-gold, #946B1C);
+        text-decoration: none;
+        color: inherit;
+    }
+    .child-card .child-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16));
+        color: var(--eduai-gold, #946B1C);
+        font-size: 1.2rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    .child-card .child-name {
+        font-weight: 700;
+        font-size: 1rem;
+        margin-bottom: 0.1rem;
+    }
+    .child-card .child-meta {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+    }
+    .child-card .child-icon {
+        color: var(--text-muted);
+        opacity: 0.5;
+        transition: all 0.3s ease;
+    }
+    .child-card:hover .child-icon {
+        opacity: 1;
+        color: var(--eduai-gold, #946B1C);
+    }
+
+    .child-card .child-status {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 0.15rem 0.6rem;
+        border-radius: 12px;
+        background: var(--eduai-signal-soft, rgba(44, 122, 109, 0.12));
+        color: var(--eduai-signal, #2C7A6D);
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Messages -->
+    <div id="messagesContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi
+                        {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                        {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                        {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                        {% else %}bi-info-circle-fill text-info{% endif %}
+                        fs-5
+                    "></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Page Description -->
+    <div class="page-description">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle icon"></i>
+            <div>
+                <div class="title">
+                    AI Family Assistant
+                    <span class="badge badge-role ms-2">
+                        <i class="bi bi-shield-check me-1"></i>
+                        Parent View
+                    </span>
+                </div>
+                <p class="text">
+                    Ask about your child's attendance, grades, or fees. Choose a child below to start a conversation.
+                    The AI assistant provides personalized insights and answers questions about your child's academic progress,
+                    attendance records, and financial status.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="p-4">
+            <h5 class="fw-bold mb-1">
+                <i class="bi bi-chat-heart text-gold me-2"></i>AI Family Assistant
+            </h5>
+            <p class="text-muted mb-0">Ask about your child's attendance, grades, or fees. Choose a child to start.</p>
+            <small class="text-muted">{{ children|length }} child(ren) linked to your account</small>
+        </div>
+    </div>
+
+    <!-- Children Grid -->
+    <div class="row g-4">
+        {% for child in children %}
+        <div class="col-md-4">
+            <a href="{% url 'ai_engine:parent_chat_thread' child.id %}" class="child-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="child-avatar">
+                        {{ child.user.first_name|first|upper }}{{ child.user.last_name|first|upper }}
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="child-name">{{ child.user.get_full_name }}</div>
+                        <div class="child-meta">
+                            {{ child.grade_level|default:"No grade" }} &middot; {{ child.admission_number|default:"No ID" }}
+                        </div>
+                    </div>
+                    <div class="child-icon">
+                        <i class="bi bi-chevron-right fs-5"></i>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <span class="child-status">
+                        <i class="bi bi-check-circle me-1"></i> Active
+                    </span>
+                </div>
+            </a>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 text-center text-muted p-5">
+                <i class="bi bi-people fs-1 d-block mb-3 text-secondary"></i>
+                <h5 class="fw-bold">No children linked</h5>
+                <p class="mb-0">No children are linked to your account yet. Please contact the school office.</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-dismiss messages
+    document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,867 @@
+<!-- staff_detail.html -->
+{% extends 'base/base.html' %}
+
+{% block page_title %}{{ staff.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .bg-gold-soft { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; }
+    .bg-teal-soft { background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important; }
+    .text-teal { color: var(--eduai-signal, #2C7A6D) !important; }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover { background-color: #7a5917 !important; border-color: #7a5917 !important; color: #fff !important; }
+    .btn-outline-gold { color: var(--eduai-gold, #946B1C) !important; border-color: var(--eduai-gold, #946B1C) !important; }
+    .btn-outline-gold:hover { background-color: var(--eduai-gold, #946B1C) !important; border-color: var(--eduai-gold, #946B1C) !important; color: #fff !important; }
+    .badge-gold { background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important; color: var(--eduai-gold, #946B1C) !important; }
+    .badge-teal { background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important; color: var(--eduai-signal, #2C7A6D) !important; }
+    .spinner-gold { color: var(--eduai-gold, #946B1C) !important; }
+    .progress-bar-gold { background-color: var(--eduai-gold, #946B1C) !important; }
+
+    .page-description {
+        background: var(--bs-tertiary-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--eduai-gold, #946B1C);
+    }
+    .page-description .icon { color: var(--eduai-gold, #946B1C); font-size: 1.25rem; margin-right: 0.75rem; }
+    .page-description .title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.15rem; }
+    .page-description .text { font-size: 0.85rem; color: var(--bs-secondary-color); margin-bottom: 0; }
+    .page-description .badge-role { background-color: var(--eduai-gold-soft); color: var(--eduai-gold, #946B1C); font-weight: 500; }
+
+    .info-card {
+        border-radius: 12px;
+        padding: 1.25rem;
+        background: var(--bs-tertiary-bg);
+        height: 100%;
+    }
+    .info-card .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--bs-secondary-color);
+        font-weight: 600;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+    .info-card .value { font-weight: 600; font-size: 0.95rem; }
+
+    .staff-avatar {
+        width: 80px; height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid var(--eduai-gold, #946B1C);
+        box-shadow: 0 4px 12px rgba(148, 107, 28, 0.15);
+    }
+    .staff-avatar-initials {
+        width: 80px; height: 80px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.8rem; font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, var(--eduai-gold, #946B1C), #7a5917);
+        border: 3px solid var(--eduai-gold-soft);
+        box-shadow: 0 4px 12px rgba(148, 107, 28, 0.15);
+    }
+
+    .modern-table thead th {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 700;
+        color: var(--bs-secondary-color);
+        background: var(--bs-tertiary-bg);
+        border-bottom: 1px solid var(--bs-border-color);
+        padding: 0.75rem 1rem;
+        white-space: nowrap;
+    }
+    .modern-table tbody td {
+        padding: 0.85rem 1rem;
+        vertical-align: middle;
+        border-color: var(--bs-border-color);
+    }
+    .modern-table tbody tr { transition: background 0.15s ease; }
+    .modern-table tbody tr:hover { background: rgba(148, 107, 28, 0.04); }
+
+    .status-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 0.72rem; font-weight: 700;
+        padding: 0.25rem 0.7rem; border-radius: 20px;
+        white-space: nowrap;
+    }
+    .status-chip.approved { background: var(--eduai-signal-soft); color: var(--eduai-signal); }
+    .status-chip.pending  { background: rgba(255,193,7,0.16); color: #b8860b; }
+    .status-chip.rejected { background: rgba(220,53,69,0.14); color: #dc3545; }
+    .status-chip.cancelled{ background: rgba(108,117,125,0.14); color: #6c757d; }
+
+    .leave-balance-tile {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+        height: 100%;
+    }
+    .leave-balance-tile .days {
+        font-size: 1.6rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        color: var(--eduai-gold, #946B1C);
+        line-height: 1.1;
+    }
+    .leave-balance-tile .label { font-size: 0.72rem; color: var(--bs-secondary-color); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+</style>
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div class="page-description">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle icon"></i>
+        <div>
+            <div class="title">
+                Staff Profile
+                <span class="badge badge-role ms-2">
+                    <i class="bi bi-shield-check me-1"></i>
+                    {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                        Admin View
+                    {% elif request.user.role == 'BURSAR' %}
+                        Bursar View
+                    {% elif request.user.role == 'TEACHER' %}
+                        Teacher View
+                    {% else %}
+                        Staff View
+                    {% endif %}
+                </span>
+            </div>
+            <p class="text">
+                This page shows detailed information about <strong>{{ staff.user.get_full_name }}</strong>.
+                {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                    You can <strong>Edit</strong> staff details, <strong>Deactivate/Activate</strong> their account,
+                    or <strong>Delete</strong> their profile. Login credentials are only visible to administrators.
+                {% else %}
+                    You have read-only access to this profile. Contact an administrator for changes.
+                {% endif %}
+                The <strong>Leave Balances</strong> section shows remaining leave days, and <strong>Recent Leave Requests</strong>
+                shows the staff member's leave history.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid py-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-4">
+                    {% if staff.profile_picture %}
+                        <img src="{{ staff.profile_picture.url }}" alt="{{ staff.user.get_full_name }}" class="staff-avatar">
+                    {% else %}
+                        <div class="staff-avatar-initials">
+                            {{ staff.user.first_name|first|upper }}{{ staff.user.last_name|first|upper }}
+                        </div>
+                    {% endif %}
+
+                    <div>
+                        <h5 class="fw-bold mb-1">{{ staff.user.get_full_name }}</h5>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <span class="badge badge-gold rounded-pill px-3 py-2">
+                                {{ staff.get_staff_position_display }}
+                            </span>
+                            <small class="text-muted">·</small>
+                            <span class="text-muted small">
+                                <i class="bi bi-person-badge me-1"></i>{{ staff.staff_id }}
+                            </span>
+                            {% if staff.department %}
+                            <small class="text-muted">·</small>
+                            <span class="text-muted small">
+                                <i class="bi bi-building me-1"></i>{{ staff.department.name }}
+                            </span>
+                            {% endif %}
+                            {% if not staff.is_active %}
+                            <span class="badge bg-secondary-subtle text-secondary ms-1">Inactive</span>
+                            {% endif %}
+                        </div>
+                        <div class="mt-1">
+                            {% if staff.staff_grade %}
+                            <span class="badge badge-teal rounded-pill px-3 py-1">
+                                <i class="bi bi-layers me-1"></i>{{ staff.staff_grade.name }}
+                            </span>
+                            {% endif %}
+                            <span class="badge bg-light text-muted rounded-pill px-3 py-1 border">
+                                <i class="bi bi-calendar me-1"></i>Joined: {{ staff.date_joined|date:"M d, Y" }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn {% if has_face_registration %}btn-outline-success{% else %}btn-outline-gold{% endif %}" id="staffFaceRegisterOpen">
+                        <i class="bi bi-camera me-1"></i>{% if has_face_registration %}Update Face{% else %}Register Face{% endif %}
+                    </button>
+                    <button type="button" class="btn btn-outline-gold" data-bs-toggle="modal" data-bs-target="#editStaffModal"
+                            data-action="edit" data-url="{% url 'staff:staff_edit' staff.id %}">
+                        <i class="bi bi-pencil me-1"></i>Edit
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteStaffModal">
+                        <i class="bi bi-trash me-1"></i>Delete
+                    </button>
+                    <button type="button" class="btn {% if staff.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                            data-bs-toggle="modal" data-bs-target="#toggleActiveModal">
+                        {% if staff.is_active %}<i class="bi bi-pause-circle me-1"></i>Deactivate{% else %}<i class="bi bi-play-circle me-1"></i>Activate{% endif %}
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="info-card border">
+                <span class="label"><i class="bi bi-envelope me-1"></i>Email</span>
+                <span class="value">{{ staff.user.email|default:"—" }}</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="info-card border">
+                <span class="label"><i class="bi bi-phone me-1"></i>Phone</span>
+                <span class="value">{{ staff.user.phone_number|default:"—" }}</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="info-card border">
+                <span class="label"><i class="bi bi-briefcase me-1"></i>Employment</span>
+                <span class="value">{{ staff.get_employment_type_display|default:"Not set" }}</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="info-card border">
+                <span class="label"><i class="bi bi-calendar-event me-1"></i>Employed Since</span>
+                <span class="value">{{ staff.employment_date|date:"M d, Y"|default:"Not set" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            {% if leave_balances %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-calendar-check text-gold me-2"></i>Leave Balances
+                        <span class="badge bg-secondary-subtle text-secondary ms-2 small">Remaining days by leave type</span>
+                    </h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        {% for balance in leave_balances %}
+                        <div class="col-md-4 col-6">
+                            <div class="leave-balance-tile">
+                                <small class="label d-block mb-2">{{ balance.leave_type.name }}</small>
+                                <div class="days">{{ balance.remaining|floatformat:0 }}</div>
+                                <small class="text-muted d-block">days remaining</small>
+                                <div class="progress mt-2" style="height: 4px;">
+                                    <div class="progress-bar progress-bar-gold" style="width: {% if balance.total_entitled > 0 %}{{ balance.used|floatformat:0|add:'0' }}{% else %}0{% endif %}%;"></div>
+                                </div>
+                                <small class="text-muted">Used: {{ balance.used|floatformat:0 }} / {{ balance.total_entitled|floatformat:0 }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-clock-history text-gold me-2"></i>Recent Leave Requests
+                        {% if pending_leaves > 0 %}
+                        <span class="badge bg-warning-subtle text-warning ms-2">{{ pending_leaves }} pending</span>
+                        {% endif %}
+                        <span class="badge bg-secondary-subtle text-secondary ms-1 small">Latest 5 requests</span>
+                    </h6>
+                    <a href="{% url 'staff:leave_list' %}?staff={{ staff.id }}" class="btn btn-sm btn-outline-gold">
+                        View All
+                    </a>
+                </div><br>
+                <div class="card-body p-0">
+                    {% if leaves %}
+                    <div class="table-responsive">
+                        <table class="table modern-table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="ps-4">Type</th>
+                                    <th>Dates</th>
+                                    <th class="text-center">Days</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-end pe-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for leave in leaves %}
+                                <tr>
+                                    <td class="ps-4 fw-semibold">{{ leave.leave_type.name }}</td>
+                                    <td>{{ leave.start_date|date:"M d" }} - {{ leave.end_date|date:"M d, Y" }}</td>
+                                    <td class="text-center">{{ leave.requested_days|floatformat:0 }}</td>
+                                    <td class="text-center">
+                                        <span class="status-chip
+                                            {% if leave.status == 'APPROVED' %}approved
+                                            {% elif leave.status == 'PENDING' %}pending
+                                            {% elif leave.status == 'REJECTED' %}rejected
+                                            {% else %}cancelled{% endif %}">
+                                            {{ leave.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <a href="{% url 'staff:leave_detail' leave.id %}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-calendar2-week fs-4 d-block mb-2"></i>
+                        No leave requests found.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if assigned_classes %}
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-book text-gold me-2"></i>Assigned Classes &amp; Subjects
+                        <span class="badge bg-secondary-subtle text-secondary ms-1 small">Teacher's teaching assignments</span>
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table modern-table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="ps-4">Class</th>
+                                    <th>Subject</th>
+                                    <th class="text-center">Periods/Week</th>
+                                    <th class="text-center">Primary</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in assigned_classes %}
+                                <tr>
+                                    <td class="ps-4 fw-semibold">{{ assignment.school_class.name }}</td>
+                                    <td>{{ assignment.subject.name }}</td>
+                                    <td class="text-center">{{ assignment.periods_per_week }}</td>
+                                    <td class="text-center">
+                                        {% if assignment.is_primary %}
+                                        <span class="badge badge-teal"><i class="bi bi-check-circle me-1"></i>Yes</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary-subtle text-secondary">No</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-layers text-gold me-2"></i>Grade &amp; Compensation
+                        <span class="badge bg-secondary-subtle text-secondary ms-1 small">Salary and leave entitlements</span>
+                    </h6>
+                </div>
+                <div class="card-body p-4">
+                    {% if staff.staff_grade %}
+                    <div class="mb-3">
+                        <span class="badge badge-gold rounded-pill px-3 py-2 fs-6">{{ staff.staff_grade.name }}</span>
+                        <span class="badge bg-light text-muted rounded-pill px-3 py-2 border">{{ staff.staff_grade.code }}</span>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="border rounded-3 p-2 text-center">
+                                <small class="text-muted d-block">Base Salary</small>
+                                <span class="fw-bold">₵{{ staff.staff_grade.base_salary|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded-3 p-2 text-center">
+                                <small class="text-muted d-block">Grade Type</small>
+                                <span class="fw-bold">{{ staff.staff_grade.get_grade_type_display }}</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded-3 p-2 text-center">
+                                <small class="text-muted d-block">Annual Leave</small>
+                                <span class="fw-bold">{{ staff.staff_grade.annual_leave_days }} days</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded-3 p-2 text-center">
+                                <small class="text-muted d-block">Sick Leave</small>
+                                <span class="fw-bold">{{ staff.staff_grade.sick_leave_days }} days</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-exclamation-circle fs-4 d-block mb-2"></i>
+                        No grade assigned to this staff member.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if request.user.role == 'SUPER_ADMIN' or request.user.role == 'SCHOOL_ADMIN' %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-key text-warning me-2"></i>Login Credentials
+                        <span class="badge bg-warning-subtle text-warning ms-1 small">Admin only</span>
+                    </h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Username</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <code class="fw-bold">{{ staff.user.username }}</code>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ staff.user.username }}')">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">Password Status</small>
+                        {% if is_default_password %}
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="badge bg-warning-subtle text-warning">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Change required
+                                </span>
+                            </div>
+                            <p class="text-muted small mt-2 mb-0">
+                                For security, EduAI no longer displays or stores retrievable passwords. If access is lost, an authorized administrator must reset the account password; the old password cannot be recovered.
+                            </p>
+                        {% else %}
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-success">
+                                    <i class="bi bi-check-circle-fill me-1"></i>
+                                    <strong>Password Changed</strong>
+                                </span>
+                                {% if staff.password_changed_at %}
+                                    <span class="text-muted small">({{ staff.password_changed_at|date:"M d, Y H:i" }})</span>
+                                {% endif %}
+                            </div>
+                            <p class="text-muted small mt-2 mb-0">
+                                <i class="bi bi-info-circle me-1"></i>
+                                This staff member has changed their default password.
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if latest_payroll %}
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-transparent border-0 p-4 pb-0">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-wallet2 text-teal me-2"></i>Latest Payroll
+                        <span class="badge bg-secondary-subtle text-secondary ms-1 small">Most recent payslip</span>
+                    </h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-2">
+                        <span class="text-muted">Period</span>
+                        <div class="fw-semibold">{{ latest_payroll.payroll_period.name }}</div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Gross Pay</span>
+                            <span class="fw-bold">₵{{ latest_payroll.gross_pay|floatformat:2 }}</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Net Pay</span>
+                            <span class="fw-bold text-teal">₵{{ latest_payroll.net_pay|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-muted small">Status</span>
+                        <span class="badge
+                            {% if latest_payroll.status == 'PAID' %}badge-teal
+                            {% elif latest_payroll.status == 'APPROVED' %}bg-info-subtle text-info
+                            {% elif latest_payroll.status == 'CALCULATED' %}bg-warning-subtle text-warning
+                            {% else %}bg-secondary-subtle text-secondary{% endif %}
+                        ">
+                            {{ latest_payroll.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="staffFaceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold"><i class="bi bi-camera text-gold me-2"></i>Staff Face Registration</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="row g-4 align-items-center">
+          <div class="col-lg-7">
+            <div class="rounded-4 overflow-hidden border bg-dark">
+              <video id="staffFaceVideo" autoplay muted playsinline style="width:100%;display:block;min-height:320px;object-fit:cover;"></video>
+              <canvas id="staffFaceCanvas" class="d-none"></canvas>
+            </div>
+            <div class="d-flex gap-2 flex-wrap mt-3">
+              <button type="button" class="btn btn-gold" id="staffFaceStart"><i class="bi bi-camera-video me-1"></i>Start Camera</button>
+              <button type="button" class="btn btn-success" id="staffFaceCapture" disabled><i class="bi bi-camera me-1"></i>Capture</button>
+              <button type="button" class="btn btn-secondary" id="staffFaceStop"><i class="bi bi-stop-circle me-1"></i>Stop</button>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="border rounded-4 p-3 bg-body-tertiary">
+              <div class="fw-semibold mb-1">{{ staff.user.get_full_name }}</div>
+              <div class="small text-muted mb-3">{{ staff.staff_id }} · {{ staff.get_staff_position_display }}</div>
+              <div id="staffFaceStatus" class="small text-muted">Start the camera and position one face clearly in the frame.</div>
+              <img id="staffFacePreview" class="img-fluid rounded-3 mt-3 d-none" alt="Captured staff face">
+              <div class="form-check mt-3"><input class="form-check-input" type="checkbox" id="staffFaceUseProfilePicture"><label class="form-check-label small" for="staffFaceUseProfilePicture">Also use this capture as the staff profile picture</label></div>
+              <div class="form-check mt-2"><input class="form-check-input" type="checkbox" id="staffFaceConsent"><label class="form-check-label small" for="staffFaceConsent">I confirm the staff member has been informed and agrees to face-based attendance registration.</label></div>
+              <button type="button" class="btn btn-gold w-100 mt-3 d-none" id="staffFaceSave"><i class="bi bi-check2-circle me-1"></i>Save Face Registration</button>
+              {% if has_face_registration %}<button type="button" class="btn btn-outline-danger w-100 mt-2" id="staffFaceRemove"><i class="bi bi-person-x me-1"></i>Clear current face registration</button><div class="small text-muted mt-1">Use this only to remove an incorrect or duplicate enrollment before registering the correct face.</div>{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const modalEl=document.getElementById('staffFaceModal');
+  const openBtn=document.getElementById('staffFaceRegisterOpen');
+  if(!modalEl||!openBtn) return;
+  const video=document.getElementById('staffFaceVideo'), canvas=document.getElementById('staffFaceCanvas');
+  const start=document.getElementById('staffFaceStart'), capture=document.getElementById('staffFaceCapture'), stop=document.getElementById('staffFaceStop'), save=document.getElementById('staffFaceSave'), preview=document.getElementById('staffFacePreview'), status=document.getElementById('staffFaceStatus');
+  const removeFace=document.getElementById('staffFaceRemove');
+  let stream=null, imageData=null;
+  const setStatus=(msg,type='muted')=>{status.className='small text-'+type; status.textContent=msg;};
+  const stopCamera=()=>{ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} video.srcObject=null; capture.disabled=true; };
+  const startCamera=async()=>{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){setStatus('Camera access is not supported by this browser.','danger');return;}
+    try{ stopCamera(); stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false}); video.srcObject=stream; await video.play(); capture.disabled=false; setStatus('Camera ready. Look directly at the camera with good lighting.','success'); }
+    catch(e){ console.error(e); setStatus('Camera access was blocked. Allow camera permission for this site and try again.','danger'); }
+  };
+  openBtn.addEventListener('click',()=>bootstrap.Modal.getOrCreateInstance(modalEl).show());
+  modalEl.addEventListener('shown.bs.modal',()=>{ imageData=null; preview.classList.add('d-none'); save.classList.add('d-none'); startCamera(); });
+  modalEl.addEventListener('hidden.bs.modal',stopCamera);
+  start.addEventListener('click',startCamera); stop.addEventListener('click',()=>{stopCamera();setStatus('Camera stopped.','muted');});
+  capture.addEventListener('click',()=>{
+    if(!video.videoWidth){setStatus('Camera is not ready yet.','warning');return;}
+    canvas.width=video.videoWidth; canvas.height=video.videoHeight; canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+    imageData=canvas.toDataURL('image/jpeg',0.88); preview.src=imageData; preview.classList.remove('d-none'); save.classList.remove('d-none'); setStatus('Face captured. Review the image and click Save Face Registration.','success');
+  });
+  if(removeFace) removeFace.addEventListener('click',async()=>{
+    if(!window.confirm('Remove this staff member’s face registration? Face attendance will not work for this person until a correct face is registered again.')) return;
+    removeFace.disabled=true; setStatus('Removing face registration…','muted');
+    try{
+      const response=await fetch('{% url "staff:staff_unregister_face" staff.id %}',{method:'POST',headers:{'X-CSRFToken':(document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)||[])[1]||'','X-Requested-With':'XMLHttpRequest'}});
+      const data=await response.json().catch(()=>({error:'Invalid server response.'}));
+      if(!response.ok||!data.success) throw new Error(data.error||'Could not remove face registration.');
+      setStatus(data.message||'Face registration removed.','success'); setTimeout(()=>window.location.reload(),700);
+    }catch(e){setStatus(e.message||'Could not remove face registration.','danger');removeFace.disabled=false;}
+  });
+  save.addEventListener('click',async()=>{
+    if(!imageData)return;
+    if(!document.getElementById('staffFaceConsent')?.checked){setStatus('Confirm that the staff member has been informed and agrees before registering their face.','danger');return;}
+    save.disabled=true; save.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Checking for duplicates...';
+    try{
+      const response=await fetch('{% url "staff:staff_register_face" staff.id %}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':(document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)||[])[1]||'','X-Requested-With':'XMLHttpRequest'},body:JSON.stringify({image:imageData,face_registration_consent:true,use_as_profile_picture:!!document.getElementById('staffFaceUseProfilePicture')?.checked})});
+      const data=await response.json().catch(()=>({error:'Invalid server response.'}));
+      if(!response.ok||!data.success) throw new Error(data.error||'Face registration failed.');
+      setStatus(data.message||'Face registered successfully.','success'); setTimeout(()=>window.location.reload(),700);
+    }catch(e){setStatus(e.message||'Face registration failed.','danger'); save.disabled=false; save.innerHTML='<i class="bi bi-check2-circle me-1"></i>Save Face Registration';}
+  });
+})();
+</script>
+
+<div class="modal fade" id="editStaffModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-modal-handler>
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold" id="editStaffModalTitle">
+                    <i class="bi bi-pencil-square text-gold me-2"></i>Edit Staff Member
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="editStaffModalCloseBtn"></button>
+            </div>
+            <div class="modal-body p-0" id="editStaffModalContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border spinner-gold" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading form...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteStaffModal" tabindex="-1" aria-hidden="true" data-modal-handler>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold text-danger">
+                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>Confirm Delete
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-4">
+                    <div class="rounded-circle bg-danger-subtle d-inline-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                        <i class="bi bi-trash text-danger fs-1"></i>
+                    </div>
+                </div>
+                <p class="text-muted mb-1">
+                    Are you sure you want to delete the staff member <strong>"{{ staff.user.get_full_name }}"</strong>?
+                </p>
+                <p class="text-danger small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    This action cannot be undone. All associated data will be removed.
+                </p>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4 d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancel
+                </button>
+                <form method="post" action="{% url 'staff:staff_delete' staff.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Confirm Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="toggleActiveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-sm rounded-4">
+            <div class="modal-header border-0 pt-4 px-4 pb-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi {% if staff.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %} {% if staff.is_active %}text-warning{% else %}text-success{% endif %} me-2"></i>
+                    {% if staff.is_active %}Deactivate{% else %}Activate{% endif %} Staff
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-4">
+                    <div class="rounded-circle {% if staff.is_active %}bg-warning-subtle{% else %}bg-success-subtle{% endif %} d-inline-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                        <i class="bi {% if staff.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %} {% if staff.is_active %}text-warning{% else %}text-success{% endif %} fs-1"></i>
+                    </div>
+                </div>
+                <p class="text-muted mb-1">
+                    Are you sure you want to {% if staff.is_active %}deactivate{% else %}activate{% endif %}
+                    <strong>"{{ staff.user.get_full_name }}"</strong>?
+                </p>
+                {% if staff.is_active %}
+                <p class="text-warning small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Deactivated staff will not be able to log in to the system.
+                </p>
+                {% else %}
+                <p class="text-success small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Activated staff will be able to log in to the system.
+                </p>
+                {% endif %}
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4 d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancel
+                </button>
+                <form method="post" action="{% url 'staff:toggle_staff_active' staff.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn {% if staff.is_active %}btn-warning{% else %}btn-success{% endif %}">
+                        <i class="bi {% if staff.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %} me-1"></i>
+                        {% if staff.is_active %}Deactivate{% else %}Activate{% endif %}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ===== PRESERVED JS (unchanged) ===== */
+function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target.closest('button');
+        if (btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check-lg text-success"></i>';
+            setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
+        }
+    }).catch(err => {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('Copied to clipboard!');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const editModal = document.getElementById('editStaffModal');
+    const modalContent = document.getElementById('editStaffModalContent');
+    const modalTitle = document.getElementById('editStaffModalTitle');
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+               document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    }
+
+    const editBtn = document.querySelector('[data-bs-target="#editStaffModal"]');
+    if (editBtn) {
+        editBtn.addEventListener('click', function(e) {
+            const url = this.getAttribute('data-url');
+            const action = this.getAttribute('data-action') || 'edit';
+            if (!url) return;
+
+            modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Staff Member';
+            modalContent.innerHTML = '<div class="text-center py-5"><div class="spinner-border spinner-gold" role="status"><span class="visually-hidden">Loading...</span></div><p class="text-muted mt-2">Loading form...</p></div>';
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' } })
+                .then(response => { if (!response.ok) throw new Error('Network response was not ok'); return response.text(); })
+                .then(html => { modalContent.innerHTML = html; bindFormSubmit(); })
+                .catch(err => {
+                    console.error('Error loading form:', err);
+                    modalContent.innerHTML = `<div class="p-4 text-center"><div class="alert alert-danger border-0 rounded-4"><i class="bi bi-exclamation-triangle-fill me-2"></i>Error loading form. Please try again.</div><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>`;
+                });
+        });
+    }
+
+    function bindFormSubmit() {
+        const form = modalContent.querySelector('form');
+        if (!form) return;
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!newForm.checkValidity()) { newForm.classList.add('was-validated'); return; }
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+            submitBtn.disabled = true;
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            })
+                .then(async response => {
+                    const text = await response.text();
+                    let data;
+                    try { data = JSON.parse(text); } catch (e) { throw new Error('Server returned an invalid response.'); }
+                    if (!response.ok) throw new Error(data.error || 'Request failed');
+                    return data;
+                })
+                .then(data => {
+                    if (data.success) {
+                        const modalInstance = bootstrap.Modal.getInstance(editModal);
+                        if (modalInstance) modalInstance.hide();
+                        setTimeout(() => { window.location.reload(); }, 200);
+                    } else {
+                        showError(data.error || 'An error occurred while saving.');
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    showError(err.message || 'An unexpected error occurred. Please try again.');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                });
+        });
+
+        function showError(message) {
+            const existingErrors = newForm.querySelectorAll('.alert-danger');
+            existingErrors.forEach(el => el.remove());
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger border-0 shadow-sm rounded-4 mb-3';
+            errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+            newForm.insertBefore(errorDiv, newForm.firstChild);
+        }
+    }
+
+    editModal.addEventListener('hidden.bs.modal', function() {
+        modalContent.innerHTML = '<div class="text-center py-5"><div class="spinner-border spinner-gold" role="status"><span class="visually-hidden">Loading...</span></div><p class="text-muted mt-2">Loading form...</p></div>';
+        modalTitle.innerHTML = '<i class="bi bi-pencil-square text-gold me-2"></i>Edit Staff Member';
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    });
+
+    const closeBtn = document.getElementById('editStaffModalCloseBtn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            const modalInstance = bootstrap.Modal.getInstance(editModal);
+            if (modalInstance) modalInstance.hide();
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('[data-bs-dismiss="modal"]');
+        if (target && target.closest('#editStaffModal')) {
+            const modalInstance = bootstrap.Modal.getInstance(editModal);
+            if (modalInstance) modalInstance.hide();
+        }
+    });
+});
+</script>
+{% endblock %}

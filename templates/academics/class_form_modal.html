@@ -1,0 +1,29 @@
+<form method="post"
+      action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url school_class.id %}{% endif %}">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Class Name</label>
+        <input type="text" name="name" class="form-control" placeholder="e.g., Grade 10A" 
+               value="{% if mode == 'edit' %}{{ school_class.name }}{% endif %}" required>
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label fw-semibold">Grade Level</label>
+        <select name="grade_level" class="form-select" required>
+            <option value="">Select Grade Level</option>
+            {% for g in grade_levels %}
+                <option value="{{ g.id }}" {% if mode == 'edit' and school_class.grade_level.id == g.id %}selected{% endif %}>
+                    {{ g.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end border-top pt-3">
+        <button type="button" class="btn" style="border-color: var(--text-muted, #6B7570); color: var(--text-muted, #6B7570); background: transparent;" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn" style="background: var(--primary-color, #946B1C); color: #fff; border-color: var(--primary-color, #946B1C);">
+            <i class="bi {% if mode == 'create' %}bi-check2-circle{% else %}bi-pencil-square{% endif %} me-1"></i>
+            {% if mode == 'create' %}Create Class{% else %}Save Changes{% endif %}
+        </button>
+    </div>
+</form>

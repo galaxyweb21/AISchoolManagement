@@ -1,0 +1,352 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Fee Statement {{ invoice.invoice_number }}</title>
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 12px;
+            color: #333333;
+            margin: 30px;
+        }
+        table { border-collapse: collapse; width: 100%; }
+        .header-table td { vertical-align: top; }
+        .school-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #946B1C;
+            margin: 0 0 4px 0;
+        }
+        .school-meta {
+            font-size: 11px;
+            color: #666666;
+            line-height: 1.5;
+        }
+        .logo-cell { width: 70px; }
+        .logo-cell img { width: 60px; height: 60px; }
+        .statement-tag {
+            text-align: right;
+            font-size: 11px;
+            color: #666666;
+        }
+        .title-bar {
+            margin-top: 18px;
+            padding: 10px 14px;
+            background-color: #946B1C;
+            color: #ffffff;
+        }
+        .title-bar .title {
+            font-size: 15px;
+            font-weight: bold;
+        }
+        .title-bar .invoice-no {
+            font-size: 12px;
+            text-align: right;
+        }
+        .info-table {
+            margin-top: 18px;
+        }
+        .info-table td {
+            width: 50%;
+            vertical-align: top;
+            padding: 4px 0;
+        }
+        .info-block-title {
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #946B1C;
+            border-bottom: 1px solid #dddddd;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+        }
+        .info-row td {
+            padding: 2px 8px 2px 0;
+            font-size: 12px;
+        }
+        .info-row .label {
+            color: #666666;
+            width: 120px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-paid { background-color: #e3f3f0; color: #2C7A6D; }
+        .status-partial { background-color: #fff4e0; color: #946B1C; }
+        .status-unpaid { background-color: #fbe7e8; color: #b02a37; }
+        .status-void { background-color: #eeeeee; color: #666666; }
+        .details-table {
+            margin-top: 22px;
+            border: 1px solid #dddddd;
+        }
+        .details-table th {
+            background-color: #f4f1ea;
+            color: #333333;
+            text-align: left;
+            padding: 8px 10px;
+            font-size: 11px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #dddddd;
+        }
+        .details-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eeeeee;
+            font-size: 12px;
+        }
+        .details-table td.amount, .details-table th.amount { text-align: right; }
+        .payments-table {
+            margin-top: 22px;
+            border: 1px solid #dddddd;
+        }
+        .payments-table th {
+            background-color: #f4f1ea;
+            color: #333333;
+            text-align: left;
+            padding: 8px 10px;
+            font-size: 11px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #dddddd;
+        }
+        .payments-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eeeeee;
+            font-size: 12px;
+        }
+        .payments-table td.amount, .payments-table th.amount { text-align: right; }
+        .section-label {
+            margin-top: 22px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #946B1C;
+        }
+        .summary-table {
+            margin-top: 14px;
+            width: 55%;
+            margin-left: 45%;
+        }
+        .summary-table td {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        .summary-table .label { color: #666666; }
+        .summary-table .value { text-align: right; }
+        .summary-table .total-row td {
+            border-top: 2px solid #333333;
+            font-weight: bold;
+            font-size: 13px;
+            padding-top: 8px;
+        }
+        .balance-paid { color: #2C7A6D; }
+        .balance-due { color: #b02a37; }
+        .footer-note {
+            margin-top: 40px;
+            font-size: 10px;
+            color: #999999;
+            text-align: center;
+            border-top: 1px solid #dddddd;
+            padding-top: 10px;
+        }
+        .no-print { margin-top: 24px; }
+        .no-print .btn {
+            display: inline-block;
+            padding: 9px 18px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 13px;
+            margin-right: 8px;
+            border: 1px solid #946B1C;
+            color: #946B1C;
+            background: #ffffff;
+            cursor: pointer;
+        }
+        .no-print .btn-solid {
+            background: #946B1C;
+            color: #ffffff;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <table class="header-table">
+        <tr>
+            {% if school.logo %}
+            <td class="logo-cell"><img src="{{ school.logo.url }}" alt="{{ school.name }}"></td>
+            {% endif %}
+            <td>
+                <div class="school-name">{{ school.name }}</div>
+                <div class="school-meta">
+                    {{ school.address }}<br>
+                    {{ school.phone_number }} &nbsp;|&nbsp; {{ school.contact_email }}
+                </div>
+            </td>
+            <td class="statement-tag">
+                Fee Statement<br>
+                Generated {% now "d M Y" %}
+            </td>
+        </tr>
+    </table>
+
+    <table class="title-bar">
+        <tr>
+            <td class="title">DETAILED FEE STATEMENT</td>
+            <td class="invoice-no">Invoice No: <strong>{{ invoice.invoice_number }}</strong></td>
+        </tr>
+    </table>
+
+    <table class="info-table">
+        <tr>
+            <td>
+                <div class="info-block-title">Student</div>
+                <table>
+                    <tr class="info-row"><td class="label">Name</td><td>{{ student.user.get_full_name }}</td></tr>
+                    <tr class="info-row"><td class="label">Admission No.</td><td>{{ student.admission_number }}</td></tr>
+                    <tr class="info-row"><td class="label">Class</td><td>{{ student.school_class.name|default:"—" }}</td></tr>
+                </table>
+            </td>
+            <td>
+                <div class="info-block-title">Invoice</div>
+                <table>
+                    <tr class="info-row"><td class="label">Academic Term</td><td>{{ invoice.academic_term.name|default:"—" }}</td></tr>
+                    <tr class="info-row"><td class="label">Due Date</td><td>{{ invoice.due_date|date:"d M Y" }}</td></tr>
+                    <tr class="info-row">
+                        <td class="label">Status</td>
+                        <td>
+                            <span class="status-badge
+                                {% if invoice.status == 'PAID' %}status-paid
+                                {% elif invoice.status == 'PARTIAL' %}status-partial
+                                {% elif invoice.status == 'VOID' %}status-void
+                                {% else %}status-unpaid{% endif %}">
+                                {{ invoice.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div class="section-label">Itemized Fees &amp; Add-Ons</div>
+    <table class="details-table">
+        <tr>
+            <th>Category</th>
+            <th>Description</th>
+            <th class="amount">Amount</th>
+        </tr>
+        {% for item in line_items %}
+        <tr>
+            <td>{{ item.fee_category.name }}</td>
+            <td>{{ item.description }}</td>
+            <td class="amount">GH&cent; {{ item.amount|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3" style="text-align:center; color:#999999;">No line items on this invoice.</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    {% if payments %}
+    <div class="section-label">Payment History</div>
+    <table class="payments-table">
+        <tr>
+            <th>Date</th>
+            <th>Method</th>
+            <th>Reference</th>
+            <th>Receipt No.</th>
+            <th class="amount">Amount</th>
+        </tr>
+        {% for payment in payments %}
+        <tr>
+            <td>{{ payment.paid_at|date:"d M Y" }}</td>
+            <td>{{ payment.get_method_display }}</td>
+            <td>{{ payment.reference_number|default:"—" }}</td>
+            <td>{{ payment.receipt_number }}</td>
+            <td class="amount">GH&cent; {{ payment.amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    <table class="summary-table">
+        <tr><td class="label">Total Billed</td><td class="value">GH&cent; {{ total_amount|floatformat:2 }}</td></tr>
+        <tr><td class="label balance-paid">Total Paid</td><td class="value balance-paid">GH&cent; {{ amount_paid|floatformat:2 }}</td></tr>
+        <tr class="total-row">
+            <td class="label {% if balance_due > 0 %}balance-due{% else %}balance-paid{% endif %}">Balance Due</td>
+            <td class="value {% if balance_due > 0 %}balance-due{% else %}balance-paid{% endif %}">GH&cent; {{ balance_due|floatformat:2 }}</td>
+        </tr>
+    </table>
+
+    <div class="footer-note">
+        This is a system-generated fee statement from {{ school.name }}. Please retain it for your records.
+        For questions about any item on this statement, contact the school's finance office.
+    </div>
+
+    {% if not is_pdf %}
+    <div class="no-print">
+        <button type="button" class="btn btn-solid" onclick="window.print()">Print Statement</button>
+        <a class="btn" href="{% url 'finance:invoice_statement_pdf' invoice.id %}">Download PDF</a>
+        {% if can_manage %}
+        <button type="button" class="btn" id="emailStatementBtn" data-invoice-id="{{ invoice.id }}">Email Statement to Parent</button>
+        {% endif %}
+        <span id="statementStatus" style="margin-left:10px; font-size:12px;"></span>
+    </div>
+
+    <script>
+    (function() {
+        var btn = document.getElementById('emailStatementBtn');
+        if (!btn) return;
+        var status = document.getElementById('statementStatus');
+        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')
+            ? document.querySelector('[name=csrfmiddlewaretoken]').value
+            : (document.cookie.match(/csrftoken=([^;]+)/) || [])[1];
+
+        btn.addEventListener('click', function() {
+            var invoiceId = btn.getAttribute('data-invoice-id');
+
+            btn.disabled = true;
+            status.style.color = '#666';
+            status.textContent = 'Sending...';
+
+            fetch('/finance/api/invoices/' + invoiceId + '/statement/email/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                btn.disabled = false;
+                if (data.success) {
+                    status.style.color = '#2C7A6D';
+                    status.textContent = 'Statement emailed to parent.';
+                } else {
+                    status.style.color = '#b02a37';
+                    status.textContent = data.error || 'Could not send statement.';
+                }
+            })
+            .catch(function() {
+                btn.disabled = false;
+                status.style.color = '#b02a37';
+                status.textContent = 'Network error. Please try again.';
+            });
+        });
+    })();
+    </script>
+    {% endif %}
+
+    {% csrf_token %}
+</body>
+</html>

@@ -1,0 +1,40 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% block page_title %}Academic Performance Reports{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div><div class="text-uppercase small fw-semibold text-muted">Academic intelligence</div><h2 class="mb-1">Performance Reports</h2><p class="text-muted mb-0">Review completed terminal results and export school-scoped reports.</p></div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-outline-secondary" href="{% url 'ai_engine:academic_performance_dashboard' %}"><i class="bi bi-bar-chart-line me-1"></i> Dashboard</a>
+      <form method="get" action="{% url 'ai_engine:export_academic_performance_csv' %}">
+        <input type="hidden" name="term" value="{{ selected_term.pk|default:'' }}"><input type="hidden" name="class_id" value="{{ selected_class }}"><input type="hidden" name="subject" value="{{ selected_subject }}">
+        <button class="btn btn-outline-success" type="submit"><i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV</button>
+      </form>
+      <form method="get" action="{% url 'ai_engine:export_academic_performance_print' %}">
+        <input type="hidden" name="term" value="{{ selected_term.pk|default:'' }}"><input type="hidden" name="class_id" value="{{ selected_class }}"><input type="hidden" name="subject" value="{{ selected_subject }}">
+        <button class="btn btn-primary" type="submit"><i class="bi bi-file-earmark-pdf me-1"></i> Print / PDF</button>
+      </form>
+    </div>
+  </div>
+
+  <form method="get" class="card border-0 shadow-sm mb-4"><div class="card-body"><div class="row g-3 align-items-end">
+    <div class="col-md-4"><label class="form-label">Academic term</label><select name="term" class="form-select"><option value="">Latest available term</option>{% for term in terms %}<option value="{{ term.pk }}" {% if selected_term.pk == term.pk %}selected{% endif %}>{{ term }}</option>{% endfor %}</select></div>
+    <div class="col-md-3"><label class="form-label">Class</label><select name="class_id" class="form-select"><option value="">All visible classes</option>{% for class_id, class_name in classes %}<option value="{{ class_id }}" {% if selected_class == class_id|stringformat:'s' %}selected{% endif %}>{{ class_name }}</option>{% endfor %}</select></div>
+    <div class="col-md-3"><label class="form-label">Subject</label><select name="subject" class="form-select"><option value="">All subjects</option>{% for subject in subjects %}<option value="{{ subject }}" {% if selected_subject == subject %}selected{% endif %}>{{ subject }}</option>{% endfor %}</select></div>
+    <div class="col-md-2 d-grid"><button class="btn btn-dark" type="submit">Apply filters</button></div>
+  </div></div></form>
+
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Average score</div><div class="fs-3 fw-bold">{% if summary.average != None %}{{ summary.average|floatformat:1 }}%{% else %}—{% endif %}</div></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Completed results</div><div class="fs-3 fw-bold">{{ summary.result_count|default:0 }}</div></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Students assessed</div><div class="fs-3 fw-bold">{{ summary.student_count|default:0 }}</div></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Subjects represented</div><div class="fs-3 fw-bold">{{ summary.subject_count|default:0 }}</div></div></div></div>
+  </div>
+
+  <div class="card border-0 shadow-sm"><div class="card-header bg-white d-flex justify-content-between align-items-center"><div class="fw-semibold">Student result detail</div><span class="text-muted small">{% if selected_term %}{{ selected_term }}{% else %}No academic term found{% endif %}</span></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Student</th><th>Class</th><th>Subject</th><th class="text-end">Score</th><th>Grade</th><th>Remark</th></tr></thead><tbody>
+    {% for result in rows %}<tr><td class="fw-semibold">{{ result.student.user.get_full_name|default:result.student.user.username }}</td><td>{{ result.school_class.name }}</td><td>{{ result.subject }}</td><td class="text-end fw-semibold">{{ result.final_score|floatformat:1 }}%</td><td>{{ result.grade|default:'—' }}</td><td>{{ result.remark|default:'—' }}</td></tr>{% empty %}<tr><td colspan="6" class="text-center py-5"><div class="fw-semibold">No completed results found</div><div class="text-muted small">Choose another term or adjust the filters. Draft results are excluded.</div></td></tr>{% endfor %}
+  </tbody></table></div>{% if truncated %}<div class="card-footer bg-white text-muted small">Showing the first 300 rows. Use Export CSV or Print / PDF to include all matching results.</div>{% endif %}</div>
+  <p class="small text-muted mt-3 mb-0">Reports include completed results only and respect your existing student access scope. Generated {{ today|date:'j M Y' }}.</p>
+</div>
+{% endblock %}

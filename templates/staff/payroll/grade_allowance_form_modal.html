@@ -1,0 +1,370 @@
+<!-- staff/payroll/grade_allowance_form_modal.html -->
+{% load static %}
+
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .spinner-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .form-hint {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+    select:disabled {
+        background-color: #f8f9fa;
+        cursor: not-allowed;
+    }
+</style>
+
+<div class="modal-header border-0 pt-4 px-4 pb-0">
+    <h5 class="modal-title fw-bold">
+        {% if mode == 'create' %}
+            <i class="bi bi-plus-circle text-gold me-2"></i>Add Grade Allowance
+        {% else %}
+            <i class="bi bi-pencil-square text-gold me-2"></i>Edit Grade Allowance
+        {% endif %}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form method="post"
+      action="{% if mode == 'create' %}{% url action_url %}{% else %}{% url action_url grade_allowance.id %}{% endif %}"
+      id="gradeAllowanceForm"
+      class="needs-validation"
+      novalidate>
+    {% csrf_token %}
+
+    <div class="modal-body p-4">
+        <!-- Staff Grade Selection -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="gradeSelect">
+                Staff Grade <span class="text-danger">*</span>
+            </label>
+            <select name="staff_grade" id="gradeSelect" class="form-select" required>
+                <option value="">Select a grade...</option>
+                {% for grade in grades %}
+                    <option value="{{ grade.id }}"
+                            {% if mode == 'edit' and grade_allowance.staff_grade.id == grade.id %}selected{% endif %}
+                            {% if prefill_grade and grade.id|stringformat:"s" == prefill_grade %}selected{% endif %}>
+                        {{ grade.name }} (Level {{ grade.level }}) - {{ grade.code }}
+                        ({{ grade.staff_members.count }} staff)
+                    </option>
+                {% endfor %}
+            </select>
+            <div class="invalid-feedback">
+                Please select a staff grade.
+            </div>
+            <div class="form-hint">
+                <i class="bi bi-info-circle me-1"></i>
+                This allowance will apply to all staff members in this grade.
+            </div>
+        </div>
+
+        <!-- Allowance Selection -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="allowanceSelect">
+                Allowance <span class="text-danger">*</span>
+            </label>
+            <select name="allowance" id="allowanceSelect" class="form-select" required>
+                <option value="">Select an allowance...</option>
+                {% for allowance in allowances %}
+                    <option value="{{ allowance.id }}"
+                            {% if mode == 'edit' and grade_allowance.allowance.id == allowance.id %}selected{% endif %}>
+                        {{ allowance.name }}
+                        {% if allowance.is_percentage %}
+                            ({{ allowance.amount }}% of basic salary)
+                        {% else %}
+                            (GH₵ {{ allowance.amount|floatformat:2 }})
+                        {% endif %}
+                        {% if allowance.taxable %} - Taxable{% else %} - Non-Taxable{% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+            <div class="invalid-feedback">
+                Please select an allowance.
+            </div>
+            <div class="form-hint">
+                <i class="bi bi-info-circle me-1"></i>
+                Select the allowance type to assign to this grade.
+            </div>
+        </div>
+
+        <!-- Amount (Override) -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold" for="allowanceAmount">
+                Custom Amount (Optional)
+            </label>
+            <div class="input-group">
+                <span class="input-group-text">GH₵</span>
+                <input type="number"
+                       name="amount"
+                       id="allowanceAmount"
+                       class="form-control"
+                       placeholder="Leave blank to use default amount"
+                       step="0.01"
+                       min="0"
+                       value="{% if mode == 'edit' and grade_allowance.amount %}{{ grade_allowance.amount }}{% endif %}">
+            </div>
+            <div class="form-hint">
+                <i class="bi bi-info-circle me-1"></i>
+                Leave blank to use the default allowance amount. Enter a custom amount to override it for this grade.
+            </div>
+        </div>
+
+        <!-- Percentage Toggle -->
+        <div class="mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input"
+                       type="checkbox"
+                       name="is_percentage"
+                       id="isPercentage"
+                       {% if mode == 'edit' and grade_allowance.is_percentage %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="isPercentage">
+                    Percentage Based
+                </label>
+                <div class="form-hint">
+                    <i class="bi bi-info-circle me-1"></i>
+                    If checked, the amount is a percentage of the staff member's basic salary.
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Status -->
+        <div class="mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input"
+                       type="checkbox"
+                       name="is_active"
+                       id="isActive"
+                       {% if mode == 'edit' and grade_allowance.is_active %}checked{% endif %}
+                       {% if mode == 'create' %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="isActive">
+                    Active
+                </label>
+                <div class="form-hint">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Inactive grade allowances will not be applied to staff payroll.
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="alert alert-info border-0 rounded-3 bg-gold-soft mt-3">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-eye text-gold me-2 mt-1"></i>
+                <div>
+                    <strong class="d-block mb-1">What this does:</strong>
+                    <ul class="small mb-0 ps-3">
+                        <li>All staff members in the selected grade will receive this allowance</li>
+                        <li>Individual staff allowances can override this</li>
+                        <li>This is a <strong>policy-level</strong> configuration for consistency</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grade Impact Info -->
+        {% if mode == 'edit' and grade_allowance.staff_grade %}
+        <div class="alert alert-secondary border-0 rounded-3">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-people text-secondary me-2 mt-1"></i>
+                <div>
+                    <strong class="d-block mb-1">Impact:</strong>
+                    <span class="small">
+                        This allowance applies to <strong>{{ grade_allowance.staff_grade.staff_members.count }}</strong>
+                        staff member(s) in <strong>{{ grade_allowance.staff_grade.name }}</strong>
+                        (Level {{ grade_allowance.staff_grade.level }}).
+                        {% if grade_allowance.staff_grade.staff_members.count > 0 %}
+                            Changes will affect their next payroll calculation.
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer border-0 px-4 pb-4">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn btn-gold" id="gradeAllowanceSubmitBtn">
+            <i class="bi {% if mode == 'create' %}bi-plus-circle{% else %}bi-save{% endif %} me-1"></i>
+            {% if mode == 'create' %}Add Grade Allowance{% else %}Update Grade Allowance{% endif %}
+        </button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('gradeAllowanceForm');
+    const submitBtn = document.getElementById('gradeAllowanceSubmitBtn');
+    const percentageCheckbox = document.getElementById('isPercentage');
+    const amountInput = document.getElementById('allowanceAmount');
+    const allowanceSelect = document.getElementById('allowanceSelect');
+    const gradeSelect = document.getElementById('gradeSelect');
+
+    // ============================================================
+    // FORM VALIDATION
+    // ============================================================
+    form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // ============================================================
+    // AUTO-FILL AMOUNT HINT BASED ON SELECTED ALLOWANCE
+    // ============================================================
+    if (allowanceSelect) {
+        allowanceSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                const text = selectedOption.text;
+                const amountMatch = text.match(/GH₵\s*([\d,]+\.?\d*)/);
+                const percentMatch = text.match(/\((\d+\.?\d*)%\s*of/);
+
+                let hint = '';
+                if (percentMatch) {
+                    hint = `Default: ${percentMatch[1]}% of basic salary`;
+                } else if (amountMatch) {
+                    hint = `Default: GH₵ ${amountMatch[1]}`;
+                }
+
+                if (amountInput) {
+                    amountInput.placeholder = hint || 'Leave blank to use default';
+                }
+            }
+        });
+
+        // Trigger on load if an allowance is selected
+        if (allowanceSelect.value) {
+            allowanceSelect.dispatchEvent(new Event('change'));
+        }
+    }
+
+    // ============================================================
+    // PERCENTAGE TOGGLE - Update UI hints
+    // ============================================================
+    if (percentageCheckbox) {
+        percentageCheckbox.addEventListener('change', function() {
+            const hint = document.querySelector('#allowanceAmount')?.closest('.mb-3')?.querySelector('.form-hint');
+            if (hint) {
+                if (this.checked) {
+                    hint.innerHTML = '<i class="bi bi-info-circle me-1"></i>Amount will be calculated as a percentage of the staff member\'s basic salary.';
+                } else {
+                    hint.innerHTML = '<i class="bi bi-info-circle me-1"></i>Amount will be a fixed value added to the staff member\'s salary.';
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // AJAX FORM SUBMISSION
+    // ============================================================
+    let isSubmitting = false;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (isSubmitting) {
+            return;
+        }
+
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        isSubmitting = true;
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Saving...';
+
+        const formData = new FormData(this);
+
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            isSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+
+            if (data.success) {
+                const modal = form.closest('.modal');
+                if (modal) {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                }
+                location.reload();
+            } else {
+                showError(data.error || 'An error occurred while saving.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            isSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            showError('Network error. Please try again.');
+            console.error('Error:', error);
+        });
+    });
+
+    // ============================================================
+    // ERROR DISPLAY
+    // ============================================================
+    function showError(message) {
+        const existingErrors = form.querySelectorAll('.alert-danger');
+        existingErrors.forEach(el => el.remove());
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger border-0 rounded-4 mb-3';
+        errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${message}`;
+        form.insertBefore(errorDiv, form.firstChild);
+    }
+});
+</script>

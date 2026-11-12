@@ -1,0 +1,36 @@
+{% extends 'base/base.html' %}
+{% block content %}
+<div class="eduai-page-header mb-4"><a class="small text-decoration-none" href="{% url 'online_exams:exam_list' %}"><i class="bi bi-arrow-left me-1"></i> Back to examinations</a><div class="eduai-eyebrow-label mt-3">EXAM SETUP</div><h1 class="h3 mb-1">{{ page_title }}</h1><p class="text-muted mb-0">Set the class, subject, term, time window and duration. Students cannot see a draft.</p></div>
+<div class="card eduai-panel"><div class="card-body p-4">
+<form method="post" novalidate>{% csrf_token %}
+{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+<div class="row g-3">
+<div class="col-12"><div class="border rounded-3 p-3 bg-body-tertiary"><div class="fw-semibold"><i class="bi bi-calendar2-week me-2"></i>Schedule and student access</div><div class="small text-muted">These fields are shown explicitly. Opening defaults to 15 minutes from now and closing defaults to 45 minutes after opening. Adjust both before saving.</div></div></div>
+{% for field in form %}
+{% if field.name != 'opens_at' and field.name != 'closes_at' and field.name != 'student_access_enabled' %}
+<div class="col-12 {% if field.name == 'instructions' %}col-lg-12{% elif field.name == 'randomize_questions' %}col-md-12{% else %}col-md-6{% endif %}">
+{% if field.field.widget.input_type == 'checkbox' %}<div class="form-check mt-3 p-3 border rounded-3">{{ field }}<label class="form-check-label fw-semibold ms-1" for="{{ field.id_for_label }}">{{ field.label }}</label></div>{% else %}<label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}
+{% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+</div>
+{% endif %}
+{% endfor %}
+<div class="col-md-6"><label class="form-label fw-semibold" for="{{ form.opens_at.id_for_label }}">Exam opens at <span class="text-danger">*</span></label>{{ form.opens_at }}{% for error in form.opens_at.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}<div class="form-text">Suggested opening time is 15 minutes from now. Students cannot start earlier.</div></div>
+<div class="col-md-6"><label class="form-label fw-semibold" for="{{ form.closes_at.id_for_label }}">Exam closes at <span class="text-danger">*</span></label>{{ form.closes_at }}{% for error in form.closes_at.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}<div class="form-text">Suggested closing time is 45 minutes after opening. The exam stops accepting attempts at this deadline.</div></div>
+<div class="col-12"><div class="form-check p-3 border rounded-3 bg-body-tertiary">{{ form.student_access_enabled }}<label class="form-check-label fw-semibold ms-1" for="{{ form.student_access_enabled.id_for_label }}">Enable online student access</label><div class="form-text">Checked by default. When enabled, students in the selected class can access the exam after it is published and during its scheduled window.</div>{% for error in form.student_access_enabled.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}</div></div>
+</div>
+<div class="d-flex flex-wrap justify-content-end gap-2 mt-4"><a class="btn btn-outline-secondary" href="{% url 'online_exams:exam_list' %}">Cancel</a><button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle me-1"></i> Save draft</button></div>
+</form></div></div>
+<script>
+(function(){
+ const openInput=document.getElementById('{{ form.opens_at.id_for_label }}');
+ const closeInput=document.getElementById('{{ form.closes_at.id_for_label }}');
+ if(!openInput || !closeInput) return;
+ const pad=n=>String(n).padStart(2,'0');
+ const localValue=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+ if(!openInput.value){const d=new Date(Date.now()+15*60000);d.setSeconds(0,0);openInput.value=localValue(d);}
+ if(!closeInput.value){const d=new Date(new Date(openInput.value).getTime()+45*60000);if(!Number.isNaN(d.getTime()))closeInput.value=localValue(d);}
+ openInput.addEventListener('change',function(){if(!closeInput.dataset.userEdited){const d=new Date(openInput.value);if(!Number.isNaN(d.getTime())){d.setMinutes(d.getMinutes()+45);closeInput.value=localValue(d);}}});
+ closeInput.addEventListener('change',function(){closeInput.dataset.userEdited='1';});
+})();
+</script>
+{% endblock %}

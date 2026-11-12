@@ -1,0 +1,25 @@
+{% extends 'base/base.html' %}
+{% block content %}
+<div class="eduai-page-header mb-4">
+  <a class="small text-decoration-none" href="{% url 'online_exams:student_results' %}"><i class="bi bi-arrow-left me-1"></i> Back to my results</a>
+  <div class="eduai-eyebrow-label mt-3">RELEASED EXAM RESULT</div><h1 class="h3 mb-1">{{ exam.title }}</h1><p class="text-muted mb-0">{{ exam.subject.name }} · {{ exam.school_class.name }} · {{ exam.academic_term }}</p>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6 col-xl-3"><div class="eduai-stat-card h-100"><span class="eduai-stat-label">Your score</span><strong>{{ attempt.score_awarded }} <small class="text-muted">/ {{ attempt.total_marks }}</small></strong><span class="small text-muted">Marks awarded</span></div></div>
+  <div class="col-12 col-sm-6 col-xl-3"><div class="eduai-stat-card h-100"><span class="eduai-stat-label">Percentage</span><strong>{{ attempt.percentage }}%</strong><span class="small text-muted">Overall result</span></div></div>
+  <div class="col-12 col-sm-6 col-xl-3"><div class="eduai-stat-card h-100"><span class="eduai-stat-label">Result guide</span><strong class="h4 mb-1">{% if passed_reference %}<span class="text-success">Meets reference</span>{% else %}<span class="text-danger">Below reference</span>{% endif %}</strong><span class="small text-muted">{{ reference_pass_threshold }}% reference threshold</span></div></div>
+  <div class="col-12 col-sm-6 col-xl-3"><div class="eduai-stat-card h-100"><span class="eduai-stat-label">Submitted</span><strong class="h5">{{ attempt.submitted_at|date:'d M Y'|default:'—' }}</strong><span class="small text-muted">{{ attempt.submitted_at|date:'H:i' }}</span></div></div>
+</div>
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3"><div><h2 class="h5 mb-1">Answer review</h2><p class="small text-muted mb-0">Your submitted answers, released correct answers, and awarded marks.</p></div><span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i> Results released</span></div>
+{% for answer in answers %}
+<section class="card eduai-panel mb-3"><div class="card-body p-3 p-lg-4">
+  <div class="d-flex flex-wrap justify-content-between gap-2 mb-3"><span class="badge text-bg-light border">Question {{ answer.question.order }}</span><span class="small fw-semibold">{{ answer.marks_awarded|default:0 }} / {{ answer.question.marks }} marks</span></div>
+  <h3 class="h6 mb-3">{{ answer.question.question_text|linebreaksbr }}</h3>
+  {% if answer.question.question_type == 'MCQ' %}<div class="small text-muted mb-1">Options</div><ul class="list-group mb-3">{% for option in answer.question.options %}<li class="list-group-item {% if option == answer.question.correct_answer %}border-success{% endif %}">{{ option }}{% if option == answer.question.correct_answer %}<span class="badge text-bg-success float-end">Correct answer</span>{% endif %}</li>{% endfor %}</ul>{% endif %}
+  <div class="row g-3"><div class="col-12 col-lg-6"><div class="small text-muted mb-1">Your answer</div><div class="rounded-3 bg-body-tertiary p-3" style="white-space:pre-wrap">{{ answer.answer_text|default:'No answer provided.' }}</div></div><div class="col-12 col-lg-6"><div class="small text-muted mb-1">Correct answer / marking guide</div><div class="rounded-3 bg-body-tertiary p-3" style="white-space:pre-wrap">{{ answer.question.correct_answer|default:'This response was reviewed by your teacher.' }}</div></div></div>
+  <div class="mt-3">{% if answer.is_correct %}<span class="text-success small"><i class="bi bi-check-circle me-1"></i>Correct</span>{% elif answer.is_correct == False %}<span class="text-danger small"><i class="bi bi-x-circle me-1"></i>Incorrect</span>{% else %}<span class="text-muted small"><i class="bi bi-person-check me-1"></i>Teacher-reviewed response</span>{% endif %}</div>
+</div></section>
+{% empty %}<div class="card eduai-panel"><div class="card-body text-muted">No answer details were recorded for this attempt.</div></div>{% endfor %}
+<div class="d-flex justify-content-end mt-4"><a class="btn btn-outline-secondary" href="{% url 'online_exams:student_results' %}"><i class="bi bi-arrow-left me-1"></i> Back to my results</a></div>
+<p class="small text-muted mt-3">The 50% indicator is a reference only and does not replace your school's official grading policy.</p>
+{% endblock %}

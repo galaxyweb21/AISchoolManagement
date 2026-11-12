@@ -1,0 +1,218 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Parents / Guardians{% endblock %}
+
+{% block content %}
+<style>
+  .pg-wrap{--pg-border:var(--surface-border,#e7e1d3);--pg-muted:var(--bs-secondary-color,#6b7570)}
+  .pg-hero{border:1px solid var(--pg-border);border-radius:1.15rem;background:var(--bs-body-bg);box-shadow:0 8px 24px rgba(31,42,40,.045)}
+  .pg-stat{height:100%;padding:1rem 1.1rem;border:1px solid var(--pg-border);border-radius:1rem;background:var(--bs-body-bg)}
+  .pg-stat-icon{width:2.65rem;height:2.65rem;border-radius:.85rem;display:grid;place-items:center;background:var(--eduai-gold-soft,rgba(148,107,28,.14));color:var(--eduai-gold,#946b1c);font-size:1.2rem;flex:0 0 auto}
+  .pg-stat-value{font-size:1.55rem;font-weight:750;line-height:1.2;letter-spacing:-.03em}
+  .pg-label{font-size:.72rem;letter-spacing:.055em;text-transform:uppercase;color:var(--pg-muted);font-weight:700}
+  .pg-table-card{border:1px solid var(--pg-border);border-radius:1rem;overflow:hidden;background:var(--bs-body-bg)}
+  .pg-table{margin:0;vertical-align:middle}
+  .pg-table thead th{font-size:.7rem;text-transform:uppercase;letter-spacing:.055em;color:var(--pg-muted);font-weight:750;background:var(--bs-tertiary-bg);border-bottom:1px solid var(--pg-border);padding:.9rem 1rem;white-space:nowrap}
+  .pg-table tbody td{padding:.95rem 1rem;border-color:var(--pg-border)}
+  .pg-avatar{width:2.6rem;height:2.6rem;display:grid;place-items:center;flex:0 0 auto;border-radius:.85rem;background:var(--eduai-signal-soft,rgba(44,122,109,.13));color:var(--eduai-signal,#2c7a6d);font-weight:800}
+  .pg-student-chip{display:inline-flex;align-items:center;gap:.3rem;padding:.28rem .55rem;margin:.12rem .15rem .12rem 0;border:1px solid var(--pg-border);border-radius:.55rem;font-size:.75rem;text-decoration:none;color:var(--bs-body-color);background:var(--bs-tertiary-bg)}
+  .pg-student-chip:hover{border-color:var(--eduai-signal,#2c7a6d);color:var(--eduai-signal,#2c7a6d)}
+  .pg-badge{display:inline-flex;align-items:center;gap:.3rem;border-radius:99px;padding:.34rem .58rem;font-size:.72rem;font-weight:700;white-space:nowrap}
+  .pg-badge-linked{background:var(--eduai-signal-soft,rgba(44,122,109,.13));color:var(--eduai-signal,#2c7a6d)}
+  .pg-badge-unlinked{background:var(--eduai-gold-soft,rgba(148,107,28,.13));color:var(--eduai-gold,#946b1c)}
+  .pg-badge-inactive{background:var(--bs-tertiary-bg);color:var(--pg-muted)}
+  .pg-filter{background:var(--bs-body-bg);border-color:var(--pg-border);min-height:42px}
+  .pg-filter:focus{border-color:var(--eduai-gold,#946b1c);box-shadow:0 0 0 .2rem rgba(148,107,28,.12)}
+  .pg-empty{padding:3.5rem 1rem;text-align:center}
+  .pg-empty-icon{width:4rem;height:4rem;border-radius:1.2rem;display:grid;place-items:center;margin:0 auto 1rem;background:var(--bs-tertiary-bg);font-size:1.65rem;color:var(--pg-muted)}
+  .modal-content{border:1px solid var(--pg-border);border-radius:1.15rem;overflow:hidden}
+  .modal-header{background:var(--bs-tertiary-bg);border-bottom-color:var(--pg-border)}
+  .modal-footer{border-top-color:var(--pg-border)}
+  .pg-form-label{font-size:.82rem;font-weight:700;margin-bottom:.4rem}
+  .pg-note{border-radius:.8rem;background:var(--eduai-signal-soft,rgba(44,122,109,.1));padding:.85rem 1rem;font-size:.82rem}
+  @media(max-width:767.98px){.pg-table thead{display:none}.pg-table tbody tr{display:block;border-bottom:1px solid var(--pg-border);padding:.4rem .2rem}.pg-table tbody td{display:block;border:0;padding:.45rem .8rem}.pg-table tbody td:before{content:attr(data-label);display:block;font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;font-weight:750;color:var(--pg-muted);margin-bottom:.22rem}.pg-table tbody td:first-child:before{display:none}.pg-table tbody td:last-child{padding-bottom:.8rem}.pg-hero{padding:1rem!important}}
+</style>
+
+<div class="pg-wrap">
+  <div class="pg-hero p-4 mb-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="pg-stat-icon"><i class="bi bi-people-fill"></i></div>
+        <div>
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-1"><h4 class="fw-bold mb-0">Parents / Guardians</h4><span class="badge rounded-pill text-bg-light border">Register</span></div>
+          <p class="text-muted mb-0 small">Manage guardian accounts and see which students are linked to each household.</p>
+        </div>
+      </div>
+      {% if can_manage_parents %}<button type="button" class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#createGuardianModal"><i class="bi bi-plus-lg me-1"></i>Add Guardian</button>{% endif %}
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3"><div class="pg-stat"><div class="d-flex align-items-center justify-content-between gap-2"><span class="pg-label">All guardians</span><span class="pg-stat-icon"><i class="bi bi-people"></i></span></div><div class="pg-stat-value mt-2">{{ total_parents }}</div><div class="small text-muted mt-1">Accounts in this school</div></div></div>
+    <div class="col-6 col-xl-3"><div class="pg-stat"><div class="d-flex align-items-center justify-content-between gap-2"><span class="pg-label">Linked</span><span class="pg-stat-icon" style="background:var(--eduai-signal-soft);color:var(--eduai-signal)"><i class="bi bi-person-check"></i></span></div><div class="pg-stat-value mt-2">{{ linked_parents }}</div><div class="small text-muted mt-1">Connected to students</div></div></div>
+    <div class="col-6 col-xl-3"><div class="pg-stat"><div class="d-flex align-items-center justify-content-between gap-2"><span class="pg-label">Not linked</span><span class="pg-stat-icon"><i class="bi bi-person-dash"></i></span></div><div class="pg-stat-value mt-2">{{ unlinked_parents }}</div><div class="small text-muted mt-1">No current student link</div></div></div>
+    <div class="col-6 col-xl-3"><div class="pg-stat"><div class="d-flex align-items-center justify-content-between gap-2"><span class="pg-label">Active accounts</span><span class="pg-stat-icon" style="background:var(--eduai-signal-soft);color:var(--eduai-signal)"><i class="bi bi-shield-check"></i></span></div><div class="pg-stat-value mt-2">{{ active_parents }}</div><div class="small text-muted mt-1">Can sign in</div></div></div>
+  </div>
+
+  <div class="pg-table-card mb-3">
+    <div class="p-3 p-lg-4 border-bottom" style="border-color:var(--surface-border,#e7e1d3)!important">
+      <form method="get" class="row g-2 align-items-center">
+        <div class="col-12 col-lg-6"><div class="input-group"><span class="input-group-text pg-filter"><i class="bi bi-search text-muted"></i></span><input class="form-control pg-filter border-start-0" type="search" name="q" value="{{ query }}" placeholder="Search guardian, email, phone or student…" aria-label="Search guardians"></div></div>
+        <div class="col-6 col-lg-3"><select class="form-select pg-filter" name="relationship" aria-label="Filter by student link"><option value="">All relationships</option><option value="linked" {% if relationship_filter == 'linked' %}selected{% endif %}>Linked to students</option><option value="unlinked" {% if relationship_filter == 'unlinked' %}selected{% endif %}>Not linked</option></select></div>
+        <div class="col-6 col-lg-2"><select class="form-select pg-filter" name="account" aria-label="Filter by account status"><option value="">All accounts</option><option value="active" {% if account_filter == 'active' %}selected{% endif %}>Active</option><option value="inactive" {% if account_filter == 'inactive' %}selected{% endif %}>Inactive</option></select></div>
+        <div class="col-12 col-lg-1 d-grid"><button class="btn btn-outline-gold" type="submit" aria-label="Apply filters"><i class="bi bi-funnel"></i><span class="d-lg-none ms-1">Filter</span></button></div>
+        {% if query or relationship_filter or account_filter %}<div class="col-12"><a href="{% url 'students:parent_guardian_list' %}" class="small text-decoration-none"><i class="bi bi-x-circle me-1"></i>Clear filters</a></div>{% endif %}
+      </form>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table pg-table">
+        <thead><tr><th>Parent / Guardian</th><th>Contact</th><th>Linked students</th><th>Relationship</th><th>Account</th><th class="text-end">Actions</th></tr></thead>
+        <tbody>
+          {% for parent in parents %}
+          <tr>
+            <td data-label="Parent / Guardian"><div class="d-flex align-items-center gap-3"><div class="pg-avatar">{{ parent.first_name|default:parent.username|first|upper }}{{ parent.last_name|first|upper }}</div><div class="min-w-0"><div class="fw-bold">{{ parent.get_full_name|default:parent.username }}</div><div class="small text-muted">{{ parent.username }}</div></div></div></td>
+            <td data-label="Contact"><div class="small">{% if parent.email %}<div class="mb-1"><i class="bi bi-envelope me-1 text-muted"></i>{{ parent.email }}</div>{% else %}<div class="text-muted mb-1">No email</div>{% endif %}{% if parent.phone_number %}<div><i class="bi bi-telephone me-1 text-muted"></i>{{ parent.phone_number }}</div>{% else %}<div class="text-muted">No phone</div>{% endif %}</div></td>
+            <td data-label="Linked students"><div class="fw-semibold mb-1">{{ parent.school_children_count }} student{{ parent.school_children_count|pluralize }}</div>{% if parent.school_children %}<div>{% for child in parent.school_children|slice:":3" %}<a class="pg-student-chip" href="{% url 'students:student_detail' child.id %}" title="Open student profile"><i class="bi bi-person"></i>{{ child.user.get_full_name|default:child.admission_number }}</a>{% endfor %}{% if parent.school_children|length > 3 %}<span class="small text-muted">+{{ parent.school_children|length|add:"-3" }} more</span>{% endif %}</div>{% else %}<span class="small text-muted">No students linked</span>{% endif %}</td>
+            <td data-label="Relationship">{% if parent.school_children_count %}<span class="pg-badge pg-badge-linked"><i class="bi bi-link-45deg"></i>Linked</span>{% else %}<span class="pg-badge pg-badge-unlinked"><i class="bi bi-link"></i>Not linked</span>{% endif %}</td>
+            <td data-label="Account">{% if parent.is_active %}<span class="pg-badge pg-badge-linked"><i class="bi bi-check-circle"></i>Active</span>{% else %}<span class="pg-badge pg-badge-inactive"><i class="bi bi-pause-circle"></i>Inactive</span>{% endif %}</td>
+            <td data-label="Actions"><div class="d-flex justify-content-lg-end gap-2"><button type="button" class="btn btn-sm btn-outline-gold" data-bs-toggle="modal" data-bs-target="#guardianDetailsModal" data-guardian-name="{{ parent.get_full_name|default:parent.username }}" data-guardian-email="{{ parent.email }}" data-guardian-phone="{{ parent.phone_number }}" data-guardian-username="{{ parent.username }}" data-guardian-status="{% if parent.is_active %}Active{% else %}Inactive{% endif %}" data-guardian-students="{% for child in parent.school_children %}{{ child.user.get_full_name|default:child.admission_number }}{% if not forloop.last %}, {% endif %}{% empty %}No students linked{% endfor %}"><i class="bi bi-eye me-1"></i>View</button>{% if can_manage_parents %}<button type="button" class="btn btn-sm btn-outline-gold js-edit-guardian" data-bs-toggle="modal" data-bs-target="#editGuardianModal" data-id="{{ parent.id }}" data-first-name="{{ parent.first_name }}" data-last-name="{{ parent.last_name }}" data-email="{{ parent.email }}" data-phone="{{ parent.phone_number }}"><i class="bi bi-pencil-square me-1"></i>Edit</button>{% endif %}</div></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6"><div class="pg-empty"><div class="pg-empty-icon"><i class="bi bi-people"></i></div><h5 class="fw-bold">No guardians found</h5><p class="text-muted mb-3">{% if query or relationship_filter or account_filter %}Try adjusting your search or filters.{% else %}Add a parent / guardian account to get started.{% endif %}</p>{% if can_manage_parents and not query and not relationship_filter and not account_filter %}<button class="btn btn-gold" type="button" data-bs-toggle="modal" data-bs-target="#createGuardianModal"><i class="bi bi-plus-lg me-1"></i>Add Guardian</button>{% endif %}</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% include "partials/pagination.html" with page_obj=parents %}
+</div>
+
+{% if can_manage_parents %}
+<div class="modal fade" id="createGuardianModal" tabindex="-1" aria-labelledby="createGuardianModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+    <div class="modal-header p-4"><div><h5 class="modal-title fw-bold" id="createGuardianModalLabel"><i class="bi bi-person-plus text-gold me-2"></i>Add Parent / Guardian</h5><p class="text-muted small mb-0">Create a guardian login for this school.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <form id="createGuardianForm" method="post" action="{% url 'students:parent_guardian_create' %}">{% csrf_token %}
+      <div class="modal-body p-4"><div class="alert alert-danger d-none" data-form-error></div><div class="alert alert-success d-none" data-form-success></div>
+        <div class="row g-3"><div class="col-md-6"><label class="pg-form-label" for="newGuardianFirst">First name <span class="text-danger">*</span></label><input class="form-control" id="newGuardianFirst" name="first_name" maxlength="150" required></div><div class="col-md-6"><label class="pg-form-label" for="newGuardianLast">Last name <span class="text-danger">*</span></label><input class="form-control" id="newGuardianLast" name="last_name" maxlength="150" required></div><div class="col-12"><label class="pg-form-label" for="newGuardianEmail">Email address <span class="text-danger">*</span></label><input class="form-control" type="email" id="newGuardianEmail" name="email" maxlength="254" required></div><div class="col-12"><label class="pg-form-label" for="newGuardianPhone">Phone number</label><input class="form-control" type="tel" id="newGuardianPhone" name="phone_number" maxlength="15" placeholder="e.g. 024 000 0000"></div></div>
+        <div class="pg-note mt-3"><i class="bi bi-info-circle me-1"></i>This creates the guardian account. Link students from their Student Profile using <strong>Manage Guardian</strong>.</div>
+        <div class="d-none mt-3" id="newGuardianCredentials"><div class="alert alert-warning mb-0"><div class="fw-bold mb-1"><i class="bi bi-key me-1"></i>Account created</div><div class="small">Username: <code id="newGuardianUsername"></code></div><div class="small">Temporary password: <code id="newGuardianPassword"></code></div><div class="small mt-1">Copy these credentials now and share them securely with the guardian. This password will not be shown again.</div></div></div>
+      </div>
+      <div class="modal-footer p-3"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-gold" id="createGuardianSubmit"><i class="bi bi-check2 me-1"></i>Create Guardian</button><button type="button" class="btn btn-gold d-none" id="createGuardianDone">Done — refresh register</button></div>
+    </form>
+  </div></div>
+</div>
+
+<div class="modal fade" id="editGuardianModal" tabindex="-1" aria-labelledby="editGuardianModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+    <div class="modal-header p-4"><div><h5 class="modal-title fw-bold" id="editGuardianModalLabel"><i class="bi bi-pencil-square text-gold me-2"></i>Edit Parent / Guardian</h5><p class="text-muted small mb-0">Update guardian contact details.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <form id="editGuardianForm" method="post" action="#">{% csrf_token %}<div class="modal-body p-4"><div class="alert alert-danger d-none" data-form-error></div><div class="alert alert-success d-none" data-form-success></div><div class="row g-3"><div class="col-md-6"><label class="pg-form-label" for="editGuardianFirst">First name <span class="text-danger">*</span></label><input class="form-control" id="editGuardianFirst" name="first_name" required></div><div class="col-md-6"><label class="pg-form-label" for="editGuardianLast">Last name <span class="text-danger">*</span></label><input class="form-control" id="editGuardianLast" name="last_name" required></div><div class="col-12"><label class="pg-form-label" for="editGuardianEmail">Email address <span class="text-danger">*</span></label><input class="form-control" type="email" id="editGuardianEmail" name="email" required></div><div class="col-12"><label class="pg-form-label" for="editGuardianPhone">Phone number</label><input class="form-control" type="tel" id="editGuardianPhone" name="phone_number" maxlength="15"></div></div></div><div class="modal-footer p-3"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-gold" id="editGuardianSubmit"><i class="bi bi-check2 me-1"></i>Save Changes</button></div></form>
+  </div></div>
+</div>
+{% endif %}
+
+<div class="modal fade" id="guardianDetailsModal" tabindex="-1" aria-labelledby="guardianDetailsModalLabel" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header p-4"><div><h5 class="modal-title fw-bold" id="guardianDetailsModalLabel"><i class="bi bi-person-vcard text-gold me-2"></i>Guardian Details</h5><p class="text-muted small mb-0">Contact and linked student summary.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body p-4"><h5 class="fw-bold mb-1" id="detailsGuardianName">—</h5><div class="small text-muted mb-3" id="detailsGuardianUsername">—</div><div class="row g-3"><div class="col-12"><div class="pg-label mb-1">Email</div><div id="detailsGuardianEmail">—</div></div><div class="col-12"><div class="pg-label mb-1">Phone</div><div id="detailsGuardianPhone">—</div></div><div class="col-12"><div class="pg-label mb-1">Account status</div><div id="detailsGuardianStatus">—</div></div><div class="col-12"><div class="pg-label mb-1">Linked students</div><div id="detailsGuardianStudents" class="small">—</div></div></div></div><div class="modal-footer p-3"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button></div></div></div></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  function showFormMessage(form, kind, message) {
+    const error = form.querySelector('[data-form-error]');
+    const success = form.querySelector('[data-form-success]');
+    if (error) { error.classList.add('d-none'); error.textContent = ''; }
+    if (success) { success.classList.add('d-none'); success.textContent = ''; }
+    const target = kind === 'error' ? error : success;
+    if (target) { target.textContent = message; target.classList.remove('d-none'); }
+  }
+  async function postForm(form, submitButton) {
+    showFormMessage(form, 'success', '');
+    const error = form.querySelector('[data-form-error]');
+    if (error) error.classList.add('d-none');
+    const original = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Saving…';
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST', body: new FormData(form), credentials: 'same-origin',
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || 'Unable to save guardian details.');
+      return data;
+    } catch (err) {
+      showFormMessage(form, 'error', err.message || 'A network error occurred. Please try again.');
+      return null;
+    } finally {
+      submitButton.disabled = false;
+      submitButton.innerHTML = original;
+    }
+  }
+
+  const createForm = document.getElementById('createGuardianForm');
+  if (createForm) {
+    const submit = document.getElementById('createGuardianSubmit');
+    const done = document.getElementById('createGuardianDone');
+    createForm.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const data = await postForm(createForm, submit);
+      if (!data) return;
+      showFormMessage(createForm, 'success', data.message || 'Guardian account created.');
+      const username = document.getElementById('newGuardianUsername');
+      if (username) username.textContent = data.parent.username || 'Created';
+      const password = document.getElementById('newGuardianPassword');
+      if (password) password.textContent = data.temporary_password || 'Use account recovery';
+      document.getElementById('newGuardianCredentials').classList.remove('d-none');
+      submit.classList.add('d-none');
+      done.classList.remove('d-none');
+    });
+    done.addEventListener('click', function () { window.location.reload(); });
+    document.getElementById('createGuardianModal').addEventListener('hidden.bs.modal', function () {
+      createForm.reset();
+      createForm.querySelectorAll('[data-form-error],[data-form-success]').forEach(el => {el.classList.add('d-none'); el.textContent = '';});
+      document.getElementById('newGuardianCredentials').classList.add('d-none');
+      document.getElementById('newGuardianUsername').textContent = '';
+      document.getElementById('newGuardianPassword').textContent = '';
+      submit.classList.remove('d-none'); done.classList.add('d-none'); submit.disabled = false;
+    });
+  }
+
+  const editForm = document.getElementById('editGuardianForm');
+  if (editForm) {
+    document.querySelectorAll('.js-edit-guardian').forEach(function (button) {
+      button.addEventListener('click', function () {
+        editForm.action = "{% url 'students:parent_guardian_update' '00000000-0000-0000-0000-000000000000' %}".replace('00000000-0000-0000-0000-000000000000', button.dataset.id);
+        document.getElementById('editGuardianFirst').value = button.dataset.firstName || '';
+        document.getElementById('editGuardianLast').value = button.dataset.lastName || '';
+        document.getElementById('editGuardianEmail').value = button.dataset.email || '';
+        document.getElementById('editGuardianPhone').value = button.dataset.phone || '';
+        editForm.querySelectorAll('[data-form-error],[data-form-success]').forEach(el => {el.classList.add('d-none'); el.textContent = '';});
+      });
+    });
+    editForm.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const data = await postForm(editForm, document.getElementById('editGuardianSubmit'));
+      if (!data) return;
+      showFormMessage(editForm, 'success', data.message || 'Guardian details updated.');
+      setTimeout(function () {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('editGuardianModal'));
+        if (modal) modal.hide();
+        window.location.reload();
+      }, 450);
+    });
+  }
+
+  const detailsModal = document.getElementById('guardianDetailsModal');
+  if (detailsModal) {
+    detailsModal.addEventListener('show.bs.modal', function (event) {
+      const button = event.relatedTarget;
+      if (!button) return;
+      document.getElementById('detailsGuardianName').textContent = button.dataset.guardianName || '—';
+      document.getElementById('detailsGuardianUsername').textContent = button.dataset.guardianUsername || '—';
+      document.getElementById('detailsGuardianEmail').textContent = button.dataset.guardianEmail || 'Not provided';
+      document.getElementById('detailsGuardianPhone').textContent = button.dataset.guardianPhone || 'Not provided';
+      document.getElementById('detailsGuardianStatus').textContent = button.dataset.guardianStatus || '—';
+      document.getElementById('detailsGuardianStudents').textContent = button.dataset.guardianStudents || 'No students linked';
+    });
+  }
+});
+</script>
+{% endblock %}

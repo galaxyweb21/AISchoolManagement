@@ -1,0 +1,451 @@
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from django.shortcuts import get_object_or_404, redirect, render
+from django.http import JsonResponse
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+
+from accounts.access import role_allows
+from academics.models import TeacherAssignment, TeacherClassAssignment, SchoolClass
+from ai_engine.models import ReportCardBatch, ReportCard, ReportCommentBatch
+from ai_engine.services.report_card_batch import ReportCardBatchService
+from ai_engine.services.report_card_engine import ReportCardEngine
+from ai_engine.services.report_comment_service import ReportCommentService
+from ai_engine.tasks import run_report_card_batch_task, run_report_comment_batch_task
+from core.pagination import paginate_queryset
+from ai_engine.services.report_card_zip import report_card_class_zip_response
+from school.models import AcademicTerm
+
+
+def _school(request):
+    return request.user.school
+
+
+def _can_view(user):
+    return role_allows(user, 'reports', 'view')
+
+
+def _can_view_card(user, card):
+    """Allow staff report access plus a linked parent/student after release."""
+    if role_allows(user, 'reports', 'view'):
+        return True
+    if not getattr(card, 'is_finalized', False):
+        return False
+    student = getattr(card, 'student', None)
+    if not student:
+        return False
+    if getattr(student, 'parent_id', None) == user.id:
+        return True
+    if getattr(student, 'user_id', None) == user.id:
+        return True
+    return False
+
+
+def _teacher_scope_class_ids(user, school):
+    ids = set()
+    try:
+        teacher = user.teacher_profile
+        ids.update(TeacherAssignment.objects.filter(school=school, teacher=teacher, is_active=True).values_list('school_class_id', flat=True))
+        ids.update(TeacherClassAssignment.objects.filter(school=school, teacher=teacher, is_active=True).values_list('school_class_id', flat=True))
+        ids.update(teacher.homerooms.filter(school=school, is_active=True).values_list('id', flat=True))
+    except Exception:
+        pass
+    return ids
+
+
+def _can_edit(user, card):
+    if card.is_finalized:
+        return False
+    if user.role in ('SUPER_ADMIN', 'SCHOOL_ADMIN', 'HOD'):
+        return True
+    if user.role != 'TEACHER':
+        return False
+    return card.student.school_class_id in _teacher_scope_class_ids(user, user.school)
+
+
+def _can_generate_headteacher(user):
+    return role_allows(user, 'reports', 'approve')
+
+
+def _can_generate_teacher(user, card):
+    return _can_edit(user, card)
+
+
+@login_required
+def report_card_dashboard(request):
+    if not _can_view(request.user):
+        messages.error(request, "You don't have permission to view report cards.")
+        return redirect('dashboard')
+    school = _school(request)
+    active_term = AcademicTerm.objects.filter(academic_year__school=school, academic_year__is_active=True, is_active=True).first()
+    page_obj = []
+    latest_batch = latest_comment_batch = latest_release = None
+    comment_counts = {'total': 0, 'teacher_missing': 0, 'head_missing': 0, 'complete': 0}
+    accessible_classes = SchoolClass.objects.filter(school=school, is_active=True).order_by('name')
+    if request.user.role == 'TEACHER':
+        accessible_classes = accessible_classes.filter(id__in=_teacher_scope_class_ids(request.user, school))
+    if active_term:
+        latest_batch = ReportCardBatch.objects.filter(school=school, academic_term=active_term).first()
+        latest_comment_batch = ReportCommentBatch.objects.filter(school=school, academic_term=active_term).first()
+        try:
+            from ai_engine.models import ReportCardReleaseBatch
+            latest_release = ReportCardReleaseBatch.objects.filter(school=school, academic_term=active_term).first()
+        except Exception:
+            latest_release = None
+        qs = ReportCard.objects.filter(school=school, academic_term=active_term).select_related('student__user', 'student__school_class')
+        if request.user.role == 'TEACHER':
+            qs = qs.filter(student__school_class_id__in=_teacher_scope_class_ids(request.user, school))
+        class_filter = request.GET.get('class_id', '').strip()
+        if class_filter:
+            qs = qs.filter(student__school_class_id=class_filter)
+        status_filter = request.GET.get('status')
+        if status_filter == 'finalized': qs = qs.filter(is_finalized=True)
+        elif status_filter == 'draft': qs = qs.filter(is_finalized=False)
+        elif status_filter == 'edited': qs = qs.filter(is_finalized=False, edited_by__isnull=False)
+        elif status_filter == 'comments_missing': qs = qs.filter(Q(teacher_comment='') | Q(headteacher_comment=''))
+        search = request.GET.get('q', '').strip()
+        if search:
+            # Support both single-name searches (e.g. "Ama") and full-name
+            # searches (e.g. "Ama Mensah").  Each word must match at least
+            # one of the student's first name, last name, or admission number.
+            # This avoids the common problem where "First Last" cannot match
+            # because neither first_name nor last_name contains the whole phrase.
+            for term in search.split():
+                qs = qs.filter(
+                    Q(student__user__first_name__icontains=term)
+                    | Q(student__user__last_name__icontains=term)
+                    | Q(student__admission_number__icontains=term)
+                )
+        comment_counts['total'] = qs.count()
+        comment_counts['teacher_missing'] = qs.filter(teacher_comment='').count()
+        comment_counts['head_missing'] = qs.filter(headteacher_comment='').count()
+        comment_counts['complete'] = qs.exclude(teacher_comment='').exclude(headteacher_comment='').count()
+        page_obj = paginate_queryset(qs, request)
+    return render(request, 'ai_engine/report_card_dashboard.html', {
+        'active_term': active_term, 'latest_batch': latest_batch, 'latest_comment_batch': latest_comment_batch, 'latest_release': latest_release,
+        'report_cards': page_obj, 'page_obj': page_obj, 'selected_status': request.GET.get('status', ''),
+        'search_query': request.GET.get('q', ''), 'can_generate': role_allows(request.user, 'reports', 'create'),
+        'can_generate_headteacher': _can_generate_headteacher(request.user), 'comment_counts': comment_counts, 'accessible_classes': accessible_classes,
+    })
+
+
+@login_required
+@require_POST
+def trigger_report_card_batch(request):
+    if not role_allows(request.user, 'reports', 'create'):
+        messages.error(request, "You don't have permission to generate report cards.")
+        return redirect('ai_engine:report_card_dashboard')
+    school = _school(request)
+    active_term = AcademicTerm.objects.filter(academic_year__school=school, academic_year__is_active=True, is_active=True).first()
+    if not active_term:
+        messages.error(request, 'No active academic term is configured.')
+        return redirect('ai_engine:report_card_dashboard')
+    batch = ReportCardBatchService.create_pending(school, active_term, request.user)
+    try:
+        run_report_card_batch_task.delay(str(batch.id))
+        messages.info(request, 'End-of-term report card generation has started.')
+    except Exception:
+        ReportCardBatchService.run(batch)
+        messages.info(request, 'Report cards were generated using the available local worker.')
+    return redirect('ai_engine:report_card_dashboard')
+
+
+@login_required
+@require_POST
+def generate_all_report_cards_zip(request):
+    """Generate/refresh every student report card, then download class-grouped ZIPs."""
+    if not role_allows(request.user, 'reports', 'create'):
+        messages.error(request, "You don't have permission to generate report cards.")
+        return redirect('ai_engine:report_card_dashboard')
+    school = _school(request)
+    active_term = AcademicTerm.objects.filter(
+        academic_year__school=school, academic_year__is_active=True, is_active=True
+    ).first()
+    if not active_term:
+        messages.error(request, 'No active academic term is configured.')
+        return redirect('ai_engine:report_card_dashboard')
+
+    batch = ReportCardBatchService.create_pending(school, active_term, request.user)
+    ReportCardBatchService.run(batch)
+    if batch.status != 'COMPLETE':
+        messages.error(request, batch.error_message or 'Report-card generation failed.')
+        return redirect('ai_engine:report_card_dashboard')
+
+    try:
+        response, class_count, student_count = report_card_class_zip_response(school, active_term)
+    except Exception as exc:
+        messages.error(request, f'Report cards were generated, but the ZIP could not be created: {str(exc)[:300]}')
+        return redirect('ai_engine:report_card_dashboard')
+    if response is None:
+        messages.warning(request, 'No report cards are available for the active term.')
+        return redirect('ai_engine:report_card_dashboard')
+    return response
+
+
+@login_required
+@require_POST
+def trigger_report_comment_batch(request):
+    if not role_allows(request.user, 'reports', 'create'):
+        messages.error(request, "You don't have permission to generate report-card comments.")
+        return redirect('ai_engine:report_card_dashboard')
+    school = _school(request)
+    active_term = AcademicTerm.objects.filter(academic_year__school=school, academic_year__is_active=True, is_active=True).first()
+    if not active_term:
+        messages.error(request, 'No active academic term is configured.')
+        return redirect('ai_engine:report_card_dashboard')
+    class_id = request.POST.get('school_class_id') or None
+    if request.user.role == 'TEACHER':
+        allowed = _teacher_scope_class_ids(request.user, school)
+        if class_id and str(class_id) not in {str(x) for x in allowed}:
+            messages.error(request, 'You can only generate comments for your assigned classes.')
+            return redirect('ai_engine:report_card_dashboard')
+        if not class_id and len(allowed) == 1:
+            class_id = next(iter(allowed))
+    generate_head = request.POST.get('generate_headteacher') == '1' and _can_generate_headteacher(request.user)
+    generate_teacher = request.POST.get('generate_teacher', '1') == '1'
+    if not generate_head and not generate_teacher:
+        messages.error(request, 'Select at least one comment type.')
+        return redirect('ai_engine:report_card_dashboard')
+    batch = ReportCommentBatch.objects.create(
+        school=school, academic_term=active_term, school_class_id=class_id, triggered_by=request.user,
+        only_missing=request.POST.get('mode', 'missing') == 'missing',
+        regenerate_ai=request.POST.get('mode') == 'regenerate',
+        generate_teacher=generate_teacher, generate_headteacher=generate_head,
+    )
+    try:
+        run_report_comment_batch_task.delay(str(batch.id))
+        messages.info(request, 'AI report-card comments are being generated in the background. Manual comments will be preserved.')
+    except Exception:
+        ReportCommentService.run_batch(batch)
+        messages.info(request, 'Report-card comments were generated using the available local worker.')
+    return redirect('ai_engine:report_card_dashboard')
+
+
+@login_required
+def report_card_detail(request, report_card_id):
+    card = get_object_or_404(ReportCard.objects.select_related('student__user', 'student__parent', 'student__school_class', 'student__grade_level', 'academic_term'), id=report_card_id, school=_school(request))
+    if not _can_view_card(request.user, card):
+        messages.error(request, "You don't have permission to view this report card.")
+        return redirect('dashboard')
+    # Keep report cards synchronized with authoritative TerminalResult records.
+    # This fixes cards that were generated (or finalized) before Class /30 and
+    # Exam /70 were entered — draft cards fully resync; finalized cards keep
+    # their locked average/grade/position but have blank score cells repaired.
+    card, computed = ReportCardEngine.refresh_report_card_snapshot(card, save=True)
+    if request.user.role == 'TEACHER' and not _can_edit(request.user, card):
+        messages.error(request, 'This student is outside your assigned class.')
+        return redirect('ai_engine:report_card_dashboard')
+    stats = [('Average', f'{card.overall_average:.1f}%' if card.overall_average is not None else '—'), ('Overall Grade', card.overall_grade or '—'), ('Class Position', f'{card.overall_position} / {card.class_size}' if card.overall_position else '—'), ('Attendance', f'{card.attendance_rate:.1f}%' if card.attendance_rate is not None else '—')]
+    can_teacher_comment = _can_generate_teacher(request.user, card)
+    can_headteacher_comment = _can_generate_headteacher(request.user) and not card.is_finalized
+    return render(request, 'ai_engine/report_card_detail.html', {
+        'report_card': card, 'subject_breakdown': computed.get('subject_breakdown', card.subject_breakdown or []), 'can_edit': _can_edit(request.user, card), 'can_teacher_comment': can_teacher_comment,
+        'can_headteacher_comment': can_headteacher_comment, 'can_finalize': role_allows(request.user, 'reports', 'approve'), 'stats': stats,
+    })
+
+
+@login_required
+@require_POST
+def save_report_card_narrative(request, report_card_id):
+    card = get_object_or_404(ReportCard, id=report_card_id, school=_school(request))
+    if not _can_edit(request.user, card):
+        messages.error(request, 'You do not have permission to edit this report card.')
+        return redirect('ai_engine:report_card_detail', report_card_id=card.id)
+    now = timezone.now()
+    old_teacher = card.teacher_comment
+    new_teacher = request.POST.get('teacher_comment', '').strip()
+    card.teacher_comment = new_teacher
+    card.teacher_comment_source = 'MANUAL' if new_teacher else 'BLANK'
+    card.teacher_comment_edited_by = request.user if new_teacher != old_teacher else card.teacher_comment_edited_by
+    card.teacher_comment_edited_at = now if new_teacher != old_teacher else card.teacher_comment_edited_at
+    if request.user.role in ('SUPER_ADMIN', 'SCHOOL_ADMIN', 'HOD'):
+        old_head = card.headteacher_comment
+        new_head = request.POST.get('headteacher_comment', '').strip()
+        card.headteacher_comment = new_head
+        card.headteacher_comment_source = 'MANUAL' if new_head else 'BLANK'
+        card.headteacher_comment_edited_by = request.user if new_head != old_head else card.headteacher_comment_edited_by
+        card.headteacher_comment_edited_at = now if new_head != old_head else card.headteacher_comment_edited_at
+        card.promotion_status = request.POST.get('promotion_status', '').strip()
+        next_term = request.POST.get('next_term_date', '').strip()
+        card.next_term_date = next_term or None
+    card.conduct = request.POST.get('conduct', '').strip()
+    narrative = request.POST.get('narrative', '').strip()
+    if narrative: card.ai_narrative = narrative
+    card.edited_by, card.edited_at = request.user, now
+    card.save()
+    messages.success(request, 'Report card details saved. Manual comments are protected from bulk AI regeneration.')
+    return redirect('ai_engine:report_card_detail', report_card_id=card.id)
+
+
+@login_required
+@require_POST
+def generate_report_card_comment(request, report_card_id, comment_type):
+    card = get_object_or_404(ReportCard, id=report_card_id, school=_school(request))
+    if card.is_finalized:
+        messages.error(request, 'Finalized report cards are locked.')
+        return redirect('ai_engine:report_card_detail', report_card_id=card.id)
+    if comment_type == 'teacher' and not _can_generate_teacher(request.user, card):
+        messages.error(request, 'You do not have permission to generate the teacher comment for this student.')
+        return redirect('ai_engine:report_card_detail', report_card_id=card.id)
+    if comment_type == 'headteacher' and not _can_generate_headteacher(request.user):
+        messages.error(request, 'Only authorized academic administrators can generate the headteacher comment.')
+        return redirect('ai_engine:report_card_detail', report_card_id=card.id)
+    force = request.POST.get('force') == '1'
+    try:
+        ok, _ = ReportCommentService.generate_single(card, request.user, comment_type, force=force)
+        if ok:
+            messages.success(request, f'{comment_type.title()} comment generated successfully.')
+        else:
+            messages.info(request, 'The existing manual comment was preserved.')
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    return redirect('ai_engine:report_card_detail', report_card_id=card.id)
+
+
+@login_required
+@require_POST
+def regenerate_report_card_narrative(request, report_card_id):
+    card = get_object_or_404(ReportCard, id=report_card_id, school=_school(request))
+    if not _can_edit(request.user, card):
+        messages.error(request, 'You do not have permission to regenerate this report card.')
+        return redirect('ai_engine:report_card_detail', report_card_id=card.id)
+    ReportCardBatchService.regenerate_single(card)
+    messages.success(request, 'Report card recalculated and AI narrative refreshed.')
+    return redirect('ai_engine:report_card_detail', report_card_id=card.id)
+
+
+@login_required
+@require_POST
+def finalize_report_card(request, report_card_id):
+    if not role_allows(request.user, 'reports', 'approve'):
+        messages.error(request, 'Only authorized academic administrators can finalize report cards.')
+        return redirect('ai_engine:report_card_detail', report_card_id=report_card_id)
+    card = get_object_or_404(ReportCard, id=report_card_id, school=_school(request))
+    ReportCardBatchService.finalize(card, request.user)
+    # Phase 1C: notify linked parent/student immediately when an individual
+    # report card is finalized. This complements the bulk release pipeline.
+    try:
+        from ai_engine.services.report_card_release import ReportCardReleaseService
+        ReportCardReleaseService.notify_released_card(card)
+    except Exception:
+        # Notification failure must never undo a successful academic finalization.
+        pass
+    messages.success(request, 'Report card finalized and locked.')
+    return redirect('ai_engine:report_card_detail', report_card_id=card.id)
+
+
+@login_required
+@require_POST
+def unfinalize_report_card(request, report_card_id):
+    if not role_allows(request.user, 'reports', 'approve'):
+        messages.error(request, 'Only authorized administrators can unlock a report card.')
+        return redirect('ai_engine:report_card_detail', report_card_id=report_card_id)
+    card = get_object_or_404(ReportCard, id=report_card_id, school=_school(request))
+    card.is_finalized, card.finalized_by, card.finalized_at = False, None, None
+    card.save(update_fields=['is_finalized', 'finalized_by', 'finalized_at'])
+    messages.success(request, 'Report card unlocked for editing.')
+    return redirect('ai_engine:report_card_detail', report_card_id=card.id)
+@login_required
+@require_POST
+def release_all_report_cards(request):
+    """Run the full enterprise report-card release pipeline."""
+    if not role_allows(request.user, 'reports', 'approve'):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+    from ai_engine.models import ReportCardReleaseBatch
+    from ai_engine.services.report_card_release import ReportCardReleaseService
+    school = request.user.school
+    term_id = request.POST.get('term_id')
+    term = get_object_or_404(AcademicTerm, id=term_id, academic_year__school=school)
+    batch = ReportCardReleaseBatch.objects.create(
+        school=school, academic_term=term, triggered_by=request.user,
+        auto_finalize=True, email_parents=True, generate_print_pack=True,
+    )
+    ReportCardReleaseService.run(batch, user=request.user)
+
+    # Also synchronize notifications for cards that were already finalized
+    # before this release run (for example, cards finalized individually).
+    # This makes the Notification Center complete without requiring users to
+    # unlock and re-finalize an already released report card.
+    try:
+        released_cards = ReportCard.objects.filter(
+            school=school, academic_term=term, is_finalized=True
+        ).select_related('student__user', 'student__parent')
+        for card in released_cards:
+            ReportCardReleaseService.notify_released_card(card)
+    except Exception:
+        pass
+
+    if batch.status == 'COMPLETE':
+        messages.success(request, f'Report-card release completed: {batch.finalized_count} finalized, {batch.emailed_count} emailed, {batch.print_pack_count} print pages generated.')
+    elif batch.status == 'PARTIAL':
+        messages.warning(request, f'Report-card release completed with {batch.blocked_count} blocked card(s). Review the release details before publishing.')
+    else:
+        messages.error(request, batch.error_message or 'Report-card release failed.')
+    return redirect('ai_engine:report_card_dashboard')
+
+
+@login_required
+def email_health_dashboard(request):
+    """SMTP health test and report-card delivery monitoring dashboard."""
+    if not role_allows(request.user, 'reports', 'view'):
+        messages.error(request, "You don't have permission to view email health.")
+        return redirect('dashboard')
+    school = _school(request)
+    from ai_engine.models import EmailHealthCheck, ReportCardReleaseBatch, ReportCardDelivery
+    checks = EmailHealthCheck.objects.filter(school=school).select_related('tested_by')[:10]
+    releases = ReportCardReleaseBatch.objects.filter(school=school).prefetch_related('deliveries')[:10]
+    deliveries = (ReportCardDelivery.objects.filter(release_batch__school=school)
+                  .select_related('release_batch', 'report_card__student__user')
+                  .order_by('-created_at')[:50])
+    stats = {
+        'sent': ReportCardDelivery.objects.filter(release_batch__school=school, status='SENT').count(),
+        'failed': ReportCardDelivery.objects.filter(release_batch__school=school, status='FAILED').count(),
+        'pending': ReportCardDelivery.objects.filter(release_batch__school=school, status='PENDING').count(),
+        'skipped': ReportCardDelivery.objects.filter(release_batch__school=school, status='SKIPPED').count(),
+    }
+    return render(request, 'ai_engine/email_health_dashboard.html', {
+        'checks': checks, 'releases': releases, 'deliveries': deliveries, 'stats': stats,
+        'default_recipient': request.user.email or '',
+    })
+
+
+@login_required
+@require_POST
+def run_email_health_test(request):
+    if not role_allows(request.user, 'reports', 'approve'):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+    from ai_engine.services.email_monitoring import EmailMonitoringService
+    recipient = (request.POST.get('recipient') or request.user.email or '').strip()
+    if not recipient:
+        return JsonResponse({'success': False, 'error': 'Enter a test recipient email address.'}, status=400)
+    check = EmailMonitoringService.test(_school(request), request.user, recipient)
+    return JsonResponse({
+        'success': check.success, 'message': check.message,
+        'connection_verified': check.connection_verified, 'duration_ms': check.duration_ms,
+        'created_at': timezone.localtime(check.created_at).strftime('%Y-%m-%d %H:%M:%S'),
+    }, status=200 if check.success else 500)
+
+
+@login_required
+@require_POST
+def retry_report_card_delivery(request, delivery_id):
+    if not role_allows(request.user, 'reports', 'approve'):
+        return JsonResponse({'success': False, 'error': 'Permission denied.'}, status=403)
+    from ai_engine.models import ReportCardDelivery
+    from ai_engine.services.email_monitoring import EmailMonitoringService
+    delivery = get_object_or_404(ReportCardDelivery.objects.select_related('release_batch', 'report_card'), id=delivery_id, release_batch__school=_school(request))
+    if delivery.status == 'SENT':
+        return JsonResponse({'success': True, 'status': 'SENT', 'message': 'This report card has already been sent.'})
+    # A manual retry starts a fresh bounded retry cycle after automatic retries
+    # have been exhausted. This avoids silently exceeding the configured limit.
+    from django.conf import settings
+    max_retries = max(1, int(getattr(settings, 'REPORT_CARD_EMAIL_MAX_RETRIES', 3)))
+    if delivery.retry_count >= max_retries:
+        delivery.retry_count = 0
+        delivery.next_retry_at = None
+        delivery.status = 'PENDING'
+        delivery.save(update_fields=['retry_count', 'next_retry_at', 'status'])
+    result = EmailMonitoringService.send_report_card_delivery(delivery)
+    EmailMonitoringService.refresh_batch_counts(delivery.release_batch)
+    return JsonResponse({'success': result == 'SENT', 'status': result, 'message': delivery.error_message or 'Report-card email sent successfully.'})

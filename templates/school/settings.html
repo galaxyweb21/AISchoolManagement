@@ -1,0 +1,224 @@
+{% extends 'base/base.html' %}
+
+{% block page_title %}Institution Control Panel{% endblock %}
+
+{% block content %}
+<style>
+    .text-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .bg-gold-soft {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+    }
+    .bg-teal-soft {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+    }
+    .text-teal {
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+    .btn-gold {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .btn-gold:hover {
+        background-color: #7a5917 !important;
+        border-color: #7a5917 !important;
+        color: #fff !important;
+    }
+    .btn-outline-gold {
+        color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+    }
+    .btn-outline-gold:hover {
+        background-color: var(--eduai-gold, #946B1C) !important;
+        border-color: var(--eduai-gold, #946B1C) !important;
+        color: #fff !important;
+    }
+    .badge-gold {
+        background-color: var(--eduai-gold-soft, rgba(148, 107, 28, 0.16)) !important;
+        color: var(--eduai-gold, #946B1C) !important;
+    }
+    .badge-teal {
+        background-color: var(--eduai-signal-soft, rgba(44, 122, 109, 0.16)) !important;
+        color: var(--eduai-signal, #2C7A6D) !important;
+    }
+</style>
+
+<!-- ============================================================ -->
+<!-- MESSAGES DISPLAY -->
+<!-- ============================================================ -->
+
+<div class="container-fluid px-4" id="messagesContainer">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'success' %}success{% else %}info{% endif %} border-0 shadow-sm rounded-4 alert-dismissible fade show mt-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi
+                    {% if message.tags == 'error' %}bi-exclamation-circle-fill text-danger
+                    {% elif message.tags == 'warning' %}bi-exclamation-triangle-fill text-warning
+                    {% elif message.tags == 'success' %}bi-check-circle-fill text-success
+                    {% else %}bi-info-circle-fill text-info{% endif %}
+                    fs-5
+                "></i>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<ul class="nav nav-tabs mb-4" id="settingsTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-semibold" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
+            <i class="bi bi-sliders me-2 text-gold"></i>General Profile
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold" id="calendar-tab" data-bs-toggle="tab" data-bs-target="#calendar" type="button" role="tab">
+            <i class="bi bi-calendar3 me-2 text-gold"></i>Academic Calendar
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="settingsTabContent">
+    <div class="tab-pane fade show active" id="general" role="tabpanel">
+        <div class="card card-custom border-0 shadow-sm rounded-4">
+            <div class="p-4">
+                <h5 class="fw-bold mb-4"><i class="bi bi-building me-2 text-gold"></i>School Profile Metadata</h5>
+                <form method="POST" action="">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_school_info">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Institution Name</label>
+                            <input type="text" name="name" class="form-control" value="{{ school.name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Allocated Subdomain Prefix</label>
+                            <input type="text" class="form-control bg-light" value="{{ school.subdomain }}" readonly disabled>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Administrative Email</label>
+                            <input type="email" name="contact_email" class="form-control" value="{{ school.contact_email }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Support Contact Line</label>
+                            <input type="text" name="phone_number" class="form-control" value="{{ school.phone_number }}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Registered Address</label>
+                            <textarea name="address" class="form-control" rows="3" required>{{ school.address }}</textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-end">
+                        <button type="submit" class="btn btn-gold px-4">Save Profile Configuration</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="calendar" role="tabpanel">
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card card-custom border-0 shadow-sm rounded-4">
+                    <div class="p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0"><i class="bi bi-calendar-event me-2 text-gold"></i>System Calendars</h5>
+                        </div>
+                        <div class="list-group list-group-flush">
+                            {% for yr in academic_years %}
+                                <div class="list-group-item py-3 px-0 border-bottom bg-transparent">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div>
+                                            <h6 class="mb-0 fw-bold">{{ yr.name }}</h6>
+                                            <small class="text-muted">{{ yr.start_date }} to {{ yr.end_date }}</small>
+                                        </div>
+                                        {% if yr.is_active %}
+                                            <span class="badge badge-teal border border-success-subtle px-2.5 py-1.5 rounded-pill">Active Ledger Year</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-secondary border px-2.5 py-1.5 rounded-pill">Inactive</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <div class="text-center py-5 text-muted">
+                                    <i class="bi bi-calendar-x fs-1 d-block mb-2 text-secondary"></i>
+                                    No Academic Calendars configured yet.
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card card-custom border-0 shadow-sm rounded-4">
+                    <div class="p-4">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-2 text-gold"></i>Add Academic Year</h6>
+                        <form method="POST" action="">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_academic_year">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Year Title</label>
+                                <input type="text" name="year_name" class="form-control" placeholder="e.g. 2026/2027 Year" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Start Date</label>
+                                <input type="date" name="start_date" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">End Date</label>
+                                <input type="date" name="end_date" class="form-control" required>
+                            </div>
+                            <div class="form-check form-switch mb-4">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="activeSwitch">
+                                <label class="form-check-label fw-semibold text-muted" for="activeSwitch">Set as Active Year</label>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-outline-gold">Create Year</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-dismiss alerts after 5 seconds
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+
+    // Tab persistence
+    const tabTrigger = document.querySelectorAll('#settingsTab button');
+    tabTrigger.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const tabId = this.getAttribute('data-bs-target');
+            localStorage.setItem('activeSettingsTab', tabId);
+        });
+    });
+
+    // Restore active tab
+    const activeTab = localStorage.getItem('activeSettingsTab');
+    if (activeTab) {
+        const tabBtn = document.querySelector(`#settingsTab button[data-bs-target="${activeTab}"]`);
+        if (tabBtn) {
+            const tab = new bootstrap.Tab(tabBtn);
+            tab.show();
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,317 @@
+{% extends 'base/base.html' %}
+{% block page_title %}{{ exam.title }} | Online Examination{% endblock %}
+{% block content %}
+<style>
+  .onex-header{position:relative;display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:1.25rem;margin:0 0 1.5rem;padding:clamp(1.25rem,2.5vw,2rem);border:1px solid rgba(148,107,28,.2);border-radius:1.35rem;background:linear-gradient(125deg,rgba(148,107,28,.10),rgba(44,122,109,.055) 58%,var(--bs-body-bg));box-shadow:0 12px 32px rgba(24,32,28,.045);overflow:hidden}
+  .onex-header:after{content:"";position:absolute;right:-55px;top:-85px;width:220px;height:220px;border:1px solid rgba(148,107,28,.14);border-radius:50%;box-shadow:0 0 0 24px rgba(148,107,28,.025),0 0 0 48px rgba(148,107,28,.02);pointer-events:none}
+  .onex-header>*{position:relative;z-index:1}.onex-eyebrow{font-size:.7rem;font-weight:850;letter-spacing:.15em;color:var(--eduai-gold,#946B1C)}
+  .onex-header h1{font-size:clamp(1.45rem,2.5vw,2.05rem);font-weight:800;letter-spacing:-.035em;line-height:1.2;overflow-wrap:anywhere}
+  .onex-panel{background:var(--bs-body-bg);border:1px solid var(--bs-border-color);border-radius:1.1rem;box-shadow:0 7px 24px rgba(24,32,28,.045);overflow:hidden}
+  .onex-panel-header{padding:1.15rem 1.35rem;border-bottom:1px solid var(--bs-border-color);background:linear-gradient(90deg,rgba(148,107,28,.045),transparent 70%)}
+  .onex-panel-header h2{font-weight:780;letter-spacing:-.02em}.onex-panel-body{padding:clamp(1rem,2vw,1.5rem)}
+  .onex-stat{position:relative;height:100%;padding:1.15rem 1.2rem;border:1px solid var(--bs-border-color);border-radius:1rem;background:var(--bs-body-bg);box-shadow:0 5px 16px rgba(24,32,28,.025);overflow:hidden}
+  .onex-stat:after{content:"";position:absolute;right:-17px;bottom:-24px;width:82px;height:82px;border-radius:50%;background:rgba(44,122,109,.055)}
+  .onex-stat-label{display:block;color:var(--bs-secondary-color);font-size:.76rem;font-weight:700;letter-spacing:.035em;margin-bottom:.5rem;text-transform:uppercase}
+  .onex-stat-value{position:relative;z-index:1;font-size:clamp(1.35rem,2.2vw,1.8rem);font-weight:820;letter-spacing:-.04em;line-height:1.2}
+  .onex-question{border:1px solid var(--bs-border-color);border-radius:1rem;overflow:hidden;background:var(--bs-body-bg);transition:border-color .18s ease,box-shadow .18s ease}
+  .onex-question:hover{border-color:rgba(148,107,28,.42);box-shadow:0 8px 22px rgba(24,32,28,.045)}
+  .onex-question-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1.05rem 1.2rem;background:var(--bs-tertiary-bg);border-bottom:1px solid var(--bs-border-color)}
+  .onex-question-body{padding:clamp(1rem,2vw,1.35rem)}
+  .onex-option{display:flex;gap:.6rem;align-items:flex-start;padding:.65rem .8rem;border:1px solid var(--bs-border-color);border-radius:.7rem;margin:.4rem 0;background:var(--bs-body-bg);overflow-wrap:anywhere}
+  .onex-answer{padding:.9rem 1rem;border:1px solid rgba(44,122,109,.17);border-left:4px solid var(--eduai-signal,#2C7A6D);background:rgba(44,122,109,.055);border-radius:.65rem;margin-top:.9rem;overflow-wrap:anywhere}
+  .onex-btn-primary{background:var(--eduai-gold,#946B1C);border-color:var(--eduai-gold,#946B1C);color:#fff;font-weight:700;box-shadow:0 4px 10px rgba(148,107,28,.13)}
+  .onex-btn-primary:hover,.onex-btn-primary:focus{background:#785717;border-color:#785717;color:#fff;transform:translateY(-1px)}
+  .onex-muted{color:var(--bs-secondary-color)}.onex-form-label{font-size:.82rem;font-weight:750;letter-spacing:.01em;margin-bottom:.45rem}
+  .onex-panel .form-control,.onex-panel .form-select{min-height:43px;border-radius:.7rem;border-color:var(--bs-border-color);background-color:var(--bs-body-bg);box-shadow:none}
+  .onex-panel textarea.form-control{min-height:unset;line-height:1.55;resize:vertical}
+  .onex-panel .form-control:focus,.onex-panel .form-select:focus{border-color:var(--eduai-signal,#2C7A6D);box-shadow:0 0 0 .2rem rgba(44,122,109,.12)}
+  .onex-panel .btn{border-radius:.68rem;font-weight:650;transition:transform .16s ease,box-shadow .16s ease}
+  .onex-section-kicker{font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--eduai-signal,#2C7A6D)}
+  .onex-ai-panel{border-color:rgba(148,107,28,.28)}.onex-ai-panel .onex-panel-header{background:linear-gradient(110deg,rgba(148,107,28,.12),rgba(44,122,109,.055))}
+  .onex-ai-icon{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:15px;background:rgba(148,107,28,.13);color:var(--eduai-gold,#946B1C)}
+  .onex-empty{border:1px dashed var(--bs-border-color);border-radius:1rem;background:var(--bs-tertiary-bg)}
+  .onex-form-divider{height:1px;background:var(--bs-border-color);margin:1.4rem 0}
+  .onex-table-wrap{border-radius:0 0 1rem 1rem;overflow:hidden}.onex-table-wrap .table{--bs-table-bg:transparent}.onex-table-wrap thead th{font-size:.73rem;letter-spacing:.055em;text-transform:uppercase;color:var(--bs-secondary-color);font-weight:800;background:var(--bs-tertiary-bg);white-space:nowrap}
+  @media(min-width:1200px){.onex-ai-panel{position:relative}.onex-panel-header{padding:1.25rem 1.5rem}}
+  @media(max-width:575.98px){.onex-header{border-radius:1rem}.onex-panel-body{padding:1rem}.onex-question-head{flex-direction:column}.onex-question-actions{display:flex;flex-wrap:wrap;gap:.45rem;width:100%}.onex-question-actions form{flex:1}.onex-question-actions .btn{width:100%}.onex-header .btn{width:100%}.onex-header form{width:100%}.onex-header form .btn{width:100%}}
+
+/* Phase 11: cohesive enterprise authoring visual system */
+.onex-header{background:linear-gradient(125deg,#fbf8ef 0%,#f7f8f4 58%,#edf5f1 100%)!important;border:1px solid #e5dfcf!important;border-radius:22px!important;box-shadow:0 10px 30px rgba(32,41,35,.055)!important;padding:clamp(1.35rem,3vw,2.2rem)!important}
+.onex-header h1{color:#25332b!important;font-size:clamp(1.6rem,2.7vw,2.3rem)!important;letter-spacing:-.045em!important}
+.onex-eyebrow,.onex-section-kicker{color:#946b1c!important}.onex-panel{border:1px solid #e2e7e1!important;border-radius:17px!important;box-shadow:0 5px 22px rgba(28,39,31,.045)!important;background:var(--bs-body-bg,#fff)!important}.onex-panel-header{padding:1.2rem 1.4rem!important;background:#f8f8f4!important;border-bottom:1px solid #e6eae4!important}.onex-panel-header h2{color:#29372f!important;font-weight:800!important;letter-spacing:-.025em!important}.onex-panel-body{padding:clamp(1rem,2.2vw,1.55rem)!important}
+.onex-stat{border:1px solid #e3e8e2!important;border-radius:15px!important;box-shadow:0 4px 15px rgba(25,35,28,.035)!important;padding:1.2rem!important}.onex-stat-label{color:#778179!important;letter-spacing:.075em!important;font-size:.7rem!important}.onex-stat-value{color:#26362d!important;font-size:1.85rem!important}.onex-question{border:1px solid #e1e7e0!important;border-radius:15px!important;box-shadow:0 3px 13px rgba(28,39,31,.025)!important;margin-bottom:1rem!important}.onex-question:hover{border-color:#c9d9ce!important;box-shadow:0 8px 22px rgba(28,39,31,.06)!important}.onex-question-head{padding:1.05rem 1.25rem!important;background:#f7f8f5!important;border-bottom:1px solid #e5eae4!important}.onex-question-head .fw-bold{color:#28362e!important;font-size:.98rem!important}.onex-question-body{padding:clamp(1rem,2vw,1.45rem)!important}.onex-question-preview>.fw-semibold{font-size:1.02rem!important;line-height:1.7!important;color:#28362e!important}.onex-option{padding:.78rem .9rem!important;border-color:#e3e8e2!important;border-radius:10px!important;background:#fff!important;line-height:1.5!important}.onex-answer{border:1px solid #cfe3d9!important;border-left:4px solid #2c7a6d!important;background:#f0f7f3!important;border-radius:10px!important;padding:1rem 1.05rem!important;color:#28483c!important}.onex-ai-panel{border-color:#e6dcc5!important}.onex-ai-panel .onex-panel-header{background:linear-gradient(100deg,#faf5e9,#f2f7f3)!important}.onex-ai-icon{background:#f0e7d3!important;color:#946b1c!important;border-radius:14px!important}.onex-btn-primary{background:#946b1c!important;border-color:#946b1c!important;color:#fff!important;border-radius:10px!important;font-weight:750!important;padding:.68rem 1rem!important}.onex-btn-primary:hover{background:#785717!important;border-color:#785717!important}.onex-panel .btn{border-radius:9px!important;font-weight:700!important;padding:.58rem .82rem}.onex-panel .btn-outline-secondary{border-color:#d6dfd7!important;color:#526159!important;background:#fff!important}.onex-panel .btn-outline-secondary:hover{background:#edf5f0!important;color:#276b59!important;border-color:#c2d8cb!important}.onex-panel .btn-outline-warning{color:#805a15!important;border-color:#e2c98e!important;background:#fffaf0!important}.onex-panel .btn-outline-danger{color:#a23b3b!important;border-color:#e9caca!important;background:#fff8f8!important}.onex-panel .form-control,.onex-panel .form-select{min-height:44px!important;border-radius:10px!important;border-color:#dce3dc!important;padding:.65rem .8rem!important}.onex-panel textarea.form-control{line-height:1.6!important}.onex-panel .form-control:focus,.onex-panel .form-select:focus{border-color:#2c7a6d!important;box-shadow:0 0 0 .22rem rgba(44,122,109,.12)!important}.onex-muted{color:#748078!important}.onex-empty{background:#fafbf8!important;border-color:#dbe4db!important;padding:2rem!important}.onex-header .badge{border-radius:30px!important;padding:.5rem .7rem!important;font-weight:700!important}
+@media(max-width:767.98px){.onex-header{border-radius:16px!important}.onex-header .d-flex{width:100%}.onex-header .btn,.onex-header form{width:100%}.onex-question-head{align-items:stretch!important}.onex-question-actions{display:flex;gap:.45rem;flex-wrap:wrap}.onex-question-actions form{display:inline-flex!important;flex:1}.onex-question-actions .btn{width:100%;white-space:nowrap}.onex-panel-header{padding:1rem!important}}
+@media(prefers-color-scheme:dark){.onex-header{background:linear-gradient(125deg,#25251f,#202b26)!important;border-color:#3b453d!important}.onex-header h1,.onex-panel-header h2,.onex-question-head .fw-bold,.onex-question-preview>.fw-semibold,.onex-stat-value{color:var(--bs-body-color)!important}.onex-panel-header,.onex-question-head{background:var(--bs-tertiary-bg)!important;border-color:var(--bs-border-color)!important}.onex-panel,.onex-stat,.onex-question{border-color:var(--bs-border-color)!important}.onex-option{background:var(--bs-body-bg)!important;border-color:var(--bs-border-color)!important}.onex-answer{background:rgba(44,122,109,.12)!important;color:var(--bs-body-color)!important;border-color:rgba(44,122,109,.35)!important}.onex-ai-panel .onex-panel-header{background:var(--bs-tertiary-bg)!important}.onex-panel .btn-outline-secondary{background:var(--bs-body-bg)!important;color:var(--bs-body-color)!important}}
+
+/* Phase 12: explicit app-theme dark palette; does not depend on OS preference */
+html[data-bs-theme="dark"] .onex-header,[data-bs-theme="dark"] .onex-header,body.dark-mode .onex-header,.dark-mode .onex-header,.theme-dark .onex-header {background:linear-gradient(125deg,#242820 0%,#202925 60%,#1c2c27 100%)!important;border-color:#414a3d!important;box-shadow:0 10px 30px rgba(0,0,0,.2)!important}
+html[data-bs-theme="dark"] .onex-header h1,[data-bs-theme="dark"] .onex-header h1,body.dark-mode .onex-header h1,.dark-mode .onex-header h1,.theme-dark .onex-header h1,
+html[data-bs-theme="dark"] .onex-panel-header h2,[data-bs-theme="dark"] .onex-panel-header h2,body.dark-mode .onex-panel-header h2,.dark-mode .onex-panel-header h2,.theme-dark .onex-panel-header h2,
+html[data-bs-theme="dark"] .onex-question-head .fw-bold,[data-bs-theme="dark"] .onex-question-head .fw-bold,body.dark-mode .onex-question-head .fw-bold,.dark-mode .onex-question-head .fw-bold,.theme-dark .onex-question-head .fw-bold,
+html[data-bs-theme="dark"] .onex-question-preview>.fw-semibold,[data-bs-theme="dark"] .onex-question-preview>.fw-semibold,body.dark-mode .onex-question-preview>.fw-semibold,.dark-mode .onex-question-preview>.fw-semibold,.theme-dark .onex-question-preview>.fw-semibold,
+html[data-bs-theme="dark"] .onex-stat-value,[data-bs-theme="dark"] .onex-stat-value,body.dark-mode .onex-stat-value,.dark-mode .onex-stat-value,.theme-dark .onex-stat-value {color:#edf2ed!important}
+html[data-bs-theme="dark"] .onex-panel,[data-bs-theme="dark"] .onex-panel,body.dark-mode .onex-panel,.dark-mode .onex-panel,.theme-dark .onex-panel,
+html[data-bs-theme="dark"] .onex-stat,[data-bs-theme="dark"] .onex-stat,body.dark-mode .onex-stat,.dark-mode .onex-stat,.theme-dark .onex-stat,
+html[data-bs-theme="dark"] .onex-question,[data-bs-theme="dark"] .onex-question,body.dark-mode .onex-question,.dark-mode .onex-question,.theme-dark .onex-question {background:#202522!important;border-color:#3a453d!important;color:#e4ebe5!important;box-shadow:0 5px 20px rgba(0,0,0,.16)!important}
+html[data-bs-theme="dark"] .onex-panel-header,[data-bs-theme="dark"] .onex-panel-header,body.dark-mode .onex-panel-header,.dark-mode .onex-panel-header,.theme-dark .onex-panel-header,
+html[data-bs-theme="dark"] .onex-question-head,[data-bs-theme="dark"] .onex-question-head,body.dark-mode .onex-question-head,.dark-mode .onex-question-head,.theme-dark .onex-question-head {background:#292f2b!important;border-color:#3b453e!important}
+html[data-bs-theme="dark"] .onex-option,[data-bs-theme="dark"] .onex-option,body.dark-mode .onex-option,.dark-mode .onex-option,.theme-dark .onex-option {background:#191e1b!important;border-color:#3b463e!important;color:#e2e9e3!important}
+html[data-bs-theme="dark"] .onex-answer,[data-bs-theme="dark"] .onex-answer,body.dark-mode .onex-answer,.dark-mode .onex-answer,.theme-dark .onex-answer {background:#1c332a!important;border-color:#365b49!important;border-left-color:#55b39a!important;color:#d7eee2!important}
+html[data-bs-theme="dark"] .onex-ai-panel .onex-panel-header,[data-bs-theme="dark"] .onex-ai-panel .onex-panel-header,body.dark-mode .onex-ai-panel .onex-panel-header,.dark-mode .onex-ai-panel .onex-panel-header,.theme-dark .onex-ai-panel .onex-panel-header {background:linear-gradient(100deg,#302b20,#202e28)!important}
+html[data-bs-theme="dark"] .onex-ai-icon,[data-bs-theme="dark"] .onex-ai-icon,body.dark-mode .onex-ai-icon,.dark-mode .onex-ai-icon,.theme-dark .onex-ai-icon {background:#403722!important;color:#f0d28a!important}
+html[data-bs-theme="dark"] .onex-muted,[data-bs-theme="dark"] .onex-muted,body.dark-mode .onex-muted,.dark-mode .onex-muted,.theme-dark .onex-muted,
+html[data-bs-theme="dark"] .onex-stat-label,[data-bs-theme="dark"] .onex-stat-label,body.dark-mode .onex-stat-label,.dark-mode .onex-stat-label,.theme-dark .onex-stat-label {color:#b0bcb3!important}
+html[data-bs-theme="dark"] .onex-panel .form-control,[data-bs-theme="dark"] .onex-panel .form-control,body.dark-mode .onex-panel .form-control,.dark-mode .onex-panel .form-control,.theme-dark .onex-panel .form-control,
+html[data-bs-theme="dark"] .onex-panel .form-select,[data-bs-theme="dark"] .onex-panel .form-select,body.dark-mode .onex-panel .form-select,.dark-mode .onex-panel .form-select,.theme-dark .onex-panel .form-select {background-color:#191e1b!important;color:#e5ece6!important;border-color:#465149!important;color-scheme:dark}
+html[data-bs-theme="dark"] .onex-panel .form-control::placeholder,[data-bs-theme="dark"] .onex-panel .form-control::placeholder,body.dark-mode .onex-panel .form-control::placeholder,.dark-mode .onex-panel .form-control::placeholder,.theme-dark .onex-panel .form-control::placeholder {color:#8f9b92!important}
+html[data-bs-theme="dark"] .onex-panel .btn-outline-secondary,[data-bs-theme="dark"] .onex-panel .btn-outline-secondary,body.dark-mode .onex-panel .btn-outline-secondary,.dark-mode .onex-panel .btn-outline-secondary,.theme-dark .onex-panel .btn-outline-secondary {background:#252c27!important;color:#d8e1da!important;border-color:#4a564d!important}
+html[data-bs-theme="dark"] .onex-panel .btn-outline-warning,[data-bs-theme="dark"] .onex-panel .btn-outline-warning,body.dark-mode .onex-panel .btn-outline-warning,.dark-mode .onex-panel .btn-outline-warning,.theme-dark .onex-panel .btn-outline-warning {background:#342c1d!important;color:#f0d28a!important;border-color:#725c32!important}
+html[data-bs-theme="dark"] .onex-panel .btn-outline-danger,[data-bs-theme="dark"] .onex-panel .btn-outline-danger,body.dark-mode .onex-panel .btn-outline-danger,.dark-mode .onex-panel .btn-outline-danger,.theme-dark .onex-panel .btn-outline-danger {background:#382323!important;color:#f0b9b9!important;border-color:#704343!important}
+html[data-bs-theme="dark"] .onex-empty,[data-bs-theme="dark"] .onex-empty,body.dark-mode .onex-empty,.dark-mode .onex-empty,.theme-dark .onex-empty {background:#242b26!important;border-color:#46554a!important;color:#e3ebe4!important}
+html[data-bs-theme="dark"] .onex-table-wrap .table,[data-bs-theme="dark"] .onex-table-wrap .table,body.dark-mode .onex-table-wrap .table,.dark-mode .onex-table-wrap .table,.theme-dark .onex-table-wrap .table {--bs-table-color:#e2e9e3;--bs-table-bg:transparent;--bs-table-border-color:#39443d}
+
+
+.onex-neutral-badge{background:var(--onex-surface-2,#f2f4f1)!important;color:var(--onex-text,#26332b)!important;border:1px solid var(--onex-border,#dce3dc)!important}
+html[data-bs-theme="dark"] .onex-neutral-badge,body.dark-mode .onex-neutral-badge,.dark-mode .onex-neutral-badge,.theme-dark .onex-neutral-badge{background:#2b332d!important;color:#e6eee7!important;border-color:#465249!important}
+.onex-edit-form[hidden],.onex-question-preview[hidden]{display:none!important}
+.onex-question-actions{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center}
+.onex-question-actions form{margin:0}
+.onex-edit-form{padding:1rem;margin:.25rem 0 0;border:1px solid var(--onex-border,#dce3dc);border-radius:1rem;background:var(--onex-surface-2,#f6f8f5)}
+html[data-bs-theme="dark"] .onex-edit-form,body.dark-mode .onex-edit-form,.dark-mode .onex-edit-form,.theme-dark .onex-edit-form{background:#191e1b!important;border-color:#3b463e!important}
+.onex-edit-form .form-text{color:var(--onex-muted,#66746a)}
+html[data-bs-theme="dark"] .onex-edit-form .form-text,body.dark-mode .onex-edit-form .form-text,.dark-mode .onex-edit-form .form-text,.theme-dark .onex-edit-form .form-text{color:#aab7ad!important}
+</style>
+
+<div class="onex-header">
+  <div>
+    <a class="small text-decoration-none" href="{% url 'online_exams:exam_list' %}"><i class="bi bi-arrow-left me-1"></i>All examinations</a>
+    <div class="onex-eyebrow mt-3">ONLINE EXAM AUTHORING</div>
+    <h1 class="h3 mt-1 mb-2">{{ exam.title }}</h1>
+    <p class="onex-muted mb-2">{{ exam.school_class.name }} · {{ exam.subject.name }} · {{ exam.academic_term }}{% if exam.topic %} · {{ exam.topic }}{% endif %}</p>
+    <div class="d-flex flex-wrap gap-2">
+      <span class="badge {% if exam.status == 'PUBLISHED' %}text-bg-success{% elif exam.status == 'CLOSED' %}text-bg-secondary{% else %}text-bg-warning{% endif %}">{{ exam.get_status_display }}</span>
+      <span class="badge {% if exam.student_access_enabled %}text-bg-info{% else %}text-bg-secondary{% endif %}">{% if exam.student_access_enabled %}Online student access enabled{% else %}Staff-managed only{% endif %}</span>
+      <span class="badge onex-neutral-badge"><i class="bi bi-calendar-event me-1"></i>{{ exam.opens_at|date:'d M Y, H:i' }} – {{ exam.closes_at|date:'d M Y, H:i' }}</span>
+    </div>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if exam.status == 'CLOSED' %}<a class="btn btn-outline-secondary" href="{% url 'online_exams:exam_analytics' exam.pk %}"><i class="bi bi-bar-chart-line me-1"></i>Performance analytics</a>{% endif %}
+    {% if exam.status == 'DRAFT' %}
+      <a class="btn btn-outline-secondary" href="{% url 'online_exams:exam_edit' exam.pk %}"><i class="bi bi-gear me-1"></i>Exam settings</a>
+      <form method="post" action="{% url 'online_exams:exam_publish' exam.pk %}">{% csrf_token %}<button class="btn onex-btn-primary" type="submit" {% if not exam.questions.exists %}disabled{% endif %}><i class="bi bi-send me-1"></i>Publish examination</button></form>
+    {% elif exam.status == 'PUBLISHED' %}
+      <form method="post" action="{% url 'online_exams:exam_close' exam.pk %}">{% csrf_token %}<button class="btn btn-outline-danger" type="submit" onclick="return confirm('Close this examination? Active attempts will be finalized.')">Close examination</button></form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3"><div class="onex-stat"><span class="onex-stat-label">Questions</span><div class="onex-stat-value">{{ exam.questions.count }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="onex-stat"><span class="onex-stat-label">Total marks</span><div class="onex-stat-value">{{ exam.total_marks }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="onex-stat"><span class="onex-stat-label">Duration</span><div class="onex-stat-value">{{ exam.duration_minutes }} <small class="fs-6 fw-normal">min</small></div></div></div>
+  <div class="col-6 col-xl-3"><div class="onex-stat"><span class="onex-stat-label">Student attempts</span><div class="onex-stat-value">{{ attempt_total }}</div><div class="small onex-muted mt-1">{{ graded_count }} fully graded</div></div></div>
+</div>
+
+{% if can_edit_questions %}
+<section class="onex-panel onex-ai-panel mb-4">
+  <div class="onex-panel-header d-flex align-items-start gap-3">
+    <div class="onex-ai-icon"><i class="bi bi-stars fs-4"></i></div>
+    <div><h2 class="h5 mb-1">AI question generator</h2><p class="small onex-muted mb-0">Uses the same curriculum-aware AI service as the AI Exam Generator. Generated questions are saved as drafts for review.</p></div>
+  </div>
+  <div class="onex-panel-body">
+    <form method="post" class="row g-3" onsubmit="const b=this.querySelector('button[type=submit]');if(b){b.disabled=true;b.dataset.label=b.innerHTML;b.innerHTML='<span class=&quot;spinner-border spinner-border-sm me-2&quot;></span>Generating…';}">
+      {% csrf_token %}<input type="hidden" name="action" value="generate_ai_questions">
+      <div class="col-12 col-md-4"><label class="form-label onex-form-label" for="aiQuestionCount">Number of questions to add</label><select class="form-select" id="aiQuestionCount" name="num_questions"><option value="3">3 questions</option><option value="5" selected>5 questions</option><option value="10">10 questions</option><option value="15">15 questions</option><option value="20">20 questions</option></select></div>
+      <div class="col-12 col-md-4"><label class="form-label onex-form-label" for="aiDifficulty">Difficulty</label><select class="form-select" id="aiDifficulty" name="difficulty"><option value="EASY">Easy</option><option value="MEDIUM" selected>Medium</option><option value="HARD">Hard</option></select></div>
+      <div class="col-12"><span class="form-label onex-form-label d-block">Question types</span><div class="d-flex flex-wrap gap-3 mt-2">
+        <div class="form-check"><input class="form-check-input" type="checkbox" name="question_types" value="MCQ" id="aiTypeMCQ" checked><label class="form-check-label" for="aiTypeMCQ">Multiple choice</label></div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" name="question_types" value="TRUE_FALSE" id="aiTypeTF"><label class="form-check-label" for="aiTypeTF">True / False</label></div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" name="question_types" value="SHORT_ANSWER" id="aiTypeShort"><label class="form-check-label" for="aiTypeShort">Short answer</label></div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" name="question_types" value="ESSAY" id="aiTypeEssay"><label class="form-check-label" for="aiTypeEssay">Essay</label></div>
+      </div></div>
+      <div class="col-12"><div class="alert alert-info py-2 small mb-0"><i class="bi bi-info-circle me-1"></i><strong>Generate questions</strong> appends new questions without removing existing ones. Use “Regenerate all” below only when you intend to replace the current draft question set.</div></div>
+      <div class="col-12 d-flex flex-wrap justify-content-end gap-2"><button class="btn onex-btn-primary" type="submit"><i class="bi bi-stars me-1"></i>Generate questions</button></div>
+    </form>
+    {% if exam.questions.exists %}
+    <hr class="my-4">
+    <form method="post" class="row g-3 align-items-end" onsubmit="return confirm('Replace every current question with newly generated questions? Your current question text, answer keys, options and marks will be replaced. This cannot be undone.');">
+      {% csrf_token %}<input type="hidden" name="action" value="regenerate_all_questions">
+      <div class="col-12 col-md-5"><label class="form-label onex-form-label" for="regenerateAllDifficulty">Replacement difficulty</label><select class="form-select" id="regenerateAllDifficulty" name="difficulty"><option value="EASY">Easy</option><option value="MEDIUM" selected>Medium</option><option value="HARD">Hard</option></select></div>
+      <div class="col-12 col-md-7 d-flex justify-content-md-end"><button class="btn btn-outline-warning" type="submit"><i class="bi bi-arrow-repeat me-1"></i>Regenerate all {{ exam.questions.count }} questions</button></div>
+      <div class="col-12 small onex-muted">The system keeps the question count and attempts to retain the existing question-type mix. Review all replacements before publishing.</div>
+    </form>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+<section class="onex-panel mb-4">
+  <div class="onex-panel-header d-flex flex-wrap justify-content-between align-items-center gap-2"><div><h2 class="h5 mb-1">Question bank</h2><p class="small onex-muted mb-0">Edit question text, answer options, correct answers / marking guides and marks. Answer keys are visible to authorized staff only.</p></div><span class="badge onex-neutral-badge">{{ exam.questions.count }} questions · {{ exam.total_marks }} marks</span></div>
+  <div class="onex-panel-body">
+    {% for question in exam.questions.all %}
+    <article class="onex-question mb-3">
+      <div class="onex-question-head">
+        <div class="flex-grow-1"><div class="fw-bold mb-1">Question {{ question.order }} <span class="badge text-bg-secondary ms-1">{{ question.get_question_type_display }}</span> <span class="badge text-bg-light border text-dark ms-1">{{ question.marks }} mark{{ question.marks|pluralize }}</span></div><div class="onex-muted small">Review the question below, then use Edit to change its wording, answers or marks.</div></div>
+        {% if can_edit_questions %}<div class="onex-question-actions">
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-toggle-question-edit="{{ question.pk }}"><i class="bi bi-pencil-square me-1"></i>Edit</button>
+          <form method="post" action="{% url 'online_exams:question_regenerate' exam.pk question.pk %}" class="d-inline" onsubmit="return confirm('Regenerate question {{ question.order }}? Its current wording, options, answer key and marks will be replaced.');">{% csrf_token %}<input type="hidden" name="difficulty" value="MEDIUM"><button class="btn btn-sm btn-outline-secondary" type="submit" title="Regenerate this question"><i class="bi bi-arrow-clockwise me-1"></i>Regenerate</button></form>
+          <form method="post" action="{% url 'online_exams:question_delete' exam.pk question.pk %}" class="d-inline" onsubmit="return confirm('Delete question {{ question.order }}?');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit" title="Delete question"><i class="bi bi-trash me-1"></i>Delete</button></form>
+        </div>{% endif %}
+      </div>
+      <div class="onex-question-body">
+        {% if can_edit_questions %}
+        <div class="onex-question-preview mb-3" id="preview_{{ question.pk }}">
+          <div class="fw-semibold mb-2">{{ question.question_text|linebreaksbr }}</div>
+          {% if question.question_type == 'MCQ' %}<div class="row g-2">{% for option in question.options %}<div class="col-12 col-md-6"><div class="onex-option mb-0"><span class="onex-muted fw-bold">{{ forloop.counter }}.</span><span>{{ option }}</span></div></div>{% endfor %}</div>{% elif question.question_type == 'TRUE_FALSE' %}<div class="d-flex flex-wrap gap-2"><span class="badge rounded-pill onex-neutral-badge px-3 py-2">True</span><span class="badge rounded-pill onex-neutral-badge px-3 py-2">False</span></div>{% else %}<div class="small onex-muted">{{ question.get_question_type_display }} response</div>{% endif %}
+          <div class="onex-answer"><div class="small text-uppercase fw-bold onex-section-kicker">{% if question.question_type == 'ESSAY' %}Marking guide{% else %}Correct / model answer{% endif %}</div><div class="mt-1">{{ question.correct_answer|default:'No answer key entered yet.'|linebreaksbr }}</div></div>
+        </div>
+        <form method="post" action="{% url 'online_exams:question_update' exam.pk question.pk %}" class="row g-3 onex-edit-form" id="edit_{{ question.pk }}" hidden>
+          {% csrf_token %}
+          <div class="col-12 col-md-4"><label class="form-label onex-form-label" for="type_{{ question.pk }}">Question type</label><select class="form-select" id="type_{{ question.pk }}" name="question_type"><option value="MCQ" {% if question.question_type == 'MCQ' %}selected{% endif %}>Multiple choice</option><option value="TRUE_FALSE" {% if question.question_type == 'TRUE_FALSE' %}selected{% endif %}>True / False</option><option value="SHORT_ANSWER" {% if question.question_type == 'SHORT_ANSWER' %}selected{% endif %}>Short answer</option><option value="ESSAY" {% if question.question_type == 'ESSAY' %}selected{% endif %}>Essay</option></select></div>
+          <div class="col-12"><label class="form-label onex-form-label" for="text_{{ question.pk }}">Question text</label><textarea class="form-control" id="text_{{ question.pk }}" name="question_text" rows="3" required>{{ question.question_text }}</textarea></div>
+          <div class="col-12 col-lg-6"><label class="form-label onex-form-label" for="options_{{ question.pk }}">Possible answers / options</label><textarea class="form-control font-monospace" id="options_{{ question.pk }}" name="options_text" rows="4" placeholder="Enter one answer option per line">{% for option in question.options %}{{ option }}{% if not forloop.last %}
+{% endif %}{% endfor %}</textarea><div class="form-text">For multiple choice, enter one option per line. True / False options are managed automatically.</div></div>
+          <div class="col-12 col-lg-6"><label class="form-label onex-form-label" for="answer_{{ question.pk }}">{% if question.question_type == 'ESSAY' %}Marking guide / expected points{% else %}Correct answer / model answer{% endif %}</label><textarea class="form-control" id="answer_{{ question.pk }}" name="correct_answer" rows="4" placeholder="Enter the correct answer or marking guide">{{ question.correct_answer }}</textarea><div class="form-text">This answer key is private and is never displayed to students during the exam.</div></div>
+          <div class="col-12 col-sm-4 col-md-3"><label class="form-label onex-form-label" for="marks_{{ question.pk }}">Marks</label><input class="form-control" type="number" id="marks_{{ question.pk }}" name="marks" min="1" max="100" value="{{ question.marks }}" required></div>
+          <div class="col-12 d-flex flex-wrap align-items-end justify-content-end gap-2"><button class="btn btn-outline-secondary" type="button" data-cancel-question-edit="{{ question.pk }}">Cancel</button><button class="btn onex-btn-primary" type="submit"><i class="bi bi-check2-circle me-1"></i>Save question</button></div>
+        </form>
+        {% else %}
+          <p class="fw-semibold">{{ question.question_text }}</p>
+          {% if question.question_type == 'MCQ' %}<div class="mt-2">{% for option in question.options %}<div class="onex-option">{{ forloop.counter|add:0 }}. {{ option }}</div>{% endfor %}</div>{% elif question.question_type == 'TRUE_FALSE' %}<div class="onex-option">True</div><div class="onex-option">False</div>{% endif %}
+          <div class="onex-answer"><strong>{% if question.question_type == 'ESSAY' %}Marking guide{% else %}Correct / model answer{% endif %}:</strong><div class="mt-1">{{ question.correct_answer|linebreaksbr }}</div></div>
+          <div class="small onex-muted mt-2">Marks: {{ question.marks }}</div>
+        {% endif %}
+      </div>
+    </article>
+    {% empty %}<div class="onex-empty text-center py-5 px-3"><i class="bi bi-ui-checks-grid fs-1 onex-muted"></i><h3 class="h6 mt-3">No questions yet</h3><p class="onex-muted mb-0">Generate questions with AI or add your first question manually below.</p></div>{% endfor %}
+  </div>
+</section>
+
+{% if can_edit_questions %}
+<section class="onex-panel mb-4">
+  <div class="onex-panel-header"><h2 class="h5 mb-1"><i class="bi bi-plus-circle me-2" style="color:var(--eduai-gold,#946B1C)"></i>Add a question manually</h2><p class="small onex-muted mb-0">Create your own multiple-choice, True / False, short-answer or essay question, with answer key and marks.</p></div>
+  <div class="onex-panel-body">
+    <form method="post" class="row g-3">{% csrf_token %}<input type="hidden" name="action" value="add_question">
+      {% for field in question_form %}<div class="col-12 {% if field.name == 'question_text' or field.name == 'options_text' or field.name == 'correct_answer' %}col-lg-6{% else %}col-md-6 col-lg-4{% endif %}"><label class="form-label onex-form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}
+      <div class="col-12 d-flex justify-content-end"><button class="btn onex-btn-primary" type="submit"><i class="bi bi-plus-lg me-1"></i>Add question</button></div>
+    </form>
+  </div>
+</section>
+{% endif %}
+
+<section class="onex-panel mb-4">
+  <div class="onex-panel-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div><h2 class="h5 mb-1">Teacher gradebook &amp; student attempts</h2><p class="small onex-muted mb-0">Review written responses, track grading progress and release results only when every submitted attempt is graded.</p></div>
+    {% if exam.results_released %}<span class="badge text-bg-success">Results released</span>
+    {% elif can_release_results %}<form method="post" action="{% url 'online_exams:exam_release_results' exam.pk %}" onsubmit="return confirm('Release results to students? Their marks and answer review will become visible according to the student result permissions.');">{% csrf_token %}<button class="btn onex-btn-primary" type="submit"><i class="bi bi-megaphone me-1"></i>Release results</button></form>
+    {% elif exam.status == 'CLOSED' %}<button class="btn btn-outline-secondary" type="button" disabled title="Complete the release checklist below first"><i class="bi bi-lock me-1"></i>Release results</button>
+    {% else %}<span class="small onex-muted">Close the exam before releasing results.</span>{% endif %}
+  </div>
+  <div class="onex-panel-body border-bottom">
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-lg-3"><div class="border rounded-3 p-3 h-100"><div class="small onex-muted">Submitted / expired</div><div class="fs-4 fw-bold">{{ submitted_count }}</div></div></div>
+      <div class="col-6 col-lg-3"><div class="border rounded-3 p-3 h-100"><div class="small onex-muted">Fully graded</div><div class="fs-4 fw-bold text-success">{{ graded_count }}</div></div></div>
+      <div class="col-6 col-lg-3"><div class="border rounded-3 p-3 h-100"><div class="small onex-muted">Awaiting review</div><div class="fs-4 fw-bold {% if pending_review_count %}text-warning-emphasis{% endif %}">{{ pending_review_count }}</div></div></div>
+      <div class="col-6 col-lg-3"><div class="border rounded-3 p-3 h-100"><div class="small onex-muted">Still in progress</div><div class="fs-4 fw-bold">{{ in_progress_count }}</div></div></div>
+    </div>
+    {% if exam.status == 'CLOSED' and not exam.results_released %}
+    <div class="rounded-3 border p-3">
+      <h3 class="h6 mb-2"><i class="bi bi-shield-check me-2"></i>Results release checklist</h3>
+      <div class="d-flex flex-column gap-2 small">
+        <div>{% if exam.status == 'CLOSED' %}<i class="bi bi-check-circle-fill text-success me-2"></i>{% else %}<i class="bi bi-circle text-muted me-2"></i>{% endif %}Examination is closed</div>
+        <div>{% if attempt_total > 0 %}<i class="bi bi-check-circle-fill text-success me-2"></i>{% else %}<i class="bi bi-circle text-muted me-2"></i>{% endif %}At least one student attempt exists ({{ attempt_total }})</div>
+        <div>{% if in_progress_count == 0 %}<i class="bi bi-check-circle-fill text-success me-2"></i>{% else %}<i class="bi bi-exclamation-circle-fill text-warning me-2"></i>{% endif %}No attempts remain in progress ({{ in_progress_count }} remaining)</div>
+        <div>{% if pending_review_count == 0 and submitted_count > 0 %}<i class="bi bi-check-circle-fill text-success me-2"></i>{% else %}<i class="bi bi-exclamation-circle-fill text-warning me-2"></i>{% endif %}All submitted attempts are fully graded ({{ pending_review_count }} awaiting review)</div>
+      </div>
+      {% if not can_release_results %}<p class="small onex-muted mt-3 mb-0">Finish the outstanding items before releasing results. The server independently validates these requirements when you submit.</p>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="onex-panel-body border-bottom">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-12 col-md-5"><label class="form-label small" for="gradeFilter">Grading status</label><select class="form-select" id="gradeFilter" name="grading"><option value="ALL" {% if grading_filter == 'ALL' %}selected{% endif %}>All grading statuses</option><option value="PENDING" {% if grading_filter == 'PENDING' %}selected{% endif %}>Pending</option><option value="REVIEW_REQUIRED" {% if grading_filter == 'REVIEW_REQUIRED' %}selected{% endif %}>Teacher review required</option><option value="GRADED" {% if grading_filter == 'GRADED' %}selected{% endif %}>Graded</option></select></div>
+      <div class="col-12 col-md-5"><label class="form-label small" for="attemptStatusFilter">Attempt status</label><select class="form-select" id="attemptStatusFilter" name="attempt_status"><option value="ALL" {% if status_filter == 'ALL' %}selected{% endif %}>All attempt statuses</option><option value="IN_PROGRESS" {% if status_filter == 'IN_PROGRESS' %}selected{% endif %}>In progress</option><option value="SUBMITTED" {% if status_filter == 'SUBMITTED' %}selected{% endif %}>Submitted</option><option value="EXPIRED" {% if status_filter == 'EXPIRED' %}selected{% endif %}>Expired</option></select></div>
+      <div class="col-12 col-md-2 d-flex gap-2"><button class="btn btn-outline-secondary flex-grow-1" type="submit">Filter</button><a class="btn btn-outline-secondary" href="{% url 'online_exams:exam_detail' exam.pk %}" title="Clear filters"><i class="bi bi-arrow-counterclockwise"></i></a></div>
+    </form>
+  </div>
+  <div class="onex-panel-body d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+    <div><div class="fw-semibold">Bulk review completion</div><div class="small onex-muted">Select submitted attempts whose written-response marks are already entered. Incomplete or invalid attempts are safely skipped.</div></div>
+    <a class="btn btn-outline-secondary" href="{% url 'online_exams:exam_gradebook_csv' exam.pk %}"><i class="bi bi-filetype-csv me-1"></i>Download gradebook CSV</a>
+  </div>
+  <form method="post" action="{% url 'online_exams:exam_bulk_finalize_reviews' exam.pk %}" onsubmit="return confirm('Finalize grading for the selected eligible attempts? Attempts with missing written marks will be skipped.');">
+    {% csrf_token %}
+    <div class="onex-panel-body border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2"><label class="small d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input" id="selectAllAttempts"> Select all visible attempts</label><button class="btn onex-btn-primary" type="submit"><i class="bi bi-check2-all me-1"></i>Finalize selected ready reviews</button></div>
+  <div class="table-responsive onex-table-wrap"><table class="table table-hover align-middle mb-0"><thead><tr><th>Select</th><th>Student</th><th>Submitted</th><th>Attempt</th><th>Grading</th><th>Score</th><th></th></tr></thead><tbody>
+  {% for attempt in attempts %}<tr><td>{% if attempt.status != 'IN_PROGRESS' and attempt.grading_status != 'GRADED' and not exam.results_released %}<input class="form-check-input attempt-select" type="checkbox" name="attempt_ids" value="{{ attempt.pk }}" aria-label="Select {{ attempt.student.user.get_full_name|default:attempt.student.user.username }}">{% else %}<span class="text-muted">—</span>{% endif %}</td><td><div class="fw-semibold">{{ attempt.student.user.get_full_name|default:attempt.student.user.username }}</div><div class="small onex-muted">{{ attempt.student.user.username }}</div></td><td>{% if attempt.submitted_at %}{{ attempt.submitted_at|date:'d M Y, H:i' }}{% else %}<span class="onex-muted">Not submitted</span>{% endif %}</td><td><span class="badge {% if attempt.status == 'IN_PROGRESS' %}text-bg-info{% else %}text-bg-secondary{% endif %}">{{ attempt.get_status_display }}</span></td><td><span class="badge {% if attempt.grading_status == 'GRADED' %}text-bg-success{% elif attempt.grading_status == 'REVIEW_REQUIRED' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ attempt.get_grading_status_display }}</span></td><td>{% if attempt.status != 'IN_PROGRESS' %}{{ attempt.score_awarded }} / {{ attempt.total_marks }}{% else %}—{% endif %}</td><td class="text-end">{% if attempt.status != 'IN_PROGRESS' %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'online_exams:attempt_review' exam.pk attempt.pk %}">{% if attempt.grading_status == 'GRADED' %}View / edit review{% else %}Review / grade{% endif %}</a>{% else %}<span class="small onex-muted">Awaiting submission</span>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="7" class="text-center onex-muted py-4">No attempts match these filters.</td></tr>{% endfor %}
+  </tbody></table></div>
+  </form>
+  {% if attempt_page.paginator.num_pages > 1 %}<div class="onex-panel-body d-flex flex-wrap justify-content-between align-items-center gap-2"><span class="small onex-muted">Page {{ attempt_page.number }} of {{ attempt_page.paginator.num_pages }} · {{ attempt_page.paginator.count }} matching attempt(s)</span><nav aria-label="Attempt pages"><ul class="pagination pagination-sm mb-0">{% if attempt_page.has_previous %}<li class="page-item"><a class="page-link" href="?grading={{ grading_filter }}&amp;attempt_status={{ status_filter }}&amp;page={{ attempt_page.previous_page_number }}">Previous</a></li>{% endif %}{% if attempt_page.has_next %}<li class="page-item"><a class="page-link" href="?grading={{ grading_filter }}&amp;attempt_status={{ status_filter }}&amp;page={{ attempt_page.next_page_number }}">Next</a></li>{% endif %}</ul></nav></div>{% endif %}
+</section>
+
+<section class="onex-panel">
+  <div class="onex-panel-body d-flex flex-wrap justify-content-between align-items-center gap-3"><div><h2 class="h5 mb-1">Assessment Gradebook integration</h2><p class="small onex-muted mb-0">Export reviewed results after the exam is closed, all attempts are graded and results are released. Exporting again updates the linked assessment record.</p>{% if exam.assessment_record %}<div class="small text-success mt-2"><i class="bi bi-check-circle me-1"></i>Exported to: {{ exam.assessment_record.title }} · maximum {{ exam.assessment_record.max_score }} marks</div>{% endif %}</div>{% if can_export_results %}<form method="post" action="{% url 'online_exams:exam_export_results' exam.pk %}" onsubmit="return confirm('Export the released, reviewed results to the existing Assessment Gradebook?');">{% csrf_token %}<button type="submit" class="btn onex-btn-primary"><i class="bi bi-box-arrow-in-down me-1"></i>{% if exam.assessment_record %}Update Gradebook results{% else %}Export to Gradebook{% endif %}</button></form>{% elif exam.assessment_record %}<span class="badge text-bg-success">Gradebook linked</span>{% else %}<span class="small onex-muted">Available after the exam is closed, fully graded and results are released.</span>{% endif %}</div>
+</section>
+<script>
+(function () {
+  'use strict';
+  function syncQuestionFields(form) {
+    const type = form.querySelector('[name="question_type"]');
+    if (!type) return;
+    const options = form.querySelector('[name="options_text"]');
+    const optionsWrap = options ? options.closest('.col-12') : null;
+    const answer = form.querySelector('[name="correct_answer"]');
+    const answerLabel = answer && form.querySelector('label[for="' + answer.id + '"]');
+    const optionHelp = optionsWrap && optionsWrap.querySelector('.form-text');
+    const kind = type.value;
+    if (optionsWrap) optionsWrap.hidden = kind !== 'MCQ';
+    if (optionHelp) optionHelp.textContent = kind === 'MCQ' ? 'Enter one option per line. The correct answer must exactly match one option.' : 'Options are only used for multiple-choice questions.';
+    if (answerLabel) answerLabel.textContent = kind === 'ESSAY' ? 'Marking guide / expected points' : (kind === 'SHORT_ANSWER' ? 'Model answer' : 'Correct answer');
+    if (kind === 'TRUE_FALSE' && answer && !['True', 'False'].includes(answer.value)) answer.value = '';
+  }
+  const selectAll = document.getElementById('selectAllAttempts');
+  if (selectAll) selectAll.addEventListener('change', function () { document.querySelectorAll('.attempt-select').forEach(function (box) { box.checked = selectAll.checked; }); });
+  document.querySelectorAll('[data-toggle-question-edit]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const id = button.getAttribute('data-toggle-question-edit');
+      const form = document.getElementById('edit_' + id);
+      const preview = document.getElementById('preview_' + id);
+      if (!form) return;
+      const opening = form.hidden;
+      form.hidden = !opening;
+      if (preview) preview.hidden = opening;
+      button.innerHTML = opening ? '<i class="bi bi-x-lg me-1"></i>Close editor' : '<i class="bi bi-pencil-square me-1"></i>Edit';
+      if (opening) { syncQuestionFields(form); const field = form.querySelector('[name="question_text"]'); if (field) field.focus(); }
+    });
+  });
+  document.querySelectorAll('[data-cancel-question-edit]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const id = button.getAttribute('data-cancel-question-edit');
+      const form = document.getElementById('edit_' + id);
+      const preview = document.getElementById('preview_' + id);
+      if (form) { form.reset(); form.hidden = true; syncQuestionFields(form); }
+      if (preview) preview.hidden = false;
+      const toggle = document.querySelector('[data-toggle-question-edit="' + id + '"]');
+      if (toggle) toggle.innerHTML = '<i class="bi bi-pencil-square me-1"></i>Edit';
+    });
+  });
+  document.querySelectorAll('form').forEach(function (form) {
+    if (form.querySelector('[name="question_type"]') && form.querySelector('[name="options_text"]')) {
+      syncQuestionFields(form);
+      form.querySelector('[name="question_type"]').addEventListener('change', function () { syncQuestionFields(form); });
+    }
+    form.addEventListener('submit', function () {
+      const button = form.querySelector('button[type="submit"]');
+      if (!button || button.dataset.loading === '1') return;
+      const action = form.querySelector('input[name="action"]');
+      const isGeneration = (action && ['generate_ai_questions', 'regenerate_all_questions'].includes(action.value)) || /\/regenerate\//.test(form.action);
+      if (isGeneration) {
+        button.dataset.loading = '1'; button.disabled = true;
+        button.dataset.originalHtml = button.innerHTML;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Working…';
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

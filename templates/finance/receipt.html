@@ -1,0 +1,309 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Receipt {{ payment.receipt_number }}</title>
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 12px;
+            color: #333333;
+            margin: 30px;
+        }
+        table { border-collapse: collapse; width: 100%; }
+        .header-table td { vertical-align: top; }
+        .school-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #946B1C;
+            margin: 0 0 4px 0;
+        }
+        .school-meta {
+            font-size: 11px;
+            color: #666666;
+            line-height: 1.5;
+        }
+        .logo-cell { width: 70px; }
+        .logo-cell img { width: 60px; height: 60px; }
+        .receipt-tag {
+            text-align: right;
+            font-size: 11px;
+            color: #666666;
+        }
+        .title-bar {
+            margin-top: 18px;
+            padding: 10px 14px;
+            background-color: #2C7A6D;
+            color: #ffffff;
+        }
+        .title-bar .title {
+            font-size: 15px;
+            font-weight: bold;
+        }
+        .title-bar .receipt-no {
+            font-size: 12px;
+            text-align: right;
+        }
+        .info-table {
+            margin-top: 18px;
+        }
+        .info-table td {
+            width: 50%;
+            vertical-align: top;
+            padding: 4px 0;
+        }
+        .info-block-title {
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #946B1C;
+            border-bottom: 1px solid #dddddd;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+        }
+        .info-row td {
+            padding: 2px 8px 2px 0;
+            font-size: 12px;
+        }
+        .info-row .label {
+            color: #666666;
+            width: 120px;
+        }
+        .details-table {
+            margin-top: 22px;
+            border: 1px solid #dddddd;
+        }
+        .details-table th {
+            background-color: #f4f1ea;
+            color: #333333;
+            text-align: left;
+            padding: 8px 10px;
+            font-size: 11px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #dddddd;
+        }
+        .details-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eeeeee;
+            font-size: 12px;
+        }
+        .summary-table {
+            margin-top: 14px;
+            width: 55%;
+            margin-left: 45%;
+        }
+        .summary-table td {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        .summary-table .label { color: #666666; }
+        .summary-table .value { text-align: right; }
+        .summary-table .total-row td {
+            border-top: 2px solid #333333;
+            font-weight: bold;
+            font-size: 13px;
+            padding-top: 8px;
+        }
+        .balance-paid { color: #2C7A6D; }
+        .balance-due { color: #b02a37; }
+        .footer-note {
+            margin-top: 40px;
+            font-size: 10px;
+            color: #999999;
+            text-align: center;
+            border-top: 1px solid #dddddd;
+            padding-top: 10px;
+        }
+        .signature-table {
+            margin-top: 50px;
+        }
+        .signature-table td {
+            width: 50%;
+            text-align: center;
+            font-size: 11px;
+            color: #666666;
+        }
+        .signature-line {
+            border-top: 1px solid #999999;
+            margin: 0 30px 6px 30px;
+        }
+        .no-print { margin-top: 24px; }
+        .no-print .btn {
+            display: inline-block;
+            padding: 9px 18px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 13px;
+            margin-right: 8px;
+            border: 1px solid #946B1C;
+            color: #946B1C;
+            background: #ffffff;
+            cursor: pointer;
+        }
+        .no-print .btn-solid {
+            background: #946B1C;
+            color: #ffffff;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <table class="header-table">
+        <tr>
+            {% if school.logo %}
+            <td class="logo-cell"><img src="{{ school.logo.url }}" alt="{{ school.name }}"></td>
+            {% endif %}
+            <td>
+                <div class="school-name">{{ school.name }}</div>
+                <div class="school-meta">
+                    {{ school.address }}<br>
+                    {{ school.phone_number }} &nbsp;|&nbsp; {{ school.contact_email }}
+                </div>
+            </td>
+            <td class="receipt-tag">
+                Original Receipt<br>
+                {{ payment.paid_at|date:"d M Y, H:i" }}
+            </td>
+        </tr>
+    </table>
+
+    <table class="title-bar">
+        <tr>
+            <td class="title">PAYMENT RECEIPT</td>
+            <td class="receipt-no">Receipt No: <strong>{{ payment.receipt_number }}</strong></td>
+        </tr>
+    </table>
+
+    <table class="info-table">
+        <tr>
+            <td>
+                <div class="info-block-title">Student</div>
+                <table>
+                    <tr class="info-row"><td class="label">Name</td><td>{{ student.user.get_full_name }}</td></tr>
+                    <tr class="info-row"><td class="label">Admission No.</td><td>{{ student.admission_number }}</td></tr>
+                    <tr class="info-row"><td class="label">Class</td><td>{{ student.school_class.name|default:"—" }}</td></tr>
+                </table>
+            </td>
+            <td>
+                <div class="info-block-title">Invoice</div>
+                <table>
+                    <tr class="info-row"><td class="label">Invoice No.</td><td>{{ invoice.invoice_number }}</td></tr>
+                    <tr class="info-row"><td class="label">Academic Term</td><td>{{ invoice.academic_term.name|default:"—" }}</td></tr>
+                    <tr class="info-row"><td class="label">Due Date</td><td>{{ invoice.due_date|date:"d M Y" }}</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <table class="details-table">
+        <tr>
+            <th>Description</th>
+            <th>Payment Method</th>
+            <th>Reference</th>
+            <th>Recorded By</th>
+        </tr>
+        <tr>
+            <td>Payment towards {{ invoice.invoice_number }}</td>
+            <td>{{ payment.get_method_display }}</td>
+            <td>{{ payment.reference_number|default:"—" }}</td>
+            <td>{{ payment.recorded_by.get_full_name|default:"—" }}</td>
+        </tr>
+    </table>
+
+    <table class="summary-table">
+        <tr><td class="label">Invoice Total</td><td class="value">GH&cent; {{ total_amount|floatformat:2 }}</td></tr>
+        <tr><td class="label">Previously Paid</td><td class="value">GH&cent; {{ amount_paid_before|floatformat:2 }}</td></tr>
+        <tr><td class="label balance-paid">Amount Paid (this receipt)</td><td class="value balance-paid">GH&cent; {{ payment.amount|floatformat:2 }}</td></tr>
+        <tr class="total-row">
+            <td class="label {% if balance_due > 0 %}balance-due{% else %}balance-paid{% endif %}">Balance Due</td>
+            <td class="value {% if balance_due > 0 %}balance-due{% else %}balance-paid{% endif %}">GH&cent; {{ balance_due|floatformat:2 }}</td>
+        </tr>
+    </table>
+
+    <table class="signature-table">
+        <tr>
+            <td><div class="signature-line"></div>Received By</td>
+            <td><div class="signature-line"></div>Authorized Signature</td>
+        </tr>
+    </table>
+
+    <div class="footer-note">
+        This is a system-generated receipt from {{ school.name }}. Please retain it for your records.
+    </div>
+
+    {% if not is_pdf %}
+    <div class="no-print">
+        <button type="button" class="btn btn-solid" onclick="window.print()">Print Receipt</button>
+        <a class="btn" href="{% url 'finance:payment_receipt_pdf' payment.id %}">Download PDF</a>
+        {% if can_manage %}
+        <button type="button" class="btn" id="resendReceiptBtn" data-payment-id="{{ payment.id }}">Resend to Parent</button>
+        <button type="button" class="btn" id="emailReceiptBtn" data-payment-id="{{ payment.id }}">Email Receipt to Parent</button>
+        {% endif %}
+        <span id="resendStatus" style="margin-left:10px; font-size:12px;"></span>
+    </div>
+
+    <script>
+    (function() {
+        var status = document.getElementById('resendStatus');
+        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')
+            ? document.querySelector('[name=csrfmiddlewaretoken]').value
+            : (document.cookie.match(/csrftoken=([^;]+)/) || [])[1];
+
+        function wireButton(btnId, url, onSuccessText) {
+            var btn = document.getElementById(btnId);
+            if (!btn) return;
+            btn.addEventListener('click', function() {
+                var paymentId = btn.getAttribute('data-payment-id');
+
+                btn.disabled = true;
+                status.style.color = '#666';
+                status.textContent = 'Sending...';
+
+                fetch(url.replace('__ID__', paymentId), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    btn.disabled = false;
+                    if (data.success) {
+                        status.style.color = '#2C7A6D';
+                        status.textContent = onSuccessText(data);
+                    } else {
+                        status.style.color = '#b02a37';
+                        status.textContent = data.error || 'Could not send receipt.';
+                    }
+                })
+                .catch(function() {
+                    btn.disabled = false;
+                    status.style.color = '#b02a37';
+                    status.textContent = 'Network error. Please try again.';
+                });
+            });
+        }
+
+        wireButton('resendReceiptBtn', '/finance/api/receipts/__ID__/resend/', function(data) {
+            var parts = [];
+            if (data.email_sent) parts.push('email');
+            if (data.sms_sent) parts.push('SMS');
+            return 'Sent via ' + (parts.join(' & ') || 'notification') + '.';
+        });
+
+        wireButton('emailReceiptBtn', '/finance/api/receipts/__ID__/email/', function() {
+            return 'Receipt emailed to parent.';
+        });
+    })();
+    </script>
+    {% endif %}
+
+    {% csrf_token %}
+</body>
+</html>
