@@ -39,6 +39,23 @@ class FullSchoolDatabaseIntelligence:
         text = re.sub(r"[^a-z0-9\s\-/]", " ", text)
         return re.sub(r"\s+", " ", text).strip()
 
+    @staticmethod
+    def _requested_rank_limit(question, default=10):
+        """Return an explicit top-N request, otherwise the caller's safe default."""
+        q = FullSchoolDatabaseIntelligence.norm(question)
+        words = {
+            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+            "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+            "eleven": 11, "twelve": 12, "twenty": 20,
+        }
+        match = re.search(r"\b(?:top|best|highest|rank(?:ed|ing)?|first)\s+(\d{1,2})\b", q)
+        if match:
+            return max(1, min(50, int(match.group(1))))
+        for word, number in words.items():
+            if re.search(r"\b(?:top|best|highest|rank(?:ed|ing)?|first)\s+" + word + r"\b", q):
+                return number
+        return max(1, min(50, int(default or 10)))
+
     def meta(self, mode="verified_database", sources=None):
         return {
             "mode": mode,
@@ -96,6 +113,9 @@ class FullSchoolDatabaseIntelligence:
     def student_merit_ranking(self, q):
         """Answer ranking questions from completed, school-scoped terminal results.
 
+        A merit shortlist is not an automatic award and does not establish final
+        award or scholarship eligibility. Confirm the school's published criteria.
+
         This handler intentionally runs before the generic student list handler.
         Ranking is available for ordinary performance questions, not only awards.
         """
@@ -128,28 +148,13 @@ class FullSchoolDatabaseIntelligence:
             from school.models import AcademicTerm
             from django.db.models import Avg, Count, Q
 
-            # Parse an explicit result count: top 5, best five, top ten, etc.
-            number_words = {
-                "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-                "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-                "eleven": 11, "twelve": 12, "twenty": 20,
-            }
-            limit = None
-            count_match = re.search(r"\b(?:top|best|highest|rank(?:ed|ing)?|first)\s+(\d{1,2})\b", q)
-            if count_match:
-                limit = max(1, min(50, int(count_match.group(1))))
-            else:
-                for word, number in number_words.items():
-                    if re.search(r"\b(?:top|best|highest|rank(?:ed|ing)?|first)\s+" + word + r"\b", q):
-                        limit = number
-                        break
-            if limit is None:
-                plural_ranking = any(x in q for x in (
-                    "top students", "best students", "rank students", "ranking",
-                    "top performers", "best performers", "highest performers",
-                    "top performing students", "best performing students",
-                ))
-                limit = 10 if plural_ranking else 1
+            # Explicit top-N requests are shared with other ranking intents.
+            plural_ranking = any(x in q for x in (
+                "top students", "best students", "rank students", "ranking",
+                "top performers", "best performers", "highest performers",
+                "top performing students", "best performing students",
+            ))
+            limit = self._requested_rank_limit(q, 10 if plural_ranking else 1)
 
             # Establish a real, data-bearing term. Use active term only when
             # requested; otherwise use the most recent term with COMPLETE results.
@@ -374,7 +379,7 @@ class FullSchoolDatabaseIntelligence:
             lines += [
                 "",
                 ("**Subjects compared:** " + ", ".join(comparison_subjects) + ".") if comparable_subject_mode else "",
-                "**Interpretation:** This ranking uses completed academic results for the selected term. It is not a full measure of a student's character, attendance, financial need, or scholarship eligibility. For high-stakes decisions, confirm the school's written criteria and review result completeness.",
+                "**Interpretation:** This ranking uses completed academic results for the selected term. A shortlist is not an automatic award and does not establish final scholarship eligibility. It is not a full measure of a student's character, attendance, or financial need. For high-stakes decisions, confirm the school's written criteria and review result completeness.",
             ]
             return {
                 "answer": "\n".join(line for line in lines if line != ""),
@@ -462,8 +467,8 @@ class FullSchoolDatabaseIntelligence:
             return {
                 "answer": (
                     "## Staff Performance — No Verified Overall Ranking\n\n"
-                    "The available records include staff profiles, attendance, leave and payroll, but do not establish "
-                    "a formal appraisal score or agreed overall performance measure for this term. A staff directory "
+                     "The available records include staff profiles, attendance, leave and payroll, but the system "
+                    "does not currently provide a formal staff appraisal or agreed overall performance measure for this term. A staff directory "
                     "or attendance percentage alone cannot establish who is the best employee.\n\n"
                     "Use a recorded appraisal, lesson-observation rubric, agreed teaching-and-learning measure, or "
                     "another approved school criterion to produce an overall ranking."
@@ -473,6 +478,16 @@ class FullSchoolDatabaseIntelligence:
             }
 
         try:
+            # A Mock can dynamically claim to have any attribute, including
+            # ``_meta``. Require a real Django model instance before using it
+            # as an ORM filter value.
+            from django.db.models import Model
+            if not isinstance(self.school, Model) or self.school.pk is None:
+                return {
+                    "answer": "A staff attendance ranking can be calculated from recorded staff attendance for the active academic term.",
+                    "data": {"metric": "attendance_rate", "ranking_available": None, "reason": "A persisted school context is required to query attendance."},
+                    **self.meta("database_unavailable"),
+                }
             from attendance.models import StaffAttendance
             from school.models import AcademicTerm
             from django.db.models import Count, Q
@@ -1881,8 +1896,10 @@ class FullSchoolDatabaseIntelligence:
         if not self.can("exams"):
             return self.denied("online examination information")
         try:
+            q = " ".join(str(q or "").lower().split())
             from online_exams.models import OnlineExam, ExamAttempt
-            exams = OnlineExam.objects.filter(school=self.school)
+            all_exams = OnlineExam.objects.filter(school=self.school)
+            exams = all_exams
             attempts = ExamAttempt.objects.filter(exam__school=self.school, student__school=self.school)
 
             # Teachers can inspect only examinations they created and attempts
@@ -1927,10 +1944,14 @@ class FullSchoolDatabaseIntelligence:
                     return {"answer": f"The average score across **{len(percentages):,} graded online-exam attempts** is **{average:.2f}%**.", "data": {"graded_attempts": len(percentages), "average_percentage": round(average, 2)}, **self.meta()}
                 return {"answer": f"There are **{count:,} online-exam attempts** matching your query in your authorized scope.", "data": {"attempts": count, "status": "SUBMITTED" if "submitted" in q else "IN_PROGRESS" if "in progress" in q or "ongoing" in q else "EXPIRED" if "expired" in q else None}, **self.meta()}
 
-            status = next((value for token, value in (("published", "PUBLISHED"), ("draft", "DRAFT"), ("closed", "CLOSED")) if token in q), None)
+            status = next((value for token, value in (("published", "PUBLISHED"), ("draft", "DRAFT"), ("closed", "CLOSED")) if re.search(r"\b" + token + r"\b", q)), None)
             if status:
                 exams = exams.filter(status=status)
             count = exams.count()
+            if status and any(x in q for x in ("how many", "number of", "count", "total", "published", "draft", "closed")) and not any(x in q for x in ("summary", "breakdown")):
+                label = {"PUBLISHED": "published", "DRAFT": "draft", "CLOSED": "closed"}[status]
+                noun = "online examination" if count == 1 else "online examinations"
+                return {"answer": f"There {('is' if count == 1 else 'are')} **{count:,} {label} {noun}** in the school database.", "data": {"count": count, "status": status}, **self.meta()}
             if any(x in q for x in ("which", "list", "show", "names", "titles")):
                 rows = exams.select_related("school_class", "subject").order_by("-opens_at")[:MAX_LIST]
                 lines = ["## Online Examinations", ""]
@@ -1940,8 +1961,11 @@ class FullSchoolDatabaseIntelligence:
                     lines.append("No matching online examinations were found.")
                 return {"answer": "\n".join(lines), "data": {"count": count, "status": status}, **self.meta()}
 
-            breakdown = {value: exams.model.objects.filter(school=self.school, **({"created_by": self.user} if str(getattr(self.user, "role", "")).upper() == "TEACHER" else {}), status=value).count() for value in ("DRAFT", "PUBLISHED", "CLOSED")}
-            return {"answer": f"## Online Examination Summary\n\n- **Matching examinations:** {count:,}\n- Draft: **{breakdown['DRAFT']:,}**\n- Published: **{breakdown['PUBLISHED']:,}**\n- Closed: **{breakdown['CLOSED']:,}**", "data": {"count": count, "status_breakdown": breakdown}, **self.meta()}
+            breakdown = {
+                value: all_exams.filter(status=value).count()
+                for value in ("DRAFT", "PUBLISHED", "CLOSED")
+            }
+            return {"answer": f"## Online Examination Summary\n\n- **Matching examinations:** {count:,}\n- Draft: **{breakdown['DRAFT']:,}**\n- Published: **{breakdown['PUBLISHED']:,}**\n- Closed: **{breakdown['CLOSED']:,}**",   "data": {"count": count, "status_breakdown": breakdown}, **self.meta()}
         except Exception:
             logger.exception("Online examination intelligence failed")
             return {"answer": "I could not safely verify the online-examination information. No unverified answer was provided.", **self.meta("database_error")}
@@ -1953,6 +1977,7 @@ class FullSchoolDatabaseIntelligence:
         if not self.can("academics"):
             return self.denied("lesson-plan information")
         try:
+            q = " ".join(str(q or "").lower().split())
             from lesson_plans.models import WeeklyLessonPlan
             qs = WeeklyLessonPlan.objects.filter(school=self.school, teacher__school=self.school)
             if str(getattr(self.user, "role", "")).upper() == "TEACHER":
@@ -1967,7 +1992,15 @@ class FullSchoolDatabaseIntelligence:
                 "revision requested": WeeklyLessonPlan.STATUS_REVISION,
                 "approved": WeeklyLessonPlan.STATUS_APPROVED,
             }
-            selected_status = next((value for phrase, value in status_map.items() if phrase in q), None)
+            # Prefer the full review-state phrases; normalize punctuation so
+            # natural questions such as "awaiting review?" are still matched.
+            status_query = re.sub(r"[^a-z0-9_ ]+", " ", q)
+            status_query = " ".join(status_query.split())
+            selected_status = None
+            for phrase in ("awaiting review", "pending review", "revision requested", "revision", "submitted", "draft", "approved"):
+                if re.search(r"\b" + re.escape(phrase) + r"\b", status_query):
+                    selected_status = status_map[phrase]
+                    break
             if selected_status:
                 qs = qs.filter(status=selected_status)
             count = qs.count()
@@ -1982,11 +2015,26 @@ class FullSchoolDatabaseIntelligence:
                     lines.append("No matching lesson plans were found.")
                 return {"answer": "\n".join(lines), "data": {"count": count, "status": selected_status}, **self.meta()}
 
+            if selected_status:
+                status_label = {
+                    WeeklyLessonPlan.STATUS_DRAFT: "draft",
+                    WeeklyLessonPlan.STATUS_SUBMITTED: "submitted for review",
+                    WeeklyLessonPlan.STATUS_REVISION: "awaiting revision",
+                    WeeklyLessonPlan.STATUS_APPROVED: "approved",
+                }.get(selected_status, str(selected_status).lower().replace("_", " "))
+                noun = "lesson plan" if count == 1 else "lesson plans"
+                verb = "is" if count == 1 else "are"
+                return {
+                    "answer": f"There {verb} {count:,} {noun} {status_label}.",
+                    "data": {"count": count, "status": selected_status},
+                    **self.meta(),
+                }
+
             base = WeeklyLessonPlan.objects.filter(school=self.school, teacher__school=self.school)
             if str(getattr(self.user, "role", "")).upper() == "TEACHER":
                 base = base.filter(teacher__user=self.user)
             breakdown = {value: base.filter(status=value).count() for value in (WeeklyLessonPlan.STATUS_DRAFT, WeeklyLessonPlan.STATUS_SUBMITTED, WeeklyLessonPlan.STATUS_REVISION, WeeklyLessonPlan.STATUS_APPROVED)}
-            return {"answer": f"## Lesson Plan Summary\n\n- **Matching plans:** {count:,}\n- Draft: **{breakdown[WeeklyLessonPlan.STATUS_DRAFT]:,}**\n- Submitted for review: **{breakdown[WeeklyLessonPlan.STATUS_SUBMITTED]:,}**\n- Revision requested: **{breakdown[WeeklyLessonPlan.STATUS_REVISION]:,}**\n- Approved: **{breakdown[WeeklyLessonPlan.STATUS_APPROVED]:,}**", "data": {"count": count, "status_breakdown": breakdown}, **self.meta()}
+            return {"answer": f"## Lesson Plan Summary\n\n- **Matching plans:** {count:,}\n- Draft: **{breakdown[WeeklyLessonPlan.STATUS_DRAFT]:,}**\n- Submitted for review: **{breakdown[WeeklyLessonPlan.STATUS_SUBMITTED]:,}**\n- Revision requested: **{breakdown[WeeklyLessonPlan.STATUS_REVISION]:,}**\n- Approved: **{breakdown[WeeklyLessonPlan.STATUS_APPROVED]:,}**", "data": {"count": count, "status": selected_status, "status_breakdown": breakdown}, **self.meta()}
         except Exception:
             logger.exception("Lesson-plan intelligence failed")
             return {"answer": "I could not safely verify lesson-plan information. No unverified answer was provided.", **self.meta("database_error")}
