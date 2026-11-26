@@ -841,6 +841,41 @@ class FullSchoolDatabaseIntelligence:
             add(Book, ("book", "books", "library book", "library books"), "school_intelligence", "books")
             add(BookBorrowing, ("borrowing", "borrowings", "book borrowing", "book borrowings", "library borrowing"), "school_intelligence", "book borrowings")
         except Exception: pass
+        # Admissions: application records are directly school-scoped.
+        try:
+            from admissions.models import AdmissionApplication
+            add(AdmissionApplication, (
+                "admission application", "admission applications",
+                "application", "applications", "applicant", "applicants",
+            ), "students", "admission applications")
+        except Exception: pass
+
+        # Online examination records. Attempts are scoped through their parent
+        # exam; question/answer text is intentionally not exposed by this
+        # generic listing layer. Detailed results remain with the specialist
+        # online-exam handler.
+        try:
+            from online_exams.models import OnlineExam, ExamAttempt
+            add(OnlineExam, (
+                "online exam", "online exams", "online examination",
+                "online examinations",
+            ), "exams", "online examinations")
+            add(ExamAttempt, (
+                "online exam attempt", "online exam attempts",
+                "exam attempt", "exam attempts",
+            ), "exams", "online exam attempts", "exam__school")
+        except Exception: pass
+
+        # Weekly lesson plans contain teaching content, but this generic layer
+        # exposes only scoped record counts/names, never lesson body fields.
+        try:
+            from lesson_plans.models import WeeklyLessonPlan
+            add(WeeklyLessonPlan, (
+                "weekly lesson plan", "weekly lesson plans",
+                "lesson plan record", "lesson plan records",
+            ), "academics", "weekly lesson plans")
+        except Exception: pass
+
         try:
             from communication.models import Announcement
             add(Announcement, ("announcement", "announcements"), "school_intelligence", "announcements")
@@ -2297,10 +2332,67 @@ class FullSchoolDatabaseIntelligence:
                 return {"answer": f"There are **{count:,} currently overdue library loans** as of {today:%d %B %Y}.", "data": {"overdue_loans": count}, **self.meta()}
             if "borrow" in q or "borrowing" in q:
                 qs = BookBorrowing.objects.filter(school=self.school, book__school=self.school)
+                # Student-facing library questions must honor the same student
+                # visibility scope as other student intelligence handlers.
+                if self.allowed_students is not None:
+                    try:
+                        qs = qs.filter(borrowed_by_student__in=self.allowed_students.values("pk"))
+                    except Exception:
+                        logger.exception("Could not apply authorized student scope to library borrowings")
+                        return {
+                            "answer": "I could not verify your authorized student scope, so I stopped this library analysis.",
+                            **self.meta("scope_verification_failed"),
+                        }
                 if "active" in q or "currently" in q:
                     qs = qs.filter(status="ACTIVE")
+                if "overdue" in q:
+                    qs = qs.filter(
+                        due_date__lt=today, status__in=("ACTIVE", "OVERDUE"),
+                        returned_at__isnull=True,
+                    )
+                if "this month" in q or "current month" in q:
+                    qs = qs.filter(borrowed_at__year=today.year, borrowed_at__month=today.month)
+                    period = today.strftime("%B %Y")
+                elif "this year" in q or "current year" in q:
+                    qs = qs.filter(borrowed_at__year=today.year)
+                    period = str(today.year)
+                else:
+                    period = "all recorded dates"
+
                 count = qs.count()
-                return {"answer": f"There are **{count:,} matching library borrowing records** in the school database.", "data": {"count": count}, **self.meta()}
+                if any(term in q for term in ("by category", "per category", "category breakdown", "categories")):
+                    rows = list(qs.values("book__category__name").annotate(
+                        loans=Count("id"), distinct_titles=Count("book_id", distinct=True)
+                    ).order_by("-loans", "book__category__name"))
+                    lines = [f"## Library Borrowing by Category", "", f"**Period:** {period}", ""]
+                    lines.extend(
+                        f"- **{row['book__category__name'] or 'Uncategorised'}** — {row['loans']:,} loan(s), {row['distinct_titles']:,} distinct title(s)"
+                        for row in rows[:MAX_LIST]
+                    )
+                    if not rows:
+                        lines.append("No borrowing records match this period and authorized scope.")
+                    return {
+                        "answer": "\\n".join(lines),
+                        "data": {"period": period, "total_loans": count, "categories": rows[:MAX_LIST],
+                                 "source_model": "library.BookBorrowing"},
+                        **self.meta(),
+                    }
+                if any(term in q for term in ("most borrowed", "popular book", "popular books", "top borrowed")):
+                    rows = list(qs.values("book__title", "book__author").annotate(
+                        loans=Count("id")
+                    ).order_by("-loans", "book__title")[:MAX_LIST])
+                    lines = [f"## Most Borrowed Books", "", f"**Period:** {period}", ""]
+                    lines.extend(
+                        f"- **{row['book__title']}** by {row['book__author']} — {row['loans']:,} loan(s)"
+                        for row in rows
+                    )
+                    if not rows:
+                        lines.append("No borrowing records match this period and authorized scope.")
+                    return {"answer": "\\n".join(lines),
+                            "data": {"period": period, "total_loans": count, "books": rows,
+                                     "source_model": "library.BookBorrowing"}, **self.meta()}
+                return {"answer": f"There are **{count:,} matching library borrowing records** for **{period}**.",
+                        "data": {"count": count, "period": period, "source_model": "library.BookBorrowing"}, **self.meta()}
             books = Book.objects.filter(school=self.school)
             total_titles = books.count()
             total_copies = books.aggregate(v=Sum("total_copies"))["v"] or 0
@@ -2334,10 +2426,442 @@ class FullSchoolDatabaseIntelligence:
             return {"answer": "I could not safely verify admission applications. No unverified answer was provided.", **self.meta("database_error")}
 
 
+    def admissions_finance_intelligence(self, q):
+        """Reconcile admitted applicants with admission-fee invoices safely.
+
+        Payments are recorded against invoices, not invoice line items. Therefore
+        mixed invoices are reported separately and are never presented as an
+        exact admission-fee collection or admission-fee balance.
+        """
+        admission_terms = ("admission", "admissions", "application", "applications", "applicant", "applicants")
+        finance_terms = (
+            "fee", "fees", "invoice", "invoices", "payment", "payments",
+            "paid", "unpaid", "outstanding", "owing", "owe", "collected",
+            "collection", "revenue", "balance",
+        )
+        if not any(term in q for term in admission_terms) or not any(term in q for term in finance_terms):
+            return None
+        if not self.can("students") or not self.can("finance"):
+            return self.denied("admissions and financial information")
+
+        try:
+            from admissions.models import AdmissionApplication
+            from finance.models import Invoice
+            from school.models import AcademicTerm
+
+            applications = AdmissionApplication.objects.filter(
+                school=self.school,
+                status__in=("APPROVED", "ADMITTED"),
+            ).select_related("admitted_student", "academic_year")
+
+            # Student-restricted users must never inherit the full-school
+            # admission or invoice population. If the supplied scope fails,
+            # stop instead of broadening the query.
+            if self.allowed_students is not None:
+                try:
+                    authorized_ids = self.allowed_students.values("pk")
+                    applications = applications.filter(admitted_student__in=authorized_ids)
+                except Exception:
+                    logger.exception("Could not apply authorized student scope to admissions/finance")
+                    return {
+                        "answer": "I could not verify your authorized student scope, so I stopped this admissions and finance analysis.",
+                        **self.meta("scope_verification_failed"),
+                    }
+
+            period = "all recorded academic periods"
+            term = None
+            if any(x in q for x in ("this term", "current term", "term to date", "active term")):
+                term = AcademicTerm.objects.filter(
+                    academic_year__school=self.school, is_active=True,
+                ).select_related("academic_year").order_by("-start_date").first()
+                if term is None:
+                    return {
+                        "answer": "There is no active academic term configured, so I cannot produce a term-specific admissions and finance comparison.",
+                        "data": {"period": "active term unavailable"},
+                        **self.meta("database_unavailable"),
+                    }
+                applications = applications.filter(academic_year=term.academic_year)
+                period = f"{term.name} ({term.academic_year.name})"
+
+            application_count = applications.count()
+            admitted_with_student = applications.exclude(admitted_student__isnull=True)
+            student_ids = admitted_with_student.values_list("admitted_student_id", flat=True)
+
+            invoices = Invoice.objects.filter(
+                school=self.school,
+                student__school=self.school,
+                student_id__in=student_ids,
+            ).exclude(status="VOID").prefetch_related(
+                "line_items__fee_category", "payments",
+            ).distinct()
+            if term is not None:
+                invoices = invoices.filter(academic_term=term)
+
+            # Evaluate invoices once. Invoice payments cannot be allocated to
+            # individual line items in this schema, so exact admission-only
+            # figures are calculated only for invoices containing admission
+            # charges and no other fee-category charges.
+            invoice_count = 0
+            admission_only_invoice_count = 0
+            mixed_invoice_count = 0
+            exact_admission_billed = Decimal("0")
+            exact_admission_paid = Decimal("0")
+            exact_admission_outstanding = Decimal("0")
+            mixed_invoice_balance = Decimal("0")
+            mixed_invoice_paid = Decimal("0")
+            invoices_with_balance = 0
+
+            for invoice in invoices:
+                invoice_count += 1
+                line_items = list(invoice.line_items.all())
+                admission_amount = sum(
+                    (Decimal(str(item.amount or 0)) for item in line_items
+                     if item.fee_category and item.fee_category.category_type == "ADMISSION"),
+                    Decimal("0"),
+                )
+                if admission_amount <= 0:
+                    continue
+                other_amount = sum(
+                    (Decimal(str(item.amount or 0)) for item in line_items
+                     if not item.fee_category or item.fee_category.category_type != "ADMISSION"),
+                    Decimal("0"),
+                )
+                confirmed_paid = sum(
+                    (Decimal(str(payment.amount or 0)) for payment in invoice.payments.all()
+                     if payment.status == "CONFIRMED"),
+                    Decimal("0"),
+                )
+                balance = max(Decimal("0"), Decimal(str(invoice.total_amount or 0)) - confirmed_paid)
+                if balance > 0:
+                    invoices_with_balance += 1
+                if other_amount == 0:
+                    admission_only_invoice_count += 1
+                    exact_admission_billed += admission_amount
+                    exact_admission_paid += min(confirmed_paid, admission_amount)
+                    exact_admission_outstanding += max(Decimal("0"), admission_amount - confirmed_paid)
+                else:
+                    mixed_invoice_count += 1
+                    mixed_invoice_balance += balance
+                    mixed_invoice_paid += confirmed_paid
+
+            # The wording determines the most useful presentation, while the
+            # payload always includes the complete verified reconciliation.
+            if any(x in q for x in ("outstanding", "unpaid", "owing", "owe", "balance")):
+                heading = "Admission Applicants and Outstanding Fees"
+                summary = (
+                    f"There are **{application_count:,} approved/admitted application(s)** in **{period}**, "
+                    f"linked to **{admitted_with_student.count():,} registered student(s)**. "
+                    f"For admission-only invoices, the verified outstanding admission-fee balance is "
+                    f"**GH₵{exact_admission_outstanding:,.2f}** across **{admission_only_invoice_count:,} invoice(s)**."
+                )
+            elif any(x in q for x in ("collected", "collection", "revenue", "paid", "payment", "payments")):
+                heading = "Admission Fee Collections"
+                summary = (
+                    f"Confirmed payments attributable to admission-only invoices total "
+                    f"**GH₵{exact_admission_paid:,.2f}** against **GH₵{exact_admission_billed:,.2f}** billed "
+                    f"for **{period}**. Pending and reversed payments are excluded."
+                )
+            else:
+                heading = "Admissions and Finance Reconciliation"
+                summary = (
+                    f"There are **{application_count:,} approved/admitted application(s)** in **{period}**, "
+                    f"linked to **{admitted_with_student.count():,} registered student(s)**. "
+                    f"The database contains **{admission_only_invoice_count + mixed_invoice_count:,} invoice(s)** "
+                    f"with admission-fee line items."
+                )
+
+            caveat = ""
+            if mixed_invoice_count:
+                caveat = (
+                    f"\n\n**Allocation limitation:** {mixed_invoice_count:,} invoice(s) contain both admission "
+                    f"and other fee categories. Payments are stored at invoice level, not per line item, "
+                    f"so their admission-specific paid amount cannot be separated reliably. Their full "
+                    f"invoice balance (**GH₵{mixed_invoice_balance:,.2f}**) is reported separately and is "
+                    f"not added to the admission-only outstanding figure."
+                )
+            answer = (
+                f"## {heading}\n\n{summary}{caveat}\n\n"
+                f"**Scope:** approved/admitted applications with an authorized registered-student link; "
+                f"school-scoped, non-void invoices containing an ADMISSION fee category."
+            )
+            data = {
+                "period": period,
+                "approved_or_admitted_applications": application_count,
+                "linked_registered_students": admitted_with_student.count(),
+                "matching_invoice_count": admission_only_invoice_count + mixed_invoice_count,
+                "admission_only_invoice_count": admission_only_invoice_count,
+                "mixed_invoice_count": mixed_invoice_count,
+                "admission_only_billed": str(exact_admission_billed),
+                "admission_only_confirmed_paid": str(exact_admission_paid),
+                "admission_only_outstanding": str(exact_admission_outstanding),
+                "mixed_invoice_confirmed_paid_unallocated": str(mixed_invoice_paid),
+                "mixed_invoice_balance_unallocated": str(mixed_invoice_balance),
+                "invoices_with_any_balance": invoices_with_balance,
+                "payment_allocation_basis": "payments belong to invoices; mixed invoice payments are not allocated to individual fee line items",
+                "source_models": ["admissions.AdmissionApplication", "finance.Invoice", "finance.InvoiceLineItem", "finance.Payment"],
+            }
+            return {"answer": answer, "data": data, **self.meta()}
+        except Exception:
+            logger.exception("Admissions/finance intelligence failed")
+            return {
+                "answer": "I could not safely reconcile admission applications with fee invoices and payments. No unverified financial figures were provided.",
+                **self.meta("database_error"),
+            }
+
     # ------------------------------------------------------------------
     # Operational intelligence for registered non-core school modules.
     # These are explicit, model-backed measures; no arbitrary field guessing.
     # ------------------------------------------------------------------
+
+    def timetable_assignment_intelligence(self, q):
+        """Verified teacher-allocation and timetable intelligence.
+
+        Assignment workload is the sum of configured periods_per_week, not a
+        claim about delivered teaching hours. Published timetable clashes are
+        detected from actual entries sharing a teacher/room and time slot.
+        """
+        q = self.norm(q)
+        missing_teacher_query = any(x in q for x in (
+            "without assigned teacher", "without a teacher", "no assigned teacher",
+            "missing teacher", "unassigned teacher", "teacher allocation",
+            "teacher allocations", "incomplete subject", "subjects without teachers",
+            "subjects without a teacher", "subjects without assigned teachers",
+            "subjects without an assigned teacher", "class subjects without assigned teachers",
+            "classes have subjects without assigned teachers", "no teacher assigned",
+        ))
+        workload_query = any(x in q for x in (
+            "teacher workload", "teaching workload", "highest workload",
+            "workload by teacher", "teaching periods", "teachers with the highest",
+            "teachers assigned to multiple classes", "multiple classes",
+            "most classes", "overloaded teacher",
+        ))
+        clash_query = any(x in q for x in (
+            "timetable clash", "timetable clashes", "timetable conflict",
+            "timetable conflicts", "teacher clash", "room clash", "room conflicts",
+        ))
+        if not (missing_teacher_query or workload_query or clash_query):
+            return None
+
+        if not self.can("academics"):
+            return self.denied("timetable and teacher-allocation information")
+
+        try:
+            from academics.models import (
+                ClassSubject, TeacherAssignment, Timetable, TimetableEntry,
+            )
+            from django.db.models import Sum, Count, F
+            from school.models import AcademicTerm
+
+            if missing_teacher_query:
+                classes = list(
+                    ClassSubject.objects.filter(
+                        school=self.school,
+                        school_class__school=self.school,
+                        school_class__is_active=True,
+                        subject__school=self.school,
+                        subject__is_active=True,
+                        is_active=True,
+                    ).select_related(
+                        "school_class__homeroom_teacher__user", "subject"
+                    ).order_by("school_class__name", "subject__name")
+                )
+                assigned_keys = set(
+                    TeacherAssignment.objects.filter(
+                        school=self.school, is_active=True,
+                        school_class__school=self.school, school_class__is_active=True,
+                        subject__school=self.school, subject__is_active=True,
+                        teacher__school=self.school, teacher__is_active=True,
+                        teacher__user__is_active=True,
+                    ).values_list("school_class_id", "subject_id")
+                )
+                missing = []
+                for item in classes:
+                    key = (item.school_class_id, item.subject_id)
+                    if key in assigned_keys:
+                        continue
+                    school_class = item.school_class
+                    # KG/Primary single-class-teacher configuration is a valid
+                    # assignment source even if individual subject rows are absent.
+                    homeroom = getattr(school_class, "homeroom_teacher", None)
+                    if (
+                        getattr(school_class, "uses_single_class_teacher", False)
+                        and homeroom is not None
+                        and getattr(homeroom, "school_id", None) == self.school.pk
+                        and getattr(homeroom, "is_active", False)
+                        and getattr(getattr(homeroom, "user", None), "is_active", False)
+                    ):
+                        continue
+                    missing.append({
+                        "class_name": school_class.name,
+                        "subject_name": item.subject.name,
+                    })
+                if not classes:
+                    answer = "No active class-subject requirement records were found. I cannot determine missing teacher allocations from an empty requirement list."
+                elif missing:
+                    lines = ["## Subjects Missing Teacher Allocations", ""]
+                    lines.extend(
+                        f"- **{row['class_name']}** — {row['subject_name']}"
+                        for row in missing[:MAX_LIST]
+                    )
+                    if len(missing) > MAX_LIST:
+                        lines.append(f"- …and {len(missing) - MAX_LIST:,} more.")
+                    answer = "\n".join(lines)
+                else:
+                    answer = f"All **{len(classes):,}** active class-subject requirement(s) have an active teacher assignment or a valid single-class-teacher arrangement."
+                return {
+                    "answer": answer,
+                    "data": {
+                        "required_class_subjects": len(classes),
+                        "missing_teacher_allocations": len(missing),
+                        "missing": missing[:MAX_LIST],
+                        "source_models": ["academics.ClassSubject", "academics.TeacherAssignment", "academics.SchoolClass"],
+                    },
+                    **self.meta(),
+                }
+
+            if workload_query:
+                rows = list(
+                    TeacherAssignment.objects.filter(
+                        school=self.school, is_active=True,
+                        teacher__school=self.school, teacher__is_active=True,
+                        teacher__user__is_active=True,
+                        school_class__school=self.school, school_class__is_active=True,
+                        subject__school=self.school, subject__is_active=True,
+                    ).values(
+                        "teacher_id", "teacher__user__first_name",
+                        "teacher__user__last_name", "teacher__user__username",
+                        "teacher__max_periods_per_week", "teacher__department",
+                    ).annotate(
+                        periods_per_week=Sum("periods_per_week"),
+                        class_count=Count("school_class_id", distinct=True),
+                        subject_count=Count("subject_id", distinct=True),
+                    ).order_by("-periods_per_week", "teacher__user__last_name"))
+                results = []
+                for row in rows:
+                    maximum = int(row["teacher__max_periods_per_week"] or 0)
+                    periods = int(row["periods_per_week"] or 0)
+                    name = (
+                        f"{row['teacher__user__first_name'] or ''} "
+                        f"{row['teacher__user__last_name'] or ''}"
+                    ).strip() or row["teacher__user__username"] or "Teacher"
+                    results.append({
+                        "teacher": name,
+                        "department": row["teacher__department"] or "Not specified",
+                        "assigned_periods_per_week": periods,
+                        "maximum_periods_per_week": maximum,
+                        "workload_percentage": round(periods * 100.0 / maximum, 2) if maximum else None,
+                        "class_count": row["class_count"],
+                        "subject_count": row["subject_count"],
+                        "over_assigned": bool(maximum and periods > maximum),
+                    })
+                if "overload" in q or "over-assigned" in q:
+                    results = [row for row in results if row["over_assigned"]]
+                if "multiple classes" in q:
+                    results = [row for row in results if row["class_count"] > 1]
+                results = results[:MAX_LIST]
+                if not results:
+                    answer = "No matching active teacher assignments were found. This is not evidence that teachers have zero workload; it means no qualifying assignment records were available."
+                else:
+                    lines = ["## Teacher Assignment Workload", "",
+                             "*Workload is calculated from active TeacherAssignment periods_per_week. It represents configured weekly allocation, not confirmed delivered lessons.*", ""]
+                    lines.extend(
+                        f"- **{row['teacher']}** — {row['assigned_periods_per_week']} assigned periods/week; "
+                        f"{row['class_count']} class(es); {row['subject_count']} subject(s); "
+                        + (f"{row['workload_percentage']:.1f}% of configured maximum" if row["workload_percentage"] is not None else "maximum not configured")
+                        + (" — **Above maximum**" if row["over_assigned"] else "")
+                        for row in results
+                    )
+                    answer = "\n".join(lines)
+                return {
+                    "answer": answer,
+                    "data": {
+                        "teachers": results,
+                        "teacher_count": len(results),
+                        "basis": "sum_of_active_teacher_assignment_periods_per_week",
+                        "source_model": "academics.TeacherAssignment",
+                    },
+                    **self.meta(),
+                }
+
+            # Clash checks use the published timetable only. Draft/failed
+            # generations are never presented as the school's active schedule.
+            timetable = Timetable.objects.filter(
+                school=self.school, is_published=True, status="COMPLETE",
+                academic_term__academic_year__school=self.school,
+            ).select_related("academic_term").order_by("-generated_at").first()
+            if not timetable:
+                return {
+                    "answer": "There is no completed published timetable, so I cannot verify current teacher or room clashes. Draft or failed timetable generations are not treated as the active schedule.",
+                    "data": {"published_timetable": False, "teacher_clashes": None, "room_clashes": None},
+                    **self.meta("database_unavailable"),
+                }
+            entries = list(
+                TimetableEntry.objects.filter(
+                    timetable=timetable, timetable__school=self.school,
+                    school_class__school=self.school, teacher__school=self.school,
+                    room__school=self.school, timeslot__school=self.school,
+                ).select_related("school_class", "teacher__user", "room", "timeslot", "subject")
+            )
+            teacher_slots, room_slots = {}, {}
+            for entry in entries:
+                slot = entry.timeslot_id
+                teacher_slots.setdefault((entry.teacher_id, slot), []).append(entry)
+                room_slots.setdefault((entry.room_id, slot), []).append(entry)
+            teacher_conflicts = [
+                group for group in teacher_slots.values() if len(group) > 1
+            ]
+            room_conflicts = [
+                group for group in room_slots.values() if len(group) > 1
+            ]
+            def describe(groups, kind):
+                lines = []
+                for group in groups[:MAX_LIST]:
+                    first = group[0]
+                    resource = (
+                        first.teacher.user.get_full_name() or first.teacher.user.username
+                        if kind == "teacher" else first.room.name
+                    )
+                    slot = first.timeslot
+                    classes_text = ", ".join(sorted({entry.school_class.name for entry in group}))
+                    lines.append(
+                        f"- **{resource}** — {slot.get_day_display()} Period {slot.period_index} "
+                        f"({slot.start_time:%H:%M}–{slot.end_time:%H:%M}); classes: {classes_text}"
+                    )
+                return lines
+            chosen = teacher_conflicts if "teacher" in q and "room" not in q else room_conflicts if "room" in q and "teacher" not in q else None
+            lines = [
+                "## Published Timetable Clash Check", "",
+                f"**Term:** {timetable.academic_term.name}",
+                f"**Published entries checked:** {len(entries):,}",
+                f"**Teacher time-slot clashes:** {len(teacher_conflicts):,}",
+                f"**Room time-slot clashes:** {len(room_conflicts):,}", "",
+            ]
+            if chosen is not None:
+                lines.extend(describe(chosen, "teacher" if chosen is teacher_conflicts else "room"))
+            else:
+                lines += ["### Teacher clashes"] + (describe(teacher_conflicts, "teacher") or ["- None detected."])
+                lines += ["", "### Room clashes"] + (describe(room_conflicts, "room") or ["- None detected."])
+            return {
+                "answer": "\n".join(lines),
+                "data": {
+                    "timetable_id": str(timetable.pk),
+                    "term": timetable.academic_term.name,
+                    "published_entries_checked": len(entries),
+                    "teacher_clash_count": len(teacher_conflicts),
+                    "room_clash_count": len(room_conflicts),
+                    "teacher_clashes": [[str(e.pk) for e in group] for group in teacher_conflicts[:MAX_LIST]],
+                    "room_clashes": [[str(e.pk) for e in group] for group in room_conflicts[:MAX_LIST]],
+                    "source_model": "academics.TimetableEntry",
+                },
+                **self.meta(),
+            }
+        except Exception:
+            logger.exception("Teacher workload/timetable intelligence failed")
+            return {
+                "answer": "I could not safely verify teacher workload or timetable allocation data. No unverified figures were provided.",
+                **self.meta("database_error"),
+            }
+
     def operational_metrics(self, q):
         payroll = any(x in q for x in ("payroll", "payslip", "pay slips", "salary", "salaries", "wages", "net pay", "gross pay"))
         workload = any(x in q for x in (
@@ -2623,17 +3147,84 @@ class FullSchoolDatabaseIntelligence:
             if transport:
                 from finance.models import TransportRoute, StudentTransportSubscription
                 routes = TransportRoute.objects.filter(school=self.school)
-                subscriptions = StudentTransportSubscription.objects.filter(student__school=self.school, route__school=self.school)
+                subscriptions = StudentTransportSubscription.objects.filter(
+                    student__school=self.school, route__school=self.school
+                )
+                # Student-restricted users must not receive school-wide
+                # subscription counts. Fail closed if scope cannot be applied.
+                if self.allowed_students is not None:
+                    try:
+                        subscriptions = subscriptions.filter(
+                            student__in=self.allowed_students.values("pk")
+                        )
+                    except Exception:
+                        logger.exception("Could not apply authorized student scope to transport subscriptions")
+                        return {
+                            "answer": "I could not verify your authorized student scope, so I stopped this transport analysis.",
+                            **self.meta("scope_verification_failed"),
+                        }
                 if "inactive" in q:
                     routes = routes.filter(is_active=False)
                     subscriptions = subscriptions.filter(is_active=False)
                 elif "active" in q or "currently" in q:
                     routes = routes.filter(is_active=True)
                     subscriptions = subscriptions.filter(is_active=True)
+
                 route_count, subscription_count = routes.count(), subscriptions.count()
+                subscriber_filter = Q(
+                    subscribers__student__school=self.school,
+                    subscribers__route__school=self.school,
+                    subscribers__is_active=True,
+                )
+                if self.allowed_students is not None:
+                    subscriber_filter &= Q(
+                        subscribers__student__in=self.allowed_students.values("pk")
+                    )
+                route_rows = list(routes.annotate(
+                    subscriber_count=Count("subscribers", filter=subscriber_filter, distinct=True)
+                ).values("name", "fee_per_term", "is_active", "subscriber_count").order_by("name"))
+
+                if any(term in q for term in ("by route", "per route", "each route", "route breakdown", "which route", "show routes", "list routes")):
+                    lines = ["## Student Transport by Route", "",
+                             f"**Routes matching filter:** {route_count:,}",
+                             f"**Student subscriptions matching filter:** {subscription_count:,}", ""]
+                    for row in route_rows[:MAX_LIST]:
+                        lines.append(
+                            f"- **{row['name']}** — {row['subscriber_count']:,} active subscriber(s); "
+                            f"term fee GH₵{row['fee_per_term']:,.2f}; "
+                            f"{'Active' if row['is_active'] else 'Inactive'}"
+                        )
+                    if not route_rows:
+                        lines.append("No transport routes match this school and filter.")
+                    return {"answer": "\\n".join(lines),
+                            "data": {"routes": route_rows[:MAX_LIST], "route_count": route_count,
+                                     "subscription_count": subscription_count,
+                                     "source_models": ["finance.TransportRoute", "finance.StudentTransportSubscription"]},
+                            **self.meta()}
+
+                # This is scheduled fee potential, not collected revenue.
+                if any(term in q for term in ("expected fee", "potential fee", "subscription value", "transport fee value", "route revenue")):
+                    expected = sum(
+                        (row["fee_per_term"] or Decimal("0.00")) * row["subscriber_count"]
+                        for row in route_rows
+                    )
+                    return {"answer": (
+                                f"The estimated termly transport-fee value across the matching routes is "
+                                f"**GH₵{expected:,.2f}**, based on active subscriptions multiplied by each route's configured term fee. "
+                                "This is scheduled fee potential, not evidence of invoices raised or payments collected."
+                            ),
+                            "data": {"estimated_termly_fee_value": str(expected), "routes": route_rows[:MAX_LIST],
+                                     "basis": "active subscriber count × route fee_per_term",
+                                     "source_models": ["finance.TransportRoute", "finance.StudentTransportSubscription"]},
+                            **self.meta()}
+
                 all_routes = TransportRoute.objects.filter(school=self.school)
-                all_subscriptions = StudentTransportSubscription.objects.filter(student__school=self.school, route__school=self.school)
-                return {"answer": f"The school has **{route_count:,} matching transport routes** and **{subscription_count:,} matching student transport subscriptions**.\n\n**Evidence:** {all_routes.count():,} route record(s) in total ({all_routes.filter(is_active=False).count():,} inactive); {all_subscriptions.count():,} subscription record(s) in total ({all_subscriptions.filter(is_active=False).count():,} inactive). Sources: finance.TransportRoute and finance.StudentTransportSubscription.",
+                all_subscriptions = StudentTransportSubscription.objects.filter(
+                    student__school=self.school, route__school=self.school
+                )
+                if self.allowed_students is not None:
+                    all_subscriptions = all_subscriptions.filter(student__in=self.allowed_students.values("pk"))
+                return {"answer": f"The school has **{route_count:,} matching transport routes** and **{subscription_count:,} matching student transport subscriptions**.\\n\\n**Evidence:** {all_routes.count():,} route record(s) in total ({all_routes.filter(is_active=False).count():,} inactive); {all_subscriptions.count():,} authorized subscription record(s) in total ({all_subscriptions.filter(is_active=False).count():,} inactive). Sources: finance.TransportRoute and finance.StudentTransportSubscription.",
                         "data": {"routes": route_count, "subscriptions": subscription_count, "all_routes": all_routes.count(), "all_subscriptions": all_subscriptions.count(), "source_models": ["finance.TransportRoute", "finance.StudentTransportSubscription"]}, **self.meta()}
         except Exception:
             logger.exception("Operational intelligence failed")
@@ -2720,14 +3311,37 @@ class FullSchoolDatabaseIntelligence:
         )) or ("subject" in q and any(x in q for x in ("average", "lowest", "highest", "performance", "strongest", "weakest", "best", "worst"))) or ("class" in q and any(x in q for x in ("average", "performance", "lowest", "highest", "best", "worst", "top", "compare", "rank"))) or ("failed" in q and "subject" in q)
         library = any(x in q for x in ("book", "books", "library", "borrow", "borrowing", "overdue loan"))
         admissions = any(x in q for x in ("admission", "admissions", "application", "applications", "applicant", "applicants"))
+        admissions_finance = admissions and any(x in q for x in (
+            "fee", "fees", "invoice", "invoices", "payment", "payments",
+            "paid", "unpaid", "outstanding", "owing", "owe", "collected",
+            "collection", "revenue", "balance",
+        ))
         leave = any(x in q for x in ("leave", "time off", "annual leave", "sick leave"))
         online_exams = any(x in q for x in ("online exam", "online exams", "online examination", "online examinations", "exam attempt", "exam attempts", "online test", "online tests"))
         lesson_plans = any(x in q for x in ("lesson plan", "lesson plans", "lesson note", "lesson notes", "weekly plan", "weekly plans"))
+        # Specific timetable/teacher-allocation questions must be routed to
+        # operations before the broader staff directory/performance rules.
+        # Words such as "teachers" and "highest" otherwise make workload
+        # questions look like staff rankings.
+        timetable_assignment_intent = any(x in q for x in (
+            "teacher workload", "teaching workload", "highest workload",
+            "workload by teacher", "teaching periods", "teachers with the highest",
+            "missing teacher", "missing teachers", "unassigned teacher",
+            "unassigned teachers", "teacher allocation", "teacher allocations",
+            "subjects without teachers", "subjects without a teacher",
+            "subjects without assigned teachers", "subjects without an assigned teacher",
+            "class subjects without assigned teachers", "classes have subjects without assigned teachers",
+            "no teacher assigned", "teacher timetable clash", "teacher clashes",
+            "room timetable clash", "room clashes", "timetable clash", "timetable clashes",
+        ))
+
         operations = any(x in q for x in (
             "payroll", "payslip", "pay slip", "salary", "salaries", "wages",
             "net pay", "gross pay", "calculated payroll", "payroll run", "payroll runs",
             "payroll status", "payroll breakdown", "approved pay", "approved payroll",
-            "workload", "teacher workload", "overloaded", "timetable", "promotion", "promotions",
+            "workload", "teacher workload", "overloaded", "timetable", "teacher allocation",
+            "teacher allocations", "missing teacher", "unassigned teacher", "subjects without teachers",
+            "subjects without a teacher", "no teacher assigned", "teacher clash", "room clash", "promotion", "promotions",
             "promoted", "repeated students", "students repeated", "students who repeated",
             "students repeating", "repeat students", "inventory", "stock", "logistics",
             "transport route", "transport subscription", "school bus", "bus route",
@@ -2748,7 +3362,9 @@ class FullSchoolDatabaseIntelligence:
 
         # Resolve the most specific entity first. A status word such as
         # "absent" must not be mistaken for a request for the student directory.
-        if staff and attendance and ranking:
+        if timetable_assignment_intent:
+            domain = "operations"
+        elif staff and attendance and ranking:
             domain = "staff_attendance_ranking"
         elif staff and ranking:
             domain = "staff_performance"
@@ -2772,6 +3388,8 @@ class FullSchoolDatabaseIntelligence:
             domain = "academics"
         elif support_intent and student:
             domain = "student_support"
+        elif admissions_finance:
+            domain = "admissions_finance"
         elif admissions:
             domain = "admissions"
         elif attendance:
@@ -2791,12 +3409,121 @@ class FullSchoolDatabaseIntelligence:
 
         return {"domain": domain, "action": action, "period": period, "ranking": ranking}
 
+    def attendance_academic_class_comparison(self, q):
+        """Compare recorded student attendance with completed terminal results by class.
+
+        Both datasets use the same active term. Attendance rates exclude excused
+        records and use only recorded entries; academic averages use COMPLETE
+        terminal results with non-null final scores. This is descriptive, not causal.
+        """
+        comparison_terms = any(token in q for token in (
+            "compare", "comparison", "alongside", "against", "versus", " vs ",
+        ))
+        attendance_terms = any(token in q for token in ("attendance", "absent", "absence"))
+        academic_terms = any(token in q for token in (
+            "academic performance", "academic results", "results", "grades", "scores",
+            "performance", "terminal results",
+        ))
+        class_terms = any(token in q for token in ("by class", "each class", "per class", "class-wise", "class wise"))
+        if not (comparison_terms and attendance_terms and academic_terms and class_terms):
+            return None
+        if not self.can("attendance"):
+            return self.denied("attendance information")
+        if not self.can("academics"):
+            return self.denied("academic information")
+
+        try:
+            from school.models import AcademicTerm
+            from attendance.models import Attendance
+            from assessments.models import TerminalResult
+            from .role_ai_policy import get_student_scope
+
+            # A scoped caller must have an explicit authorized-student queryset.
+            if get_student_scope(self.user) != "school" and self.allowed_students is None:
+                return {"answer": "I couldn't verify your authorized student scope, so I stopped this cross-module comparison.", **self.meta("scope_verification_failed")}
+
+            term = AcademicTerm.objects.filter(
+                academic_year__school=self.school, is_active=True
+            ).select_related("academic_year").order_by("-start_date").first()
+            if not term:
+                return {"answer": "There is no active academic term configured, so I cannot compare attendance and academic performance on a consistent period.", **self.meta("database_unavailable")}
+
+            attendance_qs = Attendance.objects.filter(
+                school=self.school, student__school=self.school,
+                date__gte=term.start_date, date__lte=term.end_date,
+                student__school_class__school=self.school,
+            )
+            results_qs = TerminalResult.objects.filter(
+                school=self.school, student__school=self.school,
+                academic_term=term, status="COMPLETE", final_score__isnull=False,
+                school_class__school=self.school,
+            )
+            if self.allowed_students is not None:
+                try:
+                    authorized_ids = self.allowed_students.values("pk")
+                    attendance_qs = attendance_qs.filter(student__in=authorized_ids)
+                    results_qs = results_qs.filter(student__in=authorized_ids)
+                except Exception:
+                    logger.exception("Could not apply authorized student scope to cross-module comparison")
+                    return {"answer": "I couldn't verify your authorized student scope, so I stopped this cross-module comparison.", **self.meta("scope_verification_failed")}
+
+            attendance_rows = attendance_qs.values("student__school_class_id", "student__school_class__name").annotate(
+                recorded=Count("id"),
+                present=Count("id", filter=Q(status="PRESENT")),
+                late=Count("id", filter=Q(status="LATE")),
+                absent=Count("id", filter=Q(status="ABSENT")),
+                excused=Count("id", filter=Q(status="EXCUSED")),
+            )
+            result_rows = results_qs.values("school_class_id", "school_class__name").annotate(
+                average_score=Avg("final_score"), result_records=Count("id"),
+            )
+            by_class = {}
+            for row in attendance_rows:
+                denominator = row["recorded"] - row["excused"]
+                attended = row["present"] + row["late"]
+                by_class[row["student__school_class_id"]] = {
+                    "class_name": row["student__school_class__name"],
+                    "attendance_records": row["recorded"],
+                    "present": row["present"], "late": row["late"],
+                    "absent": row["absent"], "excused": row["excused"],
+                    "attendance_rate": round(attended * 100.0 / denominator, 2) if denominator else None,
+                    "average_academic_score": None, "completed_result_records": 0,
+                }
+            for row in result_rows:
+                item = by_class.setdefault(row["school_class_id"], {
+                    "class_name": row["school_class__name"], "attendance_records": 0,
+                    "present": 0, "late": 0, "absent": 0, "excused": 0,
+                    "attendance_rate": None,
+                })
+                item["average_academic_score"] = round(float(row["average_score"]), 2) if row["average_score"] is not None else None
+                item["completed_result_records"] = row["result_records"]
+
+            rows = sorted(by_class.values(), key=lambda item: (item["class_name"] or "").lower())
+            if not rows:
+                return {"answer": f"No student attendance or completed terminal-result records were found for **{term.name}** in your authorized scope.", "data": {"term": term.name, "classes": [], "class_count": 0}, **self.meta("database_unavailable")}
+
+            lines = [f"## Attendance and Academic Performance by Class", "", f"**Period:** {term.name} — {term.academic_year.name}", "", "| Class | Attendance rate | Absent records | Average completed result | Result records |", "|---|---:|---:|---:|---:|"]
+            for item in rows:
+                rate = f"{item['attendance_rate']:.2f}%" if item["attendance_rate"] is not None else "Not available"
+                average = f"{item['average_academic_score']:.2f}/100" if item["average_academic_score"] is not None else "Not available"
+                lines.append(f"| {item['class_name']} | {rate} | {item['absent']} | {average} | {item['completed_result_records']} |")
+            lines += ["", "**How to read this:** Attendance rate is (present + late) divided by recorded non-excused attendance entries. Academic averages use COMPLETE terminal results only. Missing attendance marks are not counted as absences.", "", "**Important:** This is a descriptive comparison. It does not establish that attendance caused an academic outcome. Classes without records for one measure show that measure as unavailable."]
+            return {"answer": "\n".join(lines), "data": {"term": term.name, "academic_year": term.academic_year.name, "class_count": len(rows), "classes": rows, "attendance_definition": "(present + late) / (recorded - excused)", "academic_result_filter": "status=COMPLETE and final_score is not null"}, **self.meta()}
+        except Exception:
+            logger.exception("Attendance/academic class comparison failed")
+            return {"answer": "I could not safely calculate the attendance and academic comparison from the school database. No unverified figures were provided.", **self.meta("database_error")}
+
     def answer(self, question):
         q = self.norm(question)
         if not q:
             return None
 
         plan = self.plan_question(q)
+        combined_result = self.attendance_academic_class_comparison(q)
+        if combined_result is not None:
+            if isinstance(combined_result, dict):
+                combined_result.setdefault("intent", {**plan, "domain": "cross_module", "action": "compare"})
+            return combined_result
         # Each domain starts with its most specific handler. Remaining handlers
         # are retained as a controlled fallback, but generic entity matching is
         # always last so a directory/count response cannot hijack a metric query.
@@ -2811,9 +3538,10 @@ class FullSchoolDatabaseIntelligence:
             "finance": (self.finance_summary,),
             "academics": (self.academic_summary,),
             "library": (self.library,),
+            "admissions_finance": (self.admissions_finance_intelligence,),
             "admissions": (self.admissions,),
             "leave": (self.leave_question,),
-            "operations": (self.operational_metrics,),
+            "operations": (self.timetable_assignment_intelligence, self.operational_metrics),
             "staff": (self.staff_question,),
             "students": (self.student,),
             "generic": (),
@@ -2825,7 +3553,7 @@ class FullSchoolDatabaseIntelligence:
         # functionality for mixed or less common school questions.
         fallback = (
             self.student_support_intelligence, self.student_merit_ranking, self.staff_merit_question,
-            self.operational_metrics, self.leave_question, self.staff_question, self.attendance,
+            self.timetable_assignment_intelligence, self.operational_metrics, self.leave_question, self.staff_question, self.attendance,
             self.online_exams, self.lesson_plan_metrics, self.student, self.finance_summary, self.academic_summary,
             self.library, self.admissions,
         )

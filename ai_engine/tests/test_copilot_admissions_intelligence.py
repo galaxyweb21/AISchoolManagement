@@ -20,11 +20,11 @@ class CopilotAdmissionsIntentTests(SimpleTestCase):
                     "admissions",
                 )
 
-    def test_admissions_domain_takes_priority_over_finance_terms(self):
+    def test_admissions_finance_questions_use_the_combined_domain(self):
         plan = FullSchoolDatabaseIntelligence.plan_question(
             "How many admission applications have outstanding fees?"
         )
-        self.assertEqual(plan["domain"], "admissions")
+        self.assertEqual(plan["domain"], "admissions_finance")
 
     def test_application_statuses_match_the_real_model(self):
         configured = {value for value, _label in AdmissionApplication.STATUS_CHOICES}
