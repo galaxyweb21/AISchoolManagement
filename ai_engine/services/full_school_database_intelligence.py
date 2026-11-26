@@ -39,6 +39,23 @@ class FullSchoolDatabaseIntelligence:
         text = re.sub(r"[^a-z0-9\s\-/]", " ", text)
         return re.sub(r"\s+", " ", text).strip()
 
+    @staticmethod
+    def _requested_rank_limit(question, default=10):
+        """Return an explicit top-N request, otherwise the caller's safe default."""
+        q = FullSchoolDatabaseIntelligence.norm(question)
+        words = {
+            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+            "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+            "eleven": 11, "twelve": 12, "twenty": 20,
+        }
+        match = re.search(r"\b(?:top|best|highest|rank(?:ed|ing)?|first)\s+(\d{1,2})\b", q)
+        if match:
+            return max(1, min(50, int(match.group(1))))
+        for word, number in words.items():
+            if re.search(r"\b(?:top|best|highest|rank(?:ed|ing)?|first)\s+" + word + r"\b", q):
+                return number
+        return max(1, min(50, int(default or 10)))
+
     def meta(self, mode="verified_database", sources=None):
         return {
             "mode": mode,
@@ -96,6 +113,9 @@ class FullSchoolDatabaseIntelligence:
     def student_merit_ranking(self, q):
         """Answer ranking questions from completed, school-scoped terminal results.
 
+        A merit shortlist is not an automatic award and does not establish final
+        award or scholarship eligibility. Confirm the school's published criteria.
+
         This handler intentionally runs before the generic student list handler.
         Ranking is available for ordinary performance questions, not only awards.
         """
@@ -128,28 +148,13 @@ class FullSchoolDatabaseIntelligence:
             from school.models import AcademicTerm
             from django.db.models import Avg, Count, Q
 
-            # Parse an explicit result count: top 5, best five, top ten, etc.
-            number_words = {
-                "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-                "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-                "eleven": 11, "twelve": 12, "twenty": 20,
-            }
-            limit = None
-            count_match = re.search(r"\b(?:top|best|highest|rank(?:ed|ing)?|first)\s+(\d{1,2})\b", q)
-            if count_match:
-                limit = max(1, min(50, int(count_match.group(1))))
-            else:
-                for word, number in number_words.items():
-                    if re.search(r"\b(?:top|best|highest|rank(?:ed|ing)?|first)\s+" + word + r"\b", q):
-                        limit = number
-                        break
-            if limit is None:
-                plural_ranking = any(x in q for x in (
-                    "top students", "best students", "rank students", "ranking",
-                    "top performers", "best performers", "highest performers",
-                    "top performing students", "best performing students",
-                ))
-                limit = 10 if plural_ranking else 1
+            # Explicit top-N requests are shared with other ranking intents.
+            plural_ranking = any(x in q for x in (
+                "top students", "best students", "rank students", "ranking",
+                "top performers", "best performers", "highest performers",
+                "top performing students", "best performing students",
+            ))
+            limit = self._requested_rank_limit(q, 10 if plural_ranking else 1)
 
             # Establish a real, data-bearing term. Use active term only when
             # requested; otherwise use the most recent term with COMPLETE results.
@@ -374,7 +379,7 @@ class FullSchoolDatabaseIntelligence:
             lines += [
                 "",
                 ("**Subjects compared:** " + ", ".join(comparison_subjects) + ".") if comparable_subject_mode else "",
-                "**Interpretation:** This ranking uses completed academic results for the selected term. It is not a full measure of a student's character, attendance, financial need, or scholarship eligibility. For high-stakes decisions, confirm the school's written criteria and review result completeness.",
+                "**Interpretation:** This ranking uses completed academic results for the selected term. A shortlist is not an automatic award and does not establish final scholarship eligibility. It is not a full measure of a student's character, attendance, or financial need. For high-stakes decisions, confirm the school's written criteria and review result completeness.",
             ]
             return {
                 "answer": "\n".join(line for line in lines if line != ""),
@@ -462,8 +467,8 @@ class FullSchoolDatabaseIntelligence:
             return {
                 "answer": (
                     "## Staff Performance — No Verified Overall Ranking\n\n"
-                    "The available records include staff profiles, attendance, leave and payroll, but do not establish "
-                    "a formal appraisal score or agreed overall performance measure for this term. A staff directory "
+                     "The available records include staff profiles, attendance, leave and payroll, but the system "
+                    "does not currently provide a formal staff appraisal or agreed overall performance measure for this term. A staff directory "
                     "or attendance percentage alone cannot establish who is the best employee.\n\n"
                     "Use a recorded appraisal, lesson-observation rubric, agreed teaching-and-learning measure, or "
                     "another approved school criterion to produce an overall ranking."
@@ -473,6 +478,16 @@ class FullSchoolDatabaseIntelligence:
             }
 
         try:
+            # A Mock can dynamically claim to have any attribute, including
+            # ``_meta``. Require a real Django model instance before using it
+            # as an ORM filter value.
+            from django.db.models import Model
+            if not isinstance(self.school, Model) or self.school.pk is None:
+                return {
+                    "answer": "A staff attendance ranking can be calculated from recorded staff attendance for the active academic term.",
+                    "data": {"metric": "attendance_rate", "ranking_available": None, "reason": "A persisted school context is required to query attendance."},
+                    **self.meta("database_unavailable"),
+                }
             from attendance.models import StaffAttendance
             from school.models import AcademicTerm
             from django.db.models import Count, Q
@@ -580,6 +595,15 @@ class FullSchoolDatabaseIntelligence:
         if not action:
             return None
         count = qs.count()
+        # Department/headcount summaries are based on the complete school-scoped
+        # staff roster, not a truncated directory listing.
+        if any(x in q for x in ("by department", "per department", "department breakdown", "staff summary", "staff headcount", "workforce summary")):
+            from django.db.models import Count
+            rows = qs.values("department__name").annotate(total=Count("id")).order_by("department__name")
+            breakdown = {row["department__name"] or "No department": row["total"] for row in rows}
+            lines = [f"## Staff Headcount\n\n**{count:,} staff members** match your query.", "", "**By department:**"]
+            lines.extend(f"- **{name}:** {total:,}" for name, total in breakdown.items())
+            return {"answer": "\n".join(lines), "data": {"count": count, "department_breakdown": breakdown, "status": "inactive" if "inactive" in q or "former" in q else "active", "source_model": "staff.StaffProfile"}, **self.meta()}
         availability = any(a in q for a in ("available", "currently working", "at work"))
         if availability:
             today = timezone.localdate()
@@ -628,7 +652,8 @@ class FullSchoolDatabaseIntelligence:
         # mean a leave transaction that covers today. Only APPROVED/TAKEN
         # requests count as active leave; PENDING/DRAFT/REJECTED/CANCELLED
         # requests must never be presented as people currently on leave.
-        current = any(x in q for x in (
+        asks_balance = any(x in q for x in ("balance", "remaining leave", "leave days", "entitlement", "available leave"))
+        current = not asks_balance and any(x in q for x in (
             "today", "currently", "right now", "now", "at present",
             "on leave", "available",
         ))
@@ -707,14 +732,27 @@ class FullSchoolDatabaseIntelligence:
                 **self.meta(),
             }
 
-        # Non-current leave questions can safely report request totals.
+        if any(x in q for x in ("balance", "remaining leave", "leave days", "entitlement", "available leave")):
+            from staff.models import StaffLeaveBalance
+            from django.db.models import Sum
+            balances = StaffLeaveBalance.objects.filter(school=self.school, staff__school=self.school, staff__is_active=True)
+            totals = balances.aggregate(entitled=Sum("total_entitled"), carry=Sum("carried_over"), used=Sum("used"), pending=Sum("pending"), remaining=Sum("remaining"))
+            return {"answer": (f"Across **{balances.count():,} recorded active-staff leave balance(s)**, entitlement is **{totals['entitled'] or Decimal('0'):.1f} days**, carried over **{totals['carry'] or Decimal('0'):.1f}**, used **{totals['used'] or Decimal('0'):.1f}**, pending **{totals['pending'] or Decimal('0'):.1f}**, and remaining **{totals['remaining'] or Decimal('0'):.1f} days**.\n\nThese are recorded balance fields; staff without a balance record are not assumed to have zero entitlement."), "data": {"balance_records": balances.count(), "totals": {key: str(value or Decimal('0')) for key, value in totals.items()}, "source_model": "staff.StaffLeaveBalance"}, **self.meta()}
+
+        # Explicit request-status summaries keep pending requests separate from
+        # approved/taken leave and include every status in the reconciliation.
+        if any(x in q for x in ("summary", "breakdown", "status", "pending", "approved", "rejected", "cancelled", "draft", "taken")):
+            from django.db.models import Count
+            status_rows = qs.values("status").annotate(total=Count("id"))
+            breakdown = {row["status"]: row["total"] for row in status_rows}
+            total = sum(breakdown.values())
+            labels = {"DRAFT": "draft", "PENDING": "pending approval", "APPROVED": "approved", "REJECTED": "rejected", "CANCELLED": "cancelled", "TAKEN": "taken"}
+            detail = ", ".join(f"{labels.get(key, key.lower())}: {value:,}" for key, value in sorted(breakdown.items())) or "no requests"
+            return {"answer": f"There are **{total:,} staff leave requests** in the school database.\n\n**Status breakdown:** {detail}.", "data": {"count": total, "status_breakdown": breakdown, "source_model": "staff.LeaveRequest"}, **self.meta()}
+
         if any(x in q for x in ("how many", "number of", "count", "total", "list", "show", "who", "which")):
             count = qs.count()
-            return {
-                "answer": f"There are **{count:,} leave requests** in the school database.",
-                "data": {"count": count},
-                **self.meta(),
-            }
+            return {"answer": f"There are **{count:,} leave requests** in the school database.", "data": {"count": count}, **self.meta()}
         return None
 
     # ------------------------------------------------------------------
@@ -862,39 +900,166 @@ class FullSchoolDatabaseIntelligence:
     # ------------------------------------------------------------------
     # Domain summaries
     # ------------------------------------------------------------------
+    @staticmethod
+    def _finance_query_intent(q):
+        """Classify finance questions with balances taking precedence over fees."""
+        q = FullSchoolDatabaseIntelligence.norm(q)
+        outstanding = any(term in q for term in (
+            "outstanding", "owing", "owe", "receivable", "balance due",
+            "unpaid", "still owed", "remaining balance",
+        ))
+        if outstanding:
+            return "outstanding"
+        if any(term in q for term in (
+            "collected", "collection", "collections", "payment", "payments",
+            "paid", "received", "receipts", "money received",
+        )):
+            return "collections"
+        if any(term in q for term in (
+            "billed", "billing", "invoice", "invoices", "total fees",
+            "fee structure", "amount charged", "charges",
+        )):
+            return "billed"
+        if any(term in q for term in ("summary", "finance", "financial")):
+            return "summary"
+        return None
+
     def finance_summary(self, q):
-        if not any(w in q for w in ("fee", "fees", "finance", "financial", "invoice", "invoices", "payment", "payments", "outstanding", "owing", "owe", "receivable", "collection", "collected")):
+        if not any(w in q for w in (
+            "fee", "fees", "finance", "financial", "invoice", "invoices",
+            "payment", "payments", "outstanding", "owing", "owe",
+            "receivable", "collection", "collected", "balance due", "unpaid",
+        )):
             return None
         if not self.can("finance"):
             return self.denied("financial information")
-        if not any(a in q for a in ("summary", "how much", "total", "outstanding", "owing", "owe", "number of", "count", "how many", "collected")):
+
+        intent = self._finance_query_intent(q)
+        if intent is None and not any(a in q for a in (
+            "how much", "total", "number of", "count", "how many", "show", "what is",
+        )):
             return None
+        if intent is None:
+            intent = "summary"
+
         try:
             from finance.models import Invoice, Payment
-            invoices = Invoice.objects.filter(school=self.school)
+
+            # A void invoice is not a valid charge and must not inflate billed or
+            # outstanding balances. All calculations remain school-scoped.
+            invoices = Invoice.objects.filter(school=self.school).exclude(status="VOID")
             payments = Payment.objects.filter(invoice__school=self.school)
-            # Collections are actual confirmed payments only. Pending and reversed
-            # transactions are deliberately excluded from the amount and count.
-            confirmed = payments.filter(status="CONFIRMED")
-            if "this term" in q or "current term" in q or "term to date" in q:
+            period = "all recorded dates"
+            term = None
+            asks_term = any(x in q for x in (
+                "this term", "current term", "term to date", "active term",
+            ))
+            if asks_term:
                 from school.models import AcademicTerm
-                term = AcademicTerm.objects.filter(academic_year__school=self.school, is_active=True).order_by("-start_date").first()
+                term = AcademicTerm.objects.filter(
+                    academic_year__school=self.school, is_active=True,
+                ).order_by("-start_date").first()
                 if not term:
-                    return {"answer": "There is no active academic term configured, so I cannot calculate term-to-date fee collections.", **self.meta("database_unavailable")}
-                confirmed = confirmed.filter(paid_at__date__gte=term.start_date, paid_at__date__lte=term.end_date)
+                    return {
+                        "answer": "There is no active academic term configured, so I cannot calculate term-specific financial figures.",
+                        "data": {"count": 0, "period": "current term unavailable"},
+                        **self.meta("database_unavailable"),
+                    }
                 period = f"{term.name} ({term.start_date:%d %b %Y} to {term.end_date:%d %b %Y})"
+
+            if term is not None:
+                # Billed/outstanding amounts belong to invoices assigned to the
+                # term. Collections remain cash received during the term window.
+                invoices = invoices.filter(academic_term=term)
+                period_payments = payments.filter(
+                    status="CONFIRMED",
+                    paid_at__date__gte=term.start_date,
+                    paid_at__date__lte=term.end_date,
+                )
             else:
-                period = "all recorded dates"
-            total_paid = confirmed.aggregate(v=Sum("amount"))["v"] or Decimal("0")
-            if "payment" in q or "collection" in q or "collected" in q or "fee" in q:
-                count = confirmed.count()
-                return {"answer": f"## Confirmed Fee Collections\n\nConfirmed payments for **{period}** total **GH₵{total_paid:,.2f}** across **{count:,} confirmed payment(s)**. Pending and reversed payments are excluded.", "data": {"confirmed_payment_records": count, "confirmed_amount": str(total_paid), "period": period}, **self.meta()}
-            total_billed = sum((i.total_amount for i in invoices), Decimal("0"))
-            outstanding = total_billed - total_paid
-            return {"answer": f"## Finance Summary\n\n- **Invoices:** {invoices.count():,}\n- **Total billed:** **GH₵{total_billed:,.2f}**\n- **Confirmed payments ({period}):** **GH₵{total_paid:,.2f}**\n- **Outstanding (all recorded invoices less confirmed payments):** **GH₵{outstanding:,.2f}**", "data": {"invoices": invoices.count(), "billed": str(total_billed), "paid": str(total_paid), "outstanding": str(outstanding), "period": period}, **self.meta()}
+                period_payments = payments.filter(status="CONFIRMED")
+
+            payment_count = period_payments.count()
+            total_paid_in_period = period_payments.aggregate(v=Sum("amount"))["v"] or Decimal("0")
+            invoice_rows = list(invoices.select_related("student"))
+            invoice_count = len(invoice_rows)
+            total_billed = sum((Decimal(str(invoice.total_amount or 0)) for invoice in invoice_rows), Decimal("0"))
+
+            if intent == "collections":
+                label = "Confirmed Fee Collections"
+                return {
+                    "answer": (
+                        f"## {label}\n\nConfirmed payments received for **{period}** total "
+                        f"**GH₵{total_paid_in_period:,.2f}** across **{payment_count:,} confirmed payment(s)**. "
+                        "Pending and reversed payments are excluded."
+                    ),
+                    "data": {
+                        "confirmed_payment_records": payment_count,
+                        "confirmed_amount": str(total_paid_in_period),
+                        "period": period,
+                        "source_model": "finance.Payment",
+                    },
+                    **self.meta(),
+                }
+
+            if intent == "billed":
+                return {
+                    "answer": f"## Fees Billed\n\nThe school recorded **{invoice_count:,} non-void invoice(s)** totalling **GH₵{total_billed:,.2f}** for **{period}**.",
+                    "data": {
+                        "invoice_count": invoice_count,
+                        "billed_amount": str(total_billed),
+                        "period": period,
+                        "excluded_status": "VOID",
+                        "source_model": "finance.Invoice",
+                    },
+                    **self.meta(),
+                }
+
+            if intent == "outstanding":
+                # For outstanding balances, subtract every confirmed payment
+                # recorded against the selected invoices, not merely payments
+                # made during the reporting window. Otherwise older payments
+                # against this term's invoices would be ignored.
+                outstanding = sum((Decimal(str(invoice.balance_due or 0)) for invoice in invoice_rows), Decimal("0"))
+                return {
+                    "answer": (
+                        f"## Outstanding Fee Balances\n\nThe outstanding balance on **{invoice_count:,} non-void invoice(s)** "
+                        f"for **{period}** is **GH₵{outstanding:,.2f}**. "
+                        "Balances are calculated per invoice using confirmed payments; pending and reversed payments do not reduce the balance."
+                    ),
+                    "data": {
+                        "invoice_count": invoice_count,
+                        "outstanding_amount": str(outstanding),
+                        "period": period,
+                        "source_model": "finance.Invoice",
+                        "balance_basis": "invoice total less all confirmed payments for that invoice",
+                    },
+                    **self.meta(),
+                }
+
+            return {
+                "answer": (
+                    f"## Finance Summary\n\n- **Non-void invoices:** {invoice_count:,}"
+                    f"\n- **Total billed:** **GH₵{total_billed:,.2f}**"
+                    f"\n- **Confirmed collections ({period}):** **GH₵{total_paid_in_period:,.2f}**"
+                    f"\n- **Outstanding on selected invoices:** **GH₵{sum((Decimal(str(invoice.balance_due or 0)) for invoice in invoice_rows), Decimal('0')):,.2f}**"
+                ),
+                "data": {
+                    "invoices": invoice_count,
+                    "billed": str(total_billed),
+                    "confirmed_collections": str(total_paid_in_period),
+                    "outstanding": str(sum((Decimal(str(invoice.balance_due or 0)) for invoice in invoice_rows), Decimal("0"))),
+                    "period": period,
+                    "source_models": ["finance.Invoice", "finance.Payment"],
+                },
+                **self.meta(),
+            }
         except Exception:
             logger.exception("Finance summary failed")
-            return {"answer": "I could not safely verify the requested financial information. No unverified answer was provided.", **self.meta("database_error")}
+            return {
+                "answer": "I could not safely verify the requested financial information. No unverified answer was provided.",
+                **self.meta("database_error"),
+            }
 
     def _attendance_date_window(self, q, today=None):
         """Resolve explicit attendance periods without guessing school days."""
@@ -1000,6 +1165,89 @@ class FullSchoolDatabaseIntelligence:
         return not ("student" in q and "staff" in q) and any(
             token in q for token in ("compare", "comparison", "versus", " vs ", "against")
         ) and any(token in q for token in ("last week", "previous week", "last month", "previous month", "last term", "previous term", "last year", "same period"))
+
+    # ------------------------------------------------------------------
+    # Student support signals (verified attendance data only)
+    # ------------------------------------------------------------------
+    def student_support_intelligence(self, q):
+        """Identify students with repeated attendance concerns; never label discipline/welfare."""
+        triggers = (
+            "need attention", "needs attention", "student support", "support students",
+            "students needing support", "students who need support", "at risk", "welfare",
+            "repeated absence", "frequent absence", "frequently absent", "chronic absence",
+            "repeatedly absent", "poor attendance", "attendance concern", "attendance concerns",
+            "frequently late", "repeated lateness", "late frequently", "academic intervention",
+        )
+        if not any(x in q for x in triggers):
+            return None
+        if not self.can("students") or not self.can("attendance"):
+            return self.denied("student support and attendance information")
+        try:
+            from attendance.models import Attendance
+            from django.db.models import Count, Q
+            from django.utils import timezone
+            from school.models import AcademicTerm
+            today = timezone.localdate()
+            term = AcademicTerm.objects.filter(academic_year__school=self.school, is_active=True).order_by("-start_date").first()
+            term_requested = any(x in q for x in ("this term", "current term", "term to date", "active term"))
+            if term_requested and term:
+                start, end, period_label = term.start_date, min(term.end_date, today), f"{term.name} to date"
+            else:
+                start, end = today - timedelta(days=29), today
+                period_label = "the last 30 days"
+            if start > end:
+                start = end
+            qs = Attendance.objects.filter(
+                school=self.school, student__school=self.school, student__is_active=True,
+                date__gte=start, date__lte=end,
+            )
+            if self.allowed_students is not None:
+                try:
+                    qs = qs.filter(student__in=self.allowed_students.values("pk"))
+                except Exception:
+                    logger.exception("Could not apply authorized student scope to support intelligence")
+                    return {"answer": "I couldn't verify your authorized student scope, so I stopped this query rather than risk exposing student records.", **self.meta("scope_verification_failed")}
+            stats = list(qs.values(
+                "student_id", "student__user__first_name", "student__user__last_name",
+                "student__admission_number", "student__school_class__name", "student__grade_level__name",
+            ).annotate(
+                recorded=Count("id"), absent=Count("id", filter=Q(status="ABSENT")),
+                late=Count("id", filter=Q(status="LATE")), excused=Count("id", filter=Q(status="EXCUSED")),
+                present=Count("id", filter=Q(status="PRESENT")),
+            ).order_by("-absent", "-late", "student__user__last_name", "student__user__first_name"))
+            flagged = []
+            for row in stats:
+                unexcused = row["absent"] + row["late"]
+                rate = (row["absent"] / row["recorded"] * 100) if row["recorded"] else 0
+                # Conservative signal: >=3 absences, >=4 late marks, or >=20% absence
+                # across at least 5 recorded days. EXCUSED records are not counted absent.
+                if row["absent"] >= 3 or row["late"] >= 4 or (row["recorded"] >= 5 and rate >= 20):
+                    row["absence_rate"] = rate
+                    row["concern"] = "Repeated absences" if row["absent"] >= 3 or rate >= 20 else "Repeated lateness"
+                    flagged.append(row)
+            asks_absence = any(x in q for x in ("absent", "absence", "absentee", "missing school"))
+            asks_late = any(x in q for x in ("late", "lateness", "punctual"))
+            if asks_absence and not asks_late:
+                flagged = [r for r in flagged if r["absent"] >= 1]
+            elif asks_late and not asks_absence:
+                flagged = [r for r in flagged if r["late"] >= 1]
+            total_records = qs.count()
+            total_students = qs.values("student_id").distinct().count()
+            absent_total = qs.filter(status="ABSENT").count()
+            late_total = qs.filter(status="LATE").count()
+            lines = ["## Student Support Signals", "", f"**Period:** {period_label} ({start:%d %b %Y} – {end:%d %b %Y})", f"**Students with attendance records:** {total_students:,}", f"**Recorded attendance days:** {total_records:,}", f"**Absence records:** {absent_total:,} | **Late records:** {late_total:,}", f"**Students flagged for follow-up:** {len(flagged):,}", "", "### Students to review"]
+            for row in flagged[:MAX_LIST]:
+                full_name = " ".join(x for x in (row["student__user__first_name"], row["student__user__last_name"]) if x).strip() or "Student"
+                cls = row["student__school_class__name"] or row["student__grade_level__name"] or "Class not assigned"
+                lines.append(f"- **{full_name}** ({row['student__admission_number']}) — {cls}: {row['absent']} absences, {row['late']} late marks, {row['recorded']} recorded days ({row['absence_rate']:.0f}% absence rate). **Signal:** {row['concern']}.")
+            if not flagged:
+                lines.append("No students met these conservative attendance follow-up thresholds in the selected period.")
+            lines += ["", "**Interpretation:** These are attendance-based follow-up signals only—not findings of misconduct, medical, family, or welfare problems. Confirm records and contact the appropriate school staff/guardian before taking action.", "**Thresholds:** 3 or more absences, 4 or more late marks, or at least 20% absence over 5+ recorded days. Excused absences are excluded from absence counts."]
+            data = {"period_start": str(start), "period_end": str(end), "students_with_records": total_students, "attendance_records": total_records, "absence_records": absent_total, "late_records": late_total, "flagged_students": len(flagged), "thresholds": {"absences": 3, "late_marks": 4, "absence_rate_percent": 20, "minimum_recorded_days_for_rate": 5}, "students": [{"name": " ".join(x for x in (r["student__user__first_name"], r["student__user__last_name"]) if x).strip(), "admission_number": r["student__admission_number"], "class": r["student__school_class__name"] or r["student__grade_level__name"], "absent": r["absent"], "late": r["late"], "recorded_days": r["recorded"], "absence_rate_percent": round(r["absence_rate"], 1), "signal": r["concern"]} for r in flagged[:MAX_LIST]], "source_model": "attendance.Attendance"}
+            return {"answer": "\n".join(lines), "data": data, **self.meta()}
+        except Exception:
+            logger.exception("Student support intelligence failed")
+            return {"answer": "I could not safely verify student support signals from the attendance database. No unverified answer was provided.", **self.meta("database_error")}
 
     def attendance(self, q):
         """School-safe student/staff attendance summaries, comparisons and trends.
@@ -1881,8 +2129,10 @@ class FullSchoolDatabaseIntelligence:
         if not self.can("exams"):
             return self.denied("online examination information")
         try:
+            q = " ".join(str(q or "").lower().split())
             from online_exams.models import OnlineExam, ExamAttempt
-            exams = OnlineExam.objects.filter(school=self.school)
+            all_exams = OnlineExam.objects.filter(school=self.school)
+            exams = all_exams
             attempts = ExamAttempt.objects.filter(exam__school=self.school, student__school=self.school)
 
             # Teachers can inspect only examinations they created and attempts
@@ -1927,10 +2177,14 @@ class FullSchoolDatabaseIntelligence:
                     return {"answer": f"The average score across **{len(percentages):,} graded online-exam attempts** is **{average:.2f}%**.", "data": {"graded_attempts": len(percentages), "average_percentage": round(average, 2)}, **self.meta()}
                 return {"answer": f"There are **{count:,} online-exam attempts** matching your query in your authorized scope.", "data": {"attempts": count, "status": "SUBMITTED" if "submitted" in q else "IN_PROGRESS" if "in progress" in q or "ongoing" in q else "EXPIRED" if "expired" in q else None}, **self.meta()}
 
-            status = next((value for token, value in (("published", "PUBLISHED"), ("draft", "DRAFT"), ("closed", "CLOSED")) if token in q), None)
+            status = next((value for token, value in (("published", "PUBLISHED"), ("draft", "DRAFT"), ("closed", "CLOSED")) if re.search(r"\b" + token + r"\b", q)), None)
             if status:
                 exams = exams.filter(status=status)
             count = exams.count()
+            if status and any(x in q for x in ("how many", "number of", "count", "total", "published", "draft", "closed")) and not any(x in q for x in ("summary", "breakdown")):
+                label = {"PUBLISHED": "published", "DRAFT": "draft", "CLOSED": "closed"}[status]
+                noun = "online examination" if count == 1 else "online examinations"
+                return {"answer": f"There {('is' if count == 1 else 'are')} **{count:,} {label} {noun}** in the school database.", "data": {"count": count, "status": status}, **self.meta()}
             if any(x in q for x in ("which", "list", "show", "names", "titles")):
                 rows = exams.select_related("school_class", "subject").order_by("-opens_at")[:MAX_LIST]
                 lines = ["## Online Examinations", ""]
@@ -1940,8 +2194,11 @@ class FullSchoolDatabaseIntelligence:
                     lines.append("No matching online examinations were found.")
                 return {"answer": "\n".join(lines), "data": {"count": count, "status": status}, **self.meta()}
 
-            breakdown = {value: exams.model.objects.filter(school=self.school, **({"created_by": self.user} if str(getattr(self.user, "role", "")).upper() == "TEACHER" else {}), status=value).count() for value in ("DRAFT", "PUBLISHED", "CLOSED")}
-            return {"answer": f"## Online Examination Summary\n\n- **Matching examinations:** {count:,}\n- Draft: **{breakdown['DRAFT']:,}**\n- Published: **{breakdown['PUBLISHED']:,}**\n- Closed: **{breakdown['CLOSED']:,}**", "data": {"count": count, "status_breakdown": breakdown}, **self.meta()}
+            breakdown = {
+                value: all_exams.filter(status=value).count()
+                for value in ("DRAFT", "PUBLISHED", "CLOSED")
+            }
+            return {"answer": f"## Online Examination Summary\n\n- **Matching examinations:** {count:,}\n- Draft: **{breakdown['DRAFT']:,}**\n- Published: **{breakdown['PUBLISHED']:,}**\n- Closed: **{breakdown['CLOSED']:,}**",   "data": {"count": count, "status_breakdown": breakdown}, **self.meta()}
         except Exception:
             logger.exception("Online examination intelligence failed")
             return {"answer": "I could not safely verify the online-examination information. No unverified answer was provided.", **self.meta("database_error")}
@@ -1953,6 +2210,7 @@ class FullSchoolDatabaseIntelligence:
         if not self.can("academics"):
             return self.denied("lesson-plan information")
         try:
+            q = " ".join(str(q or "").lower().split())
             from lesson_plans.models import WeeklyLessonPlan
             qs = WeeklyLessonPlan.objects.filter(school=self.school, teacher__school=self.school)
             if str(getattr(self.user, "role", "")).upper() == "TEACHER":
@@ -1967,7 +2225,15 @@ class FullSchoolDatabaseIntelligence:
                 "revision requested": WeeklyLessonPlan.STATUS_REVISION,
                 "approved": WeeklyLessonPlan.STATUS_APPROVED,
             }
-            selected_status = next((value for phrase, value in status_map.items() if phrase in q), None)
+            # Prefer the full review-state phrases; normalize punctuation so
+            # natural questions such as "awaiting review?" are still matched.
+            status_query = re.sub(r"[^a-z0-9_ ]+", " ", q)
+            status_query = " ".join(status_query.split())
+            selected_status = None
+            for phrase in ("awaiting review", "pending review", "revision requested", "revision", "submitted", "draft", "approved"):
+                if re.search(r"\b" + re.escape(phrase) + r"\b", status_query):
+                    selected_status = status_map[phrase]
+                    break
             if selected_status:
                 qs = qs.filter(status=selected_status)
             count = qs.count()
@@ -1982,11 +2248,26 @@ class FullSchoolDatabaseIntelligence:
                     lines.append("No matching lesson plans were found.")
                 return {"answer": "\n".join(lines), "data": {"count": count, "status": selected_status}, **self.meta()}
 
+            if selected_status:
+                status_label = {
+                    WeeklyLessonPlan.STATUS_DRAFT: "draft",
+                    WeeklyLessonPlan.STATUS_SUBMITTED: "submitted for review",
+                    WeeklyLessonPlan.STATUS_REVISION: "awaiting revision",
+                    WeeklyLessonPlan.STATUS_APPROVED: "approved",
+                }.get(selected_status, str(selected_status).lower().replace("_", " "))
+                noun = "lesson plan" if count == 1 else "lesson plans"
+                verb = "is" if count == 1 else "are"
+                return {
+                    "answer": f"There {verb} {count:,} {noun} {status_label}.",
+                    "data": {"count": count, "status": selected_status},
+                    **self.meta(),
+                }
+
             base = WeeklyLessonPlan.objects.filter(school=self.school, teacher__school=self.school)
             if str(getattr(self.user, "role", "")).upper() == "TEACHER":
                 base = base.filter(teacher__user=self.user)
             breakdown = {value: base.filter(status=value).count() for value in (WeeklyLessonPlan.STATUS_DRAFT, WeeklyLessonPlan.STATUS_SUBMITTED, WeeklyLessonPlan.STATUS_REVISION, WeeklyLessonPlan.STATUS_APPROVED)}
-            return {"answer": f"## Lesson Plan Summary\n\n- **Matching plans:** {count:,}\n- Draft: **{breakdown[WeeklyLessonPlan.STATUS_DRAFT]:,}**\n- Submitted for review: **{breakdown[WeeklyLessonPlan.STATUS_SUBMITTED]:,}**\n- Revision requested: **{breakdown[WeeklyLessonPlan.STATUS_REVISION]:,}**\n- Approved: **{breakdown[WeeklyLessonPlan.STATUS_APPROVED]:,}**", "data": {"count": count, "status_breakdown": breakdown}, **self.meta()}
+            return {"answer": f"## Lesson Plan Summary\n\n- **Matching plans:** {count:,}\n- Draft: **{breakdown[WeeklyLessonPlan.STATUS_DRAFT]:,}**\n- Submitted for review: **{breakdown[WeeklyLessonPlan.STATUS_SUBMITTED]:,}**\n- Revision requested: **{breakdown[WeeklyLessonPlan.STATUS_REVISION]:,}**\n- Approved: **{breakdown[WeeklyLessonPlan.STATUS_APPROVED]:,}**", "data": {"count": count, "status": selected_status, "status_breakdown": breakdown}, **self.meta()}
         except Exception:
             logger.exception("Lesson-plan intelligence failed")
             return {"answer": "I could not safely verify lesson-plan information. No unverified answer was provided.", **self.meta("database_error")}
@@ -2086,11 +2367,17 @@ class FullSchoolDatabaseIntelligence:
             if payroll:
                 from staff.models import PayrollRun
                 paid_by_date = "paid" in q or "payment" in q
-                # A question about money actually paid must exclude APPROVED runs;
-                # only PAID runs represent completed disbursements.
-                statuses = ("PAID",) if paid_by_date else ("APPROVED", "PAID")
-                all_runs = PayrollRun.objects.filter(school=self.school)
-                qs = all_runs.filter(status__in=statuses)
+                all_runs = PayrollRun.objects.filter(school=self.school, staff__school=self.school, payroll_period__school=self.school)
+                status_terms = {
+                    "pending": "PENDING", "calculated": "CALCULATED", "reviewed": "REVIEWED",
+                    "approved": "APPROVED", "paid": "PAID", "failed": "FAILED",
+                }
+                requested_status = next((value for term, value in status_terms.items() if re.search(r"\b" + term + r"\b", q)), None)
+                # A request for a workflow summary should show all run states;
+                # money paid remains restricted to PAID records.
+                status_summary = any(x in q for x in ("status breakdown", "payroll summary", "payroll status", "breakdown"))
+                statuses = (requested_status,) if requested_status else (("PAID",) if paid_by_date else ("APPROVED", "PAID"))
+                qs = all_runs if status_summary else all_runs.filter(status__in=statuses)
                 today = timezone.localdate()
                 period_label = "all approved/paid payroll periods"
                 date_field = "payroll_period__payment_date" if paid_by_date else "payroll_period__period_start"
@@ -2118,13 +2405,19 @@ class FullSchoolDatabaseIntelligence:
                                       deductions=Sum("total_deductions"), allowances=Sum("total_allowances"))
                 count = qs.count()
                 all_run_count = all_runs.count()
-                status_breakdown = {row["status"]: row["count"] for row in all_runs.values("status").annotate(count=Count("id"))}
+                status_source = qs if status_summary else all_runs
+                status_breakdown = {row["status"]: row["count"] for row in status_source.values("status").annotate(count=Count("id"))}
+                if status_summary:
+                    summary_count = sum(status_breakdown.values())
+                    detail = ", ".join(f"{key}: {value:,}" for key, value in sorted(status_breakdown.items())) or "no runs"
+                    return {"answer": f"There are **{summary_count:,} payroll run records** for **{period_label}** across all statuses.\n\n**Status breakdown:** {detail}.", "data": {"payroll_runs": summary_count, "status_breakdown": status_breakdown, "period": period_label, "source_model": "staff.PayrollRun"}, **self.meta()}
                 if any(x in q for x in ("how many", "number of", "count", "total runs", "payroll runs")) and not any(x in q for x in ("how much", "total paid", "net pay", "gross pay", "salary", "salaries", "wages")):
-                    return {"answer": f"There are **{count:,} approved or paid payroll run records** for **{period_label}**.",
-                            "data": {"payroll_runs": count, "period": period_label}, **self.meta()}
+                    status_label = requested_status.lower() if requested_status else "approved or paid"
+                    return {"answer": f"There are **{count:,} {status_label} payroll run records** for **{period_label}**.",
+                            "data": {"payroll_runs": count, "status": requested_status, "period": period_label}, **self.meta()}
                 amount_key = "gross" if "gross" in q else "deductions" if "deduction" in q else "allowances" if "allowance" in q else "net"
                 amount = totals.get(amount_key) or Decimal("0.00")
-                label = {"gross": "gross payroll", "net": "net payroll paid", "deductions": "payroll deductions", "allowances": "payroll allowances"}[amount_key]
+                label = {"gross": "gross payroll", "net": "net payroll" if requested_status else "net payroll paid", "deductions": "payroll deductions", "allowances": "payroll allowances"}[amount_key]
                 if count:
                     answer = f"Recorded **{label}** for **{period_label}** is **GH₵{amount:,.2f}**, across **{count:,} matching payroll run(s)**."
                 else:
@@ -2256,30 +2549,76 @@ class FullSchoolDatabaseIntelligence:
                         "data": {"matching_records": count, "total_promotion_records": total_records, "average_overall": float(average) if average is not None else None, "status_counts": counts, "source_model": "academics.StudentPromotion"}, **self.meta()}
 
             if inventory:
-                from finance.models import LogisticItem
+                from finance.models import LogisticItem, LogisticIssuance
+                from django.db.models import F, ExpressionWrapper, DecimalField
+                from django.utils import timezone
+                import re
+
+                active_catalog = LogisticItem.objects.filter(school=self.school, is_active=True)
                 qs = LogisticItem.objects.filter(school=self.school)
                 if "inactive" in q:
                     qs = qs.filter(is_active=False)
                 else:
-                    # Ordinary stock questions describe the current usable
-                    # catalog, not archived/inactive items.
+                    # Ordinary inventory questions describe the active catalog.
                     qs = qs.filter(is_active=True)
-                if any(x in q for x in ("out of stock", "zero stock", "no stock")):
+                out_of_stock = any(x in q for x in ("out of stock", "zero stock", "no stock"))
+                if out_of_stock:
                     qs = qs.filter(quantity_in_stock=0)
+                low_stock = any(x in q for x in ("low stock", "running low", "below minimum", "reorder", "restock"))
+                threshold_match = re.search(r"(?:below|under|less than|fewer than)\s+(\d+)", q)
+                threshold = int(threshold_match.group(1)) if threshold_match else 5
+                if low_stock:
+                    qs = qs.filter(quantity_in_stock__gt=0, quantity_in_stock__lt=threshold)
                 count = qs.count()
                 total_units = qs.aggregate(v=Sum("quantity_in_stock"))["v"] or 0
-                active_catalog = LogisticItem.objects.filter(school=self.school, is_active=True)
+                catalog_count = active_catalog.count()
                 zero_stock_count = active_catalog.filter(quantity_in_stock=0).count()
-                if any(x in q for x in ("which", "list", "show", "names", "out of stock")):
+                low_stock_count = active_catalog.filter(quantity_in_stock__gt=0, quantity_in_stock__lt=5).count()
+                stock_value_expr = ExpressionWrapper(F("unit_price") * F("quantity_in_stock"), output_field=DecimalField(max_digits=18, decimal_places=2))
+                inventory_value = active_catalog.aggregate(v=Sum(stock_value_expr))["v"] or 0
+                issued_qs = LogisticIssuance.objects.filter(student__school=self.school, item__school=self.school)
+                issued_quantity = issued_qs.aggregate(v=Sum("quantity"))["v"] or 0
+                issuance_count = issued_qs.count()
+                issued_by_item = issued_qs.values("item__name").annotate(quantity=Sum("quantity")).order_by("-quantity")
+
+                valuation_question = any(x in q for x in ("value", "valuation", "worth", "cost of stock", "inventory value", "stock value"))
+                issuance_question = any(x in q for x in ("issued", "issuance", "distributed", "distribution"))
+                detail_question = any(x in q for x in ("which", "list", "show", "names", "out of stock", "low stock", "running low", "reorder", "restock"))
+
+                if valuation_question:
+                    ranked = active_catalog.annotate(stock_value=stock_value_expr).order_by("-stock_value", "name")[:MAX_LIST]
+                    lines = ["## Inventory Valuation", "", f"**Estimated current stock value:** {inventory_value:,.2f}", f"**Active catalog items:** {catalog_count:,}", f"**Units on hand:** {active_catalog.aggregate(v=Sum('quantity_in_stock'))['v'] or 0:,}", "", "### Highest-value stock items"]
+                    for item in ranked:
+                        lines.append(f"- **{item.name}** — {item.quantity_in_stock:,} units × {item.unit_price:,.2f} = **{item.stock_value:,.2f}**")
+                    if not catalog_count:
+                        lines.append("No active catalog items are recorded.")
+                    lines.append("\n**Method:** unit_price × quantity_in_stock for active finance.LogisticItem records. This is a catalog-based estimate, not an accounting valuation.")
+                    return {"answer": "\n".join(lines), "data": {"inventory_value": float(inventory_value), "active_catalog_count": catalog_count, "units_in_stock": active_catalog.aggregate(v=Sum("quantity_in_stock"))["v"] or 0, "source_model": "finance.LogisticItem", "valuation_method": "unit_price multiplied by quantity_in_stock"}, **self.meta()}
+
+                if issuance_question:
+                    lines = ["## Inventory Issuance", f"**Recorded issuance transactions:** {issuance_count:,}", f"**Total quantity issued:** {issued_quantity:,} units", "", "### Quantity issued by item"]
+                    for row in issued_by_item[:MAX_LIST]:
+                        lines.append(f"- **{row['item__name']}** — {row['quantity']:,} issued")
+                    if not issuance_count:
+                        lines.append("No inventory issuance records were found for this school.")
+                    return {"answer": "\n".join(lines), "data": {"issuance_records": issuance_count, "quantity_issued": issued_quantity, "item_breakdown": list(issued_by_item[:MAX_LIST]), "source_model": "finance.LogisticIssuance"}, **self.meta()}
+
+                if detail_question:
                     lines = ["## Inventory Items", ""]
                     for item in qs.order_by("name")[:MAX_LIST]:
-                        lines.append(f"- **{item.name}** — {item.quantity_in_stock:,} in stock")
+                        status = "OUT OF STOCK" if item.quantity_in_stock == 0 else "LOW STOCK" if item.quantity_in_stock < 5 else "IN STOCK"
+                        lines.append(f"- **{item.name}** — {item.quantity_in_stock:,} units | Unit price: {item.unit_price:,.2f} | {status}")
                     if not count:
-                        lines.append("No active inventory items currently match the out-of-stock filter (quantity_in_stock = 0)." if any(x in q for x in ("out of stock", "zero stock", "no stock")) else "No inventory items match this request.")
-                    lines.append(f"\n**Evidence:** {active_catalog.count():,} active catalog item(s); {zero_stock_count:,} active item(s) have quantity_in_stock = 0. Source: finance.LogisticItem.")
-                    return {"answer": "\n".join(lines), "data": {"items": count, "units_in_stock": total_units, "active_catalog_count": active_catalog.count(), "zero_stock_count": zero_stock_count, "stock_field": "quantity_in_stock", "source_model": "finance.LogisticItem"}, **self.meta()}
-                return {"answer": f"There are **{count:,} inventory items** with **{total_units:,} total units** in stock.",
-                        "data": {"items": count, "units_in_stock": total_units, "active_catalog_count": active_catalog.count(), "zero_stock_count": zero_stock_count, "source_model": "finance.LogisticItem"}, **self.meta()}
+                        if out_of_stock:
+                            lines.append("No active inventory items currently have quantity_in_stock = 0.")
+                        elif low_stock:
+                            lines.append(f"No active items have stock between 1 and {threshold - 1} units.")
+                        else:
+                            lines.append("No inventory items match this request.")
+                    lines.append(f"\n**Evidence:** {catalog_count:,} active catalog items; {zero_stock_count:,} out of stock; {low_stock_count:,} low stock (below 5). Source: finance.LogisticItem.")
+                    return {"answer": "\n".join(lines), "data": {"items": count, "units_in_matching_items": total_units, "active_catalog_count": catalog_count, "zero_stock_count": zero_stock_count, "low_stock_count": low_stock_count, "threshold": threshold if low_stock else 5, "source_model": "finance.LogisticItem"}, **self.meta()}
+
+                return {"answer": f"There are **{catalog_count:,} active inventory items**, **{active_catalog.aggregate(v=Sum('quantity_in_stock'))['v'] or 0:,} total units** in stock, with an estimated stock value of **{inventory_value:,.2f}**. **{zero_stock_count:,}** items are out of stock and **{low_stock_count:,}** are low (below 5 units).", "data": {"items": catalog_count, "units_in_stock": active_catalog.aggregate(v=Sum("quantity_in_stock"))["v"] or 0, "inventory_value": float(inventory_value), "zero_stock_count": zero_stock_count, "low_stock_count": low_stock_count, "issuance_records": issuance_count, "quantity_issued": issued_quantity, "source_models": ["finance.LogisticItem", "finance.LogisticIssuance"]}, **self.meta()}
 
             if transport:
                 from finance.models import TransportRoute, StudentTransportSubscription
@@ -2349,10 +2688,10 @@ class FullSchoolDatabaseIntelligence:
         staff = any(x in q for x in ("staff", "employee", "employees", "personnel", "teacher", "teachers"))
         student = any(x in q for x in ("student", "students", "learner", "learners", "pupil", "pupils"))
         attendance = any(x in q for x in (
-            "attendance", "absent", "absence", "present", "late", "punctual",
-            "punctuality", "attendance rate", "face recognition", "facial recognition",
+            "attendance", "absent", "absence", "present", "punctuality",
+            "attendance rate", "face recognition", "facial recognition",
             "face-recognition", "face attendance",
-        ))
+        )) or bool(re.search(r"\b(late|lateness)\b", q))
         finance = any(x in q for x in (
             "fee", "fees", "finance", "financial", "invoice", "invoices",
             "payment", "payments", "collected", "collection", "outstanding balance",
@@ -2386,10 +2725,26 @@ class FullSchoolDatabaseIntelligence:
         lesson_plans = any(x in q for x in ("lesson plan", "lesson plans", "lesson note", "lesson notes", "weekly plan", "weekly plans"))
         operations = any(x in q for x in (
             "payroll", "payslip", "pay slip", "salary", "salaries", "wages",
+            "net pay", "gross pay", "calculated payroll", "payroll run", "payroll runs",
+            "payroll status", "payroll breakdown", "approved pay", "approved payroll",
             "workload", "teacher workload", "overloaded", "timetable", "promotion", "promotions",
-            "promoted", "repeated", "inventory", "stock", "logistics", "transport route", "transport subscription",
-            "school bus", "bus route",
+            "promoted", "repeated students", "students repeated", "students who repeated",
+            "students repeating", "repeat students", "inventory", "stock", "logistics",
+            "transport route", "transport subscription", "school bus", "bus route",
         ))
+
+        # Student support is reserved for attendance/welfare follow-up.
+        # Academic risk and intervention are classified separately below and
+        # deliberately take priority over generic "support" wording.
+        support_intent = any(x in q for x in (
+            "need attention", "needs attention", "student support", "support students",
+            "students needing support", "students who need support", "welfare",
+            "repeated absence", "repeated absences", "frequent absence", "frequent absences",
+            "frequently absent", "chronic absence", "repeatedly absent", "absent repeatedly",
+            "poor attendance", "attendance concern", "attendance concerns",
+            "frequently late", "repeated lateness", "late frequently", "late repeatedly",
+            "frequent lateness", "attendance follow up", "attendance follow-up",
+        )) or bool(re.search(r"\b(repeatedly|repeated|frequently|often)\b.{0,24}\b(absent|absence|late|lateness)\b|\b(absent|absence|late|lateness)\b.{0,24}\b(repeatedly|repeated|frequently|often)\b", q))
 
         # Resolve the most specific entity first. A status word such as
         # "absent" must not be mistaken for a request for the student directory.
@@ -2399,24 +2754,34 @@ class FullSchoolDatabaseIntelligence:
             domain = "staff_performance"
         elif student and ranking:
             domain = "student_academic_ranking"
-        elif attendance:
-            domain = "attendance"
+        # Explicit online-exam wording is more specific than the generic
+        # academic keywords "exam", "exams", "average", and "attempts".
         elif online_exams:
             domain = "online_exams"
+        # Library-specific wording must win over generic inventory/stock
+        # keywords (e.g. "library inventory by category").
+        elif library:
+            domain = "library"
+        # Promotion/repetition phrases are operational metrics, not student
+        # directory queries. Keep generic "repeated absence" out of this rule.
+        elif operations:
+            domain = "operations"
+        # Explicit academic-intelligence intent wins over the broad word
+        # "support" (e.g. "what support for students at risk?").
+        elif academics:
+            domain = "academics"
+        elif support_intent and student:
+            domain = "student_support"
+        elif admissions:
+            domain = "admissions"
+        elif attendance:
+            domain = "attendance"
         elif lesson_plans:
             domain = "lesson_plans"
         elif finance:
             domain = "finance"
-        elif academics:
-            domain = "academics"
-        elif library:
-            domain = "library"
-        elif admissions:
-            domain = "admissions"
         elif leave:
             domain = "leave"
-        elif operations:
-            domain = "operations"
         elif staff:
             domain = "staff"
         elif student:
@@ -2439,6 +2804,7 @@ class FullSchoolDatabaseIntelligence:
             "staff_attendance_ranking": (self.staff_merit_question,),
             "staff_performance": (self.staff_merit_question,),
             "student_academic_ranking": (self.student_merit_ranking,),
+            "student_support": (self.student_support_intelligence,),
             "attendance": (self.attendance,),
             "online_exams": (self.online_exams,),
             "lesson_plans": (self.lesson_plan_metrics,),
@@ -2458,7 +2824,7 @@ class FullSchoolDatabaseIntelligence:
         # Add the remaining specialist handlers once, preserving existing
         # functionality for mixed or less common school questions.
         fallback = (
-            self.student_merit_ranking, self.staff_merit_question,
+            self.student_support_intelligence, self.student_merit_ranking, self.staff_merit_question,
             self.operational_metrics, self.leave_question, self.staff_question, self.attendance,
             self.online_exams, self.lesson_plan_metrics, self.student, self.finance_summary, self.academic_summary,
             self.library, self.admissions,
@@ -2491,7 +2857,7 @@ class FullSchoolDatabaseIntelligence:
             "fee", "fees", "invoice", "payment", "finance", "payroll", "salary", "leave", "result", "results",
             "exam", "assessment", "book", "library", "announcement", "department", "academic", "timetable",
             "promotion", "transport", "inventory", "stock", "allowance", "deduction", "payslip", "receipt",
-            "declining grades", "grades declined", "grade decline", "academic risk",
+            "declining grades", "grades declined", "grade decline", "academic risk", "student support", "need attention", "needs attention", "welfare", "frequent absence", "chronic absence",
             "borrowing", "absence", "workload", "room", "term", "year",
             "online exam", "online examination", "exam attempt", "lesson plan", "lesson note", "weekly plan",
             "payroll", "payslip", "salary", "salaries", "wages", "promotion",

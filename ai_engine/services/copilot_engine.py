@@ -477,18 +477,35 @@ class SchoolCopilotEngine:
         try:
             from .copilot_context import allowed_students
 
-            return allowed_students(
+            scoped_students = allowed_students(
                 self.user,
                 school,
             )
 
+            # A failed or unexpected scope resolver must never be interpreted
+            # by downstream engines as permission to use every student in the
+            # school. Return an empty queryset (not None) so the restriction
+            # remains explicit and composable.
+            if scoped_students is None:
+                from students.models import Student
+                return Student.objects.none()
+
+            return scoped_students
+
         except Exception:
 
             logger.exception(
-                "Could not load authorized students."
+                "Could not load authorized students; failing closed."
             )
 
-            return None
+            try:
+                from students.models import Student
+                return Student.objects.none()
+            except Exception:
+                # If even the model cannot be imported, do not manufacture a
+                # broad queryset. The caller's deterministic query layer will
+                # fail and the private-school safety guard can stop the reply.
+                return None
 
     # ========================================================================
     # STUDENT ANSWERS
@@ -1239,6 +1256,34 @@ into private school records.
         question = str(
             question or ""
         ).strip()
+
+        # Enforce the tenant boundary at the engine itself, not only in the
+        # HTTP view. This protects future internal callers from accidentally
+        # supplying another school's instance. A missing school is also not a
+        # valid context for private school-data answers.
+        if school is None:
+            return {
+                "answer": "Your account is not linked to a school.",
+                "mode": "permission_denied",
+                "sources": [],
+                "scope": "none",
+            }
+
+        user_school_id = getattr(self.user, "school_id", None)
+        school_id = getattr(school, "pk", None)
+        if user_school_id is not None and school_id is not None and user_school_id != school_id:
+            logger.warning(
+                "Blocked cross-school Copilot context. user=%s user_school=%s requested_school=%s",
+                getattr(self.user, "pk", None),
+                user_school_id,
+                school_id,
+            )
+            return {
+                "answer": "You do not have permission to access data from that school.",
+                "mode": "permission_denied",
+                "sources": [],
+                "scope": "none",
+            }
 
         if not question:
 

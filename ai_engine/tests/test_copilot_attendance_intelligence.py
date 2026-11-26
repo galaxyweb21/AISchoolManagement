@@ -68,8 +68,8 @@ class CopilotAttendanceIntelligenceTests(SimpleTestCase):
             "total": 10, "present": 6, "late": 1, "absent": 2, "excused": 1,
         }
         counts = self.engine._attendance_counts(queryset)
-        self.assertEqual(counts["attendance_rate"], 87.5)
-        self.assertEqual(counts["absence_rate"], 25.0)
+        self.assertEqual(counts["attendance_rate"], 77.78)
+        self.assertEqual(counts["absence_rate"], 22.22)
 
     def test_attendance_question_routes_to_attendance_handler(self):
         plan = self.engine.plan_question("compare student attendance this week with last week")
